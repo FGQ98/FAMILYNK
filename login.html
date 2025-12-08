@@ -453,8 +453,15 @@
       errorEl.classList.remove('show');
 
       try {
-        await auth.signInWithEmailAndPassword(email, password);
-        window.location.href = 'app.html';
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        
+        // Verificar si tiene familia
+        const userDoc = await db.collection('usuarios').doc(userCredential.user.uid).get();
+        if (userDoc.exists && userDoc.data().familiaId) {
+          window.location.href = 'app.html';
+        } else {
+          window.location.href = 'onboarding.html';
+        }
       } catch (error) {
         let message = 'Error al iniciar sesión';
         if (error.code === 'auth/user-not-found') message = 'No existe una cuenta con este email';
@@ -492,17 +499,15 @@
         // Update profile with name
         await userCredential.user.updateProfile({ displayName: name });
         
-        // Create user document in Firestore
+        // Create user document in Firestore (SIN familiaId - irá al onboarding)
         await db.collection('usuarios').doc(userCredential.user.uid).set({
           nombre: name,
           email: email,
-          rol: 'miembro',
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
-          nidos: []
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Redirect to app
-        window.location.href = 'app.html';
+        // Redirect to onboarding (nuevo usuario = sin familia)
+        window.location.href = 'onboarding.html';
         
       } catch (error) {
         let message = 'Error al crear la cuenta';
@@ -518,9 +523,15 @@
     });
 
     // Check if already logged in
-    auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged(async (user) => {
       if (user) {
-        window.location.href = 'app.html';
+        // Verificar si tiene familia
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        if (userDoc.exists && userDoc.data().familiaId) {
+          window.location.href = 'app.html';
+        } else {
+          window.location.href = 'onboarding.html';
+        }
       }
     });
   </script>

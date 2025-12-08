@@ -716,6 +716,7 @@
 
   <script>
     let currentUser = null;
+    let currentFamilia = null;
     let allNidos = [];
     let miNidoPrincipal = null;
 
@@ -724,7 +725,23 @@
         window.location.href = 'login.html';
         return;
       }
+      
       currentUser = user;
+
+      // Verificar que tiene familia
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists || !userDoc.data().familiaId) {
+        window.location.href = 'onboarding.html';
+        return;
+      }
+
+      // Cargar datos de la familia
+      const familiaId = userDoc.data().familiaId;
+      const familiaDoc = await db.collection('familias').doc(familiaId).get();
+      if (familiaDoc.exists) {
+        currentFamilia = { id: familiaDoc.id, ...familiaDoc.data() };
+      }
+
       await initApp();
     });
 
@@ -736,6 +753,11 @@
       document.getElementById('user-avatar').textContent = primerNombre.charAt(0).toUpperCase();
       document.getElementById('welcome-name').textContent = primerNombre;
 
+      // Mostrar nombre de familia en el título del árbol
+      if (currentFamilia && currentFamilia.nombre) {
+        document.getElementById('arbol-familia-nombre').textContent = currentFamilia.nombre;
+      }
+
       await loadNidos();
     }
 
@@ -744,7 +766,10 @@
       const contentEl = document.getElementById('page-content');
 
       try {
-        const nidosSnapshot = await db.collection('nidos').get();
+        // Get nidos de la familia del usuario
+        const nidosSnapshot = await db.collection('nidos')
+          .where('familiaId', '==', currentFamilia.id)
+          .get();
         
         allNidos = [];
         let totalMiembros = 0;
@@ -759,18 +784,17 @@
 
         miNidoPrincipal = allNidos.find(n => n.admins && n.admins.includes(currentUser.uid)) || allNidos[0];
 
-        const isAdmin = allNidos.some(n => n.admins && n.admins.includes(currentUser.uid));
-        if (isAdmin) {
+        // Mostrar botón admin si es admin general de la familia
+        const isAdminGeneral = currentFamilia.adminsGenerales && currentFamilia.adminsGenerales.includes(currentUser.uid);
+        if (isAdminGeneral) {
           document.getElementById('admin-btn').classList.remove('hidden');
-          document.getElementById('admin-scope').textContent = 
-            allNidos.filter(n => n.admins && n.admins.includes(currentUser.uid)).length > 1 ? 'Familia' : 'Nido';
+          document.getElementById('admin-scope').textContent = 'Familia';
         }
 
         document.getElementById('stat-nidos').textContent = allNidos.length;
         document.getElementById('stat-miembros').textContent = totalMiembros;
         document.getElementById('stat-generaciones').textContent = generaciones.size;
-        document.getElementById('arbol-familia-nombre').textContent = 
-          allNidos.length > 0 ? `${allNidos.length} nidos · ${generaciones.size} generaciones` : 'Sin nidos aún';
+        document.getElementById('arbol-familia-nombre').textContent = currentFamilia.nombre || 'Mi Familia';
 
         loadingEl.classList.add('hidden');
         contentEl.classList.remove('hidden');
@@ -907,6 +931,7 @@
 
       try {
         const nidoRef = await db.collection('nidos').add({
+          familiaId: currentFamilia.id,  // <- Referencia a la familia
           nombre, generacion, relacion, descripcion,
           creador: currentUser.uid,
           miembros: [currentUser.uid],
