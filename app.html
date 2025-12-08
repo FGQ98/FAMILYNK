@@ -140,6 +140,27 @@
       color: var(--text);
     }
 
+    .admin-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, var(--sage-dark) 0%, var(--sage) 100%);
+      color: white;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.85rem;
+      box-shadow: var(--shadow-soft);
+      transition: all 0.2s;
+      margin-right: 16px;
+    }
+
+    .admin-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-float);
+    }
+
     /* Main */
     .main {
       max-width: 1200px;
@@ -497,6 +518,10 @@
       </a>
     </div>
     <div class="header-user">
+      <a href="prototipos/familynk-admin-panel.html" class="admin-btn hidden" id="admin-btn">
+        <span>⚙️</span>
+        <span>Admin</span>
+      </a>
       <div class="user-greeting">
         <div class="user-greeting-text">Bienvenido/a</div>
         <div class="user-greeting-name" id="user-name">...</div>
@@ -623,6 +648,7 @@
       const loadingEl = document.getElementById('nidos-loading');
       const emptyEl = document.getElementById('nidos-empty');
       const gridEl = document.getElementById('nidos-grid');
+      const adminBtn = document.getElementById('admin-btn');
 
       try {
         // Get user's nidos
@@ -632,6 +658,20 @@
 
         loadingEl.classList.add('hidden');
 
+        // Check if user is admin of any nido
+        let isAdmin = false;
+        nidosSnapshot.forEach(doc => {
+          const nido = doc.data();
+          if (nido.admins && nido.admins.includes(currentUser.uid)) {
+            isAdmin = true;
+          }
+        });
+
+        // Show admin button if user is admin
+        if (isAdmin) {
+          adminBtn.classList.remove('hidden');
+        }
+
         if (nidosSnapshot.empty) {
           emptyEl.classList.remove('hidden');
         } else {
@@ -640,12 +680,13 @@
 
           nidosSnapshot.forEach(doc => {
             const nido = doc.data();
+            const isNidoAdmin = nido.admins && nido.admins.includes(currentUser.uid);
             gridEl.innerHTML += `
               <div class="nido-card" data-id="${doc.id}">
                 <div class="nido-header">
                   <div class="nido-icon">🪺</div>
                   <div>
-                    <div class="nido-name">${nido.nombre}</div>
+                    <div class="nido-name">${nido.nombre}${isNidoAdmin ? ' <span style="font-size:0.7rem;background:var(--sage-muted);padding:2px 6px;border-radius:4px;color:var(--sage-dark);">Admin</span>' : ''}</div>
                     <div class="nido-members">${nido.miembros.length} miembro(s)</div>
                   </div>
                 </div>
