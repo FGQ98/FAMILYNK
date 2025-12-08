@@ -243,6 +243,27 @@
       font-weight: 700;
     }
 
+    .member-nido-badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+
+    .members-section-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-light);
+      margin: 20px 0 12px;
+      padding-left: 4px;
+    }
+
+    .members-section-label:first-child {
+      margin-top: 0;
+    }
+
     .member-dates {
       font-size: 0.85rem;
       color: var(--text-light);
@@ -421,6 +442,79 @@
       font-size: 0.9rem;
     }
 
+    /* Rol selector */
+    .rol-selector {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .rol-option {
+      cursor: pointer;
+    }
+
+    .rol-option input {
+      display: none;
+    }
+
+    .rol-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 16px 12px;
+      background: var(--cream-medium);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      transition: all 0.2s;
+    }
+
+    .rol-option input:checked + .rol-box {
+      border-color: var(--sage);
+      background: var(--sage-muted);
+    }
+
+    .rol-box:hover {
+      border-color: var(--sage-light);
+    }
+
+    .rol-icon {
+      font-size: 1.5rem;
+    }
+
+    .rol-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    /* Sección hijo forma nido */
+    .form-divider {
+      height: 1px;
+      background: var(--cream-dark);
+      margin: 16px 0;
+    }
+
+    .hijo-nido-section {
+      background: var(--cream-medium);
+      margin: 16px -20px -20px;
+      padding: 20px;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    }
+
+    .checkbox-hint {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    .nuevo-nido-fields {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--cream-dark);
+    }
+
     /* Loading */
     .loading {
       display: flex;
@@ -597,10 +691,31 @@
       </div>
       <form id="form-añadir-miembro">
         <div class="modal-body">
+          <!-- Rol selector -->
+          <div class="form-group">
+            <label class="form-label">Rol en el nido</label>
+            <div class="rol-selector">
+              <label class="rol-option">
+                <input type="radio" name="miembro-rol" value="progenitor" checked>
+                <span class="rol-box">
+                  <span class="rol-icon">👨‍👩</span>
+                  <span class="rol-name">Progenitor</span>
+                </span>
+              </label>
+              <label class="rol-option">
+                <input type="radio" name="miembro-rol" value="hijo">
+                <span class="rol-box">
+                  <span class="rol-icon">🧒</span>
+                  <span class="rol-name">Hijo/a</span>
+                </span>
+              </label>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Iniciales</label>
-            <input type="text" class="form-input" id="miembro-iniciales" placeholder="Ej: FGQ" required maxlength="4" style="text-transform: uppercase;">
-            <div class="form-hint">Máximo 4 caracteres</div>
+            <input type="text" class="form-input" id="miembro-iniciales" placeholder="Ej: FGQSL" required maxlength="5" style="text-transform: uppercase;">
+            <div class="form-hint">Máximo 5 caracteres</div>
           </div>
 
           <div class="form-group">
@@ -624,6 +739,33 @@
             <div class="checkbox-group">
               <input type="checkbox" id="miembro-admin">
               <label class="checkbox-label" for="miembro-admin">Es administrador de este nido</label>
+            </div>
+          </div>
+
+          <!-- Solo para hijos: opción de formar nido -->
+          <div class="hijo-nido-section hidden" id="hijo-nido-section">
+            <div class="form-divider"></div>
+            <div class="form-group">
+              <div class="checkbox-group">
+                <input type="checkbox" id="hijo-forma-nido">
+                <label class="checkbox-label" for="hijo-forma-nido">
+                  <strong>Forma su propio nido</strong>
+                  <span class="checkbox-hint">Se ha independizado o tiene su propia familia</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Campos del nuevo nido (solo si marca el checkbox) -->
+            <div class="nuevo-nido-fields hidden" id="nuevo-nido-fields">
+              <div class="form-group">
+                <label class="form-label">Nombre del nuevo nido</label>
+                <input type="text" class="form-input" id="nuevo-nido-nombre" placeholder="Ej: Nido de Marcos, Casa Barcelona...">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Fecha de formación del nido</label>
+                <input type="date" class="form-input" id="nuevo-nido-fecha">
+                <div class="form-hint">Cuando se independizó o formó pareja</div>
+              </div>
             </div>
           </div>
         </div>
@@ -734,34 +876,82 @@
       emptyEl.classList.add('hidden');
       listEl.innerHTML = '';
 
-      miembrosData.forEach((miembro, index) => {
-        const fallecido = miembro.fechaDefuncion ? true : false;
-        const fechaNac = miembro.fechaNacimiento ? new Date(miembro.fechaNacimiento).toLocaleDateString('es-ES') : '?';
-        const fechaDef = miembro.fechaDefuncion ? new Date(miembro.fechaDefuncion).toLocaleDateString('es-ES') : null;
+      // Separar por rol
+      const progenitores = miembrosData.map((m, i) => ({...m, originalIndex: i})).filter(m => m.rol !== 'hijo');
+      const hijos = miembrosData.map((m, i) => ({...m, originalIndex: i})).filter(m => m.rol === 'hijo');
 
-        listEl.innerHTML += `
-          <div class="member-card ${fallecido ? 'fallecido' : ''}" data-index="${index}">
-            <div class="member-avatar ${fallecido ? 'fallecido' : ''}">${miembro.iniciales}</div>
-            <div class="member-info">
-              <div class="member-name">
-                ${miembro.nombre || miembro.iniciales}
-                ${miembro.esAdmin ? '<span class="member-admin-badge">Admin</span>' : ''}
-              </div>
-              <div class="member-dates">
-                ${fechaNac}${fechaDef ? ` — † ${fechaDef}` : ''}
-              </div>
+      // Renderizar progenitores
+      if (progenitores.length > 0) {
+        listEl.innerHTML += `<div class="members-section-label">👨‍👩 Progenitores</div>`;
+        progenitores.forEach(miembro => {
+          listEl.innerHTML += renderMemberCard(miembro);
+        });
+      }
+
+      // Renderizar hijos
+      if (hijos.length > 0) {
+        listEl.innerHTML += `<div class="members-section-label">🧒 Hijos</div>`;
+        hijos.forEach(miembro => {
+          listEl.innerHTML += renderMemberCard(miembro);
+        });
+      }
+    }
+
+    function renderMemberCard(miembro) {
+      const index = miembro.originalIndex;
+      const fallecido = miembro.fechaDefuncion ? true : false;
+      const fechaNac = miembro.fechaNacimiento ? new Date(miembro.fechaNacimiento).toLocaleDateString('es-ES') : '?';
+      const fechaDef = miembro.fechaDefuncion ? new Date(miembro.fechaDefuncion).toLocaleDateString('es-ES') : null;
+      const tieneNidoPropio = miembro.nidoPropio ? true : false;
+
+      return `
+        <div class="member-card ${fallecido ? 'fallecido' : ''}" data-index="${index}">
+          <div class="member-avatar ${fallecido ? 'fallecido' : ''}">${miembro.iniciales}</div>
+          <div class="member-info">
+            <div class="member-name">
+              ${miembro.nombre || miembro.iniciales}
+              ${miembro.esAdmin ? '<span class="member-admin-badge">Admin</span>' : ''}
+              ${tieneNidoPropio ? '<span class="member-nido-badge">🪺 Tiene nido</span>' : ''}
             </div>
-            <div class="member-actions">
-              <button class="icon-btn" onclick="editMember(${index})" title="Editar">✏️</button>
-              <button class="icon-btn delete" onclick="deleteMember(${index})" title="Eliminar">🗑️</button>
+            <div class="member-dates">
+              ${fechaNac}${fechaDef ? ` — † ${fechaDef}` : ''}
             </div>
           </div>
-        `;
-      });
+          <div class="member-actions">
+            ${tieneNidoPropio ? `<a href="nido.html?id=${miembro.nidoPropio}" class="icon-btn" title="Ver su nido">🪺</a>` : ''}
+            <button class="icon-btn" onclick="editMember(${index})" title="Editar">✏️</button>
+            <button class="icon-btn delete" onclick="deleteMember(${index})" title="Eliminar">🗑️</button>
+          </div>
+        </div>
+      `;
     }
 
     // Modal handlers
     const modal = document.getElementById('modal-añadir-miembro');
+    const hijoNidoSection = document.getElementById('hijo-nido-section');
+    const nuevoNidoFields = document.getElementById('nuevo-nido-fields');
+
+    // Toggle sección hijo cuando cambia el rol
+    document.querySelectorAll('input[name="miembro-rol"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if (e.target.value === 'hijo') {
+          hijoNidoSection.classList.remove('hidden');
+        } else {
+          hijoNidoSection.classList.add('hidden');
+          document.getElementById('hijo-forma-nido').checked = false;
+          nuevoNidoFields.classList.add('hidden');
+        }
+      });
+    });
+
+    // Toggle campos nuevo nido cuando marca "Forma un nido"
+    document.getElementById('hijo-forma-nido').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        nuevoNidoFields.classList.remove('hidden');
+      } else {
+        nuevoNidoFields.classList.add('hidden');
+      }
+    });
 
     document.getElementById('btn-añadir-miembro').addEventListener('click', () => {
       modal.classList.add('active');
@@ -771,15 +961,27 @@
       modal.classList.add('active');
     });
 
+    function resetModal() {
+      document.getElementById('form-añadir-miembro').reset();
+      hijoNidoSection.classList.add('hidden');
+      nuevoNidoFields.classList.add('hidden');
+      document.querySelector('input[name="miembro-rol"][value="progenitor"]').checked = true;
+      document.getElementById('hijo-forma-nido').disabled = false;
+      const form = document.getElementById('form-añadir-miembro');
+      delete form.dataset.editIndex;
+      document.querySelector('.modal-title').textContent = '👤 Añadir miembro';
+      document.getElementById('modal-añadir').textContent = 'Añadir miembro';
+    }
+
     document.getElementById('modal-cancelar').addEventListener('click', () => {
       modal.classList.remove('active');
-      document.getElementById('form-añadir-miembro').reset();
+      resetModal();
     });
 
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
         modal.classList.remove('active');
-        document.getElementById('form-añadir-miembro').reset();
+        resetModal();
       }
     });
 
@@ -787,27 +989,81 @@
     document.getElementById('form-añadir-miembro').addEventListener('submit', async (e) => {
       e.preventDefault();
 
+      const form = e.target;
+      const editIndex = form.dataset.editIndex;
+
+      // Si es edición, manejar diferente
+      if (editIndex !== undefined && editIndex !== '') {
+        await handleEditMember(editIndex);
+        return;
+      }
+
+      const rol = document.querySelector('input[name="miembro-rol"]:checked').value;
       const iniciales = document.getElementById('miembro-iniciales').value.toUpperCase();
       const nombre = document.getElementById('miembro-nombre').value;
       const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
       const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
       const esAdmin = document.getElementById('miembro-admin').checked;
 
+      // Datos del nuevo nido si aplica
+      const formaNido = rol === 'hijo' && document.getElementById('hijo-forma-nido').checked;
+      const nuevoNidoNombre = document.getElementById('nuevo-nido-nombre').value;
+      const nuevoNidoFecha = document.getElementById('nuevo-nido-fecha').value;
+
       const btn = document.getElementById('modal-añadir');
       btn.disabled = true;
-      btn.textContent = 'Añadiendo...';
+      btn.textContent = formaNido ? 'Creando miembro y nido...' : 'Añadiendo...';
 
       try {
         // Get current miembrosData or create empty array
         const miembrosData = nidoData.miembrosData || [];
 
-        // Add new member
+        // Determinar la siguiente generación si es hijo que forma nido
+        let nuevoNidoId = null;
+        if (formaNido && nuevoNidoNombre) {
+          // Calcular siguiente generación
+          const genActual = nidoData.generacion || '2-padres';
+          const genNum = parseInt(genActual.charAt(0));
+          const siguienteGen = Math.min(genNum + 1, 4);
+          const genLabels = { 2: 'padres', 3: 'nietos', 4: 'bisnietos' };
+          const nuevaGeneracion = `${siguienteGen}-${genLabels[siguienteGen] || 'bisnietos'}`;
+
+          // Crear el nuevo nido
+          const nuevoNidoRef = await db.collection('nidos').add({
+            familiaId: nidoData.familiaId,
+            nombre: nuevoNidoNombre,
+            generacion: nuevaGeneracion,
+            relacion: '',
+            descripcion: '',
+            creador: currentUser.uid,
+            miembros: [currentUser.uid],
+            admins: [currentUser.uid],
+            miembrosData: [{
+              iniciales,
+              nombre,
+              fechaNacimiento,
+              fechaDefuncion,
+              esAdmin: true,
+              rol: 'progenitor',
+              fechaCreacion: new Date().toISOString()
+            }],
+            nidoOrigen: nidoId,
+            fechaFormacion: nuevoNidoFecha || null,
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          nuevoNidoId = nuevoNidoRef.id;
+        }
+
+        // Add new member to current nido
         miembrosData.push({
           iniciales,
           nombre,
           fechaNacimiento,
           fechaDefuncion,
           esAdmin,
+          rol,
+          nidoPropio: nuevoNidoId,
           fechaCreacion: new Date().toISOString()
         });
 
@@ -822,7 +1078,14 @@
 
         // Close modal
         modal.classList.remove('active');
-        document.getElementById('form-añadir-miembro').reset();
+        resetModal();
+
+        // Mostrar mensaje si se creó nido
+        if (nuevoNidoId) {
+          if (confirm(`✅ Se ha creado el nido "${nuevoNidoNombre}". ¿Quieres ir a editarlo?`)) {
+            window.location.href = `nido.html?id=${nuevoNidoId}`;
+          }
+        }
 
       } catch (error) {
         console.error('Error adding member:', error);
@@ -832,6 +1095,50 @@
       btn.disabled = false;
       btn.textContent = 'Añadir miembro';
     });
+
+    // Handle edit member
+    async function handleEditMember(editIndex) {
+      const iniciales = document.getElementById('miembro-iniciales').value.toUpperCase();
+      const nombre = document.getElementById('miembro-nombre').value;
+      const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
+      const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
+      const esAdmin = document.getElementById('miembro-admin').checked;
+      const rol = document.querySelector('input[name="miembro-rol"]:checked').value;
+
+      const btn = document.getElementById('modal-añadir');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const miembrosData = nidoData.miembrosData;
+        miembrosData[editIndex] = {
+          ...miembrosData[editIndex],
+          iniciales,
+          nombre,
+          fechaNacimiento,
+          fechaDefuncion,
+          esAdmin,
+          rol
+        };
+
+        await db.collection('nidos').doc(nidoId).update({
+          miembrosData: miembrosData
+        });
+
+        nidoData.miembrosData = miembrosData;
+        loadMembers();
+
+        modal.classList.remove('active');
+        resetModal();
+
+      } catch (error) {
+        console.error('Error editing member:', error);
+        alert('Error al editar miembro');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Añadir miembro';
+    }
 
     // Delete member
     async function deleteMember(index) {
@@ -854,7 +1161,7 @@
       }
     }
 
-    // Edit member (placeholder - opens modal with data)
+    // Edit member (opens modal with data)
     function editMember(index) {
       const miembro = nidoData.miembrosData[index];
       
@@ -864,6 +1171,23 @@
       document.getElementById('miembro-defuncion').value = miembro.fechaDefuncion || '';
       document.getElementById('miembro-admin').checked = miembro.esAdmin;
 
+      // Establecer rol
+      const rol = miembro.rol || 'progenitor';
+      document.querySelector(`input[name="miembro-rol"][value="${rol}"]`).checked = true;
+      
+      // Mostrar/ocultar sección hijo
+      if (rol === 'hijo') {
+        hijoNidoSection.classList.remove('hidden');
+        // No permitir cambiar "forma nido" en edición si ya tiene uno
+        if (miembro.nidoPropio) {
+          document.getElementById('hijo-forma-nido').checked = true;
+          document.getElementById('hijo-forma-nido').disabled = true;
+          nuevoNidoFields.classList.add('hidden');
+        }
+      } else {
+        hijoNidoSection.classList.add('hidden');
+      }
+
       // Change form to edit mode
       const form = document.getElementById('form-añadir-miembro');
       form.dataset.editIndex = index;
@@ -872,67 +1196,6 @@
 
       modal.classList.add('active');
     }
-
-    // Override form submit to handle edit
-    const originalSubmit = document.getElementById('form-añadir-miembro').onsubmit;
-    document.getElementById('form-añadir-miembro').addEventListener('submit', async (e) => {
-      const form = e.target;
-      const editIndex = form.dataset.editIndex;
-
-      if (editIndex !== undefined && editIndex !== '') {
-        e.preventDefault();
-
-        const iniciales = document.getElementById('miembro-iniciales').value.toUpperCase();
-        const nombre = document.getElementById('miembro-nombre').value;
-        const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
-        const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
-        const esAdmin = document.getElementById('miembro-admin').checked;
-
-        const btn = document.getElementById('modal-añadir');
-        btn.disabled = true;
-        btn.textContent = 'Guardando...';
-
-        try {
-          const miembrosData = nidoData.miembrosData;
-          miembrosData[editIndex] = {
-            ...miembrosData[editIndex],
-            iniciales,
-            nombre,
-            fechaNacimiento,
-            fechaDefuncion,
-            esAdmin
-          };
-
-          await db.collection('nidos').doc(nidoId).update({
-            miembrosData: miembrosData
-          });
-
-          nidoData.miembrosData = miembrosData;
-          loadMembers();
-
-          modal.classList.remove('active');
-          form.reset();
-          delete form.dataset.editIndex;
-          document.querySelector('.modal-title').textContent = '👤 Añadir miembro';
-          document.getElementById('modal-añadir').textContent = 'Añadir miembro';
-
-        } catch (error) {
-          console.error('Error editing member:', error);
-          alert('Error al editar miembro');
-        }
-
-        btn.disabled = false;
-        btn.textContent = 'Añadir miembro';
-      }
-    });
-
-    // Reset modal on close
-    document.getElementById('modal-cancelar').addEventListener('click', () => {
-      const form = document.getElementById('form-añadir-miembro');
-      delete form.dataset.editIndex;
-      document.querySelector('.modal-title').textContent = '👤 Añadir miembro';
-      document.getElementById('modal-añadir').textContent = 'Añadir miembro';
-    });
   </script>
 </body>
 </html>
