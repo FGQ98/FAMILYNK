@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK v2 — Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #5B8C85;
+      --primary-light: #7BA9A3;
+      --primary-dark: #4A7570;
+      --secondary: #F2E8DC;
+      --secondary-dark: #E8DBC8;
+      --accent: #E8985E;
+      --accent-light: #F0B088;
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --background: #1A202C;
+      --card: #2D3748;
+      --card-hover: #3D4A5C;
+      --white: #FFFFFF;
+      --success: #68D391;
+      --warning: #F6AD55;
+      --error: #FC8181;
+      --info: #63B3ED;
+      --sangre: #68D391;
+      --consorte: #B794F4;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.2);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--background);
+      color: var(--white);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* === LAYOUT === */
+    .app-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* === SIDEBAR === */
+    .sidebar {
+      width: 260px;
+      background: var(--card);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      margin-bottom: 30px;
+    }
+
+    .sidebar-logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .sidebar-logo-text {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+
+    .sidebar-logo-badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      background: var(--warning);
+      color: var(--background);
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+    }
+
+    .sidebar-section {
+      margin-bottom: 24px;
+    }
+
+    .sidebar-section-title {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-left: 10px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.9rem;
+    }
+
+    .sidebar-item:hover { background: var(--card-hover); }
+    .sidebar-item.active { background: var(--primary); }
+
+    .sidebar-item-icon { font-size: 1.1rem; width: 24px; text-align: center; }
+
+    .sidebar-item-badge {
+      margin-left: auto;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      background: var(--error);
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--card-hover);
+      border-radius: var(--radius-md);
+    }
+
+    .sidebar-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .sidebar-user-name { font-weight: 600; font-size: 0.9rem; }
+    .sidebar-user-role { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* === MAIN CONTENT === */
+    .main-content {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .main-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .main-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+
+    .main-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: var(--card-hover); color: white; }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+
+    /* === TABS === */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--card);
+      padding: 6px;
+      border-radius: var(--radius-lg);
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all 0.2s ease;
+    }
+
+    .tab:hover { color: white; background: var(--card-hover); }
+    .tab.active { color: white; background: var(--primary); }
+
+    /* === CARDS === */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-subtitle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* === STATS GRID === */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .stat-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      margin-bottom: 12px;
+    }
+
+    .stat-icon.green { background: rgba(104,211,145,0.2); }
+    .stat-icon.orange { background: rgba(246,173,85,0.2); }
+    .stat-icon.purple { background: rgba(183,148,244,0.2); }
+    .stat-icon.blue { background: rgba(99,179,237,0.2); }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* === TREE VIEW === */
+    .tree-container {
+      background: rgba(0,0,0,0.2);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      line-height: 2;
+      overflow-x: auto;
+    }
+
+    .tree-raiz { color: var(--success); font-weight: 700; }
+    .tree-nucleo { color: var(--warning); }
+    .tree-miembro { color: var(--info); }
+    .tree-consorte { color: var(--consorte); }
+    .tree-admin { color: var(--error); font-size: 0.7rem; }
+    .tree-muted { color: var(--text-muted); }
+
+    /* === TABLE === */
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.2);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.9rem;
+    }
+
+    tr:hover td { background: rgba(255,255,255,0.03); }
+
+    .member-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .member-avatar.sangre { background: var(--sangre); color: var(--background); }
+    .member-avatar.consorte { background: var(--consorte); color: var(--background); }
+
+    .member-info { display: flex; flex-direction: column; }
+    .member-name { font-weight: 600; }
+    .member-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .badge-admin { background: var(--error); color: white; }
+    .badge-activo { background: var(--success); color: var(--background); }
+    .badge-menor { background: var(--info); color: var(--background); }
+    .badge-noparticipa { background: var(--text-muted); color: white; }
+
+    /* === TOGGLE === */
+    .toggle {
+      width: 44px;
+      height: 24px;
+      background: var(--card-hover);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .toggle.on { background: var(--success); }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: white;
+      border-radius: 50%;
+      top: 3px;
+      left: 3px;
+      transition: all 0.2s ease;
+    }
+
+    .toggle.on::after { left: 23px; }
+
+    /* === PERMISOS GRID === */
+    .permisos-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .permiso-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: rgba(0,0,0,0.2);
+      border-radius: var(--radius-md);
+    }
+
+    .permiso-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+
+    .permiso-icon { font-size: 1.1rem; }
+
+    /* === NUCLEO CARDS === */
+    .nucleos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .nucleo-card {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .nucleo-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .nucleo-color {
+      width: 8px;
+      height: 50px;
+      border-radius: 4px;
+    }
+
+    .nucleo-color.c1 { background: var(--warning); }
+    .nucleo-color.c2 { background: var(--success); }
+    .nucleo-color.c3 { background: var(--info); }
+
+    .nucleo-avatars {
+      display: flex;
+      margin-left: -6px;
+    }
+
+    .nucleo-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-left: -6px;
+      border: 2px solid var(--card);
+    }
+
+    .nucleo-info { flex: 1; }
+    .nucleo-name { font-weight: 700; }
+    .nucleo-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    .nucleo-body { padding: 16px 20px; }
+
+    .nucleo-members {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .nucleo-member {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: var(--radius-lg);
+      font-size: 0.8rem;
+    }
+
+    .nucleo-member-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .nucleo-member-dot.sangre { background: var(--sangre); }
+    .nucleo-member-dot.consorte { background: var(--consorte); }
+
+    .nucleo-spaces {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .nucleo-space {
+      padding: 4px 10px;
+      background: var(--card-hover);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+    }
+
+    .nucleo-footer {
+      padding: 12px 20px;
+      background: rgba(0,0,0,0.2);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .nucleo-admin {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* === MODAL === */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--card);
+      border-radius: var(--radius-xl);
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: all 0.3s ease;
+    }
+
+    .modal-overlay.show .modal {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--card-hover);
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-body { padding: 24px; }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* === FORM === */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius-md);
+      color: white;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .form-select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 40px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 1200px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .permisos-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🪆</div>
+      <div>
+        <div class="sidebar-logo-text">FAMILYNK</div>
+        <div class="sidebar-logo-badge">ADMIN</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Principal</div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-item active">
+          <span class="sidebar-item-icon">📊</span>
+          Dashboard
+        </div>
+        <div class="sidebar-item" onclick="showSection('ecosistemas')">
+          <span class="sidebar-item-icon">🪆</span>
+          Ecosistemas
+        </div>
+        <div class="sidebar-item" onclick="showSection('miembros')">
+          <span class="sidebar-item-icon">👥</span>
+          Miembros
+          <span class="sidebar-item-badge">12</span>
+        </div>
+        <div class="sidebar-item" onclick="showSection('permisos')">
+          <span class="sidebar-item-icon">🔐</span>
+          Permisos
+        </div>
+      </nav>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Patrimonio</div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-item">
+          <span class="sidebar-item-icon">📦</span>
+          Ajuar
+        </div>
+        <div class="sidebar-item">
+          <span class="sidebar-item-icon">📜</span>
+          Legado
+        </div>
+        <div class="sidebar-item">
+          <span class="sidebar-item-icon">⚖️</span>
+          Decisiones
+        </div>
+      </nav>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Sistema</div>
+      <nav class="sidebar-nav">
+        <div class="sidebar-item">
+          <span class="sidebar-item-icon">⚙️</span>
+          Configuración
+        </div>
+        <div class="sidebar-item">
+          <span class="sidebar-item-icon">📋</span>
+          Logs
+        </div>
+      </nav>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar">F</div>
+        <div>
+          <div class="sidebar-user-name">Felipe</div>
+          <div class="sidebar-user-role">Admin principal</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <div class="main-header">
+      <div>
+        <h1 class="main-title">Panel de Administración</h1>
+        <p class="main-subtitle">Familia Martínez · 3 generaciones · 12 miembros</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary">📥 Exportar</button>
+        <button class="btn btn-primary" onclick="openModal('nuevo-miembro')">+ Nuevo miembro</button>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon green">👥</div>
+        <div class="stat-value">12</div>
+        <div class="stat-label">Miembros activos</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">🏠</div>
+        <div class="stat-value">3</div>
+        <div class="stat-label">Núcleos familiares</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">📦</div>
+        <div class="stat-value">18</div>
+        <div class="stat-label">Items en Ajuar</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue">📜</div>
+        <div class="stat-value">24</div>
+        <div class="stat-label">Items en Legado</div>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab(this, 'estructura')">🌳 Estructura</button>
+      <button class="tab" onclick="showTab(this, 'nucleos')">🏠 Núcleos</button>
+      <button class="tab" onclick="showTab(this, 'miembros')">👥 Miembros</button>
+      <button class="tab" onclick="showTab(this, 'permisos')">🔐 Permisos</button>
+    </div>
+
+    <!-- TAB: ESTRUCTURA -->
+    <div id="tab-estructura" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🌳 Árbol de Ecosistemas</div>
+            <div class="card-subtitle">Vista jerárquica de la estructura familiar</div>
+          </div>
+          <button class="btn btn-secondary">+ Nuevo núcleo</button>
+        </div>
+
+        <div class="tree-container">
+<span class="tree-raiz">🌳 ECOSISTEMA RAÍZ: Familia Martínez</span>
+<span class="tree-muted">│   </span><span class="tree-admin">👑 Admins: Felipe, Rosa</span>
+<span class="tree-muted">│   Generaciones: 3 activas (Bisabuelos → Padres → Nietos)</span>
+<span class="tree-muted">│</span>
+<span class="tree-muted">│   </span><span class="tree-raiz">📦 Ajuar</span><span class="tree-muted"> · 18 items · Casa pueblo, joyas, muebles...</span>
+<span class="tree-muted">│   </span><span class="tree-raiz">📜 Legado</span><span class="tree-muted"> · 24 items · Recetas, tradiciones, historias...</span>
+<span class="tree-muted">│   </span><span class="tree-raiz">⚖️ Decisiones</span><span class="tree-muted"> · 2 abiertas · 5 resueltas</span>
+<span class="tree-muted">│</span>
+<span class="tree-muted">├── </span><span class="tree-nucleo">🏠 NÚCLEO: Felipe + Elena</span><span class="tree-muted"> (separados)</span>
+<span class="tree-muted">│   │   </span><span class="tree-admin">👑 Admin: Felipe</span>
+<span class="tree-muted">│   │   Espacios: Casa A, Casa B, 2ª Vivienda</span>
+<span class="tree-muted">│   │</span>
+<span class="tree-muted">│   ├── </span><span class="tree-miembro">👤 Felipe</span><span class="tree-muted"> · Padre · </span><span class="tree-sangre">Sangre</span>
+<span class="tree-muted">│   ├── </span><span class="tree-miembro">👤 Elena</span><span class="tree-muted"> · Madre · </span><span class="tree-consorte">Consorte</span>
+<span class="tree-muted">│   ├── </span><span class="tree-miembro">👤 Marcos</span><span class="tree-muted"> · Hijo (22) · </span><span class="tree-sangre">Sangre</span>
+<span class="tree-muted">│   └── </span><span class="tree-miembro">👤 Pablo</span><span class="tree-muted"> · Hijo (16) · </span><span class="tree-sangre">Sangre</span><span class="tree-muted"> · Menor</span>
+<span class="tree-muted">│</span>
+<span class="tree-muted">├── </span><span class="tree-nucleo">🏠 NÚCLEO: Rosa + Javier</span><span class="tree-muted"> (casados)</span>
+<span class="tree-muted">│   │   </span><span class="tree-admin">👑 Admin: Rosa</span>
+<span class="tree-muted">│   │   Espacios: Casa familiar</span>
+<span class="tree-muted">│   │</span>
+<span class="tree-muted">│   ├── </span><span class="tree-miembro">👤 Rosa</span><span class="tree-muted"> · Madre · </span><span class="tree-sangre">Sangre</span>
+<span class="tree-muted">│   ├── </span><span class="tree-miembro">👤 Javier</span><span class="tree-muted"> · Padre · </span><span class="tree-consorte">Consorte</span>
+<span class="tree-muted">│   ├── </span><span class="tree-miembro">👤 Sofía</span><span class="tree-muted"> · Hija (19) · </span><span class="tree-sangre">Sangre</span>
+<span class="tree-muted">│   └── </span><span class="tree-miembro">👤 David</span><span class="tree-muted"> · Hijo (14) · </span><span class="tree-sangre">Sangre</span><span class="tree-muted"> · Menor</span>
+<span class="tree-muted">│</span>
+<span class="tree-muted">├── </span><span class="tree-nucleo">🏠 NÚCLEO: Bisabuelos</span>
+<span class="tree-muted">│   │   </span><span class="tree-admin">👑 Admin: Felipe (delegado)</span>
+<span class="tree-muted">│   │</span>
+<span class="tree-muted">│   ├── </span><span class="tree-miembro">👤 Antonio</span><span class="tree-muted"> · Bisabuelo · </span><span class="tree-sangre">Sangre</span>
+<span class="tree-muted">│   └── </span><span class="tree-miembro">👤 Carmen</span><span class="tree-muted"> · Bisabuela · </span><span class="tree-consorte">Consorte</span>
+<span class="tree-muted">│</span>
+<span class="tree-muted">└── </span><span class="tree-miembro">👤 Luis</span><span class="tree-muted"> · Tío (soltero) · </span><span class="tree-sangre">Sangre</span><span class="tree-muted"> · Sin núcleo propio</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: NÚCLEOS -->
+    <div id="tab-nucleos" class="tab-content" style="display: none;">
+      <div class="nucleos-grid">
+
+        <!-- NÚCLEO 1 -->
+        <div class="nucleo-card">
+          <div class="nucleo-header">
+            <div class="nucleo-color c1"></div>
+            <div class="nucleo-avatars">
+              <div class="nucleo-avatar sangre">F</div>
+              <div class="nucleo-avatar consorte">E</div>
+            </div>
+            <div class="nucleo-info">
+              <div class="nucleo-name">Felipe + Elena</div>
+              <div class="nucleo-meta">Separados · 2 hijos</div>
+            </div>
+          </div>
+          <div class="nucleo-body">
+            <div class="nucleo-members">
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot sangre"></div>
+                Felipe
+              </div>
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot consorte"></div>
+                Elena
+              </div>
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot sangre"></div>
+                Marcos (22)
+              </div>
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot sangre"></div>
+                Pablo (16)
+              </div>
+            </div>
+            <div class="nucleo-spaces">
+              <span class="nucleo-space">🏠 Casa A</span>
+              <span class="nucleo-space">🏡 Casa B</span>
+              <span class="nucleo-space">⛰️ 2ª Vivienda</span>
+            </div>
+          </div>
+          <div class="nucleo-footer">
+            <div class="nucleo-admin">
+              👑 Admin: <strong>Felipe</strong>
+            </div>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;">⚙️ Gestionar</button>
+          </div>
+        </div>
+
+        <!-- NÚCLEO 2 -->
+        <div class="nucleo-card">
+          <div class="nucleo-header">
+            <div class="nucleo-color c2"></div>
+            <div class="nucleo-avatars">
+              <div class="nucleo-avatar sangre">R</div>
+              <div class="nucleo-avatar consorte">J</div>
+            </div>
+            <div class="nucleo-info">
+              <div class="nucleo-name">Rosa + Javier</div>
+              <div class="nucleo-meta">Casados · 2 hijos</div>
+            </div>
+          </div>
+          <div class="nucleo-body">
+            <div class="nucleo-members">
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot sangre"></div>
+                Rosa
+              </div>
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot consorte"></div>
+                Javier
+              </div>
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot sangre"></div>
+                Sofía (19)
+              </div>
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot sangre"></div>
+                David (14)
+              </div>
+            </div>
+            <div class="nucleo-spaces">
+              <span class="nucleo-space">🏠 Casa familiar</span>
+            </div>
+          </div>
+          <div class="nucleo-footer">
+            <div class="nucleo-admin">
+              👑 Admin: <strong>Rosa</strong>
+            </div>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;">⚙️ Gestionar</button>
+          </div>
+        </div>
+
+        <!-- NÚCLEO 3: Bisabuelos -->
+        <div class="nucleo-card">
+          <div class="nucleo-header">
+            <div class="nucleo-color c3"></div>
+            <div class="nucleo-avatars">
+              <div class="nucleo-avatar sangre">A</div>
+              <div class="nucleo-avatar consorte">C</div>
+            </div>
+            <div class="nucleo-info">
+              <div class="nucleo-name">Antonio + Carmen</div>
+              <div class="nucleo-meta">Bisabuelos · Fundadores</div>
+            </div>
+          </div>
+          <div class="nucleo-body">
+            <div class="nucleo-members">
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot sangre"></div>
+                Antonio
+              </div>
+              <div class="nucleo-member">
+                <div class="nucleo-member-dot consorte"></div>
+                Carmen
+              </div>
+            </div>
+            <div class="nucleo-spaces">
+              <span class="nucleo-space">🏡 Casa del pueblo</span>
+            </div>
+          </div>
+          <div class="nucleo-footer">
+            <div class="nucleo-admin">
+              👑 Admin: <strong>Felipe</strong> (delegado)
+            </div>
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;">⚙️ Gestionar</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB: MIEMBROS -->
+    <div id="tab-miembros" class="tab-content" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">👥 Todos los miembros</div>
+            <div class="card-subtitle">12 miembros activos · 1 no participa</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary">🔍 Filtrar</button>
+            <button class="btn btn-primary" onclick="openModal('nuevo-miembro')">+ Añadir</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Miembro</th>
+                <th>Tipo</th>
+                <th>Generación</th>
+                <th>Núcleo</th>
+                <th>Estado</th>
+                <th>Rol</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="member-cell">
+                    <div class="member-avatar sangre">A</div>
+                    <div class="member-info">
+                      <span class="member-name">Antonio</span>
+                      <span class="member-meta"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="abcac5dfc4c5c2c4ebcec6cac2c785c8c4c6">[email&#160;protected]</a></span>
+                    </div>
+                  </div>
+                </td>
+                <td><span style="color: var(--sangre);">● Sangre</span></td>
+                <td>Bisabuelo</td>
+                <td>Bisabuelos</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td>Miembro</td>
+                <td><button class="btn btn-secondary" style="padding: 6px 10px;">⚙️</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="member-cell">
+                    <div class="member-avatar consorte">C</div>
+                    <div class="member-info">
+                      <span class="member-name">Carmen</span>
+                      <span class="member-meta"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="aac9cbd8c7cfc4eacfc7cbc3c684c9c5c7">[email&#160;protected]</a></span>
+                    </div>
+                  </div>
+                </td>
+                <td><span style="color: var(--consorte);">● Consorte</span></td>
+                <td>Bisabuela</td>
+                <td>Bisabuelos</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td>Miembro</td>
+                <td><button class="btn btn-secondary" style="padding: 6px 10px;">⚙️</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="member-cell">
+                    <div class="member-avatar sangre">F</div>
+                    <div class="member-info">
+                      <span class="member-name">Felipe</span>
+                      <span class="member-meta"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="056360696c7560456068646c692b666a68">[email&#160;protected]</a></span>
+                    </div>
+                  </div>
+                </td>
+                <td><span style="color: var(--sangre);">● Sangre</span></td>
+                <td>Padre</td>
+                <td>Felipe + Elena</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td><span class="badge badge-admin">Admin</span></td>
+                <td><button class="btn btn-secondary" style="padding: 6px 10px;">⚙️</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="member-cell">
+                    <div class="member-avatar consorte">E</div>
+                    <div class="member-info">
+                      <span class="member-name">Elena</span>
+                      <span class="member-meta"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="93f6fff6fdf2d3f6fef2faffbdf0fcfe">[email&#160;protected]</a></span>
+                    </div>
+                  </div>
+                </td>
+                <td><span style="color: var(--consorte);">● Consorte</span></td>
+                <td>Madre</td>
+                <td>Felipe + Elena</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td>Miembro</td>
+                <td><button class="btn btn-secondary" style="padding: 6px 10px;">⚙️</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="member-cell">
+                    <div class="member-avatar sangre">M</div>
+                    <div class="member-info">
+                      <span class="member-name">Marcos</span>
+                      <span class="member-meta"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f69b9784959985b6939b979f9ad895999b">[email&#160;protected]</a></span>
+                    </div>
+                  </div>
+                </td>
+                <td><span style="color: var(--sangre);">● Sangre</span></td>
+                <td>Nieto</td>
+                <td>Felipe + Elena</td>
+                <td><span class="badge badge-activo">Activo</span></td>
+                <td>Miembro</td>
+                <td><button class="btn btn-secondary" style="padding: 6px 10px;">⚙️</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="member-cell">
+                    <div class="member-avatar sangre">P</div>
+                    <div class="member-info">
+                      <span class="member-name">Pablo</span>
+                      <span class="member-meta">—</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span style="color: var(--sangre);">● Sangre</span></td>
+                <td>Nieto</td>
+                <td>Felipe + Elena</td>
+                <td><span class="badge badge-menor">Menor (16)</span></td>
+                <td>Miembro</td>
+                <td><button class="btn btn-secondary" style="padding: 6px 10px;">⚙️</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="member-cell">
+                    <div class="member-avatar sangre">L</div>
+                    <div class="member-info">
+                      <span class="member-name">Luis</span>
+                      <span class="member-meta">—</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span style="color: var(--sangre);">● Sangre</span></td>
+                <td>Padre</td>
+                <td><em style="color: var(--text-muted);">Sin núcleo</em></td>
+                <td><span class="badge badge-noparticipa">No participa</span></td>
+                <td>—</td>
+                <td><button class="btn btn-secondary" style="padding: 6px 10px;">⚙️</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: PERMISOS -->
+    <div id="tab-permisos" class="tab-content" style="display: none;">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">🔐 Configurar permisos: Elena (Consorte)</div>
+            <div class="card-subtitle">Permisos granulares para acceso al ecosistema raíz</div>
+          </div>
+          <select class="form-input form-select" style="width: 200px;">
+            <option>Elena (Consorte)</option>
+            <option>Javier (Consorte)</option>
+            <option>Carmen (Consorte)</option>
+            <option>Pablo (Menor)</option>
+            <option>David (Menor)</option>
+          </select>
+        </div>
+
+        <div class="permisos-grid">
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">🌳</span>
+              Ver Árbol genealógico
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">📦</span>
+              Ver Ajuar (patrimonio material)
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">📜</span>
+              Ver Legado (patrimonio emocional)
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">💬</span>
+              Opinar en Decisiones
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">🗳️</span>
+              Votar en Decisiones
+            </div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">✏️</span>
+              Editar Ajuar
+            </div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">➕</span>
+              Añadir al Legado
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="permiso-item">
+            <div class="permiso-label">
+              <span class="permiso-icon">🏠</span>
+              Gestionar su núcleo
+            </div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px; padding: 16px; background: rgba(246,173,85,0.1); border-radius: var(--radius-md); border-left: 4px solid var(--warning);">
+          <div style="font-weight: 600; margin-bottom: 4px;">💡 Nota sobre ex-consortes</div>
+          <div style="font-size: 0.85rem; color: var(--text-muted);">Elena (separada) mantiene acceso a información de sus hijos Marcos y Pablo. Los permisos de arriba afectan solo al ecosistema raíz (Ajuar, Legado, Decisiones).</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<!-- MODAL: NUEVO MIEMBRO -->
+<div class="modal-overlay" id="modal-nuevo-miembro">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">👤 Añadir nuevo miembro</h3>
+      <button class="modal-close" onclick="closeModal('nuevo-miembro')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-input" placeholder="Nombre completo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email (opcional)</label>
+          <input type="email" class="form-input" placeholder="email@ejemplo.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Tipo de miembro</label>
+          <select class="form-input form-select">
+            <option>Sangre (nace en la familia)</option>
+            <option>Consorte (entra por pareja)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Generación</label>
+          <select class="form-input form-select">
+            <option>Bisabuelo/a</option>
+            <option>Padre/Madre</option>
+            <option>Nieto/a</option>
+            <option>Bisnieto/a</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Núcleo familiar</label>
+          <select class="form-input form-select">
+            <option>Felipe + Elena</option>
+            <option>Rosa + Javier</option>
+            <option>Bisabuelos</option>
+            <option>+ Crear nuevo núcleo</option>
+            <option>Sin núcleo (soltero)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de nacimiento</label>
+          <input type="date" class="form-input">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Estado de participación</label>
+        <select class="form-input form-select">
+          <option>Activo (participa en FAMILYNK)</option>
+          <option>No participa (solo existe en árbol)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('nuevo-miembro')">Cancelar</button>
+      <button class="btn btn-primary">Guardar miembro</button>
+    </div>
+  </div>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  function showTab(btn, tabName) {
+    // Update tabs
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.clas

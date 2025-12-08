@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Crear Nido</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #5B8C85;
+      --primary-light: #7BA9A3;
+      --primary-dark: #4A7570;
+      --primary-muted: rgba(91,140,133,0.12);
+      
+      --accent: #E8985E;
+      --accent-light: #F0B088;
+      --accent-muted: rgba(232,152,94,0.12);
+      
+      --cream: #F8F5F0;
+      --cream-dark: #EDE8E0;
+      --white: #FFFFFF;
+      
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      
+      --sangre: #5B8C85;
+      --consorte: #9B6B9E;
+      
+      --success: #68D391;
+      --warning: #F6AD55;
+      --error: #FC8181;
+      --info: #63B3ED;
+      
+      --shadow-soft: 0 4px 20px rgba(0,0,0,0.08);
+      --shadow-float: 0 12px 40px rgba(0,0,0,0.15);
+      
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+      --radius-full: 50%;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* === WIZARD CONTAINER === */
+    .wizard {
+      background: var(--white);
+      border-radius: var(--radius-xl);
+      width: 100%;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow: hidden;
+      box-shadow: var(--shadow-float);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* === HEADER === */
+    .wizard-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .wizard-icon {
+      width: 56px;
+      height: 56px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+    }
+
+    .wizard-title-group { flex: 1; }
+
+    .wizard-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .wizard-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-light);
+    }
+
+    .wizard-close {
+      width: 40px;
+      height: 40px;
+      background: var(--cream);
+      border: none;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.2s ease;
+    }
+
+    .wizard-close:hover { background: var(--cream-dark); }
+
+    /* === PROGRESS === */
+    .wizard-progress {
+      padding: 20px 32px;
+      background: var(--cream);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: var(--cream-dark);
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+    }
+
+    .step-number.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .step-number.done {
+      background: var(--success);
+      color: white;
+    }
+
+    .step-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: none;
+    }
+
+    .progress-step.active .step-label {
+      display: block;
+      color: var(--text);
+    }
+
+    .step-line {
+      flex: 1;
+      height: 2px;
+      background: var(--cream-dark);
+    }
+
+    .step-line.done { background: var(--success); }
+
+    /* === BODY === */
+    .wizard-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px;
+    }
+
+    /* === STEP CONTENT === */
+    .step-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .step-content.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-header {
+      margin-bottom: 28px;
+    }
+
+    .step-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-desc {
+      font-size: 0.9rem;
+      color: var(--text-light);
+    }
+
+    /* === FORMS === */
+    .form-section {
+      margin-bottom: 28px;
+    }
+
+    .form-section-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-row.triple {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group.full {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-light);
+    }
+
+    .form-label .required {
+      color: var(--error);
+    }
+
+    .form-input {
+      padding: 12px 16px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .form-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .form-select {
+      padding: 12px 16px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 0.9rem;
+      background: var(--white);
+      cursor: pointer;
+    }
+
+    .form-textarea {
+      padding: 12px 16px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-size: 0.9rem;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* === TAGS INPUT === */
+    .tags-input {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      min-height: 48px;
+      align-items: center;
+    }
+
+    .tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--primary-muted);
+      border-radius: var(--radius-lg);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .tag-remove {
+      width: 16px;
+      height: 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      font-size: 0.7rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tags-input input {
+      border: none;
+      outline: none;
+      flex: 1;
+      min-width: 100px;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+
+    /* === MEMBER CARDS === */
+    .members-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .member-card {
+      background: var(--cream);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      position: relative;
+    }
+
+    .member-card.pareja {
+      border: 2px solid var(--accent);
+      background: var(--accent-muted);
+    }
+
+    .member-badge {
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      padding: 4px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .member-badge.sangre { background: var(--sangre); color: white; }
+    .member-badge.consorte { background: var(--consorte); color: white; }
+    .member-badge.admin { background: var(--accent); color: white; }
+
+    .member-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .member-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: white;
+    }
+
+    .member-avatar.sangre { background: var(--sangre); }
+    .member-avatar.consorte { background: var(--consorte); }
+
+    .member-basic { flex: 1; }
+
+    .member-name-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .member-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .member-action {
+      width: 32px;
+      height: 32px;
+      background: var(--white);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .member-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .detail-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .detail-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    /* === CAPACITY/TRAIT CHIPS === */
+    .chips-section {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    .chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .chip {
+      padding: 6px 12px;
+      border-radius: var(--radius-lg);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+
+    .chip.capacity {
+      background: rgba(99,179,237,0.15);
+      color: #2B6CB0;
+    }
+
+    .chip.capacity.selected {
+      background: #3182CE;
+      color: white;
+    }
+
+    .chip.trait {
+      background: rgba(183,148,244,0.15);
+      color: #6B46C1;
+    }
+
+    .chip.trait.selected {
+      background: #805AD5;
+      color: white;
+    }
+
+    .chip.add {
+      background: var(--cream-dark);
+      color: var(--text-muted);
+      border-style: dashed;
+      border-color: var(--text-muted);
+    }
+
+    /* === ITEM CARDS (mascotas, cuidadores, etc) === */
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .items-grid.three-cols {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .item-card {
+      background: var(--cream);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .item-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .item-info { flex: 1; }
+    .item-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+    .item-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    .item-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .item-action {
+      width: 28px;
+      height: 28px;
+      background: var(--white);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    /* === ADD CARD === */
+    .add-card {
+      background: var(--white);
+      border: 2px dashed var(--cream-dark);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-height: 120px;
+    }
+
+    .add-card:hover {
+      border-color: var(--primary);
+      background: var(--primary-muted);
+    }
+
+    .add-card-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--cream);
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      color: var(--text-muted);
+    }
+
+    .add-card-text {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* === PROPERTY CARDS === */
+    .property-card {
+      background: var(--cream);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .property-image {
+      height: 100px;
+      background: linear-gradient(135deg, var(--primary-muted) 0%, var(--cream) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+    }
+
+    .property-content {
+      padding: 16px;
+    }
+
+    .property-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .property-location {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .property-tags {
+      display: flex;
+      gap: 6px;
+    }
+
+    .property-tag {
+      padding: 4px 10px;
+      background: var(--white);
+      border-radius: var(--radius-sm);
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+
+    /* === NIDOS DESCENDIENTES === */
+    .nido-link-card {
+      background: var(--cream);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .nido-link-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--primary-muted);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+    }
+
+    .nido-link-info { flex: 1; }
+    .nido-link-name { font-weight: 700; font-size: 0.95rem; }
+    .nido-link-status { font-size: 0.75rem; color: var(--text-muted); }
+
+    .nido-link-arrow {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+    }
+
+    /* === SUMMARY SECTION === */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card {
+      background: var(--cream);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .summary-icon { font-size: 1.6rem; margin-bottom: 6px; }
+    .summary-value { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+    .summary-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; }
+
+    .summary-list {
+      background: var(--cream);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+    }
+
+    .summary-list-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-list-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .summary-list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--white);
+      border-radius: var(--radius-md);
+    }
+
+    .summary-list-icon { font-size: 1.2rem; }
+    .summary-list-name { flex: 1; font-weight: 600; font-size: 0.85rem; }
+    .summary-list-meta { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* === FOOTER === */
+    .wizard-footer {
+      padding: 20px 32px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .footer-info {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .footer-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-ghost {
+      background: none;
+      color: var(--text-light);
+    }
+
+    .btn-secondary {
+      background: var(--cream);
+      color: var(--text);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn:hover { transform: translateY(-2px); }
+
+    .btn-primary:hover { background: var(--primary-dark); }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(3, 1fr); }
+      .items-grid.three-cols { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .wizard { max-height: 100vh; border-radius: 0; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-row.triple { grid-template-columns: 1fr; }
+      .items-grid { grid-template-columns: 1fr; }
+      .items-grid.three-cols { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .step-label { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="wizard">
+
+  <!-- HEADER -->
+  <div class="wizard-header">
+    <div class="wizard-icon">🪺</div>
+    <div class="wizard-title-group">
+      <h1 class="wizard-title">Crear nuevo nido</h1>
+      <p class="wizard-subtitle">Configura la estructura y miembros del nido</p>
+    </div>
+    <button class="wizard-close">×</button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="wizard-progress">
+    <div class="progress-step active">
+      <div class="step-number active">1</div>
+      <span class="step-label">Pareja</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-number">2</div>
+      <span class="step-label">Miembros</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-number">3</div>
+      <span class="step-label">Entorno</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-number">4</div>
+      <span class="step-label">Espacios</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-number">5</div>
+      <span class="step-label">Patrimonio</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="progress-step">
+      <div class="step-number">6</div>
+      <span class="step-label">Resumen</span>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="wizard-body">
+
+    <!-- ========== PASO 1: PAREJA ========== -->
+    <div class="step-content active" id="step-1">
+      <div class="step-header">
+        <h2 class="step-title">💑 Pareja fundadora del nido</h2>
+        <p class="step-desc">Datos de los administradores principales del nido. Ambos tendrán permisos de gestión.</p>
+      </div>
+
+      <div class="members-grid">
+        <!-- MIEMBRO 1 (Sangre) -->
+        <div class="member-card pareja">
+          <span class="member-badge sangre">Sangre</span>
+          <span class="member-badge admin" style="left: auto; right: 20px;">Admin</span>
+          
+          <div class="member-header">
+            <div class="member-avatar sangre">F</div>
+            <div class="member-basic">
+              <div class="member-name-row">
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Nombre de pila" value="Felipe">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Apodo (opcional)" value="">
+                </div>
+              </div>
+              <div class="form-group">
+                <input type="date" class="form-input" value="1975-03-15">
+              </div>
+            </div>
+          </div>
+
+          <div class="member-details">
+            <div class="detail-group">
+              <span class="detail-label">Email</span>
+              <input type="email" class="form-input" value="felipe@email.com">
+            </div>
+            <div class="detail-group">
+              <span class="detail-label">Teléfono</span>
+              <input type="tel" class="form-input" value="+34 666 123 456">
+            </div>
+          </div>
+
+          <div class="chips-section">
+            <div class="detail-label">Capacidades</div>
+            <div class="chips-row">
+              <span class="chip capacity selected">🚗 Conduce</span>
+              <span class="chip capacity selected">🍳 Cocina</span>
+              <span class="chip capacity">🔧 Bricolaje</span>
+              <span class="chip capacity selected">💻 Tecnología</span>
+              <span class="chip capacity">🏥 Primeros aux.</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+
+          <div class="chips-section" style="border-top: none; padding-top: 0;">
+            <div class="detail-label">Rasgos de comportamiento</div>
+            <div class="chips-row">
+              <span class="chip trait selected">📋 Organizado</span>
+              <span class="chip trait selected">⏰ Puntual</span>
+              <span class="chip trait">😌 Tranquilo</span>
+              <span class="chip trait">🎯 Perfeccionista</span>
+              <span class="chip trait selected">💬 Comunicativo</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- MIEMBRO 2 (Consorte) -->
+        <div class="member-card pareja">
+          <span class="member-badge consorte">Consorte</span>
+          <span class="member-badge admin" style="left: auto; right: 20px;">Admin</span>
+          
+          <div class="member-header">
+            <div class="member-avatar consorte">E</div>
+            <div class="member-basic">
+              <div class="member-name-row">
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Nombre de pila" value="Elena">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Apodo (opcional)" value="">
+                </div>
+              </div>
+              <div class="form-group">
+                <input type="date" class="form-input" value="1978-07-22">
+              </div>
+            </div>
+          </div>
+
+          <div class="member-details">
+            <div class="detail-group">
+              <span class="detail-label">Email</span>
+              <input type="email" class="form-input" value="elena@email.com">
+            </div>
+            <div class="detail-group">
+              <span class="detail-label">Teléfono</span>
+              <input type="tel" class="form-input" value="+34 666 789 012">
+            </div>
+          </div>
+
+          <div class="chips-section">
+            <div class="detail-label">Capacidades</div>
+            <div class="chips-row">
+              <span class="chip capacity selected">🚗 Conduce</span>
+              <span class="chip capacity selected">🍳 Cocina</span>
+              <span class="chip capacity selected">🔧 Bricolaje</span>
+              <span class="chip capacity">💻 Tecnología</span>
+              <span class="chip capacity selected">🏥 Primeros aux.</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+
+          <div class="chips-section" style="border-top: none; padding-top: 0;">
+            <div class="detail-label">Rasgos de comportamiento</div>
+            <div class="chips-row">
+              <span class="chip trait selected">📋 Organizada</span>
+              <span class="chip trait">⏰ Puntual</span>
+              <span class="chip trait selected">😌 Tranquila</span>
+              <span class="chip trait selected">🎯 Perfeccionista</span>
+              <span class="chip trait">💬 Comunicativa</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== PASO 2: MIEMBROS ========== -->
+    <div class="step-content" id="step-2">
+      <div class="step-header">
+        <h2 class="step-title">👨‍👩‍👧‍👦 Otros miembros del nido</h2>
+        <p class="step-desc">Añade hijos u otros miembros que convivan en el nido.</p>
+      </div>
+
+      <div class="members-grid">
+        <!-- HIJO 1 -->
+        <div class="member-card">
+          <span class="member-badge sangre">Sangre</span>
+          
+          <div class="member-header">
+            <div class="member-avatar sangre">M</div>
+            <div class="member-basic">
+              <div class="member-name-row">
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Nombre" value="Marcos">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Apodo" value="">
+                </div>
+              </div>
+              <div class="form-row" style="margin: 0;">
+                <input type="date" class="form-input" value="2002-05-10">
+                <select class="form-select">
+                  <option>Hijo</option>
+                  <option>Hija</option>
+                  <option>Otro</option>
+                </select>
+              </div>
+            </div>
+            <div class="member-actions">
+              <button class="member-action">✏️</button>
+              <button class="member-action">🗑️</button>
+            </div>
+          </div>
+
+          <div class="chips-section">
+            <div class="detail-label">Capacidades</div>
+            <div class="chips-row">
+              <span class="chip capacity selected">🚗 Conduce</span>
+              <span class="chip capacity">🍳 Cocina</span>
+              <span class="chip capacity selected">💻 Tecnología</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+
+          <div class="chips-section" style="border-top: none; padding-top: 0;">
+            <div class="detail-label">Rasgos</div>
+            <div class="chips-row">
+              <span class="chip trait selected">🎮 Gamer</span>
+              <span class="chip trait selected">🌙 Nocturno</span>
+              <span class="chip trait">📚 Estudioso</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HIJO 2 -->
+        <div class="member-card">
+          <span class="member-badge sangre">Sangre</span>
+          
+          <div class="member-header">
+            <div class="member-avatar sangre">P</div>
+            <div class="member-basic">
+              <div class="member-name-row">
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Nombre" value="Pablo">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                  <input type="text" class="form-input" placeholder="Apodo" value="Pablito">
+                </div>
+              </div>
+              <div class="form-row" style="margin: 0;">
+                <input type="date" class="form-input" value="2008-12-22">
+                <select class="form-select">
+                  <option>Hijo</option>
+                  <option>Hija</option>
+                  <option>Otro</option>
+                </select>
+              </div>
+            </div>
+            <div class="member-actions">
+              <button class="member-action">✏️</button>
+              <button class="member-action">🗑️</button>
+            </div>
+          </div>
+
+          <div class="chips-section">
+            <div class="detail-label">Capacidades</div>
+            <div class="chips-row">
+              <span class="chip capacity">🚗 Conduce</span>
+              <span class="chip capacity">🍳 Cocina</span>
+              <span class="chip capacity selected">💻 Tecnología</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+
+          <div class="chips-section" style="border-top: none; padding-top: 0;">
+            <div class="detail-label">Rasgos</div>
+            <div class="chips-row">
+              <span class="chip trait selected">⚽ Deportista</span>
+              <span class="chip trait selected">😊 Sociable</span>
+              <span class="chip trait">📱 Conectado</span>
+              <span class="chip add">+ Añadir</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- AÑADIR MIEMBRO -->
+        <div class="add-card">
+          <div class="add-card-icon">+</div>
+          <span class="add-card-text">Añadir miembro</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== PASO 3: ENTORNO ========== -->
+    <div class="step-content" id="step-3">
+      <div class="step-header">
+        <h2 class="step-title">🐾 Entorno del nido</h2>
+        <p class="step-desc">Mascotas, cuidadores y otras personas relevantes para el funcionamiento del nido.</p>
+      </div>
+
+      <!-- MASCOTAS -->
+      <div class="form-section">
+        <div class="form-section-title">🐕 Mascotas</div>
+        <div class="items-grid">
+          <div class="item-card">
+            <div class="item-icon" style="background: rgba(246,173,85,0.2);">🐕</div>
+            <div class="item-info">
+              <div class="item-name">Max</div>
+              <div class="item-meta">Golden Retriever · 4 años</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action">✏️</button>
+              <button class="item-action">🗑️</button>
+            </div>
+          </div>
+          <div class="add-card" style="min-height: 90px;">
+            <div class="add-card-icon">+</div>
+            <span class="add-card-text">Añadir mascota</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CUIDADORES -->
+      <div class="form-section">
+        <div class="form-section-title">👩‍⚕️ Cuidadores y personal</div>
+        <div class="items-grid">
+          <div class="item-card">
+            <div class="item-icon" style="background: rgba(104,211,145,0.2);">👩</div>
+            <div class="item-info">
+              <div class="item-name">María López</div>
+              <div class="item-meta">Empleada hogar · L-V mañanas</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action">✏️</button>
+              <button class="item-action">🗑️</button>
+            </div>
+          </div>
+          <div class="item-card">
+            <div class="item-icon" style="background: rgba(183,148,244,0.2);">👨‍🏫</div>
+            <div class="item-info">
+              <div class="item-name">Prof. García</div>
+              <div class="item-meta">Profesor particular · Martes</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action">✏️</button>
+              <button class="item-action">🗑️</button>
+            </div>
+          </div>
+          <div class="add-card" style="min-height: 90px;">
+            <div class="add-card-icon">+</div>
+            <span class="add-card-text">Añadir cuidador</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- NIDOS DESCENDIENTES -->
+      <div class="form-section">
+        <div class="form-section-title">🪺 Nidos descendientes</div>
+        <p class="step-desc" style="margin-bottom: 16px;">Miembros de este nido que han formado o formarán sus propios nidos.</p>
+        <div class="items-grid">
+          <div class="nido-link-card">
+            <div class="nido-link-icon">🪺</div>
+            <div class="nido-link-info">
+              <div class="nido-link-name">Marcos (futuro)</div>
+              <div class="nido-link-status">Se creará cuando forme pareja</div>
+            </div>
+            <span class="nido-link-arrow">→</span>
+          </div>
+          <div class="add-card" style="min-height: 90px;">
+            <div class="add-card-icon">🔗</div>
+            <span class="add-card-text">Vincular nido existente</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== PASO 4: ESPACIOS ========== -->
+    <div class="step-content" id="step-4">
+      <div class="step-header">
+        <h2 class="step-title">🏠 Espacios del nido</h2>
+        <p class="step-desc">Casas y lugares donde vive o pasa tiempo el nido.</p>
+      </div>
+
+      <div class="items-grid">
+        <div class="property-card">
+          <div class="property-image">🏠</div>
+          <div class="property-content">
+            <div class="property-name">Casa A (Felipe)</div>
+            <div class="property-location">📍 Calle Mayor 15, Madrid</div>
+            <div class="property-tags">
+              <span class="property-tag">Principal</span>
+              <span class="property-tag">Custodia L-J</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="property-card">
+          <div class="property-image">🏡</div>
+          <div class="property-content">
+            <div class="property-name">Casa B (Elena)</div>
+            <div class="property-location">📍 Avda. Libertad 42, Madrid</div>
+            <div class="property-tags">
+              <span class="property-tag">Principal</span>
+              <span class="property-tag">Custodia V-D</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="property-card">
+          <div class="property-image">⛰️</div>
+          <div class="property-content">
+            <div class="property-name">Casa del pueblo</div>
+            <div class="property-location">📍 Segovia</div>
+            <div class="property-tags">
+              <span class="property-tag">2ª Vivienda</span>
+              <span class="property-tag">Compartida</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="add-card">
+          <div class="add-card-icon">🏠</div>
+          <span class="add-card-text">Añadir espacio</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== PASO 5: PATRIMONIO ========== -->
+    <div class="step-content" id="step-5">
+      <div class="step-header">
+        <h2 class="step-title">📦 Patrimonio del nido</h2>
+        <p class="step-desc">Vehículos, bienes, ajuar y legado asociados a este nido. Sin información financiera.</p>
+      </div>
+
+      <!-- VEHÍCULOS -->
+      <div class="form-section">
+        <div class="form-section-title">🚗 Vehículos</div>
+        <p class="step-desc" style="margin-bottom: 12px;">Vehículos del nido, individuales o de uso compartido</p>
+        
+        <!-- Vehículos colectivos -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+            <span style="background: rgba(104,211,145,0.2); padding: 2px 8px; border-radius: 6px; font-weight: 600;">👨‍👩‍👧‍👦 Colectivos</span>
+            <span>Uso compartido por el nido</span>
+          </div>
+          <div class="items-grid">
+            <div class="item-card">
+              <div class="item-icon" style="background: rgba(104,211,145,0.2);">🚗</div>
+              <div class="item-info">
+                <div class="item-name">Coche familiar</div>
+                <div class="item-meta">Volkswagen Touran · Todos</div>
+              </div>
+              <div class="item-actions">
+                <button class="item-action">✏️</button>
+                <button class="item-action">🗑️</button>
+              </div>
+            </div>
+            <div class="item-card">
+              <div class="item-icon" style="background: rgba(104,211,145,0.2);">🚐</div>
+              <div class="item-info">
+                <div class="item-name">Furgoneta</div>
+                <div class="item-meta">Ford Transit · Viajes largos</div>
+              </div>
+              <div class="item-actions">
+                <button class="item-action">✏️</button>
+                <button class="item-action">🗑️</button>
+              </div>
+            </div>
+            <div class="add-card" style="min-height: 90px;">
+              <div class="add-card-icon">+</div>
+              <span class="add-card-text">Añadir vehículo colectivo</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vehículos individuales -->
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+            <span style="background: rgba(99,179,237,0.2); padding: 2px 8px; border-radius: 6px; font-weight: 600;">👤 Individuales</span>
+            <span>Asignados a un miembro</span>
+          </div>
+          <div class="items-grid">
+            <div class="item-card">
+              <div class="item-icon" style="background: rgba(99,179,237,0.2);">🚙</div>
+              <div class="item-info">
+                <div class="item-name">Coche de Felipe</div>
+                <div class="item-meta">BMW Serie 3 · Felipe</div>
+              </div>
+              <div class="item-actions">
+                <button class="item-action">✏️</button>
+                <button class="item-action">🗑️</button>
+              </div>
+            </div>
+            <div class="item-card">
+              <div class="item-icon" style="background: rgba(99,179,237,0.2);">🚗</div>
+              <div class="item-info">
+                <div class="item-name">Coche de Elena</div>
+                <div class="item-meta">Seat Ibiza · Elena</div>
+              </div>
+              <div class="item-actions">
+                <button class="item-action">✏️</button>
+                <button class="item-action">🗑️</button>
+              </div>
+            </div>
+            <div class="item-card">
+              <div class="item-icon" style="background: rgba(99,179,237,0.2);">🛵</div>
+              <div class="item-info">
+                <div class="item-name">Moto de Marcos</div>
+                <div class="item-meta">Yamaha MT-07 · Marcos</div>
+              </div>
+              <div class="item-actions">
+                <button class="item-action">✏️</button>
+                <button class="item-action">🗑️</button>
+              </div>
+            </div>
+            <div class="add-card" style="min-height: 90px;">
+              <div class="add-card-icon">+</div>
+              <span class="add-card-text">Añadir vehículo individual</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AJUAR -->
+      <div class="form-section">
+        <div class="form-section-title">💎 Ajuar</div>
+        <p class="step-desc" style="margin-bottom: 12px;">Objetos con valor sentimental o material: joyas, muebles, arte</p>
+        <div class="items-grid">
+          <div class="item-card">
+            <div class="item-icon" style="background: rgba(246,173,85,0.2);">💍</div>
+            <div class="item-info">
+              <div class="item-name">Anillo abuela Carmen</div>
+              <div class="item-meta">Custodia: Elena · Heredable</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action">✏️</button>
+            </div>
+          </div>
+          <div class="item-card">
+            <div class="item-icon" style="background: rgba(183,148,244,0.2);">🖼️</div>
+            <div class="item-info">
+              <div class="item-name">Cuadro del bisabuelo</div>
+              <div class="item-meta">Casa A · Heredable</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action">✏️</button>
+            </div>
+          </div>
+          <div class="add-card" style="min-height: 90px;">
+            <div class="add-card-icon">+</div>
+            <span class="add-card-text">Añadir ajuar</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEGADO -->
+      <div class="form-section">
+        <div class="form-section-title">📜 Legado</div>
+        <p class="step-desc" style="margin-bottom: 12px;">Recetas, tradiciones, historias familiares. Visible en cascada a descendientes.</p>
+        <div class="items-grid">
+          <div class="item-card">
+            <div class="item-icon" style="background: rgba(99,179,237,0.2);">🍲</div>
+            <div class="item-info">
+              <div class="item-name">Receta cocido madrileño</div>
+              <div class="item-meta">De la abuela Carmen</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action">✏️</button>
+            </div>
+          </div>
+          <div class="item-card">
+            <div class="item-icon" style="background: rgba(252,129,129,0.2);">🎄</div>
+            <div class="item-info">
+              <div class="item-name">Tradición Nochebuena</div>
+              <div class="item-meta">Cena en casa del pueblo</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action">✏️</button>
+            </div>
+          </div>
+          <div class="add-card" style="min-height: 90px;">
+            <div class="add-card-icon">+</div>
+            <span class="add-card-text">Añadir legado</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== PASO 6: RESUMEN ========== -->
+    <div class="step-content" id="step-6">
+      <div class="step-header">
+        <h2 class="step-title">✅ Resumen del nido</h2>
+        <p class="step-desc">Revisa la configuración antes de crear el nido. Podrás modificar todo después.</p>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-icon">👥</div>
+          <div class="summary-value">4</div>
+          <div class="summary-label">Miembros</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">🤝</div>
+          <div class="summary-value">2</div>
+          <div class="summary-label">Ayudas</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">🐾</div>
+          <div class="summary-value">1</div>
+          <div class="summary-label">Mascotas</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">🏠</div>
+          <div class="summary-value">3</div>
+          <div class="summary-label">Espacios</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">🚗</div>
+          <div class="summary-value">5</div>
+          <div class="summary-label">Vehículos</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-icon">📦</div>
+          <div class="summary-value">4</div>
+          <div class="summary-label">Patrimonio</div>
+        </div>
+      </div>
+
+      <!-- FILA 1: Miembros + Ayudas -->
+      <div class="form-row">
+        <div class="summary-list">
+          <div class="summary-list-title">👥 Miembros</div>
+          <div class="summary-list-items">
+            <div class="summary-list-item">
+              <span class="summary-list-icon">👨</span>
+              <span class="summary-list-name">Felipe</span>
+              <span class="summary-list-meta">Admin · Sangre</span>
+            </div>
+            <div class="summary-list-item">
+              <span class="summary-list-icon">👩</span>
+              <span class="summary-list-name">Elena</span>
+              <span class="summary-list-meta">Admin · Consorte</span>
+            </div>
+            <div class="summary-list-item">
+              <span class="summary-list-icon">🧑</span>
+              <span class="summary-list-name">Marcos</span>
+              <span class="summary-list-meta">22 años · Sangre</span>
+            </div>
+            <div class="summary-list-item">
+              <span class="summary-list-icon">👦</span>
+              <span class="summary-list-name">Pablo</span>
+              <span class="summary-list-meta">16 años · Sangre</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-list">
+          <div class="summary-list-title">🤝 Ayudas</div>
+          <div class="summary-list-items">
+            <div class="summary-list-item">
+              <span class="summary-list-icon">👩</span>
+              <span class="summary-list-name">María López</span>
+              <span class="summary-list-meta">Empleada hogar</span>
+            </div>
+            <div class="summary-list-item">
+              <span class="summary-list-icon">👨‍🏫</span>
+              <span class="summary-list-name">Prof. García</span>
+              <span class="summary-list-meta">Profesor particular</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILA 2: Mascotas + Espacios -->
+      <div class="form-row" style="margin-top: 16px;">
+        <div class="summary-list">
+          <div class="summary-list-title">🐾 Mascotas</div>
+          <div class="summary-list-items">
+            <div class="summary-list-item">
+              <span class="summary-list-icon">🐕</span>
+              <span class="summary-list-name">Max</span>
+              <span class="summary-list-meta">Golden Retriever · 4 años</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary-list">
+          <div class="summary-list-title">🏠 Espacios</div>
+          <div class="summary-list-items">
+            <div class="summary-list-item">
+              <span class="summary-list-icon">🏠</span>
+              <span class="summary-list-name">Casa A</span>
+              <span class="summary-list-meta">Principal</span>
+            </div>
+            <div class="summary-list-item">
+              <span class="summary-list-icon">🏡</span>
+              <span class="summary-list-name">Casa B</span>
+              <span class="summary-list-meta">Principal</span>
+            </div>
+            <div class="summary-list-item">
+              <span class="summary-list-icon">⛰️</span>
+              <span class="summary-list-name">Casa del pueblo</span>
+              <span class="summary-list-meta">2ª Vivienda</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILA 3: Vehículos -->
+      <div class="summary-list" style="margin-top: 16px;">
+        <div class="summary-list-title">🚗 Vehículos</div>
+        <div class="summary-list-items" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+          <div class="summary-list-item">
+            <span class="summary-list-icon">🚗</span>
+            <span class="summary-list-name">Coche familiar</span>
+            <span class="summary-list-meta" style="background: rgba(104,211,145,0.2); padding: 2px 6px; border-radius: 4px;">Colectivo</span>
+          </div>
+          <div class="summary-list-item">
+            <span class="summary-list-icon">🚐</span>
+            <span class="summary-list-name">Furgoneta</span>
+            <span class="summary-list-meta" style="background: rgba(104,211,145,0.2); padding: 2px 6px; border-radius: 4px;">Colectivo</span>
+          </div>
+          <div class="summary-list-item">
+            <span class="summary-list-icon">🚙</span>
+            <span class="summary-list-name">BMW Serie 3</span>
+            <span class="summary-list-meta" style="background: rgba(99,179,237,0.2); padding: 2px 6px; border-radius: 4px;">Felipe</span>
+          </div>
+          <div class="summary-list-item">
+            <span class="summary-list-icon">🚗</span>
+            <span class="summary-list-name">Seat Ibiza</span>
+            <span class="summary-list-meta" style="background: rgba(99,179,237,0.2); padding: 2px 6px; border-radius: 4px;">Elena</span>
+          </div>
+          <div class="summary-list-item">
+            <span class="summary-list-icon">🛵</span>
+            <span class="summary-list-name">Yamaha MT-07</span>
+            <span class="summary-list-meta" style="background: rgba(99,179,237,0.2); padding: 2px 6px; border-radius: 4px;">Marcos</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FILA 4: Próximos pasos -->
+      <div class="summary-list" style="margin-top: 16px;">
+        <div class="summary-list-title">🧠 Próximos pasos en el Cerebro</div>
+        <div class="summary-list-items">
+          <div class="summary-list-item">
+            <span class="summary-list-icon">🏥</span>
+            <span class="summary-list-name">Datos de salud</span>
+            <span class="summary-list-meta">Pendiente</span>
+          </div>
+          <div class="summary-list-item">
+            <span class="summary-list-icon">📋</span>
+            <span class="summary-list-name">Rutinas y horarios</span>
+            <span class="summary-list-meta">Pendiente</span>
+          </div>
+          <div class="summary-list-item">
+            <span class="summary-list-icon">📞</span>
+            <span class="summary-list-name">Contactos importantes</span>
+            <span class="summary-list-meta">Pendiente</span>
+          </div>
+          <div class="summary-list-item">
+            <span class="summary-list-icon">🍽️</span>
+            <span class="summary-list-name">Preferencias alimentarias</span>
+            <span class="summary-list-meta">Pendiente</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <div class="wizard-footer">
+    <div class="footer-info">
+      <span id="footer-text">Paso 1 de 6 · Pareja</span>
+    </div>
+    <div class="footer-actions">
+      <button class="btn btn-ghost" id="btn-cancel">Cancelar</button>
+      <button class="btn btn-secondary" id="btn-prev" style="display: none;">← Anterior</button>
+      <button class="btn btn-primary" id="btn-next">Siguiente →</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentStep = 1;
+  const totalSteps = 6;
+
+  const stepTitles = [
+    'Pareja',
+    'Miembros',
+    'Entorno',
+    'Espacios',
+    'Patrimonio',
+    'Resumen'
+  ];
+
+  function updateWizard() {
+    // Update step content
+    document.querySelectorAll('.step-content').forEach((step, index) => {
+      step.classList.toggle('active', index + 1 === currentStep);
+    });
+
+    // Update progress
+    document.querySelectorAll('.progress-step').forEach((step, index) => {
+      const num = step.querySelector('.step-number');
+      const stepIndex = index + 1;
+      
+      num.classList.remove('active', 'done');
+      step.classList.remove('active');
+      
+      if (stepIndex < currentStep) {
+        num.classList.add('done');
+        num.textContent = '✓';
+      } else if (stepIndex === currentStep) {
+        num.classList.add('active');
+        step.classList.add('active');
+        num.textContent = stepIndex;
+      } else {
+        num.textContent = stepIndex;
+      }
+    });
+
+    // Update lines
+    document.querySelectorAll('.step-line').forEach((line, index) => {
+      line.classList.toggle('done', index < currentStep - 1);
+    });
+
+    // Update buttons
+    document.getElementById('btn-prev').style.display = currentStep > 1 ? 'flex' : 'none';
+    document.getElementById('btn-next').textContent = currentStep === totalSteps ? '✓ Crear nido' : 'Siguiente →';
+    
+    // Update footer text
+    document.getElementById('footer-text').textContent = `Paso ${currentStep} de ${totalSteps} · ${stepTitles[currentStep - 1]}`;
+  }
+
+  document.getElementById('btn-next').addEventListener('click', () => {
+    if (currentStep < totalSteps) {
+      currentStep++;
+      updateWizard();
+    } else {
+      alert('¡Nido creado! Ahora puedes completar el Cerebro con más información.');
+    }
+  });
+
+  document.getElementById('btn-prev').addEventListener('click', () => {
+    if (currentStep > 1) {
+      currentStep--;
+      updateWizard();
+    }
+  });
+
+  // Toggle chips
+  document.querySelectorAll('.chip:not(.add)').forEach(chip => {
+    chip.addEventListener('click', () => {
+      chip.classList.toggle('selected');
+    });
+  });
+</script>
+
+</body>
+</html>

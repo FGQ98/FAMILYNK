@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK v2 — Arquitectura de Datos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #5B8C85;
+      --primary-light: #7BA9A3;
+      --secondary: #F2E8DC;
+      --secondary-dark: #E8DBC8;
+      --accent: #E8985E;
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --background: #FAFAFA;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8C547;
+      --error: #E07B7B;
+      --info: #63B3ED;
+      --code-bg: #1E1E1E;
+      --code-text: #D4D4D4;
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--background);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    /* === HEADER === */
+    .header {
+      text-align: center;
+      padding: 50px 20px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+      color: white;
+      margin: -40px -20px 40px -20px;
+    }
+
+    .header-icon { font-size: 3rem; margin-bottom: 16px; }
+
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .header-sub { font-size: 1.1rem; opacity: 0.9; }
+
+    /* === SECTION === */
+    .section {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .section-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-subtitle {
+      font-size: 0.95rem;
+      color: var(--text-light);
+      margin-bottom: 24px;
+    }
+
+    /* === DIAGRAM === */
+    .diagram {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      overflow-x: auto;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      color: var(--code-text);
+    }
+
+    .diagram .comment { color: #6A9955; }
+    .diagram .table { color: #4EC9B0; font-weight: 500; }
+    .diagram .field { color: #9CDCFE; }
+    .diagram .type { color: #569CD6; }
+    .diagram .pk { color: #DCDCAA; }
+    .diagram .fk { color: #CE9178; }
+    .diagram .relation { color: #C586C0; }
+
+    /* === TABLE CARDS === */
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .table-card {
+      border: 2px solid var(--secondary-dark);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .table-card-header {
+      padding: 14px 18px;
+      background: var(--secondary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 2px solid var(--secondary-dark);
+    }
+
+    .table-card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .table-card-icon.core { background: rgba(91,140,133,0.2); }
+    .table-card-icon.patrimonio { background: rgba(232,152,94,0.2); }
+    .table-card-icon.config { background: rgba(99,179,237,0.2); }
+    .table-card-icon.operativo { background: rgba(125,181,154,0.2); }
+
+    .table-card-name {
+      font-family: 'Fira Code', monospace;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .table-card-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .table-card-body { padding: 16px 18px; }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--secondary);
+      font-size: 0.85rem;
+    }
+
+    .field-row:last-child { border-bottom: none; }
+
+    .field-name {
+      font-family: 'Fira Code', monospace;
+      flex: 1;
+    }
+
+    .field-type {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      padding: 2px 8px;
+      background: var(--secondary);
+      border-radius: 4px;
+    }
+
+    .field-badge {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      font-weight: 700;
+    }
+
+    .field-badge.pk { background: #DCDCAA; color: #1E1E1E; }
+    .field-badge.fk { background: #CE9178; color: white; }
+    .field-badge.req { background: var(--error); color: white; }
+
+    /* === RELATIONS === */
+    .relations-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .relation-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      background: var(--secondary);
+      border-radius: var(--radius-md);
+    }
+
+    .relation-type {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .relation-type.one-many { background: var(--primary); color: white; }
+    .relation-type.many-many { background: var(--accent); color: white; }
+    .relation-type.one-one { background: var(--info); color: white; }
+
+    .relation-desc { flex: 1; font-size: 0.9rem; }
+
+    .relation-tables {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+
+    /* === ENUM BOX === */
+    .enums-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .enum-box {
+      background: var(--secondary);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .enum-name {
+      font-family: 'Fira Code', monospace;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+      color: var(--primary);
+    }
+
+    .enum-values {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .enum-value {
+      padding: 4px 10px;
+      background: var(--white);
+      border-radius: 4px;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.75rem;
+    }
+
+    /* === FLOW DIAGRAM === */
+    .flow-container {
+      background: var(--secondary);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      text-align: center;
+    }
+
+    .flow-level {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+
+    .flow-box {
+      padding: 14px 24px;
+      background: var(--white);
+      border-radius: var(--radius-md);
+      border: 2px solid;
+      font-weight: 600;
+      font-size: 0.9rem;
+      min-width: 140px;
+    }
+
+    .flow-box.raiz { border-color: var(--primary); }
+    .flow-box.nucleo { border-color: var(--accent); }
+    .flow-box.cpm { border-color: var(--info); }
+
+    .flow-arrow {
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      margin: 8px 0;
+    }
+
+    /* === NOTES === */
+    .note {
+      padding: 16px 20px;
+      border-radius: var(--radius-md);
+      margin-top: 20px;
+      display: flex;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .note.info { background: rgba(99,179,237,0.1); border-left: 4px solid var(--info); }
+    .note.warning { background: rgba(232,197,71,0.1); border-left: 4px solid var(--warning); }
+    .note.success { background: rgba(125,181,154,0.1); border-left: 4px solid var(--success); }
+
+    .note-icon { font-size: 1.2rem; }
+    .note-text { font-size: 0.9rem; }
+
+    /* === TOC === */
+    .toc {
+      background: var(--secondary);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-bottom: 32px;
+    }
+
+    .toc-title {
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .toc-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      list-style: none;
+    }
+
+    .toc-list a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .toc-list a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-icon">🗄️</div>
+    <h1 class="header-title">Arquitectura de Datos</h1>
+    <p class="header-sub">FAMILYNK v2 — Modelo de ecosistemas anidados</p>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">📑 Contenido</div>
+    <ul class="toc-list">
+      <li><a href="#modelo">1. Modelo conceptual</a></li>
+      <li><a href="#tablas-core">2. Tablas core</a></li>
+      <li><a href="#tablas-patrimonio">3. Tablas patrimonio</a></li>
+      <li><a href="#tablas-operativo">4. Tablas operativas</a></li>
+      <li><a href="#relaciones">5. Relaciones</a></li>
+      <li><a href="#enums">6. Enumerados</a></li>
+      <li><a href="#flujos">7. Flujos de datos</a></li>
+    </ul>
+  </div>
+
+  <!-- 1. MODELO CONCEPTUAL -->
+  <section class="section" id="modelo">
+    <h2 class="section-title">🧠 1. Modelo Conceptual</h2>
+    <p class="section-subtitle">Los 3 niveles de datos en FAMILYNK v2</p>
+
+    <div class="flow-container">
+      <div class="flow-level">
+        <div class="flow-box raiz">
+          🌳 ECOSISTEMA RAÍZ<br>
+          <small style="font-weight: normal; font-size: 0.75rem;">Árbol, Ajuar, Legado, Decisiones</small>
+        </div>
+      </div>
+      <div class="flow-arrow">↓ contiene ↓</div>
+      <div class="flow-level">
+        <div class="flow-box nucleo">
+          🏠 NÚCLEO 1<br>
+          <small style="font-weight: normal; font-size: 0.75rem;">Felipe + Elena</small>
+        </div>
+        <div class="flow-box nucleo">
+          🏠 NÚCLEO 2<br>
+          <small style="font-weight: normal; font-size: 0.75rem;">Rosa + Javier</small>
+        </div>
+        <div class="flow-box nucleo">
+          🏠 NÚCLEO 3<br>
+          <small style="font-weight: normal; font-size: 0.75rem;">Bisabuelos</small>
+        </div>
+      </div>
+      <div class="flow-arrow">↓ contiene ↓</div>
+      <div class="flow-level">
+        <div class="flow-box cpm">👤 CPM</div>
+        <div class="flow-box cpm">👤 CPM</div>
+        <div class="flow-box cpm">👤 CPM</div>
+        <div class="flow-box cpm">👤 CPM</div>
+        <div class="flow-box cpm">👤 ...</div>
+      </div>
+    </div>
+
+    <div class="note info">
+      <span class="note-icon">💡</span>
+      <span class="note-text"><strong>Principio clave:</strong> Los datos fluyen hacia arriba (herencia de acceso) pero se gestionan en su nivel. El Ajuar vive en RAÍZ, las tareas domésticas en NÚCLEO, los documentos personales en CPM.</span>
+    </div>
+  </section>
+
+  <!-- 2. TABLAS CORE -->
+  <section class="section" id="tablas-core">
+    <h2 class="section-title">🏛️ 2. Tablas Core</h2>
+    <p class="section-subtitle">La estructura fundamental: familia, miembros, ecosistemas y núcleos</p>
+
+    <div class="tables-grid">
+
+      <!-- FAMILIAS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon core">🌳</div>
+          <div>
+            <div class="table-card-name">familias</div>
+            <div class="table-card-desc">Ecosistema raíz de cada familia</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nombre</span>
+            <span class="field-type">VARCHAR(100)</span>
+            <span class="field-badge req">REQ</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">generaciones_activas</span>
+            <span class="field-type">INT</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_creacion</span>
+            <span class="field-type">TIMESTAMP</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">config_json</span>
+            <span class="field-type">JSONB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIEMBROS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon core">👤</div>
+          <div>
+            <div class="table-card-name">miembros</div>
+            <div class="table-card-desc">Cada persona de la familia</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">familia_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nucleo_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nombre</span>
+            <span class="field-type">VARCHAR(100)</span>
+            <span class="field-badge req">REQ</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">email</span>
+            <span class="field-type">VARCHAR(255)</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">tipo</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">generacion</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_nacimiento</span>
+            <span class="field-type">DATE</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">estado</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">es_menor</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- NUCLEOS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon core">🏠</div>
+          <div>
+            <div class="table-card-name">nucleos</div>
+            <div class="table-card-desc">Cada familia dentro de la familia</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">familia_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nombre</span>
+            <span class="field-type">VARCHAR(100)</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">estado_pareja</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">admin_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_creacion</span>
+            <span class="field-type">TIMESTAMP</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- VINCULOS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon core">🔗</div>
+          <div>
+            <div class="table-card-name">vinculos</div>
+            <div class="table-card-desc">Relaciones entre miembros</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">miembro_a_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">miembro_b_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">tipo_vinculo</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">estado</span>
+            <span class="field-type">ENUM</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 3. TABLAS PATRIMONIO -->
+  <section class="section" id="tablas-patrimonio">
+    <h2 class="section-title">📦 3. Tablas de Patrimonio</h2>
+    <p class="section-subtitle">Ajuar (material) y Legado (emocional)</p>
+
+    <div class="tables-grid">
+
+      <!-- AJUAR -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon patrimonio">📦</div>
+          <div>
+            <div class="table-card-name">ajuar_items</div>
+            <div class="table-card-desc">Patrimonio material de la familia</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">familia_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">categoria</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nombre</span>
+            <span class="field-type">VARCHAR(200)</span>
+            <span class="field-badge req">REQ</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">descripcion</span>
+            <span class="field-type">TEXT</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">valor_estimado</span>
+            <span class="field-type">DECIMAL</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">ubicacion</span>
+            <span class="field-type">VARCHAR(200)</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">custodio_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">documentos_json</span>
+            <span class="field-type">JSONB</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fotos_urls</span>
+            <span class="field-type">TEXT[]</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEGADO -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon patrimonio">📜</div>
+          <div>
+            <div class="table-card-name">legado_items</div>
+            <div class="table-card-desc">Patrimonio emocional de la familia</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">familia_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">categoria</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">titulo</span>
+            <span class="field-type">VARCHAR(200)</span>
+            <span class="field-badge req">REQ</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">contenido</span>
+            <span class="field-type">TEXT</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">autor_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">origen_miembro_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">multimedia_urls</span>
+            <span class="field-type">TEXT[]</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_origen</span>
+            <span class="field-type">DATE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DECISIONES -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon patrimonio">⚖️</div>
+          <div>
+            <div class="table-card-name">decisiones</div>
+            <div class="table-card-desc">Votaciones y acuerdos familiares</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">familia_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">titulo</span>
+            <span class="field-type">VARCHAR(200)</span>
+            <span class="field-badge req">REQ</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">descripcion</span>
+            <span class="field-type">TEXT</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">tipo</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">estado</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">propuesto_por_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_limite</span>
+            <span class="field-type">DATE</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">resultado</span>
+            <span class="field-type">JSONB</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- VOTOS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon patrimonio">🗳️</div>
+          <div>
+            <div class="table-card-name">votos</div>
+            <div class="table-card-desc">Votos en decisiones</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">decision_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">miembro_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">voto</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">comentario</span>
+            <span class="field-type">TEXT</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha</span>
+            <span class="field-type">TIMESTAMP</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 4. TABLAS OPERATIVAS -->
+  <section class="section" id="tablas-operativo">
+    <h2 class="section-title">⚡ 4. Tablas Operativas</h2>
+    <p class="section-subtitle">Espacios, permisos y configuración del día a día</p>
+
+    <div class="tables-grid">
+
+      <!-- ESPACIOS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon operativo">🏠</div>
+          <div>
+            <div class="table-card-name">espacios</div>
+            <div class="table-card-desc">Casas y lugares del núcleo</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nucleo_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nombre</span>
+            <span class="field-type">VARCHAR(100)</span>
+            <span class="field-badge req">REQ</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">tipo</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">direccion</span>
+            <span class="field-type">TEXT</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">es_temporal</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_inicio</span>
+            <span class="field-type">DATE</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_fin</span>
+            <span class="field-type">DATE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PERMISOS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon config">🔐</div>
+          <div>
+            <div class="table-card-name">permisos_miembro</div>
+            <div class="table-card-desc">Permisos configurables por miembro</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">miembro_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">ver_arbol</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">ver_ajuar</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">ver_legado</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">opinar_decisiones</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">votar_decisiones</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">editar_ajuar</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">añadir_legado</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">gestionar_nucleo</span>
+            <span class="field-type">BOOLEAN</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMINS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon config">👑</div>
+          <div>
+            <div class="table-card-name">admins</div>
+            <div class="table-card-desc">Administradores de familia/núcleo</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">miembro_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">ambito_tipo</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">ambito_id</span>
+            <span class="field-type">UUID</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nivel</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">delegado_por_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAREAS -->
+      <div class="table-card">
+        <div class="table-card-header">
+          <div class="table-card-icon operativo">⚡</div>
+          <div>
+            <div class="table-card-name">tareas</div>
+            <div class="table-card-desc">Tareas domésticas del núcleo</div>
+          </div>
+        </div>
+        <div class="table-card-body">
+          <div class="field-row">
+            <span class="field-name">id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge pk">PK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">nucleo_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">espacio_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">titulo</span>
+            <span class="field-type">VARCHAR(200)</span>
+            <span class="field-badge req">REQ</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">asignado_a_id</span>
+            <span class="field-type">UUID</span>
+            <span class="field-badge fk">FK</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">estado</span>
+            <span class="field-type">ENUM</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">fecha_limite</span>
+            <span class="field-type">DATE</span>
+          </div>
+          <div class="field-row">
+            <span class="field-name">recurrencia</span>
+            <span class="field-type">JSONB</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 5. RELACIONES -->
+  <section class="section" id="relaciones">
+    <h2 class="section-title">🔗 5. Relaciones entre Tablas</h2>
+    <p class="section-subtitle">Cómo se conectan los datos</p>
+
+    <div class="relations-list">
+      <div class="relation-item">
+        <span class="relation-type one-many">1:N</span>
+        <span class="relation-desc"><strong>familias → nucleos</strong>: Una familia tiene muchos núcleos</span>
+        <span class="relation-tables">familias.id → nucleos.familia_id</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type one-many">1:N</span>
+        <span class="relation-desc"><strong>familias → miembros</strong>: Una familia tiene muchos miembros</span>
+        <span class="relation-tables">familias.id → miembros.familia_id</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type one-many">1:N</span>
+        <span class="relation-desc"><strong>nucleos → miembros</strong>: Un núcleo tiene varios miembros</span>
+        <span class="relation-tables">nucleos.id → miembros.nucleo_id</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type one-many">1:N</span>
+        <span class="relation-desc"><strong>nucleos → espacios</strong>: Un núcleo tiene varios espacios (casas)</span>
+        <span class="relation-tables">nucleos.id → espacios.nucleo_id</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type many-many">N:N</span>
+        <span class="relation-desc"><strong>miembros ↔ miembros</strong>: Vínculos familiares (padre-hijo, pareja...)</span>
+        <span class="relation-tables">vinculos (miembro_a_id, miembro_b_id)</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type one-many">1:N</span>
+        <span class="relation-desc"><strong>familias → ajuar_items</strong>: El Ajuar pertenece a la familia raíz</span>
+        <span class="relation-tables">familias.id → ajuar_items.familia_id</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type one-many">1:N</span>
+        <span class="relation-desc"><strong>familias → legado_items</strong>: El Legado pertenece a la familia raíz</span>
+        <span class="relation-tables">familias.id → legado_items.familia_id</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type one-many">1:N</span>
+        <span class="relation-desc"><strong>decisiones → votos</strong>: Una decisión tiene muchos votos</span>
+        <span class="relation-tables">decisiones.id → votos.decision_id</span>
+      </div>
+      <div class="relation-item">
+        <span class="relation-type one-one">1:1</span>
+        <span class="relation-desc"><strong>miembros → permisos_miembro</strong>: Cada miembro tiene su config de permisos</span>
+        <span class="relation-tables">miembros.id → permisos_miembro.miembro_id</span>
+      </div>
+    </div>
+
+    <div class="note warning">
+      <span class="note-icon">⚠️</span>
+      <span class="note-text"><strong>Importante:</strong> Un miembro puede no tener núcleo (nucleo_id = NULL) si es soltero. En ese caso, solo tiene acceso a su CPM y al ecosistema raíz según sus permisos.</span>
+    </div>
+  </section>
+
+  <!-- 6. ENUMS -->
+  <section class="section" id="enums">
+    <h2 class="section-title">📋 6. Valores Enumerados</h2>
+    <p class="section-subtitle">Opciones predefinidas para los campos tipo ENUM</p>
+
+    <div class="enums-grid">
+      <div class="enum-box">
+        <div class="enum-name">tipo_miembro</div>
+        <div class="enum-values">
+          <span class="enum-value">SANGRE</span>
+          <span class="enum-value">CONSORTE</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">generacion</div>
+        <div class="enum-values">
+          <span class="enum-value">BISABUELO</span>
+          <span class="enum-value">PADRE</span>
+          <span class="enum-value">NIETO</span>
+          <span class="enum-value">BISNIETO</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">estado_miembro</div>
+        <div class="enum-values">
+          <span class="enum-value">ACTIVO</span>
+          <span class="enum-value">NO_PARTICIPA</span>
+          <span class="enum-value">FALLECIDO</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">estado_pareja</div>
+        <div class="enum-values">
+          <span class="enum-value">CASADOS</span>
+          <span class="enum-value">PAREJA</span>
+          <span class="enum-value">SEPARADOS</span>
+          <span class="enum-value">VIUDO</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">tipo_vinculo</div>
+        <div class="enum-values">
+          <span class="enum-value">PADRE_HIJO</span>
+          <span class="enum-value">PAREJA</span>
+          <span class="enum-value">HERMANOS</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">estado_vinculo</div>
+        <div class="enum-values">
+          <span class="enum-value">ACTIVO</span>
+          <span class="enum-value">SEPARADO</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">categoria_ajuar</div>
+        <div class="enum-values">
+          <span class="enum-value">PROPIEDAD</span>
+          <span class="enum-value">OBJETO</span>
+          <span class="enum-value">JOYA</span>
+          <span class="enum-value">ARTE</span>
+          <span class="enum-value">MUEBLE</span>
+          <span class="enum-value">DOCUMENTO</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">categoria_legado</div>
+        <div class="enum-values">
+          <span class="enum-value">RECETA</span>
+          <span class="enum-value">TRADICION</span>
+          <span class="enum-value">HISTORIA</span>
+          <span class="enum-value">VALOR</span>
+          <span class="enum-value">CONOCIMIENTO</span>
+          <span class="enum-value">ORIGEN</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">tipo_decision</div>
+        <div class="enum-values">
+          <span class="enum-value">VOTACION</span>
+          <span class="enum-value">DISCUSION</span>
+          <span class="enum-value">INFORMATIVA</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">estado_decision</div>
+        <div class="enum-values">
+          <span class="enum-value">BORRADOR</span>
+          <span class="enum-value">ABIERTA</span>
+          <span class="enum-value">CERRADA</span>
+          <span class="enum-value">RESUELTA</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">tipo_voto</div>
+        <div class="enum-values">
+          <span class="enum-value">A_FAVOR</span>
+          <span class="enum-value">EN_CONTRA</span>
+          <span class="enum-value">ABSTENCION</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">tipo_espacio</div>
+        <div class="enum-values">
+          <span class="enum-value">PRINCIPAL</span>
+          <span class="enum-value">SECUNDARIA</span>
+          <span class="enum-value">TEMPORAL</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">nivel_admin</div>
+        <div class="enum-values">
+          <span class="enum-value">PRINCIPAL</span>
+          <span class="enum-value">DELEGADO</span>
+          <span class="enum-value">LIMITADO</span>
+        </div>
+      </div>
+      <div class="enum-box">
+        <div class="enum-name">ambito_admin</div>
+        <div class="enum-values">
+          <span class="enum-value">FAMILIA</span>
+          <span class="enum-value">NUCLEO</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. FLUJOS -->
+  <section class="section" id="flujos">
+    <h2 class="section-title">🔄 7. Flujos de Datos</h2>
+    <p class="section-subtitle">Cómo se mueven los datos en operaciones típicas</p>
+
+    <div class="diagram">
+<span class="comment">// FLUJO 1: Usuario entra a FAMILYNK</span>
+
+<span class="table">1. Autenticación</span>
+   └─→ miembros (buscar por email)
+   └─→ permisos_miembro (cargar permisos)
+
+<span class="table">2. Cargar contexto</span>
+   └─→ familias (su familia raíz)
+   └─→ nucleos (su núcleo, si tiene)
+   └─→ espacios (espacios de su núcleo)
+
+<span class="table">3. Renderizar vista según nivel de acceso</span>
+   └─→ CPM: siempre visible
+   └─→ NUCLEO: si nucleo_id != NULL
+   └─→ RAIZ: según permisos (ver_arbol, ver_ajuar, ver_legado)
+
+
+<span class="comment">// FLUJO 2: Admin añade miembro</span>
+
+<span class="table">1. Validar admin</span>
+   └─→ admins (verificar que tiene permiso)
+
+<span class="table">2. Crear miembro</span>
+   └─→ INSERT miembros
+   └─→ INSERT permisos_miembro (valores por defecto según tipo)
+   └─→ INSERT vinculos (si tiene padre/pareja)
+
+<span class="table">3. Si crea núcleo nuevo</span>
+   └─→ INSERT nucleos
+   └─→ UPDATE miembros SET nucleo_id
+
+
+<span class="comment">// FLUJO 3: Votación en Decisiones</span>
+
+<span class="table">1. Verificar permiso</span>
+   └─→ permisos_miembro.votar_decisiones = TRUE
+
+<span class="table">2. Registrar voto</span>
+   └─→ INSERT votos
+
+<span class="table">3. Calcular resultado (si fecha_limite pasó)</span>
+   └─→ SELECT COUNT(*) FROM votos WHERE decision_id = X GROUP BY voto
+   └─→ UPDATE decisiones SET resultado = {...}, estado = 'RESUELTA'
+
+
+<span class="comment">// FLUJO 4: Añadir item al Legado</span>
+
+<span class="table">1. Verificar permiso</span>
+   └─→ permisos_miembro.añadir_legado = TRUE
+
+<span class="table">2. Crear item</span>
+   └─→ INSERT legado_items
+   └─→ autor_id = miembro actual
+   └─→ origen_miembro_id = de quién viene (abuela, etc)
+
+<span class="table">3. Notificar familia (opcional)</span>
+   └─→ Sistema de notificaciones
+    </div>
+
+    <div class="note success">
+      <span class="note-icon">✅</span>
+      <span class="note-text"><strong>Principio de diseño:</strong> Los datos del ecosistema raíz (Ajuar, Legado, Decisiones) siempre usan <code>familia_id</code>. Los datos operativos del día a día usan <code>nucleo_id</code>. Los datos personales usan <code>miembro_id</code>.</span>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>
