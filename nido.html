@@ -515,6 +515,121 @@
       border-top: 1px dashed var(--cream-dark);
     }
 
+    /* Mascotas */
+    .mascotas-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    .mascotas-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .mascota-item {
+      background: var(--cream-medium);
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      padding: 12px;
+    }
+
+    .mascota-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .mascota-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-input-sm {
+      padding: 8px 10px;
+      font-size: 0.85rem;
+    }
+
+    .mascota-tipo {
+      flex: 0 0 130px;
+    }
+
+    .mascota-raza {
+      flex: 1;
+    }
+
+    .mascota-nombre {
+      flex: 1;
+    }
+
+    .mascota-chip {
+      flex: 0 0 120px;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+      font-size: 1rem;
+    }
+
+    .btn-icon:hover {
+      opacity: 1;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px dashed var(--sage);
+      color: var(--sage-dark);
+    }
+
+    .btn-outline:hover {
+      background: var(--sage-muted);
+    }
+
+    /* Zona peligrosa - Eliminar nido */
+    .nido-danger-zone {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    .danger-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .danger-title {
+      color: var(--error);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .danger-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .btn-danger-outline {
+      background: transparent;
+      border: 2px solid var(--error);
+      color: var(--error);
+    }
+
+    .btn-danger-outline:hover {
+      background: var(--error);
+      color: white;
+      transform: none;
+      box-shadow: none;
+    }
+
     /* Loading */
     .loading {
       display: flex;
@@ -680,6 +795,18 @@
 
         <div id="members-list" class="members-list"></div>
       </div>
+
+      <!-- Zona peligrosa -->
+      <div class="nido-danger-zone">
+        <div class="danger-header">
+          <span>⚠️</span>
+          <span class="danger-title">Zona de peligro</span>
+        </div>
+        <p class="danger-hint">Esta acción no se puede deshacer. Se eliminará el nido y todos sus datos.</p>
+        <button type="button" class="btn btn-danger-outline" id="btn-eliminar-nido">
+          🗑️ Eliminar este nido
+        </button>
+      </div>
     </div>
   </main>
 
@@ -740,6 +867,17 @@
               <input type="checkbox" id="miembro-admin">
               <label class="checkbox-label" for="miembro-admin">Es administrador de este nido</label>
             </div>
+          </div>
+
+          <!-- Sección Mascotas -->
+          <div class="mascotas-section">
+            <label class="form-label">🐾 Mascotas</label>
+            <div class="mascotas-list" id="mascotas-list">
+              <!-- Las mascotas se añaden dinámicamente aquí -->
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-añadir-mascota">
+              + Añadir mascota
+            </button>
           </div>
 
           <!-- Solo para hijos: opción de formar nido -->
@@ -903,6 +1041,8 @@
       const fechaNac = miembro.fechaNacimiento ? new Date(miembro.fechaNacimiento).toLocaleDateString('es-ES') : '?';
       const fechaDef = miembro.fechaDefuncion ? new Date(miembro.fechaDefuncion).toLocaleDateString('es-ES') : null;
       const tieneNidoPropio = miembro.nidoPropio ? true : false;
+      const tieneMascotas = miembro.mascotas && miembro.mascotas.length > 0;
+      const numMascotas = tieneMascotas ? miembro.mascotas.length : 0;
 
       return `
         <div class="member-card ${fallecido ? 'fallecido' : ''}" data-index="${index}">
@@ -912,6 +1052,7 @@
               ${miembro.nombre || miembro.iniciales}
               ${miembro.esAdmin ? '<span class="member-admin-badge">Admin</span>' : ''}
               ${tieneNidoPropio ? '<span class="member-nido-badge">🪺 Tiene nido</span>' : ''}
+              ${tieneMascotas ? `<span class="member-nido-badge">🐾 ${numMascotas}</span>` : ''}
             </div>
             <div class="member-dates">
               ${fechaNac}${fechaDef ? ` — † ${fechaDef}` : ''}
@@ -971,7 +1112,105 @@
       delete form.dataset.editIndex;
       document.querySelector('.modal-title').textContent = '👤 Añadir miembro';
       document.getElementById('modal-añadir').textContent = 'Añadir miembro';
+      // Limpiar mascotas
+      document.getElementById('mascotas-list').innerHTML = '';
     }
+
+    // === MASCOTAS ===
+    const mascotasList = document.getElementById('mascotas-list');
+
+    document.getElementById('btn-añadir-mascota').addEventListener('click', () => {
+      addMascotaField();
+    });
+
+    function addMascotaField(data = null) {
+      const item = document.createElement('div');
+      item.className = 'mascota-item';
+      item.innerHTML = `
+        <div class="mascota-row">
+          <select class="form-input form-input-sm mascota-tipo" required>
+            <option value="">Tipo...</option>
+            <option value="perro" ${data?.tipo === 'perro' ? 'selected' : ''}>🐕 Perro</option>
+            <option value="gato" ${data?.tipo === 'gato' ? 'selected' : ''}>🐈 Gato</option>
+            <option value="ave" ${data?.tipo === 'ave' ? 'selected' : ''}>🐦 Ave</option>
+            <option value="pez" ${data?.tipo === 'pez' ? 'selected' : ''}>🐠 Pez</option>
+            <option value="roedor" ${data?.tipo === 'roedor' ? 'selected' : ''}>🐹 Roedor</option>
+            <option value="reptil" ${data?.tipo === 'reptil' ? 'selected' : ''}>🦎 Reptil</option>
+            <option value="otro" ${data?.tipo === 'otro' ? 'selected' : ''}>🐾 Otro</option>
+          </select>
+          <input type="text" class="form-input form-input-sm mascota-raza" placeholder="Raza" value="${data?.raza || ''}">
+        </div>
+        <div class="mascota-row">
+          <input type="text" class="form-input form-input-sm mascota-nombre" placeholder="Nombre" value="${data?.nombre || ''}" required>
+          <input type="text" class="form-input form-input-sm mascota-chip" placeholder="Nº Chip" value="${data?.chip || ''}">
+          <button type="button" class="btn-icon btn-remove-mascota" title="Eliminar mascota">🗑️</button>
+        </div>
+      `;
+      
+      item.querySelector('.btn-remove-mascota').addEventListener('click', () => {
+        item.remove();
+      });
+      
+      mascotasList.appendChild(item);
+    }
+
+    function getMascotasFromForm() {
+      const mascotas = [];
+      mascotasList.querySelectorAll('.mascota-item').forEach(item => {
+        const tipo = item.querySelector('.mascota-tipo').value;
+        const nombre = item.querySelector('.mascota-nombre').value;
+        if (tipo && nombre) {
+          mascotas.push({
+            tipo: tipo,
+            raza: item.querySelector('.mascota-raza').value || '',
+            nombre: nombre,
+            chip: item.querySelector('.mascota-chip').value || ''
+          });
+        }
+      });
+      return mascotas;
+    }
+
+    function loadMascotasToForm(mascotas) {
+      mascotasList.innerHTML = '';
+      if (mascotas && mascotas.length > 0) {
+        mascotas.forEach(m => addMascotaField(m));
+      }
+    }
+
+    // === ELIMINAR NIDO ===
+    document.getElementById('btn-eliminar-nido').addEventListener('click', async () => {
+      const confirmacion = prompt(
+        `¿Estás seguro de eliminar "${nidoData.nombre}"?\n\nEscribe el nombre del nido para confirmar:`
+      );
+      
+      if (confirmacion === nidoData.nombre) {
+        try {
+          // Eliminar el nido de Firestore
+          await db.collection('nidos').doc(nidoId).delete();
+          
+          // Actualizar la familia para quitar la referencia si existe
+          if (nidoData.familiaId) {
+            const familyDoc = await db.collection('families').doc(nidoData.familiaId).get();
+            if (familyDoc.exists) {
+              const familyData = familyDoc.data();
+              const nidosActualizados = (familyData.nidos || []).filter(id => id !== nidoId);
+              await db.collection('families').doc(nidoData.familiaId).update({
+                nidos: nidosActualizados
+              });
+            }
+          }
+          
+          alert('✅ Nido eliminado correctamente');
+          window.location.href = 'app.html';
+        } catch (error) {
+          console.error('Error al eliminar nido:', error);
+          alert('❌ Error al eliminar el nido: ' + error.message);
+        }
+      } else if (confirmacion !== null) {
+        alert('El nombre no coincide. No se ha eliminado nada.');
+      }
+    });
 
     document.getElementById('modal-cancelar').addEventListener('click', () => {
       modal.classList.remove('active');
@@ -1063,6 +1302,7 @@
           fechaDefuncion,
           esAdmin,
           rol,
+          mascotas: getMascotasFromForm(),
           nidoPropio: nuevoNidoId,
           fechaCreacion: new Date().toISOString()
         });
@@ -1118,7 +1358,8 @@
           fechaNacimiento,
           fechaDefuncion,
           esAdmin,
-          rol
+          rol,
+          mascotas: getMascotasFromForm()
         };
 
         await db.collection('nidos').doc(nidoId).update({
@@ -1170,6 +1411,9 @@
       document.getElementById('miembro-nacimiento').value = miembro.fechaNacimiento || '';
       document.getElementById('miembro-defuncion').value = miembro.fechaDefuncion || '';
       document.getElementById('miembro-admin').checked = miembro.esAdmin;
+
+      // Cargar mascotas
+      loadMascotasToForm(miembro.mascotas || []);
 
       // Establecer rol
       const rol = miembro.rol || 'progenitor';
