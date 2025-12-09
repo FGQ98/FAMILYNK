@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK · Casero</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Paleta FAMILYNK */
+      --sage: #87A878;
+      --sage-light: #C5D4C0;
+      --sage-dark: #5C7A50;
+      --cream: #FAF6F1;
+      --cream-dark: #F0EBE3;
+      --terracotta: #C17767;
+      --terracotta-light: #D4A59A;
+      --warm-gray: #6B6B6B;
+      --text: #2D3A2D;
+      --text-light: #5A6B5A;
+      
+      /* Específicos Casero */
+      --casero-accent: #7B9E6F;
+      --mayordomo-accent: #8B7355;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* === HEADER === */
+    .header {
+      background: white;
+      border-bottom: 1px solid var(--sage-light);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header-logo {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: var(--sage-dark);
+    }
+
+    .header-role {
+      background: var(--sage-light);
+      color: var(--sage-dark);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-role.mayordomo {
+      background: var(--mayordomo-accent);
+      color: white;
+    }
+
+    .header-user {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--sage);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .user-name {
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+
+    /* === SELECTOR DE BIENES (si tiene varios) === */
+    .bien-selector {
+      background: white;
+      border-bottom: 1px solid var(--sage-light);
+      padding: 0.5rem 1rem;
+    }
+
+    .bien-tabs {
+      display: flex;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.25rem;
+    }
+
+    .bien-tab {
+      background: var(--cream);
+      border: 1px solid var(--sage-light);
+      border-radius: 20px;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .bien-tab:hover {
+      background: var(--sage-light);
+    }
+
+    .bien-tab.active {
+      background: var(--sage);
+      color: white;
+      border-color: var(--sage);
+    }
+
+    /* === CONTENIDO PRINCIPAL === */
+    .main {
+      flex: 1;
+      padding: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Cabecera del bien */
+    .bien-header {
+      background: white;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .bien-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: var(--sage-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .bien-location {
+      color: var(--text-light);
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    /* === MÓDULOS (Cards de acceso rápido) === */
+    .modulos-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .modulo-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .modulo-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .modulo-card.active {
+      border-color: var(--sage);
+    }
+
+    .modulo-card.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .modulo-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .modulo-name {
+      font-weight: 600;
+      font-size: 0.875rem;
+      color: var(--text);
+    }
+
+    .modulo-badge {
+      display: inline-block;
+      background: var(--terracotta);
+      color: white;
+      font-size: 0.625rem;
+      padding: 0.125rem 0.375rem;
+      border-radius: 10px;
+      margin-top: 0.25rem;
+      font-weight: 600;
+    }
+
+    /* === PANEL DE MÓDULO ABIERTO === */
+    .modulo-panel {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .panel-header {
+      background: var(--sage);
+      color: white;
+      padding: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 600;
+      font-size: 1.125rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .panel-body {
+      padding: 1rem;
+    }
+
+    /* === LISTAS DE ITEMS === */
+    .item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .item-row {
+      background: var(--cream);
+      border-radius: 8px;
+      padding: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .item-icon {
+      font-size: 1.5rem;
+    }
+
+    .item-content {
+      flex: 1;
+    }
+
+    .item-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .item-meta {
+      font-size: 0.75rem;
+      color: var(--text-light);
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .item-action {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      font-size: 1rem;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .item-action:hover {
+      opacity: 1;
+    }
+
+    /* === BOTONES DE ACCIÓN === */
+    .btn {
+      font-family: inherit;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.875rem;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--sage);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--sage-dark);
+    }
+
+    .btn-secondary {
+      background: var(--cream-dark);
+      color: var(--text);
+    }
+
+    .btn-success {
+      background: var(--casero-accent);
+      color: white;
+    }
+
+    .btn-block {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* === CALENDARIO SIMPLIFICADO === */
+    .calendar-mini {
+      background: var(--cream);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .calendar-month {
+      font-weight: 600;
+    }
+
+    .calendar-nav {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .calendar-nav button {
+      background: white;
+      border: 1px solid var(--sage-light);
+      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      text-align: center;
+      font-size: 0.75rem;
+    }
+
+    .calendar-day-name {
+      font-weight: 600;
+      color: var(--text-light);
+      padding: 0.25rem;
+    }
+
+    .calendar-day {
+      padding: 0.375rem;
+      border-radius: 4px;
+    }
+
+    .calendar-day.today {
+      background: var(--sage);
+      color: white;
+      font-weight: 600;
+    }
+
+    .calendar-day.occupied {
+      background: var(--terracotta-light);
+      color: white;
+    }
+
+    .calendar-day.available {
+      background: var(--sage-light);
+    }
+
+    /* === CHECKLIST (para limpieza) === */
+    .checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      background: var(--cream);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .check-item:hover {
+      background: var(--cream-dark);
+    }
+
+    .check-item.done {
+      opacity: 0.6;
+    }
+
+    .check-item.done .check-text {
+      text-decoration: line-through;
+    }
+
+    .check-box {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--sage);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .check-item.done .check-box {
+      background: var(--sage);
+      color: white;
+    }
+
+    .check-text {
+      flex: 1;
+      font-size: 0.875rem;
+    }
+
+    /* === ACCIONES RÁPIDAS (FAB) === */
+    .fab-container {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+
+    .fab {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--sage);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      transition: all 0.2s;
+    }
+
+    .fab:hover {
+      transform: scale(1.1);
+      background: var(--sage-dark);
+    }
+
+    .fab-mini {
+      width: 44px;
+      height: 44px;
+      font-size: 1.25rem;
+      background: white;
+      color: var(--sage);
+      border: 2px solid var(--sage);
+    }
+
+    /* === ESTADOS VACÍOS === */
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-light);
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.5;
+    }
+
+    .empty-text {
+      font-size: 0.875rem;
+    }
+
+    /* === ALERTAS/NOTIFICACIONES === */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+    }
+
+    .alert-warning {
+      background: #FFF3CD;
+      border-left: 4px solid #FFC107;
+    }
+
+    .alert-info {
+      background: var(--sage-light);
+      border-left: 4px solid var(--sage);
+    }
+
+    .alert-icon {
+      font-size: 1.25rem;
+    }
+
+    .alert-content {
+      flex: 1;
+    }
+
+    .alert-title {
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .alert-text {
+      font-size: 0.75rem;
+      color: var(--text-light);
+    }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 480px) {
+      .header {
+        padding: 0.5rem 0.75rem;
+      }
+
+      .main {
+        padding: 0.75rem;
+      }
+
+      .modulos-grid {
+        gap: 0.5rem;
+      }
+
+      .modulo-card {
+        padding: 0.75rem;
+      }
+
+      .modulo-icon {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <span class="header-logo">🏠 FAMILYNK</span>
+      <span class="header-role" id="user-role">Casero</span>
+    </div>
+    <div class="header-user">
+      <span class="user-name" id="user-name">María García</span>
+      <div class="user-avatar" id="user-avatar">MG</div>
+    </div>
+  </header>
+
+  <!-- SELECTOR DE BIENES (si tiene más de uno) -->
+  <div class="bien-selector" id="bien-selector">
+    <div class="bien-tabs">
+      <button class="bien-tab active" data-bien="casa-playa">🏖️ Casa de la playa</button>
+      <button class="bien-tab" data-bien="terreno">🌳 Terreno</button>
+    </div>
+  </div>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="main">
+
+    <!-- Cabecera del bien actual -->
+    <div class="bien-header">
+      <h1 class="bien-title" id="bien-nombre">Casa de la playa</h1>
+      <div class="bien-location">
+        <span>📍</span>
+        <span id="bien-direccion">Av. del Mar, 23 · Gandía</span>
+      </div>
+    </div>
+
+    <!-- Alerta (si hay algo pendiente) -->
+    <div class="alert alert-warning">
+      <span class="alert-icon">⚠️</span>
+      <div class="alert-content">
+        <div class="alert-title">Revisión de caldera pendiente</div>
+        <div class="alert-text">Programada para el 15 de diciembre</div>
+      </div>
+    </div>
+
+    <!-- Grid de módulos según permisos -->
+    <div class="modulos-grid" id="modulos-grid">
+      <a href="#reservas" class="modulo-card" data-modulo="reservas">
+        <div class="modulo-icon">📅</div>
+        <div class="modulo-name">Reservas</div>
+      </a>
+      <a href="#inventario" class="modulo-card" data-modulo="inventario">
+        <div class="modulo-icon">📦</div>
+        <div class="modulo-name">Inventario</div>
+        <span class="modulo-badge">3 bajo mínimo</span>
+      </a>
+      <a href="#limpieza" class="modulo-card" data-modulo="limpieza">
+        <div class="modulo-icon">🧹</div>
+        <div class="modulo-name">Limpieza</div>
+      </a>
+      <a href="#mantenimiento" class="modulo-card" data-modulo="mantenimiento">
+        <div class="modulo-icon">🔧</div>
+        <div class="modulo-name">Mantenimiento</div>
+      </a>
+      <a href="#eventos" class="modulo-card" data-modulo="eventos">
+        <div class="modulo-icon">🎉</div>
+        <div class="modulo-name">Eventos</div>
+      </a>
+      <a href="#gastos" class="modulo-card disabled" data-modulo="gastos">
+        <div class="modulo-icon">💶</div>
+        <div class="modulo-name">Gastos</div>
+      </a>
+    </div>
+
+    <!-- EJEMPLO: Panel de Limpieza abierto -->
+    <div class="modulo-panel" id="panel-limpieza">
+      <div class="panel-header">
+        <span class="panel-title">🧹 Checklist de limpieza</span>
+        <button class="panel-close">×</button>
+      </div>
+      <div class="panel-body">
+        <p style="font-size: 0.875rem; color: var(--text-light); margin-bottom: 1rem;">
+          Entrada: <strong>Familia Rodríguez</strong> · 14 dic
+        </p>
+        
+        <div class="checklist">
+          <div class="check-item done">
+            <div class="check-box">✓</div>
+            <span class="check-text">Cambiar sábanas habitación principal</span>
+          </div>
+          <div class="check-item done">
+            <div class="check-box">✓</div>
+            <span class="check-text">Cambiar sábanas habitación niños</span>
+          </div>
+          <div class="check-item">
+            <div class="check-box"></div>
+            <span class="check-text">Limpiar baños (x2)</span>
+          </div>
+          <div class="check-item">
+            <div class="check-box"></div>
+            <span class="check-text">Fregar suelos</span>
+          </div>
+          <div class="check-item">
+            <div class="check-box"></div>
+            <span class="check-text">Reponer amenities</span>
+          </div>
+          <div class="check-item">
+            <div class="check-box"></div>
+            <span class="check-text">Comprobar inventario cocina</span>
+          </div>
+        </div>
+
+        <button class="btn btn-success btn-block" style="margin-top: 1rem;">
+          ✅ Marcar limpieza completada
+        </button>
+      </div>
+    </div>
+
+    <!-- EJEMPLO: Panel de Inventario -->
+    <div class="modulo-panel" id="panel-inventario" style="display: none;">
+      <div class="panel-header">
+        <span class="panel-title">📦 Inventario</span>
+        <button class="panel-close">×</button>
+      </div>
+      <div class="panel-body">
+        <div class="alert alert-info" style="margin-bottom: 1rem;">
+          <span class="alert-icon">📋</span>
+          <div class="alert-content">
+            <div class="alert-title">3 artículos bajo mínimo</div>
+          </div>
+        </div>
+
+        <div class="item-list">
+          <div class="item-row" style="border-left: 3px solid var(--terracotta);">
+            <span class="item-icon">🧻</span>
+            <div class="item-content">
+              <div class="item-title">Papel higiénico</div>
+              <div class="item-meta">Stock: 2 / Mínimo: 6</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action" title="Editar">✏️</button>
+            </div>
+          </div>
+          <div class="item-row" style="border-left: 3px solid var(--terracotta);">
+            <span class="item-icon">🧴</span>
+            <div class="item-content">
+              <div class="item-title">Jabón manos</div>
+              <div class="item-meta">Stock: 1 / Mínimo: 3</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action" title="Editar">✏️</button>
+            </div>
+          </div>
+          <div class="item-row" style="border-left: 3px solid var(--terracotta);">
+            <span class="item-icon">🍷</span>
+            <div class="item-content">
+              <div class="item-title">Vino tinto reserva</div>
+              <div class="item-meta">Stock: 0 / Mínimo: 2</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action" title="Editar">✏️</button>
+            </div>
+          </div>
+          <div class="item-row">
+            <span class="item-icon">☕</span>
+            <div class="item-content">
+              <div class="item-title">Café molido</div>
+              <div class="item-meta">Stock: 3 / Mínimo: 2</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-action" title="Editar">✏️</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" style="margin-top: 1rem;">
+          + Añadir artículo
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- FAB: Acciones rápidas -->
+  <div class="fab-container">
+    <button class="fab" id="fab-main" title="Acciones rápidas">+</button>
+  </div>
+
+  <script>
+    // === INTERACTIVIDAD BÁSICA ===
+
+    // Toggle checklist items
+    document.querySelectorAll('.check-item').forEach(item => {
+      item.addEventListener('click', () => {
+        item.classList.toggle('done');
+        const box = item.querySelector('.check-box');
+        box.innerHTML = item.classList.contains('done') ? '✓' : '';
+      });
+    });
+
+    // Tabs de bienes
+    document.querySelectorAll('.bien-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.bien-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        // Aquí cargaría los datos del bien seleccionado
+        console.log('Cambiar a bien:', tab.dataset.bien);
+      });
+    });
+
+    // Cards de módulos
+    document.querySelectorAll('.modulo-card:not(.disabled)').forEach(card => {
+      card.addEventListener('click', (e) => {
+        e.preventDefault();
+        const modulo = card.dataset.modulo;
+        console.log('Abrir módulo:', modulo);
+        // Aquí mostraría el panel correspondiente
+      });
+    });
+
+    // Cerrar paneles
+    document.querySelectorAll('.panel-close').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.closest('.modulo-panel').style.display = 'none';
+      });
+    });
+
+    // FAB
+    document.getElementById('fab-main').addEventListener('click', () => {
+      alert('Acciones rápidas:\n\n• Reportar incidencia\n• Añadir foto\n• Llamar a propietario');
+    });
+
+    // === CONFIGURACIÓN SEGÚN PERMISOS ===
+    // En producción, esto vendría de Firebase según los permisos del casero
+    const caseroConfig = {
+      nombre: 'María García',
+      iniciales: 'MG',
+      rol: 'casero', // o 'mayordomo'
+      bienes: [
+        { id: 'casa-playa', nombre: 'Casa de la playa', direccion: 'Av. del Mar, 23 · Gandía' },
+        { id: 'terreno', nombre: 'Terreno', direccion: 'Camino Viejo, s/n · Ontinyent' }
+      ],
+      permisos: {
+        'casa-playa': {
+          reservas: { ver: true, crear: false, editar: false, borrar: false },
+          inventario: { ver: true, crear: true, editar: true, borrar: false },
+          limpieza: { ver: true, crear: true, editar: true, borrar: true },
+          mantenimiento: { ver: true, crear: true, editar: false, borrar: false },
+          eventos: { ver: true, crear: false, editar: false, borrar: false },
+          gastos: { ver: false, crear: false, editar: false, borrar: false }
+        }
+      }
+    };
+
+    function initCasero(config) {
+      // Actualizar header
+      document.getElementById('user-name').textContent = config.nombre;
+      document.getElementById('user-avatar').textContent = config.iniciales;
+      
+      const roleEl = document.getElementById('user-role');
+      roleEl.textContent = config.rol === 'mayordomo' ? 'Mayordomo' : 'Casero';
+      if (config.rol === 'mayordomo') {
+        roleEl.classList.add('mayordomo');
+      }
+
+      // Ocultar selector si solo tiene un bien
+      if (config.bienes.length <= 1) {
+        document.getElementById('bien-selector').style.display = 'none';
+      }
+
+      // Aplicar permisos a módulos
+      // En producción, ocultaría o deshabilitaría módulos según permisos
+    }
+
+    // Inicializar
+    initCasero(caseroConfig);
+  </script>
+
+</body>
+</html>
