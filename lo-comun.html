@@ -529,7 +529,7 @@
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
     
     const subtipos = {
-      inmueble: ['Vivienda principal', 'Segunda residencia', 'Local comercial', 'Garaje', 'Trastero', 'Otro'],
+      inmueble: ['Vivienda principal', 'Segunda residencia', 'Cabaña', 'Vivienda uso turístico', 'Local comercial', 'Nave', 'Garaje', 'Trastero', 'Otro'],
       terreno: ['Urbano', 'Rústico', 'Finca', 'Parcela', 'Otro'],
       vehiculo: ['Coche', 'Moto', 'Furgoneta', 'Caravana', 'Barco', 'Otro'],
       ajuar: ['Muebles', 'Electrodomésticos', 'Arte', 'Joyas', 'Colección', 'Otro']
@@ -666,7 +666,7 @@
       btn.textContent = 'Creando...';
 
       try {
-        const bienRef = await db.collection('bienes').add({
+        const nuevoBien = {
           nombre: document.getElementById('bien-nombre').value,
           tipo: document.getElementById('bien-tipo').value,
           subtipo: document.getElementById('bien-subtipo').value,
@@ -678,10 +678,20 @@
           mayordomo: { activo: false },
           documentos: [],
           responsables: []
-        });
+        };
 
+        const bienRef = await db.collection('bienes').add(nuevoBien);
+
+        // Añadir a la lista local y renderizar
+        bienesData.unshift({ id: bienRef.id, ...nuevoBien });
+        renderBienes();
+        
         cerrarModal();
-        window.location.href = `bien.html?id=${bienRef.id}`;
+        btn.disabled = false;
+        btn.textContent = 'Crear bien';
+
+        // Mostrar mensaje de éxito
+        alert(`✅ Bien "${nuevoBien.nombre}" creado correctamente`);
 
       } catch (error) {
         console.error('Error:', error);

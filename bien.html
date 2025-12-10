@@ -1125,7 +1125,7 @@
               <div class="empty-mini">
                 <div class="empty-mini-icon">🎩</div>
                 <p>El Mayordomo no está activado.</p>
-                <button class="btn btn-mayordomo btn-sm" style="margin-top: 12px;" onclick="editarBien()">Activar</button>
+                <button class="btn btn-mayordomo btn-sm" style="margin-top: 12px;" onclick="activarMayordomo()">Activar Mayordomo</button>
               </div>
             </div>
           </div>
@@ -1967,6 +1967,34 @@
     function formatDateInput(d) { return d.toISOString().split('T')[0]; }
     function formatDateRange(i, f) { const o = { day: 'numeric', month: 'short' }; return `${i.toLocaleDateString('es-ES', o)} - ${f.toLocaleDateString('es-ES', o)}`; }
     function editarBien() { window.location.href = `bienes.html?edit=${bienId}`; }
+
+    // Activar Mayordomo directamente
+    async function activarMayordomo() {
+      if (!confirm('¿Activar el módulo Mayordomo para este bien?\n\nIncluye: Reservas, Inventario y Gastos')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).update({
+          'mayordomo.activo': true,
+          'mayordomo.reservas': true,
+          'mayordomo.inventario': true,
+          'mayordomo.gastos': true,
+          mayordomoActivo: true
+        });
+
+        // Actualizar UI
+        bienData.mayordomo = { activo: true, reservas: true, inventario: true, gastos: true };
+        bienData.mayordomoActivo = true;
+        
+        document.getElementById('mayordomo-section').classList.remove('hidden');
+        document.getElementById('no-mayordomo-section').classList.add('hidden');
+        renderMayordomoModulos();
+
+        alert('✅ Mayordomo activado correctamente');
+      } catch (error) {
+        console.error('Error activando Mayordomo:', error);
+        alert('Error al activar Mayordomo');
+      }
+    }
     document.getElementById('btn-editar').addEventListener('click', editarBien);
 
     // ========== INVENTARIO ==========
