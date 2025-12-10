@@ -1561,115 +1561,351 @@
       `;
     }
 
-    // ============ TAREAS (mock) ============
-    function renderTareas() {
-      const tareas = [
-        { titulo: 'Comprar leche', asignado: 'Mamá', prioridad: 'baja', done: false },
-        { titulo: 'Llamar fontanero', asignado: 'Papá', prioridad: 'alta', done: false },
-        { titulo: 'Recoger paquete', asignado: 'Yo', prioridad: 'media', done: true }
-      ];
+    // ============ TAREAS (REAL) ============
+    let tareasData = [];
 
+    async function renderTareas() {
       const container = document.getElementById('tareas-list');
-      if (tareas.length === 0) {
-        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin tareas</div>';
+      
+      if (!miNidoPrincipal || !currentFamilia) {
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📋</div>Selecciona un nido</div>';
         return;
       }
 
-      container.innerHTML = tareas.map((t, i) => `
-        <div class="tarea-item">
-          <div class="tarea-check ${t.done ? 'done' : ''}">${t.done ? '✓' : ''}</div>
-          <div class="tarea-content">
-            <div class="tarea-titulo ${t.done ? 'done' : ''}">${t.titulo}</div>
-            <div class="tarea-asignado">${t.asignado}</div>
+      try {
+        // Cargar tareas reales de Firestore
+        const snap = await db.collection('tareas')
+          .where('familiaId', '==', currentFamilia.id)
+          .where('completada', '==', false)
+          .orderBy('fechaCreacion', 'desc')
+          .limit(5)
+          .get();
+
+        tareasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (tareasData.length === 0) {
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin tareas pendientes</div>';
+          return;
+        }
+
+        container.innerHTML = tareasData.map(t => `
+          <div class="tarea-item" onclick="toggleTarea('${t.id}')">
+            <div class="tarea-check ${t.completada ? 'done' : ''}">${t.completada ? '✓' : ''}</div>
+            <div class="tarea-content">
+              <div class="tarea-titulo ${t.completada ? 'done' : ''}">${t.titulo}</div>
+              <div class="tarea-asignado">${t.asignadoA || 'Sin asignar'}</div>
+            </div>
+            <div class="tarea-prioridad ${t.prioridad || 'media'}"></div>
           </div>
-          <div class="tarea-prioridad ${t.prioridad}"></div>
-        </div>
-      `).join('');
+        `).join('');
+
+      } catch (error) {
+        console.error('Error cargando tareas:', error);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Error al cargar</div>';
+      }
     }
 
-    // ============ BUZÓN (mock) ============
-    function renderBuzon() {
-      const mensajes = [
-        { de: 'Mamá', iniciales: 'MA', preview: '¿Puedes pasar por la farmacia?', tiempo: '10:30', leido: false },
-        { de: 'Papá', iniciales: 'PA', preview: 'Llego tarde a cenar', tiempo: 'Ayer', leido: true }
-      ];
+    async function toggleTarea(tareaId) {
+      try {
+        const tarea = tareasData.find(t => t.id === tareaId);
+        if (!tarea) return;
 
+        await db.collection('tareas').doc(tareaId).update({
+          completada: !tarea.completada,
+          fechaCompletada: !tarea.completada ? firebase.firestore.FieldValue.serverTimestamp() : null
+        });
+
+        renderTareas();
+      } catch (error) {
+        console.error('Error actualizando tarea:', error);
+      }
+    }
+
+    // ============ BUZÓN (REAL) ============
+    let mensajesData = [];
+
+    async function renderBuzon() {
       const container = document.getElementById('buzon-list');
-      if (mensajes.length === 0) {
+      
+      if (!currentUser || !currentFamilia) {
         container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📭</div>Sin mensajes</div>';
         return;
       }
 
-      container.innerHTML = mensajes.map(m => `
-        <div class="mensaje-item ${m.leido ? '' : 'no-leido'}">
-          <div class="mensaje-avatar">${m.iniciales}</div>
-          <div class="mensaje-content">
-            <div class="mensaje-from">${m.de}</div>
-            <div class="mensaje-preview">${m.preview}</div>
-          </div>
-          <span class="mensaje-time">${m.tiempo}</span>
-          ${m.leido ? '' : '<div class="mensaje-badge"></div>'}
-        </div>
-      `).join('');
+      try {
+        // Cargar mensajes donde soy destinatario
+        const snap = await db.collection('mensajes')
+          .where('familiaId', '==', currentFamilia.id)
+          .where('para', '==', currentUser.uid)
+          .orderBy('fechaCreacion', 'desc')
+          .limit(5)
+          .get();
+
+        mensajesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (mensajesData.length === 0) {
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📭</div>Sin mensajes</div>';
+          return;
+        }
+
+        container.innerHTML = mensajesData.map(m => {
+          const iniciales = (m.deNombre || 'NN').substring(0, 2).toUpperCase();
+          const tiempo = formatearTiempo(m.fechaCreacion);
+          
+          return `
+            <div class="mensaje-item ${m.leido ? '' : 'no-leido'}" onclick="verMensaje('${m.id}')">
+              <div class="mensaje-avatar">${iniciales}</div>
+              <div class="mensaje-content">
+                <div class="mensaje-from">${m.deNombre || 'Anónimo'}</div>
+                <div class="mensaje-preview">${m.contenido?.substring(0, 40) || ''}...</div>
+              </div>
+              <span class="mensaje-time">${tiempo}</span>
+              ${m.leido ? '' : '<div class="mensaje-badge"></div>'}
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error cargando mensajes:', error);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📭</div>Sin mensajes</div>';
+      }
     }
 
-    // ============ TABLÓN (mock) ============
-    function renderTablon() {
-      const anuncios = [
-        { tipo: 'convocatoria', titulo: 'Comida domingo', texto: 'En casa de los abuelos a las 14h', fecha: 'Hoy' },
-        { tipo: 'info', titulo: 'Horario piscina', texto: 'Abre a las 10h desde el lunes', fecha: 'Ayer' }
-      ];
+    function formatearTiempo(timestamp) {
+      if (!timestamp) return '';
+      const fecha = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const hoy = new Date();
+      
+      if (fecha.toDateString() === hoy.toDateString()) {
+        return fecha.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+      }
+      
+      const ayer = new Date(hoy);
+      ayer.setDate(ayer.getDate() - 1);
+      if (fecha.toDateString() === ayer.toDateString()) {
+        return 'Ayer';
+      }
+      
+      return fecha.toLocaleDateString('es', { day: 'numeric', month: 'short' });
+    }
 
+    async function verMensaje(mensajeId) {
+      // Marcar como leído
+      await db.collection('mensajes').doc(mensajeId).update({ leido: true });
+      alert('Próximamente: Vista completa del mensaje');
+      renderBuzon();
+    }
+
+    // ============ TABLÓN (REAL) ============
+    let anunciosData = [];
+
+    async function renderTablon() {
       const container = document.getElementById('tablon-list');
-      if (anuncios.length === 0) {
+      
+      if (!currentFamilia) {
         container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin anuncios</div>';
         return;
       }
 
-      container.innerHTML = anuncios.map(a => `
-        <div class="anuncio-item">
-          <div class="anuncio-header">
-            <span class="anuncio-tipo ${a.tipo}">${a.tipo === 'convocatoria' ? '📣' : 'ℹ️'} ${a.tipo === 'convocatoria' ? 'Convocatoria' : 'Info'}</span>
-            <span class="anuncio-fecha">${a.fecha}</span>
-          </div>
-          <div class="anuncio-titulo">${a.titulo}</div>
-          <div class="anuncio-texto">${a.texto}</div>
-        </div>
-      `).join('');
-    }
+      try {
+        const snap = await db.collection('anuncios')
+          .where('familiaId', '==', currentFamilia.id)
+          .where('activo', '==', true)
+          .orderBy('fechaCreacion', 'desc')
+          .limit(3)
+          .get();
 
-    // ============ MENÚS (mock) ============
-    function renderMenus() {
-      const dias = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-      const hoy = new Date().getDay();
-      const diaHoy = hoy === 0 ? 6 : hoy - 1;
+        anunciosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      const menus = [
-        { comida: 'Pasta boloñesa', cena: 'Tortilla' },
-        { comida: 'Pollo asado', cena: 'Ensalada' },
-        { comida: 'Lentejas', cena: 'Sopa' }
-      ];
+        if (anunciosData.length === 0) {
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin anuncios</div>';
+          return;
+        }
 
-      const container = document.getElementById('menus-list');
-
-      container.innerHTML = menus.map((m, i) => {
-        const esHoy = i === 0;
-        return `
-          <div class="menu-dia">
-            <div class="menu-dia-label ${esHoy ? 'hoy' : ''}">${esHoy ? 'HOY' : dias[(diaHoy + i) % 7]}</div>
-            <div class="menu-comidas">
-              <div class="menu-comida"><span class="menu-comida-tipo">🍽️</span> ${m.comida}</div>
-              <div class="menu-comida"><span class="menu-comida-tipo">🌙</span> ${m.cena}</div>
+        container.innerHTML = anunciosData.map(a => {
+          const tiempo = formatearTiempo(a.fechaCreacion);
+          return `
+            <div class="anuncio-item">
+              <div class="anuncio-header">
+                <span class="anuncio-tipo ${a.tipo}">${a.tipo === 'convocatoria' ? '📣' : a.tipo === 'urgente' ? '🚨' : 'ℹ️'} ${a.tipo}</span>
+                <span class="anuncio-fecha">${tiempo}</span>
+              </div>
+              <div class="anuncio-titulo">${a.titulo}</div>
+              <div class="anuncio-texto">${a.contenido?.substring(0, 60) || ''}${a.contenido?.length > 60 ? '...' : ''}</div>
             </div>
-          </div>
-        `;
-      }).join('');
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error cargando anuncios:', error);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin anuncios</div>';
+      }
     }
 
-    // ============ ACCIONES ============
-    function nuevaTarea() { alert('Próximamente: Nueva tarea'); }
-    function nuevoMensaje() { alert('Próximamente: Nuevo mensaje'); }
-    function nuevoAnuncio() { alert('Próximamente: Nuevo anuncio'); }
+    // ============ MENÚS (REAL) ============
+    let menusData = [];
+
+    async function renderMenus() {
+      const container = document.getElementById('menus-list');
+      const dias = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+      
+      if (!miNidoPrincipal || !currentFamilia) {
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">🍽️</div>Sin menús</div>';
+        return;
+      }
+
+      try {
+        // Obtener próximos 3 días
+        const hoy = new Date();
+        const fechas = [];
+        for (let i = 0; i < 3; i++) {
+          const d = new Date(hoy);
+          d.setDate(d.getDate() + i);
+          fechas.push(d.toISOString().split('T')[0]);
+        }
+
+        const snap = await db.collection('menus')
+          .where('familiaId', '==', currentFamilia.id)
+          .where('fecha', 'in', fechas)
+          .get();
+
+        const menusMap = {};
+        snap.docs.forEach(doc => {
+          const data = doc.data();
+          menusMap[data.fecha] = { id: doc.id, ...data };
+        });
+
+        container.innerHTML = fechas.map((fecha, i) => {
+          const menu = menusMap[fecha];
+          const d = new Date(fecha);
+          const esHoy = i === 0;
+          const diaLabel = esHoy ? 'HOY' : dias[d.getDay()];
+          
+          return `
+            <div class="menu-dia">
+              <div class="menu-dia-label ${esHoy ? 'hoy' : ''}">${diaLabel}</div>
+              <div class="menu-comidas">
+                <div class="menu-comida"><span class="menu-comida-tipo">🍽️</span> ${menu?.comida || '-'}</div>
+                <div class="menu-comida"><span class="menu-comida-tipo">🌙</span> ${menu?.cena || '-'}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error cargando menús:', error);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">🍽️</div>Sin menús</div>';
+      }
+    }
+
+    // ============ ACCIONES - MODALES ============
+    async function nuevaTarea() {
+      const titulo = prompt('📋 Nueva tarea:\n\n¿Qué hay que hacer?');
+      if (!titulo) return;
+
+      const prioridad = prompt('Prioridad (alta/media/baja):', 'media') || 'media';
+      const asignado = prompt('¿A quién se asigna? (nombre o vacío):', '') || null;
+
+      try {
+        await db.collection('tareas').add({
+          titulo,
+          prioridad: ['alta', 'media', 'baja'].includes(prioridad) ? prioridad : 'media',
+          asignadoA: asignado,
+          asignadoPor: currentUser.uid,
+          nidoId: miNidoPrincipal?.id || null,
+          familiaId: currentFamilia.id,
+          completada: false,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('✅ Tarea creada');
+        renderTareas();
+      } catch (error) {
+        console.error('Error creando tarea:', error);
+        alert('Error al crear tarea');
+      }
+    }
+
+    async function nuevoMensaje() {
+      // Obtener miembros de la familia para seleccionar destinatario
+      const miembros = [];
+      allNidos.forEach(n => {
+        (n.miembrosData || []).forEach(m => {
+          if (m.email && m.email !== currentUser.email) {
+            miembros.push(m);
+          }
+        });
+      });
+
+      if (miembros.length === 0) {
+        alert('No hay miembros con email a quienes enviar mensaje');
+        return;
+      }
+
+      const listaDestinatarios = miembros.map((m, i) => `${i + 1}. ${m.nombre || m.iniciales}`).join('\n');
+      const seleccion = prompt(`📬 Nuevo mensaje\n\nSelecciona destinatario (número):\n${listaDestinatarios}`);
+      
+      if (!seleccion) return;
+      const idx = parseInt(seleccion) - 1;
+      if (idx < 0 || idx >= miembros.length) {
+        alert('Selección inválida');
+        return;
+      }
+
+      const destinatario = miembros[idx];
+      const contenido = prompt(`Mensaje para ${destinatario.nombre || destinatario.iniciales}:`);
+      if (!contenido) return;
+
+      try {
+        await db.collection('mensajes').add({
+          de: currentUser.uid,
+          deNombre: userData.nombre || currentUser.email.split('@')[0],
+          para: destinatario.email, // Usamos email como ID temporal
+          paraNombre: destinatario.nombre || destinatario.iniciales,
+          contenido,
+          familiaId: currentFamilia.id,
+          leido: false,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('✅ Mensaje enviado');
+      } catch (error) {
+        console.error('Error enviando mensaje:', error);
+        alert('Error al enviar mensaje');
+      }
+    }
+
+    async function nuevoAnuncio() {
+      const titulo = prompt('📢 Nuevo anuncio\n\nTítulo:');
+      if (!titulo) return;
+
+      const contenido = prompt('Contenido del anuncio:');
+      if (!contenido) return;
+
+      const tipoSeleccion = prompt('Tipo (1=Info, 2=Convocatoria, 3=Urgente):', '1');
+      const tipos = { '1': 'info', '2': 'convocatoria', '3': 'urgente' };
+      const tipo = tipos[tipoSeleccion] || 'info';
+
+      try {
+        await db.collection('anuncios').add({
+          titulo,
+          contenido,
+          tipo,
+          familiaId: currentFamilia.id,
+          nidoId: null, // Visible para toda la familia
+          autor: currentUser.uid,
+          autorNombre: userData.nombre || currentUser.email.split('@')[0],
+          activo: true,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('✅ Anuncio publicado');
+        renderTablon();
+      } catch (error) {
+        console.error('Error publicando anuncio:', error);
+        alert('Error al publicar anuncio');
+      }
+    }
 
     // ============ MOBILE NAV ============
     function toggleMobileNav() {

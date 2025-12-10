@@ -765,6 +765,38 @@
       opacity: 0.8;
       text-transform: uppercase;
     }
+
+    /* Mi Nido Selector */
+    .mi-nido-selector {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.2);
+      text-align: center;
+    }
+
+    .btn-mi-nido {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+    }
+
+    .btn-mi-nido:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .mi-nido-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.2);
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -816,6 +848,16 @@
           <div class="nido-stat">
             <div class="nido-stat-value" id="stat-admins">0</div>
             <div class="nido-stat-label">Admins</div>
+          </div>
+        </div>
+        
+        <!-- Botón Mi Nido Principal -->
+        <div class="mi-nido-selector" id="mi-nido-selector">
+          <button class="btn btn-outline btn-mi-nido" id="btn-mi-nido" onclick="marcarComoMiNido()">
+            <span>🏠</span> Este es mi nido principal
+          </button>
+          <div class="mi-nido-badge hidden" id="mi-nido-badge">
+            ✓ Este es tu nido principal
           </div>
         </div>
       </div>
@@ -1071,6 +1113,9 @@
 
         // Load members
         loadMembers();
+
+        // Check if this is my nest
+        checkSiEsMiNido();
 
         loadingEl.classList.add('hidden');
         contentEl.classList.remove('hidden');
@@ -1565,6 +1610,44 @@
       } catch (error) {
         console.error('Error deleting member:', error);
         alert('Error al eliminar miembro');
+      }
+    }
+
+    // ============ MARCAR COMO MI NIDO ============
+    async function marcarComoMiNido() {
+      if (!confirm('¿Establecer este nido como tu nido principal?\n\nEsto determinará qué datos ves en tu dashboard.')) return;
+
+      try {
+        // Actualizar el documento del usuario
+        await db.collection('usuarios').doc(currentUser.uid).update({
+          nidoId: nidoId
+        });
+
+        // Actualizar userData local
+        userData.nidoId = nidoId;
+
+        // Actualizar UI
+        document.getElementById('btn-mi-nido').classList.add('hidden');
+        document.getElementById('mi-nido-badge').classList.remove('hidden');
+
+        alert('✅ Este es ahora tu nido principal');
+
+      } catch (error) {
+        console.error('Error estableciendo nido principal:', error);
+        alert('Error al establecer nido principal');
+      }
+    }
+
+    function checkSiEsMiNido() {
+      const btn = document.getElementById('btn-mi-nido');
+      const badge = document.getElementById('mi-nido-badge');
+
+      if (userData.nidoId === nidoId) {
+        btn.classList.add('hidden');
+        badge.classList.remove('hidden');
+      } else {
+        btn.classList.remove('hidden');
+        badge.classList.add('hidden');
       }
     }
 
