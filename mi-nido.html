@@ -202,6 +202,19 @@
       font-weight: 600;
     }
 
+    .miembro-relacion {
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .miembro-relacion.progenitor { background: var(--terracotta-muted); color: var(--terracotta); }
+    .miembro-relacion.descendiente { background: var(--sage-muted); color: var(--sage-dark); }
+    .miembro-relacion.ascendiente { background: #E8E4F0; color: #6B5B95; }
+    .miembro-relacion.colateral { background: #FFF3E0; color: #E65100; }
+    .miembro-relacion.otros { background: var(--cream-dark); color: var(--text-light); }
+
     /* Accesos rápidos */
     .quick-grid {
       display: grid;
@@ -393,25 +406,90 @@
 
     async function loadNido() {
       try {
-        const nidoId = userData.nidoId;
-        if (!nidoId) {
-          document.getElementById('loading').classList.add('hidden');
-          document.getElementById('content').classList.remove('hidden');
-          document.getElementById('nido-nombre').textContent = 'Sin nido asignado';
-          return;
+        let nidoId = userData.nidoId;
+        let nidoDoc = null;
+
+        // ========================================
+        // LÓGICA MEJORADA PARA ENCONTRAR MI NIDO
+        // ========================================
+        
+        // Opción 1: nidoId directo del usuario
+        if (nidoId) {
+          nidoDoc = await db.collection('nidos').doc(nidoId).get();
+          if (nidoDoc.exists) {
+            console.log('Nido encontrado por userData.nidoId');
+          } else {
+            nidoDoc = null;
+          }
         }
 
-        const nidoDoc = await db.collection('nidos').doc(nidoId).get();
-        if (!nidoDoc.exists) return;
-        
-        nidoData = { id: nidoDoc.id, ...nidoDoc.data() };
+        // Opción 2: Buscar en todos los nidos de la familia
+        if (!nidoDoc && userData.familiaId) {
+          const nidosSnap = await db.collection('nidos')
+            .where('familiaId', '==', userData.familiaId)
+            .get();
+          
+          const userEmail = currentUser.email;
+          const userId = currentUser.uid;
+
+          // Buscar donde aparezca el usuario
+          for (const doc of nidosSnap.docs) {
+            const nido = doc.data();
+            
+            // Por email o uid en miembrosData
+            const enMiembrosData = nido.miembrosData?.some(m => 
+              m.email === userEmail || m.uid === userId
+            );
+            
+            // Por uid en array miembros
+            const enMiembros = nido.miembros?.includes(userId);
+            
+            if (enMiembrosData || enMiembros) {
+              nidoDoc = doc;
+              nidoId = doc.id;
+              console.log('Nido encontrado por miembrosData/miembros:', nido.nombre);
+              break;
+            }
+          }
+
+          // Si no encontró, buscar donde sea admin
+          if (!nidoDoc) {
+            for (const doc of nidosSnap.docs) {
+              const nido = doc.data();
+              if (nido.admins?.includes(userId)) {
+                nidoDoc = doc;
+                nidoId = doc.id;
+                console.log('Nido encontrado por admins:', nido.nombre);
+                break;
+              }
+            }
+          }
+
+          // Fallback: primer nido disponible
+          if (!nidoDoc && nidosSnap.docs.length > 0) {
+            nidoDoc = nidosSnap.docs[0];
+            nidoId = nidoDoc.id;
+            console.log('⚠️ Fallback al primer nido:', nidoDoc.data().nombre);
+          }
+        }
 
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
 
+        if (!nidoDoc) {
+          document.getElementById('nido-nombre').textContent = 'Sin nido asignado';
+          document.getElementById('nido-desc').textContent = 'Crea tu primer nido o pide que te añadan a uno';
+          return;
+        }
+        
+        nidoData = { id: nidoDoc.id, ...nidoDoc.data() };
         renderNido();
+
       } catch (error) {
         console.error('Error:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+        document.getElementById('nido-nombre').textContent = 'Error al cargar';
       }
     }
 
@@ -435,16 +513,33 @@
         return;
       }
 
-      list.innerHTML = miembros.map(m => `
-        <div class="miembro-row">
-          <div class="miembro-avatar">${m.iniciales || '?'}</div>
-          <div class="miembro-info">
-            <div class="miembro-nombre">${m.nombre || 'Sin nombre'}</div>
-            <div class="miembro-rol">${m.fechaNacimiento ? calcularEdad(m.fechaNacimiento) : ''}</div>
+      list.innerHTML = miembros.map(m => {
+        const relacionLabels = {
+          'progenitor': 'Progenitor',
+          'descendiente': 'Hijo/a',
+          'ascendiente': 'Ascendiente',
+          'colateral': 'Colateral',
+          'otros': 'Otros',
+          'hijo': 'Hijo/a'  // Compatibilidad datos antiguos
+        };
+        
+        // Compatible con datos antiguos (rol) y nuevos (relacion)
+        let relacion = m.relacion || m.rol || 'otros';
+        if (relacion === 'hijo') relacion = 'descendiente';
+        const relacionLabel = relacionLabels[m.relacion || m.rol] || 'Otros';
+        
+        return `
+          <div class="miembro-row">
+            <div class="miembro-avatar">${m.iniciales || '?'}</div>
+            <div class="miembro-info">
+              <div class="miembro-nombre">${m.nombre || 'Sin nombre'}</div>
+              <div class="miembro-rol">${m.fechaNacimiento ? calcularEdad(m.fechaNacimiento) : ''}</div>
+            </div>
+            <span class="miembro-relacion ${relacion}">${relacionLabel}</span>
+            ${m.esAdmin ? '<span class="miembro-badge">Admin</span>' : ''}
           </div>
-          ${m.esAdmin ? '<span class="miembro-badge">Admin</span>' : ''}
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
     function calcularEdad(fecha) {

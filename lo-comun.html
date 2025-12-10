@@ -546,6 +546,15 @@
       userData = userDoc.data();
       familiaId = userData.familiaId;
 
+      console.log('Usuario:', user.email, 'FamiliaId:', familiaId);
+
+      if (!familiaId) {
+        console.error('Usuario sin familiaId asignado');
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+        return;
+      }
+
       const nombre = userData.nombre || user.email.split('@')[0];
       document.getElementById('user-name').textContent = nombre.split(' ')[0];
       document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
@@ -556,17 +565,37 @@
     // Cargar bienes
     async function loadBienes() {
       try {
-        const snap = await db.collection('bienes')
-          .where('familiaId', '==', familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .get();
+        let snap;
+        
+        try {
+          // Intenta con ordenamiento (requiere índice compuesto)
+          snap = await db.collection('bienes')
+            .where('familiaId', '==', familiaId)
+            .orderBy('fechaCreacion', 'desc')
+            .get();
+        } catch (indexError) {
+          // Si falla por índice, intenta sin ordenar
+          console.warn('Índice no disponible, cargando sin ordenar:', indexError.message);
+          snap = await db.collection('bienes')
+            .where('familiaId', '==', familiaId)
+            .get();
+        }
 
         bienesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Ordenar manualmente si no hay índice
+        bienesData.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
+        
+        console.log('Bienes cargados:', bienesData.length, 'FamiliaId:', familiaId);
         
         document.getElementById('loading').classList.add('hidden');
         renderBienes();
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error cargando bienes:', error);
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('empty-state').classList.remove('hidden');
       }
