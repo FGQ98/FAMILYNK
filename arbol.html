@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Árbol Familiar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 32px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--sage), var(--sage-light)); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .logo-text { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.3rem; color: var(--sage-dark); }
+    .header-nav { display: flex; gap: 4px; }
+    .nav-link { padding: 8px 14px; border-radius: var(--radius-md); text-decoration: none; font-weight: 600; font-size: 0.85rem; color: var(--text-light); transition: all 0.2s; }
+    .nav-link:hover { background: var(--cream); color: var(--text); }
+    .nav-link.active { background: var(--sage); color: white; }
+    .user-menu { display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px; background: var(--cream); border-radius: var(--radius-full); text-decoration: none; color: var(--text); }
+    .user-avatar { width: 32px; height: 32px; background: linear-gradient(135deg, var(--sage), var(--sage-light)); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
+
+    .stats-bar { display: flex; gap: 24px; margin-bottom: 24px; }
+    .stat-item { display: flex; align-items: center; gap: 8px; padding: 12px 20px; background: var(--white); border-radius: var(--radius-full); box-shadow: var(--shadow-soft); }
+    .stat-value { font-size: 1.2rem; font-weight: 700; color: var(--sage-dark); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Árbol visual */
+    .arbol-container {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 30px;
+      box-shadow: var(--shadow-soft);
+      overflow-x: auto;
+    }
+
+    .generacion {
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    .generacion-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      padding-left: 8px;
+      border-left: 3px solid var(--sage);
+    }
+
+    .nidos-row {
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .nido-card {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      min-width: 180px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .nido-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .nido-icon { font-size: 1.5rem; margin-bottom: 8px; }
+    .nido-nombre { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+    .nido-miembros { font-size: 0.8rem; color: var(--text-muted); }
+
+    .nido-avatars {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    .mini-avatar {
+      width: 28px;
+      height: 28px;
+      background: var(--sage);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      margin-left: -8px;
+      border: 2px solid var(--cream);
+    }
+
+    .mini-avatar:first-child { margin-left: 0; }
+    .mini-avatar.fallecido { background: var(--text-muted); opacity: 0.6; }
+
+    /* Conexiones */
+    .conexion-vertical {
+      width: 2px;
+      height: 30px;
+      background: var(--sage-light);
+      margin: 0 auto;
+    }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, var(--sage), var(--sage-dark)); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 300px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="cgi.html" class="logo"><div class="logo-icon">🪺</div><span class="logo-text">FAMILYNK</span></a>
+      <nav class="header-nav">
+        <a href="mi-nido.html" class="nav-link">Mi Nido</a>
+        <a href="arbol.html" class="nav-link active">Árbol</a>
+        <a href="lo-comun.html" class="nav-link">Lo Común</a>
+        <a href="legado.html" class="nav-link">Legado</a>
+        <a href="cerebro.html" class="nav-link">Cerebro</a>
+        <a href="activacion.html" class="nav-link">Activación</a>
+      </nav>
+    </div>
+    <div class="header-right">
+      <a href="cgi.html" class="user-menu">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span id="user-name">...</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">🌳 Árbol Familiar</h1>
+        <p class="page-subtitle" id="familia-nombre">Familia</p>
+      </div>
+      <button class="btn btn-primary" onclick="location.href='nido.html'">+ Nuevo nido</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-value" id="stat-nidos">0</span>
+        <span class="stat-label">Nidos</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-miembros">0</span>
+        <span class="stat-label">Miembros</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="stat-generaciones">0</span>
+        <span class="stat-label">Generaciones</span>
+      </div>
+    </div>
+
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div class="arbol-container hidden" id="arbol-container"></div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser, userData, familiaData, nidosData = [];
+
+    const genLabels = {
+      '1-bisabuelos': 'Generación 1 — Bisabuelos',
+      '2-padres': 'Generación 2 — Padres',
+      '3-nietos': 'Generación 3 — Nietos',
+      '4-bisnietos': 'Generación 4 — Bisnietos'
+    };
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      userData = userDoc.data();
+
+      const nombre = userData.nombre || user.email.split('@')[0];
+      document.getElementById('user-name').textContent = nombre.split(' ')[0];
+      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+
+      const familiaDoc = await db.collection('familias').doc(userData.familiaId).get();
+      if (familiaDoc.exists) familiaData = { id: familiaDoc.id, ...familiaDoc.data() };
+
+      await loadArbol();
+    });
+
+    async function loadArbol() {
+      try {
+        const snap = await db.collection('nidos')
+          .where('familiaId', '==', userData.familiaId)
+          .get();
+
+        nidosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        let totalMiembros = 0;
+        const generaciones = new Set();
+
+        nidosData.forEach(n => {
+          if (n.miembrosData) totalMiembros += n.miembrosData.length;
+          if (n.generacion) generaciones.add(n.generacion);
+        });
+
+        document.getElementById('familia-nombre').textContent = `Familia ${familiaData?.nombre || ''}`;
+        document.getElementById('stat-nidos').textContent = nidosData.length;
+        document.getElementById('stat-miembros').textContent = totalMiembros;
+        document.getElementById('stat-generaciones').textContent = generaciones.size;
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('arbol-container').classList.remove('hidden');
+
+        renderArbol();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    function renderArbol() {
+      const container = document.getElementById('arbol-container');
+
+      // Agrupar por generación
+      const porGeneracion = {};
+      nidosData.forEach(n => {
+        const gen = n.generacion || 'sin-gen';
+        if (!porGeneracion[gen]) porGeneracion[gen] = [];
+        porGeneracion[gen].push(n);
+      });
+
+      // Ordenar generaciones
+      const genOrden = ['1-bisabuelos', '2-padres', '3-nietos', '4-bisnietos'];
+      
+      let html = '';
+
+      genOrden.forEach((gen, idx) => {
+        const nidos = porGeneracion[gen];
+        if (!nidos || nidos.length === 0) return;
+
+        html += `
+          <div class="generacion">
+            <div class="generacion-label">${genLabels[gen] || gen}</div>
+            <div class="nidos-row">
+              ${nidos.map(n => renderNidoCard(n)).join('')}
+            </div>
+          </div>
+        `;
+
+        // Conexión a siguiente generación
+        if (idx < genOrden.length - 1 && porGeneracion[genOrden[idx + 1]]) {
+          html += '<div class="conexion-vertical"></div>';
+        }
+      });
+
+      container.innerHTML = html || '<p style="text-align:center;color:var(--text-muted);">Sin nidos registrados</p>';
+    }
+
+    function renderNidoCard(nido) {
+      const miembros = nido.miembrosData || [];
+      const avatars = miembros.slice(0, 4).map(m => `
+        <div class="mini-avatar ${m.fechaDefuncion ? 'fallecido' : ''}">${m.iniciales || '?'}</div>
+      `).join('');
+
+      return `
+        <a href="nido.html?id=${nido.id}" class="nido-card">
+          <div class="nido-icon">🪺</div>
+          <div class="nido-nombre">${nido.nombre}</div>
+          <div class="nido-miembros">${miembros.length} miembro${miembros.length !== 1 ? 's' : ''}</div>
+          <div class="nido-avatars">${avatars}</div>
+        </a>
+      `;
+    }
+  </script>
+</body>
+</html>
