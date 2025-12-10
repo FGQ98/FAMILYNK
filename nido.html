@@ -1055,6 +1055,7 @@
 
   <script>
     let currentUser = null;
+    let userData = null;
     let nidoId = null;
     let nidoData = null;
 
@@ -1074,6 +1075,16 @@
       }
       
       currentUser = user;
+      
+      // Cargar datos del usuario
+      try {
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        userData = userDoc.exists ? userDoc.data() : {};
+      } catch (e) {
+        console.warn('No se pudo cargar userData:', e);
+        userData = {};
+      }
+      
       await loadNido();
     });
 
@@ -1642,7 +1653,7 @@
       const btn = document.getElementById('btn-mi-nido');
       const badge = document.getElementById('mi-nido-badge');
 
-      if (userData.nidoId === nidoId) {
+      if (userData && userData.nidoId === nidoId) {
         btn.classList.add('hidden');
         badge.classList.remove('hidden');
       } else {
