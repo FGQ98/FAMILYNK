@@ -211,7 +211,7 @@
     }
 
     .admin-btn.sistema {
-      background: linear-gradient(135deg, var(--sage-dark) 0%, var(--sage) 100%);
+      background: linear-gradient(135deg, #1a1a1a 0%, #333333 100%);
       color: white;
     }
 
@@ -331,6 +331,21 @@
     .miembro-info { line-height: 1.2; }
     .miembro-name { font-weight: 600; font-size: 0.85rem; }
     .miembro-role { font-size: 0.7rem; color: var(--text-muted); }
+
+    .miembro-relacion {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-top: 2px;
+      display: inline-block;
+    }
+
+    .miembro-relacion.progenitor { background: var(--terracotta-muted); color: var(--terracotta); }
+    .miembro-relacion.descendiente { background: var(--sage-muted); color: var(--sage-dark); }
+    .miembro-relacion.ascendiente { background: #E8E4F0; color: #6B5B95; }
+    .miembro-relacion.colateral { background: #FFF3E0; color: #E65100; }
+    .miembro-relacion.otros { background: var(--cream-dark); color: var(--text-light); }
 
     /* Accesos rápidos */
     .quick-access {
@@ -869,10 +884,34 @@
           if (nido.generacion) generaciones.add(nido.generacion);
         });
 
-        // Encontrar mi nido principal
-        miNidoPrincipal = allNidos.find(n => n.id === userData.nidoId) ||
-                         allNidos.find(n => n.admins?.includes(currentUser.uid)) ||
-                         allNidos[0];
+        // Encontrar mi nido principal con lógica mejorada
+        // 1. Primero: el nido asignado en userData
+        // 2. Segundo: un nido donde el usuario sea admin
+        // 3. Tercero: un nido donde aparezca en miembros array
+        // 4. Último recurso: el primero disponible
+        
+        miNidoPrincipal = null;
+        
+        // Opción 1: nidoId del usuario
+        if (userData.nidoId) {
+          miNidoPrincipal = allNidos.find(n => n.id === userData.nidoId);
+        }
+        
+        // Opción 2: nido donde sea admin
+        if (!miNidoPrincipal) {
+          miNidoPrincipal = allNidos.find(n => n.admins?.includes(currentUser.uid));
+        }
+        
+        // Opción 3: nido donde aparezca en el array de miembros
+        if (!miNidoPrincipal) {
+          miNidoPrincipal = allNidos.find(n => n.miembros?.includes(currentUser.uid));
+        }
+        
+        // Opción 4: primer nido
+        if (!miNidoPrincipal && allNidos.length > 0) {
+          miNidoPrincipal = allNidos[0];
+          console.log('⚠️ Usuario sin nido asignado, mostrando el primero:', miNidoPrincipal.nombre);
+        }
 
         // Stats del árbol
         document.getElementById('stat-nidos').textContent = allNidos.length;
@@ -919,18 +958,33 @@
       grid.innerHTML = '';
 
       if (nido.miembrosData && nido.miembrosData.length > 0) {
+        const relacionLabels = {
+          'progenitor': 'Progenitor',
+          'descendiente': 'Hijo/a',
+          'ascendiente': 'Ascendiente',
+          'colateral': 'Colateral',
+          'otros': 'Otros',
+          'hijo': 'Hijo/a'  // Compatibilidad con datos antiguos
+        };
+
         nido.miembrosData.forEach(m => {
           const fallecido = m.fechaDefuncion ? 'fallecido' : '';
           const edad = m.fechaDefuncion 
             ? `† ${new Date(m.fechaDefuncion).getFullYear()}` 
             : calcularEdad(m.fechaNacimiento);
           
+          // Compatible con datos antiguos (rol) y nuevos (relacion)
+          let relacion = m.relacion || m.rol || 'otros';
+          if (relacion === 'hijo') relacion = 'descendiente';
+          const relacionLabel = relacionLabels[m.relacion || m.rol] || 'Otros';
+          
           grid.innerHTML += `
             <div class="miembro-chip ${fallecido}">
               <div class="miembro-avatar ${fallecido}">${m.iniciales || '?'}</div>
               <div class="miembro-info">
                 <div class="miembro-name">${m.nombre || m.iniciales}</div>
-                <div class="miembro-role">${m.esAdmin ? 'Admin' : edad}</div>
+                <div class="miembro-role">${edad}</div>
+                <span class="miembro-relacion ${relacion}">${relacionLabel}</span>
               </div>
             </div>
           `;

@@ -818,22 +818,43 @@
       </div>
       <form id="form-añadir-miembro">
         <div class="modal-body">
-          <!-- Rol selector -->
+          <!-- Relación selector -->
           <div class="form-group">
-            <label class="form-label">Rol en el nido</label>
+            <label class="form-label">Relación en el nido</label>
             <div class="rol-selector">
               <label class="rol-option">
-                <input type="radio" name="miembro-rol" value="progenitor" checked>
+                <input type="radio" name="miembro-relacion" value="progenitor" checked>
                 <span class="rol-box">
                   <span class="rol-icon">👨‍👩</span>
                   <span class="rol-name">Progenitor</span>
                 </span>
               </label>
               <label class="rol-option">
-                <input type="radio" name="miembro-rol" value="hijo">
+                <input type="radio" name="miembro-relacion" value="descendiente">
                 <span class="rol-box">
                   <span class="rol-icon">🧒</span>
                   <span class="rol-name">Hijo/a</span>
+                </span>
+              </label>
+              <label class="rol-option">
+                <input type="radio" name="miembro-relacion" value="ascendiente">
+                <span class="rol-box">
+                  <span class="rol-icon">👴</span>
+                  <span class="rol-name">Ascendiente</span>
+                </span>
+              </label>
+              <label class="rol-option">
+                <input type="radio" name="miembro-relacion" value="colateral">
+                <span class="rol-box">
+                  <span class="rol-icon">🤝</span>
+                  <span class="rol-name">Colateral</span>
+                </span>
+              </label>
+              <label class="rol-option">
+                <input type="radio" name="miembro-relacion" value="otros">
+                <span class="rol-box">
+                  <span class="rol-icon">👥</span>
+                  <span class="rol-name">Otros</span>
                 </span>
               </label>
             </div>
@@ -1015,8 +1036,10 @@
       listEl.innerHTML = '';
 
       // Separar por rol
-      const progenitores = miembrosData.map((m, i) => ({...m, originalIndex: i})).filter(m => m.rol !== 'hijo');
-      const hijos = miembrosData.map((m, i) => ({...m, originalIndex: i})).filter(m => m.rol === 'hijo');
+      // Compatible con datos antiguos (rol) y nuevos (relacion)
+      const esDescendiente = (m) => m.relacion === 'descendiente' || m.rol === 'hijo';
+      const progenitores = miembrosData.map((m, i) => ({...m, originalIndex: i})).filter(m => !esDescendiente(m));
+      const hijos = miembrosData.map((m, i) => ({...m, originalIndex: i})).filter(m => esDescendiente(m));
 
       // Renderizar progenitores
       if (progenitores.length > 0) {
@@ -1072,10 +1095,10 @@
     const hijoNidoSection = document.getElementById('hijo-nido-section');
     const nuevoNidoFields = document.getElementById('nuevo-nido-fields');
 
-    // Toggle sección hijo cuando cambia el rol
-    document.querySelectorAll('input[name="miembro-rol"]').forEach(radio => {
+    // Toggle sección hijo cuando cambia la relación
+    document.querySelectorAll('input[name="miembro-relacion"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
-        if (e.target.value === 'hijo') {
+        if (e.target.value === 'descendiente') {
           hijoNidoSection.classList.remove('hidden');
         } else {
           hijoNidoSection.classList.add('hidden');
@@ -1106,7 +1129,7 @@
       document.getElementById('form-añadir-miembro').reset();
       hijoNidoSection.classList.add('hidden');
       nuevoNidoFields.classList.add('hidden');
-      document.querySelector('input[name="miembro-rol"][value="progenitor"]').checked = true;
+      document.querySelector('input[name="miembro-relacion"][value="progenitor"]').checked = true;
       document.getElementById('hijo-forma-nido').disabled = false;
       const form = document.getElementById('form-añadir-miembro');
       delete form.dataset.editIndex;
@@ -1237,7 +1260,7 @@
         return;
       }
 
-      const rol = document.querySelector('input[name="miembro-rol"]:checked').value;
+      const relacion = document.querySelector('input[name="miembro-relacion"]:checked').value;
       const iniciales = document.getElementById('miembro-iniciales').value.toUpperCase();
       const nombre = document.getElementById('miembro-nombre').value;
       const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
@@ -1245,7 +1268,7 @@
       const esAdmin = document.getElementById('miembro-admin').checked;
 
       // Datos del nuevo nido si aplica
-      const formaNido = rol === 'hijo' && document.getElementById('hijo-forma-nido').checked;
+      const formaNido = relacion === 'descendiente' && document.getElementById('hijo-forma-nido').checked;
       const nuevoNidoNombre = document.getElementById('nuevo-nido-nombre').value;
       const nuevoNidoFecha = document.getElementById('nuevo-nido-fecha').value;
 
@@ -1283,7 +1306,7 @@
               fechaNacimiento,
               fechaDefuncion,
               esAdmin: true,
-              rol: 'progenitor',
+              relacion: 'progenitor',
               fechaCreacion: new Date().toISOString()
             }],
             nidoOrigen: nidoId,
@@ -1301,7 +1324,7 @@
           fechaNacimiento,
           fechaDefuncion,
           esAdmin,
-          rol,
+          relacion,
           mascotas: getMascotasFromForm(),
           nidoPropio: nuevoNidoId,
           fechaCreacion: new Date().toISOString()
@@ -1343,7 +1366,7 @@
       const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
       const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
       const esAdmin = document.getElementById('miembro-admin').checked;
-      const rol = document.querySelector('input[name="miembro-rol"]:checked').value;
+      const relacion = document.querySelector('input[name="miembro-relacion"]:checked').value;
 
       const btn = document.getElementById('modal-añadir');
       btn.disabled = true;
@@ -1358,7 +1381,7 @@
           fechaNacimiento,
           fechaDefuncion,
           esAdmin,
-          rol,
+          relacion,
           mascotas: getMascotasFromForm()
         };
 
@@ -1415,12 +1438,16 @@
       // Cargar mascotas
       loadMascotasToForm(miembro.mascotas || []);
 
-      // Establecer rol
-      const rol = miembro.rol || 'progenitor';
-      document.querySelector(`input[name="miembro-rol"][value="${rol}"]`).checked = true;
+      // Establecer relación (compatibilidad con datos antiguos que usaban "rol")
+      let relacion = miembro.relacion || miembro.rol || 'progenitor';
+      // Mapear valores antiguos
+      if (relacion === 'hijo') relacion = 'descendiente';
+      
+      const radioEl = document.querySelector(`input[name="miembro-relacion"][value="${relacion}"]`);
+      if (radioEl) radioEl.checked = true;
       
       // Mostrar/ocultar sección hijo
-      if (rol === 'hijo') {
+      if (relacion === 'descendiente') {
         hijoNidoSection.classList.remove('hidden');
         // No permitir cambiar "forma nido" en edición si ya tiene uno
         if (miembro.nidoPropio) {
