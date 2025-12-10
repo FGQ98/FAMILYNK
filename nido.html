@@ -515,6 +515,53 @@
       border-top: 1px dashed var(--cream-dark);
     }
 
+    /* Invitación */
+    .invitacion-section {
+      margin-top: 12px;
+    }
+
+    .invitacion-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, var(--sage-muted) 0%, rgba(122, 158, 126, 0.08) 100%);
+      border: 1px solid var(--sage-light);
+      border-radius: var(--radius-md);
+    }
+
+    .invitacion-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .invitacion-icon {
+      font-size: 1.4rem;
+    }
+
+    .invitacion-info strong {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--sage-dark);
+    }
+
+    .invitacion-info p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .invitacion-enviada {
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
     /* Mascotas */
     .mascotas-section {
       margin-top: 16px;
@@ -871,6 +918,28 @@
             <input type="text" class="form-input" id="miembro-nombre" placeholder="Ej: Felipe García Quintana">
           </div>
 
+          <div class="form-group">
+            <label class="form-label">Email (opcional)</label>
+            <input type="email" class="form-input" id="miembro-email" placeholder="Ej: felipe@email.com">
+            <div class="form-hint">Si tiene email, podrá recibir una invitación para acceder a FAMILYNK</div>
+          </div>
+
+          <!-- Botón enviar invitación (solo visible si hay email) -->
+          <div class="invitacion-section hidden" id="invitacion-section">
+            <div class="invitacion-box">
+              <div class="invitacion-info">
+                <span class="invitacion-icon">📧</span>
+                <div>
+                  <strong>¿Enviar invitación?</strong>
+                  <p>Este miembro podrá acceder a FAMILYNK con su email</p>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary" id="btn-enviar-invitacion" onclick="enviarInvitacionMiembro()">
+                Enviar invitación
+              </button>
+            </div>
+          </div>
+
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Fecha de nacimiento</label>
@@ -1129,14 +1198,83 @@
       document.getElementById('form-añadir-miembro').reset();
       hijoNidoSection.classList.add('hidden');
       nuevoNidoFields.classList.add('hidden');
+      document.getElementById('invitacion-section').classList.add('hidden');
       document.querySelector('input[name="miembro-relacion"][value="progenitor"]').checked = true;
       document.getElementById('hijo-forma-nido').disabled = false;
       const form = document.getElementById('form-añadir-miembro');
       delete form.dataset.editIndex;
+      delete form.dataset.miembroEmail; // Para saber si ya tiene invitación
       document.querySelector('.modal-title').textContent = '👤 Añadir miembro';
       document.getElementById('modal-añadir').textContent = 'Añadir miembro';
       // Limpiar mascotas
       document.getElementById('mascotas-list').innerHTML = '';
+    }
+
+    // === EMAIL E INVITACIÓN ===
+    const emailInput = document.getElementById('miembro-email');
+    const invitacionSection = document.getElementById('invitacion-section');
+
+    emailInput.addEventListener('input', () => {
+      const email = emailInput.value.trim();
+      if (email && email.includes('@')) {
+        invitacionSection.classList.remove('hidden');
+      } else {
+        invitacionSection.classList.add('hidden');
+      }
+    });
+
+    async function enviarInvitacionMiembro() {
+      const email = emailInput.value.trim();
+      const nombre = document.getElementById('miembro-nombre').value || document.getElementById('miembro-iniciales').value;
+      
+      if (!email || !email.includes('@')) {
+        alert('Introduce un email válido');
+        return;
+      }
+
+      const btn = document.getElementById('btn-enviar-invitacion');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      try {
+        // Generar contraseña provisional
+        const passwordProvisional = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
+        const fechaExpiracion = new Date();
+        fechaExpiracion.setDate(fechaExpiracion.getDate() + 7);
+
+        // Crear invitación en Firestore
+        await db.collection('invitaciones').add({
+          email: email.toLowerCase(),
+          nombre: nombre,
+          familiaId: nidoData.familiaId,
+          nidoId: nidoId,
+          passwordProvisional: passwordProvisional,
+          estado: 'pendiente',
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaExpiracion: fechaExpiracion,
+          creadoPor: currentUser.uid
+        });
+
+        // Mostrar datos para envío manual (hasta que tengamos SendGrid)
+        alert(`✅ Invitación creada para ${email}\n\n` +
+              `📧 Envía estos datos al invitado:\n\n` +
+              `URL: ${window.location.origin}/login.html\n` +
+              `Email: ${email}\n` +
+              `Contraseña: ${passwordProvisional}\n\n` +
+              `⚠️ Válida por 7 días`);
+
+        // Cambiar botón a "Enviada"
+        btn.textContent = '✓ Invitación creada';
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-secondary');
+        btn.disabled = true;
+
+      } catch (error) {
+        console.error('Error creando invitación:', error);
+        alert('Error al crear la invitación');
+        btn.disabled = false;
+        btn.textContent = 'Enviar invitación';
+      }
     }
 
     // === MASCOTAS ===
@@ -1263,6 +1401,7 @@
       const relacion = document.querySelector('input[name="miembro-relacion"]:checked').value;
       const iniciales = document.getElementById('miembro-iniciales').value.toUpperCase();
       const nombre = document.getElementById('miembro-nombre').value;
+      const email = document.getElementById('miembro-email').value.trim().toLowerCase() || null;
       const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
       const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
       const esAdmin = document.getElementById('miembro-admin').checked;
@@ -1303,6 +1442,7 @@
             miembrosData: [{
               iniciales,
               nombre,
+              email,
               fechaNacimiento,
               fechaDefuncion,
               esAdmin: true,
@@ -1321,6 +1461,7 @@
         miembrosData.push({
           iniciales,
           nombre,
+          email,
           fechaNacimiento,
           fechaDefuncion,
           esAdmin,
@@ -1363,6 +1504,7 @@
     async function handleEditMember(editIndex) {
       const iniciales = document.getElementById('miembro-iniciales').value.toUpperCase();
       const nombre = document.getElementById('miembro-nombre').value;
+      const email = document.getElementById('miembro-email').value.trim().toLowerCase() || null;
       const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
       const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
       const esAdmin = document.getElementById('miembro-admin').checked;
@@ -1378,6 +1520,7 @@
           ...miembrosData[editIndex],
           iniciales,
           nombre,
+          email,
           fechaNacimiento,
           fechaDefuncion,
           esAdmin,
@@ -1431,9 +1574,17 @@
       
       document.getElementById('miembro-iniciales').value = miembro.iniciales;
       document.getElementById('miembro-nombre').value = miembro.nombre || '';
+      document.getElementById('miembro-email').value = miembro.email || '';
       document.getElementById('miembro-nacimiento').value = miembro.fechaNacimiento || '';
       document.getElementById('miembro-defuncion').value = miembro.fechaDefuncion || '';
       document.getElementById('miembro-admin').checked = miembro.esAdmin;
+
+      // Mostrar sección invitación si tiene email
+      if (miembro.email) {
+        invitacionSection.classList.remove('hidden');
+      } else {
+        invitacionSection.classList.add('hidden');
+      }
 
       // Cargar mascotas
       loadMascotasToForm(miembro.mascotas || []);
