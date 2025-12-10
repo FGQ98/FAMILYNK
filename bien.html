@@ -517,6 +517,33 @@
     .gasto-item-valor { font-weight: 600; color: var(--terracotta); }
 
     /* Gastos mejorado */
+    .gastos-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--cream-dark);
+    }
+
+    .gastos-tab {
+      padding: 10px 16px;
+      background: none;
+      border: none;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+
+    .gastos-tab:hover { color: var(--text); }
+    .gastos-tab.active { color: var(--terracotta); border-bottom-color: var(--terracotta); }
+
+    .gastos-tab-content { display: none; }
+    .gastos-tab-content.active { display: block; }
+
     .gastos-periodo-selector {
       display: flex;
       gap: 6px;
@@ -603,13 +630,109 @@
       color: var(--terracotta);
     }
 
-    .gasto-item-pagador {
+    .gasto-item-generador {
       font-size: 0.65rem;
       padding: 2px 6px;
-      background: var(--sage-muted);
-      color: var(--sage-dark);
+      background: var(--mayordomo-muted);
+      color: var(--mayordomo);
       border-radius: var(--radius-sm);
     }
+
+    /* Tabla de reparto */
+    .reparto-info {
+      background: var(--sage-muted);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 0.8rem;
+      color: var(--sage-dark);
+    }
+
+    .reparto-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .reparto-table th {
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 8px 12px;
+      border-bottom: 2px solid var(--cream-dark);
+    }
+
+    .reparto-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--cream-dark);
+      font-size: 0.9rem;
+    }
+
+    .reparto-table tr:last-child td { border-bottom: none; }
+
+    .reparto-nido-nombre {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .reparto-nido-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .reparto-input {
+      width: 70px;
+      padding: 6px 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      text-align: right;
+    }
+
+    .reparto-input:focus {
+      outline: none;
+      border-color: var(--sage);
+    }
+
+    .reparto-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background: var(--cream-medium);
+      border-radius: var(--radius-md);
+      margin-top: 12px;
+    }
+
+    .reparto-total-label { font-weight: 600; }
+    .reparto-total-valor { font-size: 1.1rem; font-weight: 700; }
+    .reparto-total-valor.ok { color: var(--success); }
+    .reparto-total-valor.error { color: var(--error); }
+
+    .reparto-desglose {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    .reparto-desglose-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 8px;
+    }
+
+    .reparto-desglose-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 0.85rem;
+    }
+
+    .reparto-desglose-item span:last-child { font-weight: 600; color: var(--terracotta); }
 
     /* Inventario mejorado */
     .inventario-categorias {
@@ -1070,6 +1193,16 @@
       </div>
       <form id="form-gasto">
         <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Fecha</label>
+              <input type="date" class="form-input" id="gasto-fecha" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Importe (€)</label>
+              <input type="number" class="form-input" id="gasto-importe" min="0" step="0.01" placeholder="0.00" required>
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label">Concepto</label>
             <input type="text" class="form-input" id="gasto-concepto" placeholder="Ej: Factura luz noviembre" required>
@@ -1090,21 +1223,15 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Importe (€)</label>
-              <input type="number" class="form-input" id="gasto-importe" min="0" step="0.01" placeholder="0.00" required>
+              <label class="form-label">Proveedor</label>
+              <input type="text" class="form-input" id="gasto-proveedor" placeholder="Ej: Iberdrola, Ferretería...">
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Fecha</label>
-              <input type="date" class="form-input" id="gasto-fecha" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Pagado por</label>
-              <select class="form-select" id="gasto-pagador">
-                <option value="">Común / Sin asignar</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label class="form-label">Generador (quién lo ordena)</label>
+            <select class="form-select" id="gasto-generador">
+              <option value="">Sin asignar</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Notas (opcional)</label>
@@ -1136,7 +1263,9 @@
     let reservasData = [];
     let inventarioData = [];
     let gastosData = [];
+    let repartoData = {}; // {nidoId: porcentaje}
     let gastosPeriodo = 'mes';
+    let gastosTab = 'registro';
     let inventarioFiltro = 'todos';
     let calendarioMes = new Date();
     let editingReservaId = null;
@@ -1202,6 +1331,19 @@
     async function loadGastos() {
       const snap = await db.collection('bienes').doc(bienId).collection('gastos').orderBy('fecha', 'desc').get();
       gastosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Cargar configuración de reparto
+      const repartoDoc = await db.collection('bienes').doc(bienId).collection('config').doc('reparto').get();
+      if (repartoDoc.exists) {
+        repartoData = repartoDoc.data().porcentajes || {};
+      } else {
+        // Inicializar reparto equitativo
+        repartoData = {};
+        const porcentajeBase = nidosData.length > 0 ? Math.floor(100 / nidosData.length) : 100;
+        nidosData.forEach((n, i) => {
+          repartoData[n.id] = i === 0 ? 100 - (porcentajeBase * (nidosData.length - 1)) : porcentajeBase;
+        });
+      }
     }
 
     function renderBien() {
@@ -1384,10 +1526,23 @@
           <div class="modulo-panel" id="panel-gastos">
             <div class="modulo-panel-header"><div class="modulo-panel-title">💶 Gastos</div><button class="btn btn-sm btn-primary" onclick="abrirModalGasto()">+ Añadir</button></div>
             <div class="modulo-panel-body">
-              <div class="gastos-periodo-selector" id="gastos-periodo-selector"></div>
-              <div class="gastos-resumen" id="gastos-resumen"></div>
-              <div class="gastos-por-categoria" id="gastos-categorias"></div>
-              <div class="gastos-list" id="gastos-list"></div>
+              <div class="gastos-tabs">
+                <button class="gastos-tab active" onclick="cambiarTabGastos('registro')">📋 Registro</button>
+                <button class="gastos-tab" onclick="cambiarTabGastos('reparto')">📊 Reparto</button>
+              </div>
+              <div class="gastos-tab-content active" id="tab-registro">
+                <div class="gastos-periodo-selector" id="gastos-periodo-selector"></div>
+                <div class="gastos-resumen" id="gastos-resumen"></div>
+                <div class="gastos-por-categoria" id="gastos-categorias"></div>
+                <div class="gastos-list" id="gastos-list"></div>
+              </div>
+              <div class="gastos-tab-content" id="tab-reparto">
+                <div class="reparto-info">💡 Define qué porcentaje del gasto asume cada nido. El total debe sumar 100%.</div>
+                <table class="reparto-table" id="reparto-table"></table>
+                <div class="reparto-total" id="reparto-total"></div>
+                <button class="btn btn-primary btn-sm" style="margin-top:12px;width:100%;" onclick="guardarReparto()">💾 Guardar reparto</button>
+                <div class="reparto-desglose" id="reparto-desglose"></div>
+              </div>
             </div>
           </div>
         `;
@@ -1835,18 +1990,31 @@
       otro: 'Otro'
     };
 
+    const coloresNidoHex = ['#7A9E7E', '#C17757', '#6B8E9F', '#9B8EA6'];
+
     function renderGastos() {
       renderGastosPeriodoSelector();
       renderGastosResumen();
       renderGastosCategorias();
       renderGastosList();
+      renderRepartoTable();
+      renderRepartoDesglose();
       
-      // Popular selector de pagador con nidos
-      const selectPagador = document.getElementById('gasto-pagador');
-      if (selectPagador) {
-        selectPagador.innerHTML = '<option value="">Común / Sin asignar</option>' +
+      // Popular selector de generador con nidos
+      const selectGenerador = document.getElementById('gasto-generador');
+      if (selectGenerador) {
+        selectGenerador.innerHTML = '<option value="">Sin asignar</option>' +
           nidosData.map(n => `<option value="${n.id}">${n.nombre}</option>`).join('');
       }
+    }
+
+    function cambiarTabGastos(tab) {
+      gastosTab = tab;
+      document.querySelectorAll('.gastos-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.gastos-tab-content').forEach(c => c.classList.remove('active'));
+      
+      document.querySelector(`.gastos-tab:nth-child(${tab === 'registro' ? 1 : 2})`).classList.add('active');
+      document.getElementById(`tab-${tab}`).classList.add('active');
     }
 
     function renderGastosPeriodoSelector() {
@@ -1862,7 +2030,11 @@
 
     function cambiarPeriodoGastos(periodo) {
       gastosPeriodo = periodo;
-      renderGastos();
+      renderGastosPeriodoSelector();
+      renderGastosResumen();
+      renderGastosCategorias();
+      renderGastosList();
+      renderRepartoDesglose();
     }
 
     function getGastosFiltrados() {
@@ -1879,7 +2051,7 @@
         } else if (gastosPeriodo === 'año') {
           return fechaGasto >= inicioAño;
         }
-        return true; // todos
+        return true;
       });
     }
 
@@ -1911,7 +2083,6 @@
 
       const gastosFiltrados = getGastosFiltrados();
       
-      // Agrupar por categoría
       const porCategoria = {};
       gastosFiltrados.forEach(g => {
         const cat = g.categoria || 'otro';
@@ -1919,7 +2090,6 @@
         porCategoria[cat] += parseFloat(g.importe) || 0;
       });
 
-      // Ordenar por importe descendente
       const categorias = Object.entries(porCategoria).sort((a, b) => b[1] - a[1]);
 
       if (categorias.length === 0) {
@@ -1947,12 +2117,11 @@
         return;
       }
 
-      // Mostrar últimos 10
-      const gastosRecientes = gastosFiltrados.slice(0, 10);
+      const gastosRecientes = gastosFiltrados.slice(0, 15);
 
       container.innerHTML = gastosRecientes.map(g => {
         const icon = gastoCatIcons[g.categoria] || '📋';
-        const nido = g.pagadorId ? nidosData.find(n => n.id === g.pagadorId) : null;
+        const generador = g.generadorId ? nidosData.find(n => n.id === g.generadorId) : null;
         const fecha = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
         
         return `
@@ -1960,13 +2129,137 @@
             <span class="gasto-item-icon">${icon}</span>
             <div class="gasto-item-info">
               <div class="gasto-item-concepto">${g.concepto}</div>
-              <div class="gasto-item-meta">${fecha}${g.notas ? ' · ' + g.notas : ''}</div>
+              <div class="gasto-item-meta">${fecha}${g.proveedor ? ' · ' + g.proveedor : ''}</div>
             </div>
-            ${nido ? `<span class="gasto-item-pagador">${nido.nombre}</span>` : ''}
+            ${generador ? `<span class="gasto-item-generador">${generador.nombre}</span>` : ''}
             <span class="gasto-item-importe">€${parseFloat(g.importe).toFixed(2)}</span>
           </div>
         `;
       }).join('');
+    }
+
+    // TABLA DE REPARTO
+    function renderRepartoTable() {
+      const container = document.getElementById('reparto-table');
+      if (!container) return;
+
+      if (nidosData.length === 0) {
+        container.innerHTML = '<tr><td>No hay nidos configurados</td></tr>';
+        return;
+      }
+
+      let html = `
+        <thead>
+          <tr>
+            <th>Nido</th>
+            <th style="text-align:right">Porcentaje</th>
+          </tr>
+        </thead>
+        <tbody>
+      `;
+
+      nidosData.forEach((nido, i) => {
+        const color = coloresNidoHex[i % coloresNidoHex.length];
+        const porcentaje = repartoData[nido.id] || 0;
+        
+        html += `
+          <tr>
+            <td>
+              <div class="reparto-nido-nombre">
+                <div class="reparto-nido-color" style="background:${color}"></div>
+                <span>${nido.nombre}</span>
+              </div>
+            </td>
+            <td style="text-align:right">
+              <input type="number" class="reparto-input" 
+                id="reparto-${nido.id}" 
+                value="${porcentaje}" 
+                min="0" max="100" 
+                onchange="actualizarReparto('${nido.id}', this.value)"> %
+            </td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody>';
+      container.innerHTML = html;
+
+      actualizarTotalReparto();
+    }
+
+    function actualizarReparto(nidoId, valor) {
+      repartoData[nidoId] = parseInt(valor) || 0;
+      actualizarTotalReparto();
+    }
+
+    function actualizarTotalReparto() {
+      const container = document.getElementById('reparto-total');
+      if (!container) return;
+
+      const total = Object.values(repartoData).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
+      const esValido = total === 100;
+
+      container.innerHTML = `
+        <span class="reparto-total-label">Total</span>
+        <span class="reparto-total-valor ${esValido ? 'ok' : 'error'}">${total}%</span>
+      `;
+    }
+
+    async function guardarReparto() {
+      const total = Object.values(repartoData).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
+      
+      if (total !== 100) {
+        alert('El total debe sumar exactamente 100%');
+        return;
+      }
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('config').doc('reparto').set({
+          porcentajes: repartoData,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        alert('✅ Reparto guardado');
+        renderRepartoDesglose();
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar');
+      }
+    }
+
+    function renderRepartoDesglose() {
+      const container = document.getElementById('reparto-desglose');
+      if (!container) return;
+
+      const gastosFiltrados = getGastosFiltrados();
+      const total = gastosFiltrados.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+
+      if (total === 0 || nidosData.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const periodoLabel = gastosPeriodo === 'mes' ? 'este mes' : gastosPeriodo === 'año' ? 'este año' : 'en total';
+
+      let html = `<div class="reparto-desglose-title">Desglose ${periodoLabel} (€${total.toFixed(2)})</div>`;
+
+      nidosData.forEach((nido, i) => {
+        const porcentaje = repartoData[nido.id] || 0;
+        const importe = (total * porcentaje / 100);
+        const color = coloresNidoHex[i % coloresNidoHex.length];
+        
+        html += `
+          <div class="reparto-desglose-item">
+            <span style="display:flex;align-items:center;gap:6px;">
+              <span style="width:8px;height:8px;border-radius:2px;background:${color}"></span>
+              ${nido.nombre} (${porcentaje}%)
+            </span>
+            <span>€${importe.toFixed(2)}</span>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
     }
 
     // MODAL GASTOS
@@ -1978,16 +2271,16 @@
       formGasto.reset();
       document.getElementById('btn-eliminar-gasto').classList.toggle('hidden', !gasto);
       
-      // Fecha por defecto: hoy
       document.getElementById('gasto-fecha').value = formatDateInput(new Date());
       
       if (gasto) {
         document.getElementById('modal-gasto-title').textContent = '✏️ Editar gasto';
+        document.getElementById('gasto-fecha').value = gasto.fecha || '';
+        document.getElementById('gasto-importe').value = gasto.importe || '';
         document.getElementById('gasto-concepto').value = gasto.concepto || '';
         document.getElementById('gasto-categoria').value = gasto.categoria || 'otro';
-        document.getElementById('gasto-importe').value = gasto.importe || '';
-        document.getElementById('gasto-fecha').value = gasto.fecha || '';
-        document.getElementById('gasto-pagador').value = gasto.pagadorId || '';
+        document.getElementById('gasto-proveedor').value = gasto.proveedor || '';
+        document.getElementById('gasto-generador').value = gasto.generadorId || '';
         document.getElementById('gasto-notas').value = gasto.notas || '';
       } else {
         document.getElementById('modal-gasto-title').textContent = '💶 Nuevo gasto';
@@ -2005,16 +2298,17 @@
       btn.disabled = true; btn.textContent = 'Guardando...';
       
       try {
-        const pagadorId = document.getElementById('gasto-pagador').value;
-        const nido = pagadorId ? nidosData.find(n => n.id === pagadorId) : null;
+        const generadorId = document.getElementById('gasto-generador').value;
+        const nido = generadorId ? nidosData.find(n => n.id === generadorId) : null;
         
         const data = {
+          fecha: document.getElementById('gasto-fecha').value,
+          importe: parseFloat(document.getElementById('gasto-importe').value) || 0,
           concepto: document.getElementById('gasto-concepto').value,
           categoria: document.getElementById('gasto-categoria').value,
-          importe: parseFloat(document.getElementById('gasto-importe').value) || 0,
-          fecha: document.getElementById('gasto-fecha').value,
-          pagadorId: pagadorId || null,
-          pagadorNombre: nido?.nombre || null,
+          proveedor: document.getElementById('gasto-proveedor').value,
+          generadorId: generadorId || null,
+          generadorNombre: nido?.nombre || null,
           notas: document.getElementById('gasto-notas').value,
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
