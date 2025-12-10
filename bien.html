@@ -734,6 +734,112 @@
 
     .reparto-desglose-item span:last-child { font-weight: 600; color: var(--terracotta); }
 
+    /* Caseros */
+    .caseros-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .casero-card {
+      background: var(--cream-medium);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .casero-card:hover { background: var(--cream-dark); }
+
+    .casero-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .casero-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--mayordomo);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .casero-info { flex: 1; }
+    .casero-nombre { font-weight: 600; font-size: 0.95rem; }
+    .casero-email { font-size: 0.75rem; color: var(--text-muted); }
+
+    .casero-permisos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .casero-permiso-badge {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      border-radius: var(--radius-sm);
+    }
+
+    .casero-permiso-badge.limitado {
+      background: var(--terracotta-muted);
+      color: var(--terracotta);
+    }
+
+    /* Matriz permisos en modal */
+    .permisos-matrix {
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .permisos-matrix-header {
+      display: grid;
+      grid-template-columns: 1fr repeat(4, 40px);
+      gap: 4px;
+      padding: 10px 12px;
+      background: var(--cream-dark);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .permisos-matrix-header span:first-child { text-align: left; }
+
+    .permisos-matrix-row {
+      display: grid;
+      grid-template-columns: 1fr repeat(4, 40px);
+      gap: 4px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--cream-dark);
+      align-items: center;
+    }
+
+    .permisos-matrix-row:last-child { border-bottom: none; }
+
+    .permisos-matrix-row label {
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .permisos-matrix-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--sage);
+    }
+
+    .permisos-matrix-check {
+      display: flex;
+      justify-content: center;
+    }
+
     /* Inventario mejorado */
     .inventario-categorias {
       display: flex;
@@ -1073,6 +1179,17 @@
             </div>
             <div class="collapsible-body"><div class="normas-box" id="normas-texto">Sin normas definidas</div></div>
           </div>
+
+          <div class="collapsible-section" id="section-caseros">
+            <div class="collapsible-header" onclick="toggleSection('caseros')">
+              <div class="collapsible-title"><span>👤</span><span>Caseros</span><span class="collapsible-count" id="count-caseros">0</span></div>
+              <span class="collapsible-toggle">▼</span>
+            </div>
+            <div class="collapsible-body">
+              <div class="caseros-list" id="lista-caseros"><div class="empty-mini">Sin caseros asignados</div></div>
+              <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalCasero()">+ Añadir casero</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1249,6 +1366,97 @@
     </div>
   </div>
 
+  <!-- Modal Casero -->
+  <div class="modal-overlay" id="modal-casero">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-casero-title">👤 Nuevo casero</h3>
+        <button class="modal-close" id="modal-casero-close">×</button>
+      </div>
+      <form id="form-casero">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input type="text" class="form-input" id="casero-nombre" placeholder="Nombre completo" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email (para login)</label>
+              <input type="email" class="form-input" id="casero-email" placeholder="email@ejemplo.com" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Teléfono</label>
+              <input type="tel" class="form-input" id="casero-telefono" placeholder="600 000 000">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" style="margin-bottom:12px;">Permisos en este bien</label>
+            <div class="permisos-matrix">
+              <div class="permisos-matrix-header">
+                <span>Sección</span>
+                <span>V</span>
+                <span>C</span>
+                <span>E</span>
+                <span>B</span>
+              </div>
+              <div class="permisos-matrix-row">
+                <label>📅 Reservas</label>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-reservas-v" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-reservas-c"></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-reservas-e"></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-reservas-b"></div>
+              </div>
+              <div class="permisos-matrix-row">
+                <label>📦 Inventario</label>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-inventario-v" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-inventario-c" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-inventario-e" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-inventario-b"></div>
+              </div>
+              <div class="permisos-matrix-row">
+                <label>🔧 Mantenimiento</label>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-mantenimiento-v" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-mantenimiento-c" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-mantenimiento-e"></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-mantenimiento-b"></div>
+              </div>
+              <div class="permisos-matrix-row">
+                <label>🧹 Limpieza</label>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-limpieza-v" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-limpieza-c" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-limpieza-e" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-limpieza-b"></div>
+              </div>
+              <div class="permisos-matrix-row">
+                <label>💶 Gastos</label>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-gastos-v" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-gastos-c" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-gastos-e"></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-gastos-b"></div>
+              </div>
+              <div class="permisos-matrix-row">
+                <label>📄 Documentos</label>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-documentos-v" checked></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-documentos-c"></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-documentos-e"></div>
+                <div class="permisos-matrix-check"><input type="checkbox" id="perm-documentos-b"></div>
+              </div>
+            </div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-top:6px;">V=Ver, C=Crear, E=Editar, B=Borrar</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-casero">🗑️ Eliminar</button>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="btn btn-secondary" id="modal-casero-cancelar">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="modal-casero-guardar">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -1271,6 +1479,8 @@
     let editingReservaId = null;
     let editingInventarioId = null;
     let editingGastoId = null;
+    let caserosData = [];
+    let editingCaseroId = null;
 
     const nidoColores = ['nido-1', 'nido-2', 'nido-3', 'nido-4'];
     const nidoColorMap = {};
@@ -1297,6 +1507,7 @@
         await loadReservas();
         await loadInventario();
         await loadGastos();
+        await loadCaseros();
         renderBien();
 
         document.getElementById('page-loading').classList.add('hidden');
@@ -1344,6 +1555,11 @@
           repartoData[n.id] = i === 0 ? 100 - (porcentajeBase * (nidosData.length - 1)) : porcentajeBase;
         });
       }
+    }
+
+    async function loadCaseros() {
+      const snap = await db.collection('bienes').doc(bienId).collection('caseros').get();
+      caserosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
     function renderBien() {
@@ -1426,6 +1642,10 @@
       }
 
       if (bienData.normasConvivencia) document.getElementById('normas-texto').textContent = bienData.normasConvivencia;
+
+      // Caseros
+      document.getElementById('count-caseros').textContent = caserosData.length;
+      renderCaserosList();
 
       // Mayordomo
       if (bienData.mayordomoActivo) {
@@ -2340,6 +2560,182 @@
         modalGasto.classList.remove('active');
         await loadGastos();
         renderGastos();
+      } catch (error) {
+        console.error(error);
+        alert('Error');
+      }
+    });
+
+    // ========== CASEROS ==========
+    const seccionesPermisos = ['reservas', 'inventario', 'mantenimiento', 'limpieza', 'gastos', 'documentos'];
+    const seccionesLabels = {
+      reservas: '📅',
+      inventario: '📦',
+      mantenimiento: '🔧',
+      limpieza: '🧹',
+      gastos: '💶',
+      documentos: '📄'
+    };
+
+    function renderCaserosList() {
+      const container = document.getElementById('lista-caseros');
+      if (!container) return;
+
+      if (caserosData.length === 0) {
+        container.innerHTML = '<div class="empty-mini">Sin caseros asignados</div>';
+        return;
+      }
+
+      container.innerHTML = caserosData.map(c => {
+        const iniciales = c.nombre ? c.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
+        
+        // Contar permisos activos
+        const permisos = c.permisos || {};
+        const permisosActivos = [];
+        seccionesPermisos.forEach(sec => {
+          if (permisos[sec]?.ver) {
+            const tieneEdicion = permisos[sec].crear || permisos[sec].editar;
+            permisosActivos.push({ sec, limitado: !tieneEdicion });
+          }
+        });
+
+        return `
+          <div class="casero-card" onclick="abrirModalCasero(caserosData.find(x=>x.id==='${c.id}'))">
+            <div class="casero-card-header">
+              <div class="casero-avatar">${iniciales}</div>
+              <div class="casero-info">
+                <div class="casero-nombre">${c.nombre}</div>
+                <div class="casero-email">${c.email}${c.telefono ? ' · ' + c.telefono : ''}</div>
+              </div>
+            </div>
+            <div class="casero-permisos">
+              ${permisosActivos.map(p => `
+                <span class="casero-permiso-badge ${p.limitado ? 'limitado' : ''}">${seccionesLabels[p.sec]}</span>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // MODAL CASERO
+    const modalCasero = document.getElementById('modal-casero');
+    const formCasero = document.getElementById('form-casero');
+
+    function abrirModalCasero(casero = null) {
+      editingCaseroId = casero?.id || null;
+      formCasero.reset();
+      document.getElementById('btn-eliminar-casero').classList.toggle('hidden', !casero);
+      
+      // Reset checkboxes a valores por defecto
+      seccionesPermisos.forEach(sec => {
+        document.getElementById(`perm-${sec}-v`).checked = true;
+        document.getElementById(`perm-${sec}-c`).checked = ['inventario', 'mantenimiento', 'limpieza', 'gastos'].includes(sec);
+        document.getElementById(`perm-${sec}-e`).checked = ['inventario', 'limpieza'].includes(sec);
+        document.getElementById(`perm-${sec}-b`).checked = false;
+      });
+      
+      if (casero) {
+        document.getElementById('modal-casero-title').textContent = '✏️ Editar casero';
+        document.getElementById('casero-nombre').value = casero.nombre || '';
+        document.getElementById('casero-email').value = casero.email || '';
+        document.getElementById('casero-email').disabled = true; // No editar email
+        document.getElementById('casero-telefono').value = casero.telefono || '';
+        
+        // Cargar permisos
+        const permisos = casero.permisos || {};
+        seccionesPermisos.forEach(sec => {
+          document.getElementById(`perm-${sec}-v`).checked = permisos[sec]?.ver || false;
+          document.getElementById(`perm-${sec}-c`).checked = permisos[sec]?.crear || false;
+          document.getElementById(`perm-${sec}-e`).checked = permisos[sec]?.editar || false;
+          document.getElementById(`perm-${sec}-b`).checked = permisos[sec]?.borrar || false;
+        });
+      } else {
+        document.getElementById('modal-casero-title').textContent = '👤 Nuevo casero';
+        document.getElementById('casero-email').disabled = false;
+      }
+      modalCasero.classList.add('active');
+    }
+
+    document.getElementById('modal-casero-close').addEventListener('click', () => modalCasero.classList.remove('active'));
+    document.getElementById('modal-casero-cancelar').addEventListener('click', () => modalCasero.classList.remove('active'));
+    modalCasero.addEventListener('click', (e) => { if (e.target === modalCasero) modalCasero.classList.remove('active'); });
+
+    formCasero.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('modal-casero-guardar');
+      btn.disabled = true; btn.textContent = 'Guardando...';
+      
+      try {
+        // Recoger permisos de la matriz
+        const permisos = {};
+        seccionesPermisos.forEach(sec => {
+          permisos[sec] = {
+            ver: document.getElementById(`perm-${sec}-v`).checked,
+            crear: document.getElementById(`perm-${sec}-c`).checked,
+            editar: document.getElementById(`perm-${sec}-e`).checked,
+            borrar: document.getElementById(`perm-${sec}-b`).checked
+          };
+        });
+
+        const data = {
+          nombre: document.getElementById('casero-nombre').value,
+          email: document.getElementById('casero-email').value.toLowerCase(),
+          telefono: document.getElementById('casero-telefono').value,
+          permisos: permisos,
+          bienId: bienId,
+          familiaId: familiaId,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        const ref = db.collection('bienes').doc(bienId).collection('caseros');
+        
+        if (editingCaseroId) {
+          await ref.doc(editingCaseroId).update(data);
+        } else {
+          // Verificar si ya existe un casero con ese email
+          const existente = await db.collectionGroup('caseros').where('email', '==', data.email).get();
+          
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          data.activo = true;
+          
+          // Crear en subcolección del bien
+          const nuevoCasero = await ref.add(data);
+          
+          // También guardar referencia global para login
+          await db.collection('caseros').doc(nuevoCasero.id).set({
+            email: data.email,
+            nombre: data.nombre,
+            bienesAcceso: [{ bienId, bienNombre: bienData.nombre, familiaId }],
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        
+        modalCasero.classList.remove('active');
+        await loadCaseros();
+        document.getElementById('count-caseros').textContent = caserosData.length;
+        renderCaserosList();
+        
+        if (!editingCaseroId) {
+          alert('✅ Casero añadido.\n\nPara que pueda acceder, debe registrarse en FAMILYNK con el email: ' + data.email);
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar');
+      }
+      
+      btn.disabled = false; btn.textContent = 'Guardar';
+    });
+
+    document.getElementById('btn-eliminar-casero').addEventListener('click', async () => {
+      if (!editingCaseroId || !confirm('¿Eliminar este casero? Perderá acceso a este bien.')) return;
+      try {
+        await db.collection('bienes').doc(bienId).collection('caseros').doc(editingCaseroId).delete();
+        modalCasero.classList.remove('active');
+        await loadCaseros();
+        document.getElementById('count-caseros').textContent = caserosData.length;
+        renderCaserosList();
       } catch (error) {
         console.error(error);
         alert('Error');
