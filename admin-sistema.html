@@ -273,6 +273,61 @@
       .users-table { font-size: 0.8rem; }
       .users-table th:nth-child(3), .users-table td:nth-child(3) { display: none; }
     }
+    /* Mayordomo */
+    .bien-config-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+    }
+    .bien-info { display: flex; align-items: center; gap: 12px; }
+    .bien-icono { font-size: 2rem; }
+    .bien-nombre { font-weight: 700; font-size: 1.1rem; }
+    .bien-tipo { font-size: 0.8rem; color: var(--text-muted); }
+    
+    .toggle-switch-large { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .toggle-switch-large input { display: none; }
+    .toggle-slider-large {
+      width: 56px; height: 28px; background: var(--text-muted); border-radius: 28px;
+      position: relative; transition: 0.3s;
+    }
+    .toggle-slider-large:before {
+      content: ""; position: absolute; width: 22px; height: 22px; left: 3px; top: 3px;
+      background: white; border-radius: 50%; transition: 0.3s;
+    }
+    .toggle-switch-large input:checked + .toggle-slider-large { background: #8B7355; }
+    .toggle-switch-large input:checked + .toggle-slider-large:before { transform: translateX(28px); }
+    .toggle-label { font-weight: 600; color: var(--text-light); }
+    .toggle-switch-large input:checked ~ .toggle-label { color: #8B7355; }
+    
+    .submodulos-title { font-weight: 600; margin-bottom: 12px; color: var(--text); }
+    .submodulos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .submodulo-item {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      cursor: pointer; transition: all 0.2s;
+    }
+    .submodulo-item:hover { border-color: #8B7355; }
+    .submodulo-item input { display: none; }
+    .submodulo-item input:checked + .submodulo-icono { transform: scale(1.1); }
+    .submodulo-item:has(input:checked) { border-color: #8B7355; background: rgba(139, 115, 85, 0.1); }
+    .submodulo-icono { font-size: 1.3rem; }
+    .submodulo-nombre { font-weight: 600; font-size: 0.85rem; }
+    
+    .bienes-resumen { display: flex; flex-direction: column; gap: 8px; }
+    .bien-resumen-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; background: var(--cream); border-radius: var(--radius-md);
+    }
+    .bien-resumen-info { display: flex; align-items: center; gap: 10px; }
+    .bien-resumen-nombre { font-weight: 600; }
+    .bien-resumen-estado { font-size: 0.8rem; padding: 4px 10px; border-radius: 20px; }
+    .bien-resumen-estado.activo { background: rgba(139, 115, 85, 0.15); color: #8B7355; }
+    .bien-resumen-estado.inactivo { background: var(--cream-dark); color: var(--text-muted); }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -298,6 +353,7 @@
 
     <div class="admin-tabs">
       <button class="admin-tab active" data-section="usuarios" onclick="cambiarSeccion('usuarios')"><span>👥</span> Usuarios</button>
+      <button class="admin-tab" data-section="mayordomo" onclick="cambiarSeccion('mayordomo')"><span>🎩</span> Mayordomo</button>
       <button class="admin-tab" data-section="secciones" onclick="cambiarSeccion('secciones')"><span>📂</span> Secciones</button>
       <button class="admin-tab" data-section="permisos" onclick="cambiarSeccion('permisos')"><span>🔐</span> Permisos</button>
       <button class="admin-tab" data-section="estirpe" onclick="cambiarSeccion('estirpe')"><span>⚙️</span> Configuración</button>
@@ -313,6 +369,85 @@
           <thead><tr><th>Usuario</th><th>Nido</th><th>Rol</th><th>Acciones</th></tr></thead>
           <tbody id="usuarios-tbody"></tbody>
         </table>
+      </div>
+    </section>
+
+    <section class="admin-section" id="section-mayordomo">
+      <div class="section-header">
+        <h2 class="section-title">🎩 Mayordomo</h2>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Gestión de bienes</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Activa el Mayordomo y configura los submódulos para cada bien de la estirpe
+        </p>
+        
+        <div class="form-group">
+          <label class="form-label">Selecciona un bien</label>
+          <select class="form-input" id="select-bien" onchange="cargarConfigBien()">
+            <option value="">-- Selecciona un bien --</option>
+          </select>
+        </div>
+        
+        <div id="config-bien-container" class="hidden">
+          <div class="bien-config-header">
+            <div class="bien-info">
+              <span class="bien-icono" id="bien-icono">🏠</span>
+              <div>
+                <div class="bien-nombre" id="bien-nombre">...</div>
+                <div class="bien-tipo" id="bien-tipo">...</div>
+              </div>
+            </div>
+            <label class="toggle-switch-large">
+              <input type="checkbox" id="toggle-mayordomo-activo" onchange="toggleMayordomoBien()">
+              <span class="toggle-slider-large"></span>
+              <span class="toggle-label" id="mayordomo-estado">Desactivado</span>
+            </label>
+          </div>
+          
+          <div id="submodulos-config" class="hidden">
+            <div class="submodulos-title">Submódulos activos</div>
+            <div class="submodulos-grid">
+              <label class="submodulo-item">
+                <input type="checkbox" id="mod-reservas" onchange="guardarSubmodulos()">
+                <span class="submodulo-icono">📅</span>
+                <span class="submodulo-nombre">Reservas</span>
+              </label>
+              <label class="submodulo-item">
+                <input type="checkbox" id="mod-inventario" onchange="guardarSubmodulos()">
+                <span class="submodulo-icono">📦</span>
+                <span class="submodulo-nombre">Inventario</span>
+              </label>
+              <label class="submodulo-item">
+                <input type="checkbox" id="mod-gastos" onchange="guardarSubmodulos()">
+                <span class="submodulo-icono">💰</span>
+                <span class="submodulo-nombre">Gastos</span>
+              </label>
+              <label class="submodulo-item">
+                <input type="checkbox" id="mod-mantenimiento" onchange="guardarSubmodulos()">
+                <span class="submodulo-icono">🔧</span>
+                <span class="submodulo-nombre">Mantenimiento</span>
+              </label>
+              <label class="submodulo-item">
+                <input type="checkbox" id="mod-limpieza" onchange="guardarSubmodulos()">
+                <span class="submodulo-icono">🧹</span>
+                <span class="submodulo-nombre">Limpieza</span>
+              </label>
+            </div>
+            
+            <a href="#" id="enlace-ver-bien" class="btn btn-secondary" style="margin-top: 16px;">
+              👁️ Ver ficha del bien
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Resumen de bienes</div>
+        <div class="bienes-resumen" id="bienes-resumen">
+          <!-- Se carga dinámicamente -->
+        </div>
       </div>
     </section>
 
@@ -415,7 +550,8 @@
   <script src="js/firebase-config.js"></script>
 
   <script>
-    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [];
+    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [];
+    let bienSeleccionado = null;
 
     const seccionesDisponibles = [
       { id: 'arbol', nombre: 'Árbol', icono: '🌳', desc: 'Árbol genealógico' },
@@ -469,13 +605,15 @@
       usuariosData = usuariosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
+      bienesData = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       document.getElementById('stat-usuarios').textContent = usuariosData.length;
       document.getElementById('stat-nidos').textContent = nidosData.length;
-      document.getElementById('stat-bienes').textContent = bienesSnap.size;
+      document.getElementById('stat-bienes').textContent = bienesData.length;
       document.getElementById('stat-generaciones').textContent = new Set(nidosData.map(n => n.generacion)).size;
 
       renderUsuarios();
+      renderMayordomo();
       renderSecciones();
       renderPermisos();
       renderConfigEstirpe();
@@ -504,6 +642,141 @@
       const nuevoRol = prompt(`Rol actual: ${user.rol || 'miembro'}\n\nNuevo rol (adminSistema, adminNido, adulto, joven):`, user.rol || 'adulto');
       if (!nuevoRol) return;
       db.collection('usuarios').doc(userId).update({ rol: nuevoRol }).then(() => { alert('✅ Rol actualizado'); cargarDatos(); }).catch(err => alert('Error: ' + err.message));
+    }
+
+    // ============ MAYORDOMO ============
+    const tipoIconos = {
+      'inmueble': '🏠', 'vehiculo': '🚗', 'electrodomestico': '📺',
+      'mueble': '🛋️', 'otro': '📦'
+    };
+
+    function renderMayordomo() {
+      // Llenar selector de bienes
+      const select = document.getElementById('select-bien');
+      select.innerHTML = '<option value="">-- Selecciona un bien --</option>' + 
+        bienesData.map(b => `<option value="${b.id}">${tipoIconos[b.tipo] || '📦'} ${b.nombre}</option>`).join('');
+      
+      // Resumen de bienes
+      const resumen = document.getElementById('bienes-resumen');
+      if (bienesData.length === 0) {
+        resumen.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No hay bienes registrados. Créalos en "Lo Común".</p>';
+        return;
+      }
+      
+      resumen.innerHTML = bienesData.map(b => {
+        const activo = b.mayordomoActivo;
+        const modulos = b.mayordomoModulos || {};
+        const modulosActivos = Object.values(modulos).filter(v => v).length;
+        
+        return `
+          <div class="bien-resumen-item">
+            <div class="bien-resumen-info">
+              <span>${tipoIconos[b.tipo] || '📦'}</span>
+              <span class="bien-resumen-nombre">${b.nombre}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              ${activo ? `<span style="font-size: 0.75rem; color: var(--text-muted);">${modulosActivos} módulos</span>` : ''}
+              <span class="bien-resumen-estado ${activo ? 'activo' : 'inactivo'}">
+                ${activo ? '🎩 Activo' : 'Inactivo'}
+              </span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function cargarConfigBien() {
+      const bienId = document.getElementById('select-bien').value;
+      const container = document.getElementById('config-bien-container');
+      const submodulosConfig = document.getElementById('submodulos-config');
+      
+      if (!bienId) {
+        container.classList.add('hidden');
+        bienSeleccionado = null;
+        return;
+      }
+      
+      bienSeleccionado = bienesData.find(b => b.id === bienId);
+      if (!bienSeleccionado) return;
+      
+      container.classList.remove('hidden');
+      
+      // Info del bien
+      document.getElementById('bien-icono').textContent = tipoIconos[bienSeleccionado.tipo] || '📦';
+      document.getElementById('bien-nombre').textContent = bienSeleccionado.nombre;
+      document.getElementById('bien-tipo').textContent = bienSeleccionado.subtipo || bienSeleccionado.tipo;
+      document.getElementById('enlace-ver-bien').href = `bien.html?id=${bienId}`;
+      
+      // Estado del Mayordomo
+      const toggle = document.getElementById('toggle-mayordomo-activo');
+      toggle.checked = bienSeleccionado.mayordomoActivo || false;
+      document.getElementById('mayordomo-estado').textContent = toggle.checked ? 'Activado' : 'Desactivado';
+      
+      // Mostrar/ocultar submódulos
+      if (toggle.checked) {
+        submodulosConfig.classList.remove('hidden');
+        cargarSubmodulos();
+      } else {
+        submodulosConfig.classList.add('hidden');
+      }
+    }
+
+    function cargarSubmodulos() {
+      const modulos = bienSeleccionado.mayordomoModulos || {};
+      document.getElementById('mod-reservas').checked = modulos.reservas || false;
+      document.getElementById('mod-inventario').checked = modulos.inventario || false;
+      document.getElementById('mod-gastos').checked = modulos.gastos || false;
+      document.getElementById('mod-mantenimiento').checked = modulos.mantenimiento || false;
+      document.getElementById('mod-limpieza').checked = modulos.limpieza || false;
+    }
+
+    async function toggleMayordomoBien() {
+      if (!bienSeleccionado) return;
+      
+      const activo = document.getElementById('toggle-mayordomo-activo').checked;
+      document.getElementById('mayordomo-estado').textContent = activo ? 'Activado' : 'Desactivado';
+      
+      const submodulosConfig = document.getElementById('submodulos-config');
+      if (activo) {
+        submodulosConfig.classList.remove('hidden');
+        cargarSubmodulos();
+      } else {
+        submodulosConfig.classList.add('hidden');
+      }
+      
+      try {
+        await db.collection('bienes').doc(bienSeleccionado.id).update({
+          mayordomoActivo: activo
+        });
+        bienSeleccionado.mayordomoActivo = activo;
+        renderMayordomo(); // Actualizar resumen
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al actualizar');
+      }
+    }
+
+    async function guardarSubmodulos() {
+      if (!bienSeleccionado) return;
+      
+      const modulos = {
+        reservas: document.getElementById('mod-reservas').checked,
+        inventario: document.getElementById('mod-inventario').checked,
+        gastos: document.getElementById('mod-gastos').checked,
+        mantenimiento: document.getElementById('mod-mantenimiento').checked,
+        limpieza: document.getElementById('mod-limpieza').checked
+      };
+      
+      try {
+        await db.collection('bienes').doc(bienSeleccionado.id).update({
+          mayordomoModulos: modulos
+        });
+        bienSeleccionado.mayordomoModulos = modulos;
+        renderMayordomo(); // Actualizar resumen
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar submódulos');
+      }
     }
 
     function renderSecciones() {
