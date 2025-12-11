@@ -1097,7 +1097,41 @@
         const nidoDoc = await db.collection('nidos').doc(nidoId).get();
         
         if (!nidoDoc.exists) {
-          alert('Nido no encontrado');
+          // Nido no existe - preguntar si quiere crearlo
+          const crear = confirm('Este nido aún no existe.\n\n¿Quieres crearlo ahora?');
+          
+          if (crear) {
+            const nombre = prompt('Nombre del nuevo nido:', 'Mi Nido');
+            if (nombre) {
+              // Obtener familiaId del usuario
+              const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+              const familiaId = userDoc.exists ? userDoc.data().familiaId : null;
+              
+              if (!familiaId) {
+                alert('Error: No tienes una familia asignada');
+                window.location.href = 'app.html';
+                return;
+              }
+              
+              // Crear el nido con el ID específico
+              await db.collection('nidos').doc(nidoId).set({
+                nombre: nombre,
+                familiaId: familiaId,
+                generacion: '2-padres',
+                descripcion: '',
+                creador: currentUser.uid,
+                admins: [currentUser.uid],
+                miembros: [currentUser.uid],
+                miembrosData: [],
+                fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              
+              // Recargar la página
+              window.location.reload();
+              return;
+            }
+          }
+          
           window.location.href = 'app.html';
           return;
         }
