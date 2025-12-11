@@ -291,6 +291,21 @@
       color: var(--text-muted);
     }
 
+    .cinco-cosas {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .cinco-cosas input {
+      padding: 10px 12px;
+    }
+
+    textarea.form-input {
+      resize: vertical;
+      min-height: 60px;
+    }
+
     @media (max-width: 768px) {
       .form-row { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(3, 1fr); }
@@ -353,6 +368,42 @@
         </div>
       </div>
 
+      <!-- Descríbete -->
+      <div class="card">
+        <div class="card-title">✨ Descríbete</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Comparte un poco sobre ti con tu familia
+        </p>
+        
+        <div class="form-group">
+          <label class="form-label">🎨 Aficiones</label>
+          <textarea class="form-input" id="input-aficiones" rows="2" placeholder="¿Qué te gusta hacer en tu tiempo libre?"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🧠 Rasgos de comportamiento</label>
+          <textarea class="form-input" id="input-rasgos" rows="2" placeholder="¿Cómo te describirías? ¿Qué te define?"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">🎯 Retos de futuro</label>
+          <textarea class="form-input" id="input-retos" rows="2" placeholder="¿Qué metas o desafíos tienes por delante?"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">📝 Las 5 cosas que no quiero dejar de hacer</label>
+          <div class="cinco-cosas">
+            <input type="text" class="form-input" id="cosa-1" placeholder="1.">
+            <input type="text" class="form-input" id="cosa-2" placeholder="2.">
+            <input type="text" class="form-input" id="cosa-3" placeholder="3.">
+            <input type="text" class="form-input" id="cosa-4" placeholder="4.">
+            <input type="text" class="form-input" id="cosa-5" placeholder="5.">
+          </div>
+        </div>
+        
+        <button class="btn btn-primary" onclick="guardarDescripcion()">💾 Guardar descripción</button>
+      </div>
+
       <!-- Datos personales -->
       <div class="card">
         <div class="card-title">📋 Datos personales</div>
@@ -402,7 +453,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <script src="js/firebase-config.js"></script>
 
   <script>
@@ -476,11 +526,24 @@
       document.getElementById('badge-rol').textContent = rolLabels[userData.rol] || '👤 Miembro';
       document.getElementById('badge-nido').textContent = nidoData ? `🪺 ${nidoData.nombre}` : '🪺 Sin nido';
 
-      // Formulario
+      // Formulario datos personales
       document.getElementById('input-nombre').value = userData.nombre || '';
       document.getElementById('input-email').value = currentUser.email;
       document.getElementById('input-telefono').value = userData.telefono || '';
       document.getElementById('input-nacimiento').value = userData.fechaNacimiento || '';
+
+      // Sección Descríbete
+      const desc = userData.describete || {};
+      document.getElementById('input-aficiones').value = desc.aficiones || '';
+      document.getElementById('input-rasgos').value = desc.rasgos || '';
+      document.getElementById('input-retos').value = desc.retos || '';
+      
+      const cosas = desc.cincoCosas || [];
+      document.getElementById('cosa-1').value = cosas[0] || '';
+      document.getElementById('cosa-2').value = cosas[1] || '';
+      document.getElementById('cosa-3').value = cosas[2] || '';
+      document.getElementById('cosa-4').value = cosas[3] || '';
+      document.getElementById('cosa-5').value = cosas[4] || '';
     }
 
     async function cargarEstadisticas() {
@@ -512,9 +575,9 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      // Validar tamaño (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('La imagen es demasiado grande. Máximo 5MB.');
+      // Validar tamaño (max 1MB para base64)
+      if (file.size > 1 * 1024 * 1024) {
+        alert('La imagen es demasiado grande. Máximo 1MB.');
         return;
       }
 
@@ -527,40 +590,67 @@
       document.getElementById('upload-progress').classList.add('active');
 
       try {
-        // Subir a Firebase Storage
-        const storageRef = storage.ref();
-        const fotoRef = storageRef.child(`usuarios/${currentUser.uid}/foto-perfil`);
+        // Convertir a base64
+        const base64 = await fileToBase64(file);
         
-        await fotoRef.put(file);
-        const fotoURL = await fotoRef.getDownloadURL();
+        // Redimensionar si es muy grande
+        const resizedBase64 = await resizeImage(base64, 300, 300);
 
-        // Guardar URL en Firestore
-        await db.collection('usuarios').doc(currentUser.uid).update({ fotoURL });
-        userData.fotoURL = fotoURL;
+        // Guardar en Firestore
+        await db.collection('usuarios').doc(currentUser.uid).update({ fotoURL: resizedBase64 });
+        userData.fotoURL = resizedBase64;
 
         // Actualizar UI
-        document.getElementById('profile-avatar').innerHTML = `<img src="${fotoURL}" alt="Foto">`;
+        document.getElementById('profile-avatar').innerHTML = `<img src="${resizedBase64}" alt="Foto">`;
         document.getElementById('btn-quitar-foto').classList.remove('hidden');
 
         alert('✅ Foto actualizada');
       } catch (error) {
         console.error('Error subiendo foto:', error);
-        alert('Error al subir la foto. Inténtalo de nuevo.');
+        alert('Error al subir la foto: ' + error.message);
       } finally {
         document.getElementById('upload-progress').classList.remove('active');
       }
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+      });
+    }
+
+    function resizeImage(base64, maxWidth, maxHeight) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width *= ratio;
+            height *= ratio;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.src = base64;
+      });
     }
 
     async function quitarFoto() {
       if (!confirm('¿Quitar tu foto de perfil?')) return;
 
       try {
-        // Eliminar de Storage
-        const storageRef = storage.ref();
-        const fotoRef = storageRef.child(`usuarios/${currentUser.uid}/foto-perfil`);
-        await fotoRef.delete().catch(() => {}); // Ignorar si no existe
-
-        // Quitar URL de Firestore
+        // Quitar de Firestore
         await db.collection('usuarios').doc(currentUser.uid).update({ 
           fotoURL: firebase.firestore.FieldValue.delete() 
         });
@@ -605,6 +695,37 @@
       } catch (error) {
         console.error('Error guardando datos:', error);
         alert('Error al guardar los datos');
+      }
+    }
+
+    async function guardarDescripcion() {
+      const aficiones = document.getElementById('input-aficiones').value.trim();
+      const rasgos = document.getElementById('input-rasgos').value.trim();
+      const retos = document.getElementById('input-retos').value.trim();
+      const cincoCosas = [
+        document.getElementById('cosa-1').value.trim(),
+        document.getElementById('cosa-2').value.trim(),
+        document.getElementById('cosa-3').value.trim(),
+        document.getElementById('cosa-4').value.trim(),
+        document.getElementById('cosa-5').value.trim()
+      ].filter(c => c); // Solo las que tienen contenido
+
+      try {
+        await db.collection('usuarios').doc(currentUser.uid).update({
+          describete: {
+            aficiones,
+            rasgos,
+            retos,
+            cincoCosas
+          }
+        });
+
+        userData.describete = { aficiones, rasgos, retos, cincoCosas };
+        
+        alert('✅ Descripción guardada');
+      } catch (error) {
+        console.error('Error guardando descripción:', error);
+        alert('Error al guardar la descripción');
       }
     }
 
