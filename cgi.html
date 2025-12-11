@@ -95,6 +95,70 @@
     .familia-badge-stats { display: flex; gap: 8px; }
     .familia-badge-stat { display: flex; align-items: center; gap: 2px; }
 
+    /* Selector de estirpes */
+    .estirpe-selector {
+      position: relative;
+    }
+    .estirpe-selector-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--sage);
+      border: none;
+      border-radius: var(--radius-full);
+      color: white;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .estirpe-selector-btn:hover { background: var(--sage-dark); }
+    .estirpe-arrow { font-size: 0.7rem; transition: transform 0.2s; }
+    .estirpe-selector.open .estirpe-arrow { transform: rotate(180deg); }
+    
+    .estirpe-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 220px;
+      background: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-medium);
+      z-index: 1000;
+      overflow: hidden;
+    }
+    .estirpe-dropdown-list { padding: 8px 0; }
+    .estirpe-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .estirpe-dropdown-item:hover { background: var(--cream); }
+    .estirpe-dropdown-item.active { background: var(--sage-muted); }
+    .estirpe-dropdown-item-icon { font-size: 1.2rem; }
+    .estirpe-dropdown-item-name { font-weight: 600; font-size: 0.9rem; }
+    .estirpe-dropdown-item-check { margin-left: auto; color: var(--sage); }
+    
+    .estirpe-dropdown-divider { height: 1px; background: var(--cream-dark); margin: 4px 0; }
+    .estirpe-dropdown-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      color: var(--sage);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .estirpe-dropdown-action:hover { background: var(--cream); }
+
     /* Nav desktop */
     .header-nav {
       display: flex;
@@ -471,6 +535,7 @@
 
     .admin-btn:hover { transform: translateY(-1px); }
     .admin-btn.sistema { background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); color: white; }
+    .admin-btn.rama { background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%); color: white; }
     .admin-btn.nido { background: linear-gradient(135deg, var(--terracotta) 0%, var(--terracotta-light) 100%); color: white; }
     .admin-btn.mayordomo { background: linear-gradient(135deg, var(--mayordomo) 0%, #A69076 100%); color: white; }
 
@@ -1252,10 +1317,27 @@
       </a>
 
       <div class="familia-badge" id="familia-badge">
-        <span id="familia-badge-nombre">Mi Estirpe</span>
+        <span id="familia-badge-nombre">Mi Rama</span>
         <div class="familia-badge-stats">
           <span class="familia-badge-stat"><span id="badge-nidos">0</span>🪺</span>
           <span class="familia-badge-stat"><span id="badge-miembros">0</span>👥</span>
+        </div>
+      </div>
+
+      <!-- Selector de estirpes (oculto por defecto, visible si tiene más de 1) -->
+      <div class="estirpe-selector hidden" id="estirpe-selector">
+        <button class="estirpe-selector-btn" onclick="toggleEstirpeDropdown()">
+          <span id="estirpe-actual-nombre">Mi Rama</span>
+          <span class="estirpe-arrow">▼</span>
+        </button>
+        <div class="estirpe-dropdown hidden" id="estirpe-dropdown">
+          <div class="estirpe-dropdown-list" id="estirpe-dropdown-list">
+            <!-- Se llena dinámicamente -->
+          </div>
+          <div class="estirpe-dropdown-divider"></div>
+          <a href="mi-perfil.html#crear-rama" class="estirpe-dropdown-action">
+            <span>➕</span> Crear/vincular rama
+          </a>
         </div>
       </div>
 
@@ -1511,6 +1593,7 @@
     let currentUser = null;
     let userData = null;
     let currentFamilia = null;
+    let estirpesUsuario = []; // Array de estirpes a las que pertenece
     let allNidos = [];
     let miNidoPrincipal = null;
 
@@ -1533,9 +1616,27 @@
         return;
       }
 
-      const familiaDoc = await db.collection('familias').doc(userData.familiaId).get();
-      if (familiaDoc.exists) {
-        currentFamilia = { id: familiaDoc.id, ...familiaDoc.data() };
+      // Cargar estirpes del usuario
+      const estirpesIds = userData.estirpes || [userData.familiaId];
+      const estirpeActiva = userData.estirpeActiva || userData.familiaId;
+      
+      // Cargar todas las estirpes
+      estirpesUsuario = [];
+      for (const estirpeId of estirpesIds) {
+        const estirpeDoc = await db.collection('familias').doc(estirpeId).get();
+        if (estirpeDoc.exists) {
+          estirpesUsuario.push({ id: estirpeDoc.id, ...estirpeDoc.data() });
+        }
+      }
+      
+      // Establecer estirpe activa
+      currentFamilia = estirpesUsuario.find(e => e.id === estirpeActiva) || estirpesUsuario[0];
+      
+      // Mostrar selector si tiene más de 1 estirpe
+      if (estirpesUsuario.length > 1) {
+        document.getElementById('familia-badge').classList.add('hidden');
+        document.getElementById('estirpe-selector').classList.remove('hidden');
+        renderEstirpeSelector();
       }
 
       await initApp();
@@ -1567,21 +1668,80 @@
       cargarBadgeChat();
     }
 
+    // ============ SELECTOR DE ESTIRPES ============
+    function renderEstirpeSelector() {
+      document.getElementById('estirpe-actual-nombre').textContent = currentFamilia?.nombre || 'Mi Estirpe';
+      
+      const list = document.getElementById('estirpe-dropdown-list');
+      list.innerHTML = estirpesUsuario.map(e => `
+        <div class="estirpe-dropdown-item ${e.id === currentFamilia?.id ? 'active' : ''}" onclick="cambiarEstirpe('${e.id}')">
+          <span class="estirpe-dropdown-item-icon">🪺</span>
+          <span class="estirpe-dropdown-item-name">${e.nombre}</span>
+          ${e.id === currentFamilia?.id ? '<span class="estirpe-dropdown-item-check">✓</span>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function toggleEstirpeDropdown() {
+      const selector = document.getElementById('estirpe-selector');
+      const dropdown = document.getElementById('estirpe-dropdown');
+      selector.classList.toggle('open');
+      dropdown.classList.toggle('hidden');
+    }
+
+    // Cerrar dropdown al hacer clic fuera
+    document.addEventListener('click', (e) => {
+      const selector = document.getElementById('estirpe-selector');
+      if (selector && !selector.contains(e.target)) {
+        selector.classList.remove('open');
+        document.getElementById('estirpe-dropdown')?.classList.add('hidden');
+      }
+    });
+
+    async function cambiarEstirpe(estirpeId) {
+      if (estirpeId === currentFamilia?.id) {
+        toggleEstirpeDropdown();
+        return;
+      }
+      
+      try {
+        // Guardar estirpe activa en Firebase
+        await db.collection('usuarios').doc(currentUser.uid).update({
+          estirpeActiva: estirpeId
+        });
+        
+        // Recargar página para cargar nueva estirpe
+        window.location.reload();
+      } catch (error) {
+        console.error('Error cambiando estirpe:', error);
+        alert('Error al cambiar de estirpe');
+      }
+    }
+
     // ============ ADMIN BUTTONS ============
     function renderAdminButtons() {
       const container = document.getElementById('admin-buttons');
       const mobileContainer = document.getElementById('mobile-admin-buttons');
       let html = '';
 
-      // Es admin sistema si: tiene rol adminSistema, está en adminsGenerales, o es el fundador
-      const isAdminSistema = userData.rol === 'adminSistema' || 
+      // Super Admin (Diseñador del sistema) - tiene acceso total
+      const isSuperAdmin = userData.superAdmin === true;
+
+      // Admin Rama Familiar (antes "Admin Sistema")
+      const isAdminRama = userData.rol === 'adminRama' || 
+        userData.rol === 'adminSistema' || // compatibilidad
         (currentFamilia?.adminsGenerales?.includes(currentUser.uid)) ||
         (currentFamilia?.fundador === currentUser.uid) ||
         (currentFamilia?.creador === currentUser.uid);
 
-      // Botón NEGRO - Admin Sistema → va a admin-sistema.html
-      if (isAdminSistema) {
-        html += `<a href="admin-sistema.html" class="admin-btn sistema"><span>🔧</span> Admin Sistema</a>`;
+      // Botón NEGRO - Admin Sistema (solo superAdmin/Diseñador)
+      if (isSuperAdmin) {
+        html += `<a href="admin-sistema.html" class="admin-btn sistema"><span>⚡</span> Admin Sistema</a>`;
+      }
+
+      // Botón ROJO - Admin Rama Familiar
+      if (isAdminRama) {
+        html += `<a href="admin-rama.html" class="admin-btn rama"><span>🔧</span> Admin Rama</a>`;
       }
 
       // Botón TERRACOTTA - Admin Nido → va a admin-nido.html
@@ -1591,7 +1751,7 @@
       }
 
       // Botón CALDERO - Mayordomo → va a Lo Común
-      if (isAdminSistema || miNidoId) {
+      if (isAdminRama || miNidoId) {
         html += `<a href="lo-comun.html" class="admin-btn mayordomo"><span>🎩</span> Mayordomo</a>`;
       }
 

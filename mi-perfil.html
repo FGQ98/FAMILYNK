@@ -311,6 +311,50 @@
       .stats-grid { grid-template-columns: repeat(3, 1fr); }
     }
 
+    /* Estirpes */
+    .estirpes-list { display: flex; flex-direction: column; gap: 10px; }
+    .estirpe-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      transition: all 0.2s;
+    }
+    .estirpe-item:hover { background: var(--cream-dark); }
+    .estirpe-item.activa { border-left: 4px solid var(--sage); }
+    .estirpe-item-info { display: flex; align-items: center; gap: 12px; }
+    .estirpe-item-icon { font-size: 1.5rem; }
+    .estirpe-item-name { font-weight: 600; }
+    .estirpe-item-rol { font-size: 0.75rem; color: var(--text-muted); }
+    .estirpe-item-badge {
+      padding: 4px 10px;
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center;
+      justify-content: center; z-index: 1000;
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg);
+      padding: 24px; width: 90%; max-width: 500px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -435,6 +479,27 @@
         <button class="btn btn-primary" onclick="guardarDatos()">💾 Guardar cambios</button>
       </div>
 
+      <!-- Mis Ramas Familiares -->
+      <div class="card" id="section-estirpes">
+        <div class="card-title">🪺 Mis Ramas Familiares</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Gestiona las ramas familiares a las que perteneces
+        </p>
+        
+        <div class="estirpes-list" id="estirpes-list">
+          <!-- Se carga dinámicamente -->
+        </div>
+        
+        <div style="margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary" onclick="abrirModalCrearEstirpe()">
+            <span>➕</span> Crear nueva rama
+          </button>
+          <button class="btn btn-secondary" onclick="abrirModalVincularEstirpe()">
+            <span>🔗</span> Vincularme a existente
+          </button>
+        </div>
+      </div>
+
       <!-- Seguridad -->
       <div class="card">
         <div class="card-title">🔐 Seguridad</div>
@@ -455,6 +520,65 @@
     </div>
   </main>
 
+  <!-- Modal Crear Rama -->
+  <div class="modal-overlay" id="modal-crear-estirpe">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">➕ Crear nueva rama familiar</h3>
+        <button class="modal-close" onclick="cerrarModal('modal-crear-estirpe')">×</button>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Nombre de la rama</label>
+        <input type="text" class="form-input" id="nueva-estirpe-nombre" placeholder="Ej: Familia López">
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Descripción (opcional)</label>
+        <input type="text" class="form-input" id="nueva-estirpe-descripcion" placeholder="Rama materna...">
+      </div>
+      
+      <div class="form-group">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="copiar-nido-actual" checked style="width: 18px; height: 18px; accent-color: var(--sage);">
+          <span style="font-weight: 600;">Copiar mi nido actual a la nueva rama</span>
+        </label>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; margin-left: 28px;">
+          Se copiarán los miembros de tu nido para no empezar de cero
+        </p>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-crear-estirpe')">Cancelar</button>
+        <button class="btn btn-primary" onclick="crearNuevaEstirpe()">Crear rama</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Vincular Rama -->
+  <div class="modal-overlay" id="modal-vincular-estirpe">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">🔗 Vincularme a rama existente</h3>
+        <button class="modal-close" onclick="cerrarModal('modal-vincular-estirpe')">×</button>
+      </div>
+      
+      <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 16px;">
+        Para unirte a una rama existente, necesitas el código de invitación que te debe proporcionar el administrador de esa rama.
+      </p>
+      
+      <div class="form-group">
+        <label class="form-label">Código de invitación</label>
+        <input type="text" class="form-input" id="codigo-invitacion" placeholder="Ej: FAM-XXXX-XXXX" style="text-transform: uppercase;">
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-vincular-estirpe')">Cancelar</button>
+        <button class="btn btn-primary" onclick="vincularEstirpe()">Vincularme</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -464,6 +588,7 @@
     let currentUser = null;
     let userData = null;
     let nidoData = null;
+    let estirpesData = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -478,7 +603,6 @@
         if (userDoc.exists) {
           userData = { id: userDoc.id, ...userDoc.data() };
         } else {
-          // Crear documento de usuario si no existe
           userData = {
             id: user.uid,
             email: user.email,
@@ -496,16 +620,79 @@
           }
         }
 
+        // Cargar estirpes del usuario
+        await cargarEstirpes();
+
         renderPerfil();
+        renderEstirpes();
         cargarEstadisticas();
 
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('profile-content').classList.remove('hidden');
+        
+        // Si viene de #crear-rama, abrir modal
+        if (window.location.hash === '#crear-rama') {
+          abrirModalCrearEstirpe();
+        }
       } catch (error) {
         console.error('Error cargando perfil:', error);
         alert('Error al cargar el perfil');
       }
     });
+
+    async function cargarEstirpes() {
+      const estirpesIds = userData.estirpes || [userData.familiaId].filter(Boolean);
+      estirpesData = [];
+      
+      for (const estirpeId of estirpesIds) {
+        if (!estirpeId) continue;
+        const estirpeDoc = await db.collection('familias').doc(estirpeId).get();
+        if (estirpeDoc.exists) {
+          estirpesData.push({ id: estirpeDoc.id, ...estirpeDoc.data() });
+        }
+      }
+    }
+
+    function renderEstirpes() {
+      const list = document.getElementById('estirpes-list');
+      const estirpeActiva = userData.estirpeActiva || userData.familiaId;
+      
+      if (estirpesData.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No perteneces a ninguna rama familiar</p>';
+        return;
+      }
+      
+      list.innerHTML = estirpesData.map(e => {
+        const esActiva = e.id === estirpeActiva;
+        const esAdmin = e.adminsGenerales?.includes(currentUser.uid) || e.fundador === currentUser.uid || e.creador === currentUser.uid;
+        
+        return `
+          <div class="estirpe-item ${esActiva ? 'activa' : ''}">
+            <div class="estirpe-item-info">
+              <span class="estirpe-item-icon">🪺</span>
+              <div>
+                <div class="estirpe-item-name">${e.nombre}</div>
+                <div class="estirpe-item-rol">${esAdmin ? 'Administrador' : 'Miembro'}</div>
+              </div>
+            </div>
+            ${esActiva ? '<span class="estirpe-item-badge">Activa</span>' : `<button class="btn btn-secondary btn-sm" onclick="activarEstirpe('${e.id}')">Activar</button>`}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function activarEstirpe(estirpeId) {
+      try {
+        await db.collection('usuarios').doc(currentUser.uid).update({
+          estirpeActiva: estirpeId
+        });
+        alert('✅ Rama activada. Recargando...');
+        window.location.href = 'cgi.html';
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al activar rama');
+      }
+    }
 
     function renderPerfil() {
       const nombre = userData.nombre || currentUser.email.split('@')[0];
@@ -744,6 +931,136 @@
       } catch (error) {
         console.error('Error enviando email:', error);
         alert('Error al enviar el email');
+      }
+    }
+
+    // ============ MODALES ESTIRPES ============
+    function abrirModalCrearEstirpe() {
+      document.getElementById('modal-crear-estirpe').classList.add('active');
+    }
+
+    function abrirModalVincularEstirpe() {
+      document.getElementById('modal-vincular-estirpe').classList.add('active');
+    }
+
+    function cerrarModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    async function crearNuevaEstirpe() {
+      const nombre = document.getElementById('nueva-estirpe-nombre').value.trim();
+      const descripcion = document.getElementById('nueva-estirpe-descripcion').value.trim();
+      const copiarNido = document.getElementById('copiar-nido-actual').checked;
+
+      if (!nombre) {
+        alert('El nombre de la estirpe es obligatorio');
+        return;
+      }
+
+      try {
+        // Crear la nueva estirpe
+        const nuevaEstirpe = await db.collection('familias').add({
+          nombre,
+          descripcion,
+          fundador: currentUser.uid,
+          creador: currentUser.uid,
+          adminsGenerales: [currentUser.uid],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          numGeneraciones: 4
+        });
+
+        // Si copiar nido y existe nidoData
+        let nuevoNidoId = null;
+        if (copiarNido && nidoData) {
+          const nuevoNido = await db.collection('nidos').add({
+            nombre: nidoData.nombre,
+            familiaId: nuevaEstirpe.id,
+            generacion: nidoData.generacion || '3-padres',
+            miembrosData: nidoData.miembrosData || [],
+            creador: currentUser.uid,
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          nuevoNidoId = nuevoNido.id;
+        }
+
+        // Actualizar usuario con la nueva estirpe
+        const estirpesActuales = userData.estirpes || [userData.familiaId].filter(Boolean);
+        const nidosPorEstirpe = userData.nidosPorEstirpe || {};
+        
+        if (nuevoNidoId) {
+          nidosPorEstirpe[nuevaEstirpe.id] = nuevoNidoId;
+        }
+
+        await db.collection('usuarios').doc(currentUser.uid).update({
+          estirpes: [...estirpesActuales, nuevaEstirpe.id],
+          nidosPorEstirpe
+        });
+
+        alert('✅ Rama familiar creada correctamente');
+        cerrarModal('modal-crear-estirpe');
+        
+        // Recargar
+        await cargarEstirpes();
+        renderEstirpes();
+
+      } catch (error) {
+        console.error('Error creando estirpe:', error);
+        alert('Error al crear la estirpe: ' + error.message);
+      }
+    }
+
+    async function vincularEstirpe() {
+      const codigo = document.getElementById('codigo-invitacion').value.trim().toUpperCase();
+
+      if (!codigo) {
+        alert('Introduce el código de invitación');
+        return;
+      }
+
+      try {
+        // Buscar invitación por código
+        const invSnap = await db.collection('invitaciones-estirpe')
+          .where('codigo', '==', codigo)
+          .where('estado', '==', 'pendiente')
+          .limit(1)
+          .get();
+
+        if (invSnap.empty) {
+          alert('Código de invitación no válido o ya usado');
+          return;
+        }
+
+        const invitacion = { id: invSnap.docs[0].id, ...invSnap.docs[0].data() };
+
+        // Añadir usuario a la estirpe
+        const estirpesActuales = userData.estirpes || [userData.familiaId].filter(Boolean);
+        
+        if (estirpesActuales.includes(invitacion.familiaId)) {
+          alert('Ya perteneces a esta estirpe');
+          return;
+        }
+
+        await db.collection('usuarios').doc(currentUser.uid).update({
+          estirpes: [...estirpesActuales, invitacion.familiaId]
+        });
+
+        // Marcar invitación como usada
+        await db.collection('invitaciones-estirpe').doc(invitacion.id).update({
+          estado: 'usada',
+          usadaPor: currentUser.uid,
+          fechaUso: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('✅ Te has vinculado a la rama correctamente');
+        cerrarModal('modal-vincular-estirpe');
+        
+        // Recargar
+        await cargarEstirpes();
+        renderEstirpes();
+
+      } catch (error) {
+        console.error('Error vinculando estirpe:', error);
+        alert('Error al vincular: ' + error.message);
       }
     }
 
