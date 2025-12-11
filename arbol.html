@@ -201,6 +201,21 @@
       '4-hijos': 'Generación 4 — Hijos'
     };
 
+    // Mapeo de valores antiguos a nuevos
+    const genNormalizar = {
+      '1-bisabuelos': '1-bisabuelos',
+      '2-padres': '2-abuelos',      // antiguo → nuevo
+      '2-abuelos': '2-abuelos',
+      '3-nietos': '3-padres',       // antiguo → nuevo
+      '3-padres': '3-padres',
+      '4-bisnietos': '4-hijos',     // antiguo → nuevo
+      '4-hijos': '4-hijos'
+    };
+
+    function normalizarGeneracion(gen) {
+      return genNormalizar[gen] || gen || 'sin-gen';
+    }
+
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
@@ -232,7 +247,7 @@
 
         nidosData.forEach(n => {
           if (n.miembrosData) totalMiembros += n.miembrosData.length;
-          if (n.generacion) generaciones.add(n.generacion);
+          if (n.generacion) generaciones.add(normalizarGeneracion(n.generacion));
         });
 
         document.getElementById('familia-nombre').textContent = `Familia ${familiaData?.nombre || ''}`;
@@ -252,10 +267,10 @@
     function renderArbol() {
       const container = document.getElementById('arbol-container');
 
-      // Agrupar por generación
+      // Agrupar por generación (normalizada)
       const porGeneracion = {};
       nidosData.forEach(n => {
-        const gen = n.generacion || 'sin-gen';
+        const gen = normalizarGeneracion(n.generacion);
         if (!porGeneracion[gen]) porGeneracion[gen] = [];
         porGeneracion[gen].push(n);
       });
