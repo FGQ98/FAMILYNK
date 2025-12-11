@@ -1029,7 +1029,7 @@
             <div class="nuevo-nido-fields hidden" id="nuevo-nido-fields">
               <div class="form-group">
                 <label class="form-label">Nombre del nuevo nido</label>
-                <input type="text" class="form-input" id="nuevo-nido-nombre" placeholder="Ej: Nido de Marcos, Casa Barcelona...">
+                <input type="text" class="form-input" id="nuevo-nido-nombre" placeholder="Ej: Familia García, Casa Playa..." maxlength="25">
               </div>
               <div class="form-group">
                 <label class="form-label">Fecha de formación del nido</label>
@@ -1101,28 +1101,39 @@
           const crear = confirm('Este nido aún no existe.\n\n¿Quieres crearlo ahora?');
           
           if (crear) {
-            const nombre = prompt('Nombre del nuevo nido:', 'Mi Nido');
+            let nombre = prompt('Nombre del nuevo nido (máx. 25 caracteres):', 'Familia');
             if (nombre) {
+              // Limitar a 25 caracteres
+              nombre = nombre.substring(0, 25);
+              
               // Obtener familiaId del usuario
               const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
               const familiaId = userDoc.exists ? userDoc.data().familiaId : null;
+              const userName = userDoc.exists ? (userDoc.data().nombre || currentUser.email.split('@')[0]) : 'Admin';
               
               if (!familiaId) {
-                alert('Error: No tienes una familia asignada');
+                alert('Error: No tienes una estirpe asignada');
                 window.location.href = 'app.html';
                 return;
               }
               
-              // Crear el nido con el ID específico
+              // Crear el nido con el ID específico, incluyendo al creador como miembro
               await db.collection('nidos').doc(nidoId).set({
                 nombre: nombre,
                 familiaId: familiaId,
-                generacion: '2-padres',
+                generacion: '3-padres',
                 descripcion: '',
                 creador: currentUser.uid,
                 admins: [currentUser.uid],
                 miembros: [currentUser.uid],
-                miembrosData: [],
+                miembrosData: [{
+                  iniciales: userName.substring(0, 3).toUpperCase(),
+                  nombre: userName,
+                  email: currentUser.email,
+                  relacion: 'progenitor',
+                  esAdmin: true,
+                  fechaCreacion: new Date().toISOString()
+                }],
                 fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
               });
               
@@ -1141,9 +1152,9 @@
         // Update UI
         const genLabels = {
           '1-bisabuelos': 'Generación 1 — Bisabuelos',
-          '2-padres': 'Generación 2 — Padres/Madres',
-          '3-nietos': 'Generación 3 — Nietos',
-          '4-bisnietos': 'Generación 4 — Bisnietos'
+          '2-abuelos': 'Generación 2 — Abuelos',
+          '3-padres': 'Generación 3 — Padres',
+          '4-hijos': 'Generación 4 — Hijos'
         };
 
         document.getElementById('header-nido-name').textContent = nidoData.nombre;
@@ -1440,7 +1451,7 @@
           // Eliminar el nido de Firestore
           await db.collection('nidos').doc(nidoId).delete();
           
-          // Actualizar la familia para quitar la referencia si existe
+          // Actualizar la estirpe para quitar la referencia si existe
           if (nidoData.familiaId) {
             const familyDoc = await db.collection('families').doc(nidoData.familiaId).get();
             if (familyDoc.exists) {
@@ -1513,7 +1524,7 @@
         let nuevoNidoId = null;
         if (formaNido && nuevoNidoNombre) {
           // Calcular siguiente generación
-          const genActual = nidoData.generacion || '2-padres';
+          const genActual = nidoData.generacion || '2-abuelos';
           const genNum = parseInt(genActual.charAt(0));
           const siguienteGen = Math.min(genNum + 1, 4);
           const genLabels = { 2: 'padres', 3: 'nietos', 4: 'bisnietos' };
