@@ -354,6 +354,43 @@
         <div class="form-group"><label class="form-label">Lema familiar (opcional)</label><input type="text" class="form-input" id="config-lema" placeholder="Unidos somos más fuertes"></div>
         <button class="btn btn-primary" onclick="guardarConfigEstirpe()">💾 Guardar cambios</button>
       </div>
+
+      <div class="card">
+        <div class="card-title">🌳 Árbol genealógico</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Configura cuántas generaciones quieres registrar en tu árbol familiar
+        </p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Número de generaciones</label>
+            <select class="form-input" id="config-generaciones" onchange="actualizarGeneraciones()">
+              <option value="4">4 generaciones (Bisabuelos → Hijos)</option>
+              <option value="6">6 generaciones (+ Tatarabuelos)</option>
+              <option value="8">8 generaciones (+ Pentabuelos)</option>
+            </select>
+          </div>
+        </div>
+        <div id="generaciones-preview" style="margin-top: 12px; padding: 12px; background: var(--cream); border-radius: 8px; font-size: 0.85rem;">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👤 Miembros fallecidos</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+          Los miembros con fecha de defunción aparecerán en gris y solo tendrán acceso a:
+        </p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+          <span style="padding: 4px 12px; background: var(--sage-muted); border-radius: 20px; font-size: 0.8rem;">🌳 Árbol</span>
+          <span style="padding: 4px 12px; background: var(--sage-muted); border-radius: 20px; font-size: 0.8rem;">📋 Ficha personal</span>
+          <span style="padding: 4px 12px; background: var(--sage-muted); border-radius: 20px; font-size: 0.8rem;">📜 Legado</span>
+          <span style="padding: 4px 12px; background: var(--sage-muted); border-radius: 20px; font-size: 0.8rem;">📅 Fechas</span>
+        </div>
+        <p style="font-size: 0.8rem; color: var(--text-light);">
+          ⚠️ Solo los administradores de sistema pueden editar la información de miembros fallecidos.
+        </p>
+      </div>
+
       <div class="card">
         <div class="card-title">🚨 Zona de peligro</div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Estas acciones son irreversibles</p>
@@ -502,19 +539,64 @@
       alert('✅ Permisos guardados');
     }
 
+    const generacionesLabels = {
+      1: 'Pentabuelos',
+      2: 'Tatarabuelos', 
+      3: 'Bisabuelos',
+      4: 'Abuelos',
+      5: 'Padres',
+      6: 'Hijos',
+      7: 'Nietos',
+      8: 'Bisnietos'
+    };
+
+    function getGeneracionesParaConfig(num) {
+      // Con 4 generaciones: Bisabuelos (3), Abuelos (4), Padres (5), Hijos (6)
+      // Con 6 generaciones: Tatarabuelos (2), Bisabuelos (3), Abuelos (4), Padres (5), Hijos (6), Nietos (7)
+      // Con 8 generaciones: Pentabuelos (1), Tatarabuelos (2), Bisabuelos (3), Abuelos (4), Padres (5), Hijos (6), Nietos (7), Bisnietos (8)
+      const configs = {
+        4: [3, 4, 5, 6],
+        6: [2, 3, 4, 5, 6, 7],
+        8: [1, 2, 3, 4, 5, 6, 7, 8]
+      };
+      return configs[num] || configs[4];
+    }
+
+    function actualizarGeneraciones() {
+      const num = parseInt(document.getElementById('config-generaciones').value);
+      const gens = getGeneracionesParaConfig(num);
+      
+      let html = '<strong>Generaciones disponibles:</strong><br>';
+      html += gens.map((g, i) => `Gen ${i + 1}: ${generacionesLabels[g]}`).join(' → ');
+      
+      document.getElementById('generaciones-preview').innerHTML = html;
+    }
+
     function renderConfigEstirpe() {
       document.getElementById('config-nombre').value = familiaData.nombre || '';
       document.getElementById('config-descripcion').value = familiaData.descripcion || '';
       document.getElementById('config-lema').value = familiaData.lema || '';
+      document.getElementById('config-generaciones').value = familiaData.numGeneraciones || 4;
+      actualizarGeneraciones();
     }
 
     async function guardarConfigEstirpe() {
       const nombre = document.getElementById('config-nombre').value.trim();
       const descripcion = document.getElementById('config-descripcion').value.trim();
       const lema = document.getElementById('config-lema').value.trim();
+      const numGeneraciones = parseInt(document.getElementById('config-generaciones').value);
+      
       if (!nombre) { alert('El nombre es obligatorio'); return; }
-      await db.collection('familias').doc(familiaData.id).update({ nombre, descripcion, lema });
+      
+      await db.collection('familias').doc(familiaData.id).update({ 
+        nombre, 
+        descripcion, 
+        lema,
+        numGeneraciones 
+      });
+      
       familiaData.nombre = nombre;
+      familiaData.numGeneraciones = numGeneraciones;
       document.getElementById('estirpe-nombre').textContent = nombre;
       alert('✅ Configuración guardada');
     }
