@@ -294,6 +294,22 @@
 
     .mayordomo-header p { font-size: 0.85rem; opacity: 0.9; }
 
+    .toggle-modulo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--white);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.85rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .toggle-modulo:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .toggle-modulo input { width: 16px; height: 16px; accent-color: var(--mayordomo); }
+    .toggle-modulo input:checked + span { color: var(--mayordomo); font-weight: 600; }
+
     .modulos-operativos { display: flex; flex-direction: column; gap: 16px; }
 
     .modulo-panel {
@@ -1114,6 +1130,34 @@
               <h2>🎩 Mayordomo</h2>
               <p>Gestión activa de este bien</p>
             </div>
+            
+            <!-- Toggles de submódulos -->
+            <div class="modulos-config" id="modulos-config" style="background: var(--cream); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+              <div style="font-weight: 600; margin-bottom: 12px; color: var(--text);">Submódulos activos:</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                <label class="toggle-modulo">
+                  <input type="checkbox" id="toggle-reservas" onchange="toggleModulo('reservas', this.checked)">
+                  <span>📅 Reservas</span>
+                </label>
+                <label class="toggle-modulo">
+                  <input type="checkbox" id="toggle-inventario" onchange="toggleModulo('inventario', this.checked)">
+                  <span>📦 Inventario</span>
+                </label>
+                <label class="toggle-modulo">
+                  <input type="checkbox" id="toggle-gastos" onchange="toggleModulo('gastos', this.checked)">
+                  <span>💰 Gastos</span>
+                </label>
+                <label class="toggle-modulo">
+                  <input type="checkbox" id="toggle-mantenimiento" onchange="toggleModulo('mantenimiento', this.checked)">
+                  <span>🔧 Mantenimiento</span>
+                </label>
+                <label class="toggle-modulo">
+                  <input type="checkbox" id="toggle-limpieza" onchange="toggleModulo('limpieza', this.checked)">
+                  <span>🧹 Limpieza</span>
+                </label>
+              </div>
+            </div>
+            
             <div class="modulos-operativos" id="modulos-operativos"></div>
           </div>
 
@@ -1661,6 +1705,14 @@
     function renderMayordomoModulos() {
       const container = document.getElementById('modulos-operativos');
       const m = bienData.mayordomoModulos || {};
+      
+      // Sincronizar checkboxes
+      document.getElementById('toggle-reservas').checked = !!m.reservas;
+      document.getElementById('toggle-inventario').checked = !!m.inventario;
+      document.getElementById('toggle-gastos').checked = !!m.gastos;
+      document.getElementById('toggle-mantenimiento').checked = !!m.mantenimiento;
+      document.getElementById('toggle-limpieza').checked = !!m.limpieza;
+      
       let html = '';
 
       if (m.reservas) {
@@ -1788,6 +1840,26 @@
       if (m.reservas) { renderCalendario(); renderReservasLista(); renderNidosLeyenda(); }
       if (m.inventario) { renderInventario(); }
       if (m.gastos) { renderGastos(); }
+    }
+
+    async function toggleModulo(modulo, activo) {
+      try {
+        const updateData = {};
+        updateData[`mayordomoModulos.${modulo}`] = activo;
+        
+        await db.collection('bienes').doc(bienId).update(updateData);
+        
+        // Actualizar datos locales
+        if (!bienData.mayordomoModulos) bienData.mayordomoModulos = {};
+        bienData.mayordomoModulos[modulo] = activo;
+        
+        renderMayordomoModulos();
+      } catch (error) {
+        console.error('Error al cambiar módulo:', error);
+        alert('Error al actualizar');
+        // Revertir checkbox
+        document.getElementById(`toggle-${modulo}`).checked = !activo;
+      }
     }
 
     // CALENDARIO
