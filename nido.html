@@ -1524,13 +1524,14 @@
         let nuevoNidoId = null;
         if (formaNido && nuevoNidoNombre) {
           // Calcular siguiente generación
-          const genActual = nidoData.generacion || '2-abuelos';
+          // Gen 1: bisabuelos → Gen 2: abuelos → Gen 3: padres → Gen 4: hijos
+          const genActual = nidoData.generacion || '1-bisabuelos';
           const genNum = parseInt(genActual.charAt(0));
           const siguienteGen = Math.min(genNum + 1, 4);
-          const genLabels = { 2: 'padres', 3: 'nietos', 4: 'bisnietos' };
-          const nuevaGeneracion = `${siguienteGen}-${genLabels[siguienteGen] || 'bisnietos'}`;
+          const genLabels = { 1: 'bisabuelos', 2: 'abuelos', 3: 'padres', 4: 'hijos' };
+          const nuevaGeneracion = `${siguienteGen}-${genLabels[siguienteGen]}`;
 
-          // Crear el nuevo nido
+          // Crear el nuevo nido con el hijo como progenitor
           const nuevoNidoRef = await db.collection('nidos').add({
             familiaId: nidoData.familiaId,
             nombre: nuevoNidoNombre,
@@ -1547,7 +1548,7 @@
               fechaNacimiento,
               fechaDefuncion,
               esAdmin: true,
-              relacion: 'progenitor',
+              relacion: 'progenitor',  // En su nuevo nido es progenitor
               fechaCreacion: new Date().toISOString()
             }],
             nidoOrigen: nidoId,
@@ -1558,7 +1559,7 @@
           nuevoNidoId = nuevoNidoRef.id;
         }
 
-        // Add new member to current nido
+        // Add new member to current nido (como descendiente con referencia a su nido)
         miembrosData.push({
           iniciales,
           nombre,
@@ -1566,9 +1567,9 @@
           fechaNacimiento,
           fechaDefuncion,
           esAdmin,
-          relacion,
+          relacion,  // 'descendiente' en el nido padre
           mascotas: getMascotasFromForm(),
-          nidoPropio: nuevoNidoId,
+          nidoPropio: nuevoNidoId,  // Enlace a su nuevo nido
           fechaCreacion: new Date().toISOString()
         });
 
