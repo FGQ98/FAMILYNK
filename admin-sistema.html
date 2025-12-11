@@ -2,11 +2,538 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0;url=app.html">
-  <title>FAMILYNK — Admin</title>
-  <script>window.location.href = 'app.html';</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Admin Sistema</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --terracotta: #C17757;
+      --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --negro: #1a1a1a;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.1);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: var(--negro);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 16px; }
+
+    .btn-volver {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: var(--radius-md);
+      color: white;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-volver:hover { background: rgba(255,255,255,0.2); }
+
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .estirpe-badge {
+      padding: 4px 12px;
+      background: var(--sage);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    .admin-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      background: var(--white);
+      padding: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .admin-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+
+    .admin-tab:hover { background: var(--cream); }
+    .admin-tab.active { background: var(--negro); color: white; }
+
+    .admin-section { display: none; animation: fadeIn 0.3s ease; }
+    .admin-section.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary { background: var(--negro); color: white; }
+    .btn-primary:hover { background: #333; }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-danger { background: #dc3545; color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    .users-table { width: 100%; border-collapse: collapse; }
+    .users-table th, .users-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--cream-dark); }
+    .users-table th { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+    .user-row { transition: background 0.2s; }
+    .user-row:hover { background: var(--cream); }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--sage), var(--sage-light));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    .user-name { font-weight: 600; }
+    .user-email { font-size: 0.8rem; color: var(--text-muted); }
+
+    .role-badge { padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; }
+    .role-badge.admin { background: var(--negro); color: white; }
+    .role-badge.miembro { background: var(--sage-muted); color: var(--sage-dark); }
+
+    .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+    .config-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+    }
+
+    .config-item-info { display: flex; align-items: center; gap: 12px; }
+    .config-item-icon { font-size: 1.5rem; }
+    .config-item-name { font-weight: 600; }
+    .config-item-desc { font-size: 0.8rem; color: var(--text-muted); }
+
+    .toggle-switch { position: relative; width: 50px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--text-muted); transition: 0.3s; border-radius: 26px;
+    }
+    .toggle-slider:before {
+      position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
+      background-color: white; transition: 0.3s; border-radius: 50%;
+    }
+    input:checked + .toggle-slider { background-color: var(--sage); }
+    input:checked + .toggle-slider:before { transform: translateX(24px); }
+
+    .permisos-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .permisos-table th, .permisos-table td { padding: 10px; text-align: center; border-bottom: 1px solid var(--cream-dark); }
+    .permisos-table th:first-child, .permisos-table td:first-child { text-align: left; }
+    .permisos-table th { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); }
+    .permiso-check { width: 18px; height: 18px; accent-color: var(--sage); }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-light); }
+    .form-input {
+      width: 100%; padding: 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.9rem; transition: border-color 0.2s;
+    }
+    .form-input:focus { outline: none; border-color: var(--sage); }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); border-radius: var(--radius-lg); padding: 20px; text-align: center; box-shadow: var(--shadow-soft); }
+    .stat-value { font-family: 'Quicksand', sans-serif; font-size: 2rem; font-weight: 700; color: var(--negro); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+      opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg); padding: 24px;
+      width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+      transform: translateY(20px); transition: transform 0.3s;
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+
+    @media (max-width: 768px) {
+      .admin-tabs { flex-direction: column; }
+      .admin-tab { justify-content: flex-start; }
+      .users-table { font-size: 0.8rem; }
+      .users-table th:nth-child(3), .users-table td:nth-child(3) { display: none; }
+    }
+    .hidden { display: none !important; }
+  </style>
 </head>
 <body>
-  <p>Redirigiendo a <a href="app.html">Admin</a>...</p>
+  <header class="header">
+    <div class="header-left">
+      <a href="cgi.html" class="btn-volver">← Volver</a>
+      <div class="header-title">
+        <span>🔧</span>
+        <span>Admin Sistema</span>
+        <span class="estirpe-badge" id="estirpe-nombre">Mi Estirpe</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-value" id="stat-usuarios">0</div><div class="stat-label">Usuarios</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-nidos">0</div><div class="stat-label">Nidos</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-bienes">0</div><div class="stat-label">Bienes</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-generaciones">0</div><div class="stat-label">Generaciones</div></div>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-section="usuarios" onclick="cambiarSeccion('usuarios')"><span>👥</span> Usuarios</button>
+      <button class="admin-tab" data-section="secciones" onclick="cambiarSeccion('secciones')"><span>📂</span> Secciones</button>
+      <button class="admin-tab" data-section="permisos" onclick="cambiarSeccion('permisos')"><span>🔐</span> Permisos</button>
+      <button class="admin-tab" data-section="estirpe" onclick="cambiarSeccion('estirpe')"><span>⚙️</span> Configuración</button>
+    </div>
+
+    <section class="admin-section active" id="section-usuarios">
+      <div class="section-header">
+        <h2 class="section-title">👥 Usuarios</h2>
+        <button class="btn btn-primary" onclick="abrirModalInvitar()"><span>➕</span> Invitar usuario</button>
+      </div>
+      <div class="card">
+        <table class="users-table">
+          <thead><tr><th>Usuario</th><th>Nido</th><th>Rol</th><th>Acciones</th></tr></thead>
+          <tbody id="usuarios-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-section" id="section-secciones">
+      <div class="section-header"><h2 class="section-title">📂 Secciones</h2></div>
+      <div class="card">
+        <div class="card-title">Secciones principales</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Activa o desactiva secciones para toda la estirpe</p>
+        <div class="config-grid" id="secciones-grid"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Módulos del Cerebro</div>
+        <div class="config-grid" id="cerebro-modulos-grid"></div>
+      </div>
+    </section>
+
+    <section class="admin-section" id="section-permisos">
+      <div class="section-header"><h2 class="section-title">🔐 Permisos por rol</h2></div>
+      <div class="card">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Define qué puede hacer cada rol</p>
+        <div style="overflow-x: auto;">
+          <table class="permisos-table">
+            <thead><tr><th>Sección</th><th>Admin Sistema</th><th>Admin Nido</th><th>Adulto</th><th>Joven</th></tr></thead>
+            <tbody id="permisos-tbody"></tbody>
+          </table>
+        </div>
+        <button class="btn btn-primary" style="margin-top: 16px;" onclick="guardarPermisos()">💾 Guardar permisos</button>
+      </div>
+    </section>
+
+    <section class="admin-section" id="section-estirpe">
+      <div class="section-header"><h2 class="section-title">⚙️ Configuración de la Estirpe</h2></div>
+      <div class="card">
+        <div class="card-title">Datos básicos</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nombre de la estirpe</label><input type="text" class="form-input" id="config-nombre" placeholder="Familia García"></div>
+          <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-input" id="config-descripcion" placeholder="Breve descripción..."></div>
+        </div>
+        <div class="form-group"><label class="form-label">Lema familiar (opcional)</label><input type="text" class="form-input" id="config-lema" placeholder="Unidos somos más fuertes"></div>
+        <button class="btn btn-primary" onclick="guardarConfigEstirpe()">💾 Guardar cambios</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🚨 Zona de peligro</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Estas acciones son irreversibles</p>
+        <button class="btn btn-danger" onclick="exportarDatos()">📥 Exportar todos los datos</button>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal-overlay" id="modal-invitar">
+    <div class="modal">
+      <div class="modal-header"><h3 class="modal-title">➕ Invitar usuario</h3><button class="modal-close" onclick="cerrarModal('modal-invitar')">×</button></div>
+      <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="invitar-email" placeholder="email@ejemplo.com"></div>
+      <div class="form-group"><label class="form-label">Nido</label><select class="form-input" id="invitar-nido"><option value="">Sin asignar</option></select></div>
+      <div class="form-group"><label class="form-label">Rol</label><select class="form-input" id="invitar-rol"><option value="adulto">Adulto</option><option value="joven">Joven</option><option value="adminNido">Admin Nido</option><option value="adminSistema">Admin Sistema</option></select></div>
+      <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-invitar')">Cancelar</button><button class="btn btn-primary" onclick="enviarInvitacion()">Enviar invitación</button></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [];
+
+    const seccionesDisponibles = [
+      { id: 'arbol', nombre: 'Árbol', icono: '🌳', desc: 'Árbol genealógico' },
+      { id: 'cerebro', nombre: 'Cerebro', icono: '🧠', desc: 'Centro de conocimiento' },
+      { id: 'locomun', nombre: 'Lo Común', icono: '🏠', desc: 'Bienes compartidos' },
+      { id: 'legado', nombre: 'Legado', icono: '📜', desc: 'Historia y tradiciones' },
+      { id: 'activacion', nombre: 'Activación', icono: '📅', desc: 'Calendario y eventos' }
+    ];
+
+    const cerebroModulos = [
+      { id: 'memoria', nombre: 'Memoria', icono: '🗄️', desc: 'Repositorio de documentos' },
+      { id: 'razonamiento', nombre: 'Razonamiento', icono: '📐', desc: 'Instrucciones y pautas' },
+      { id: 'intuicion', nombre: 'Intuición', icono: '💡', desc: 'Propuestas y sugerencias' },
+      { id: 'analisis', nombre: 'Análisis', icono: '📊', desc: 'Estadísticas' }
+    ];
+
+    const permisosBase = [
+      { seccion: 'Árbol', permisos: { adminSistema: true, adminNido: true, adulto: true, joven: true } },
+      { seccion: 'Cerebro', permisos: { adminSistema: true, adminNido: true, adulto: true, joven: false } },
+      { seccion: 'Lo Común', permisos: { adminSistema: true, adminNido: true, adulto: true, joven: false } },
+      { seccion: 'Legado', permisos: { adminSistema: true, adminNido: true, adulto: true, joven: true } },
+      { seccion: 'Invitar usuarios', permisos: { adminSistema: true, adminNido: true, adulto: false, joven: false } },
+      { seccion: 'Editar nidos', permisos: { adminSistema: true, adminNido: true, adulto: false, joven: false } },
+      { seccion: 'Gestionar bienes', permisos: { adminSistema: true, adminNido: false, adulto: false, joven: false } }
+    ];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists || !userDoc.data().familiaId) { alert('No tienes acceso'); window.location.href = 'cgi.html'; return; }
+      userData = userDoc.data();
+
+      const familiaDoc = await db.collection('familias').doc(userData.familiaId).get();
+      if (!familiaDoc.exists) { window.location.href = 'cgi.html'; return; }
+      familiaData = { id: familiaDoc.id, ...familiaDoc.data() };
+
+      const isAdmin = userData.rol === 'adminSistema' || familiaData.adminsGenerales?.includes(user.uid) || familiaData.fundador === user.uid || familiaData.creador === user.uid;
+      if (!isAdmin) { alert('No tienes permisos de administrador'); window.location.href = 'cgi.html'; return; }
+
+      document.getElementById('estirpe-nombre').textContent = familiaData.nombre || 'Mi Estirpe';
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      const nidosSnap = await db.collection('nidos').where('familiaId', '==', familiaData.id).get();
+      nidosData = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const usuariosSnap = await db.collection('usuarios').where('familiaId', '==', familiaData.id).get();
+      usuariosData = usuariosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
+
+      document.getElementById('stat-usuarios').textContent = usuariosData.length;
+      document.getElementById('stat-nidos').textContent = nidosData.length;
+      document.getElementById('stat-bienes').textContent = bienesSnap.size;
+      document.getElementById('stat-generaciones').textContent = new Set(nidosData.map(n => n.generacion)).size;
+
+      renderUsuarios();
+      renderSecciones();
+      renderPermisos();
+      renderConfigEstirpe();
+
+      document.getElementById('invitar-nido').innerHTML = '<option value="">Sin asignar</option>' + nidosData.map(n => `<option value="${n.id}">${n.nombre}</option>`).join('');
+    }
+
+    function cambiarSeccion(seccion) {
+      document.querySelectorAll('.admin-tab').forEach(t => { t.classList.remove('active'); if (t.dataset.section === seccion) t.classList.add('active'); });
+      document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(`section-${seccion}`).classList.add('active');
+    }
+
+    function renderUsuarios() {
+      document.getElementById('usuarios-tbody').innerHTML = usuariosData.map(u => {
+        const inicial = (u.nombre || u.email || '?').charAt(0).toUpperCase();
+        const nido = nidosData.find(n => n.id === u.nidoId);
+        const rolClass = u.rol === 'adminSistema' || u.rol === 'adminNido' ? 'admin' : 'miembro';
+        return `<tr class="user-row"><td><div class="user-info"><div class="user-avatar">${inicial}</div><div><div class="user-name">${u.nombre || 'Sin nombre'}</div><div class="user-email">${u.email}</div></div></div></td><td>${nido?.nombre || '—'}</td><td><span class="role-badge ${rolClass}">${u.rol || 'miembro'}</span></td><td><button class="btn btn-secondary btn-sm" onclick="editarUsuario('${u.id}')">✏️</button></td></tr>`;
+      }).join('');
+    }
+
+    function editarUsuario(userId) {
+      const user = usuariosData.find(u => u.id === userId);
+      if (!user) return;
+      const nuevoRol = prompt(`Rol actual: ${user.rol || 'miembro'}\n\nNuevo rol (adminSistema, adminNido, adulto, joven):`, user.rol || 'adulto');
+      if (!nuevoRol) return;
+      db.collection('usuarios').doc(userId).update({ rol: nuevoRol }).then(() => { alert('✅ Rol actualizado'); cargarDatos(); }).catch(err => alert('Error: ' + err.message));
+    }
+
+    function renderSecciones() {
+      const config = familiaData.seccionesActivas || {};
+      document.getElementById('secciones-grid').innerHTML = seccionesDisponibles.map(sec => `<div class="config-item"><div class="config-item-info"><span class="config-item-icon">${sec.icono}</span><div><div class="config-item-name">${sec.nombre}</div><div class="config-item-desc">${sec.desc}</div></div></div><label class="toggle-switch"><input type="checkbox" ${config[sec.id] !== false ? 'checked' : ''} onchange="toggleSeccion('${sec.id}', this.checked)"><span class="toggle-slider"></span></label></div>`).join('');
+
+      const cerebroConfig = familiaData.cerebroModulos || {};
+      document.getElementById('cerebro-modulos-grid').innerHTML = cerebroModulos.map(mod => `<div class="config-item"><div class="config-item-info"><span class="config-item-icon">${mod.icono}</span><div><div class="config-item-name">${mod.nombre}</div><div class="config-item-desc">${mod.desc}</div></div></div><label class="toggle-switch"><input type="checkbox" ${cerebroConfig[mod.id] !== false ? 'checked' : ''} onchange="toggleCerebroModulo('${mod.id}', this.checked)"><span class="toggle-slider"></span></label></div>`).join('');
+    }
+
+    async function toggleSeccion(id, activo) {
+      await db.collection('familias').doc(familiaData.id).update({ [`seccionesActivas.${id}`]: activo });
+      if (!familiaData.seccionesActivas) familiaData.seccionesActivas = {};
+      familiaData.seccionesActivas[id] = activo;
+    }
+
+    async function toggleCerebroModulo(id, activo) {
+      await db.collection('familias').doc(familiaData.id).update({ [`cerebroModulos.${id}`]: activo });
+      if (!familiaData.cerebroModulos) familiaData.cerebroModulos = {};
+      familiaData.cerebroModulos[id] = activo;
+    }
+
+    function renderPermisos() {
+      const permisos = familiaData.permisos || permisosBase;
+      document.getElementById('permisos-tbody').innerHTML = permisos.map((p, idx) => `<tr><td><strong>${p.seccion}</strong></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adminSistema" ${p.permisos.adminSistema ? 'checked' : ''} disabled></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adminNido" ${p.permisos.adminNido ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adulto" ${p.permisos.adulto ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="joven" ${p.permisos.joven ? 'checked' : ''}></td></tr>`).join('');
+    }
+
+    async function guardarPermisos() {
+      const checks = document.querySelectorAll('.permiso-check');
+      const permisos = [...permisosBase];
+      checks.forEach(c => { permisos[parseInt(c.dataset.idx)].permisos[c.dataset.rol] = c.checked; });
+      await db.collection('familias').doc(familiaData.id).update({ permisos });
+      alert('✅ Permisos guardados');
+    }
+
+    function renderConfigEstirpe() {
+      document.getElementById('config-nombre').value = familiaData.nombre || '';
+      document.getElementById('config-descripcion').value = familiaData.descripcion || '';
+      document.getElementById('config-lema').value = familiaData.lema || '';
+    }
+
+    async function guardarConfigEstirpe() {
+      const nombre = document.getElementById('config-nombre').value.trim();
+      const descripcion = document.getElementById('config-descripcion').value.trim();
+      const lema = document.getElementById('config-lema').value.trim();
+      if (!nombre) { alert('El nombre es obligatorio'); return; }
+      await db.collection('familias').doc(familiaData.id).update({ nombre, descripcion, lema });
+      familiaData.nombre = nombre;
+      document.getElementById('estirpe-nombre').textContent = nombre;
+      alert('✅ Configuración guardada');
+    }
+
+    function abrirModalInvitar() { document.getElementById('modal-invitar').classList.add('active'); }
+    function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    async function enviarInvitacion() {
+      const email = document.getElementById('invitar-email').value.trim();
+      const nidoId = document.getElementById('invitar-nido').value;
+      const rol = document.getElementById('invitar-rol').value;
+      if (!email) { alert('Introduce un email'); return; }
+      await db.collection('invitaciones').add({ email, familiaId: familiaData.id, nidoId: nidoId || null, rol, invitadoPor: currentUser.uid, fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(), estado: 'pendiente' });
+      alert(`✅ Invitación enviada a ${email}`);
+      cerrarModal('modal-invitar');
+      document.getElementById('invitar-email').value = '';
+    }
+
+    function exportarDatos() { alert('Próximamente: Exportar todos los datos de la estirpe'); }
+  </script>
 </body>
 </html>

@@ -2,36 +2,584 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Admin Nido</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --terracotta: #C17757;
+      --terracotta-light: #D4927A;
+      --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.1);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, var(--terracotta) 0%, var(--terracotta-light) 100%);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 16px; }
+
+    .btn-volver {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: var(--radius-md);
+      color: white;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-volver:hover { background: rgba(255,255,255,0.3); }
+
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nido-badge {
+      padding: 4px 12px;
+      background: rgba(255,255,255,0.2);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .main { max-width: 1000px; margin: 0 auto; padding: 24px; }
+
+    .admin-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      background: var(--white);
+      padding: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .admin-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+
+    .admin-tab:hover { background: var(--cream); }
+    .admin-tab.active { background: var(--terracotta); color: white; }
+
+    .admin-section { display: none; animation: fadeIn 0.3s ease; }
+    .admin-section.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary { background: var(--terracotta); color: white; }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    /* Miembros */
+    .miembros-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .miembro-card {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .miembro-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+
+    .miembro-avatar {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, var(--sage), var(--sage-light));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.2rem;
+      margin: 0 auto 12px;
+    }
+
+    .miembro-nombre { font-weight: 700; margin-bottom: 4px; }
+    .miembro-relacion { font-size: 0.8rem; color: var(--text-muted); }
+    .miembro-email { font-size: 0.75rem; color: var(--text-light); margin-top: 8px; }
+
+    /* Config */
+    .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+    .config-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+    }
+
+    .config-item-info { display: flex; align-items: center; gap: 12px; }
+    .config-item-icon { font-size: 1.5rem; }
+    .config-item-name { font-weight: 600; }
+    .config-item-desc { font-size: 0.8rem; color: var(--text-muted); }
+
+    .toggle-switch { position: relative; width: 50px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--text-muted); transition: 0.3s; border-radius: 26px;
+    }
+    .toggle-slider:before {
+      position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
+      background-color: white; transition: 0.3s; border-radius: 50%;
+    }
+    input:checked + .toggle-slider { background-color: var(--terracotta); }
+    input:checked + .toggle-slider:before { transform: translateX(24px); }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-light); }
+    .form-input {
+      width: 100%; padding: 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.9rem; transition: border-color 0.2s;
+    }
+    .form-input:focus { outline: none; border-color: var(--terracotta); }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .stat-value {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--terracotta);
+    }
+
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); }
+
+    /* Accesos */
+    .accesos-lista { display: flex; flex-direction: column; gap: 8px; }
+
+    .acceso-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+    }
+
+    .acceso-info { display: flex; align-items: center; gap: 12px; }
+    .acceso-icon { font-size: 1.2rem; }
+    .acceso-nombre { font-weight: 600; }
+
+    @media (max-width: 768px) {
+      .admin-tabs { flex-direction: column; }
+      .admin-tab { justify-content: flex-start; }
+      .miembros-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="cgi.html" class="btn-volver">← Volver</a>
+      <div class="header-title">
+        <span>⚙️</span>
+        <span>Admin Nido</span>
+        <span class="nido-badge" id="nido-nombre">Mi Nido</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-value" id="stat-miembros">0</div><div class="stat-label">Miembros</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-admins">0</div><div class="stat-label">Admins</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-mascotas">0</div><div class="stat-label">Mascotas</div></div>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-section="miembros" onclick="cambiarSeccion('miembros')"><span>👥</span> Miembros</button>
+      <button class="admin-tab" data-section="secciones" onclick="cambiarSeccion('secciones')"><span>📂</span> Secciones</button>
+      <button class="admin-tab" data-section="accesos" onclick="cambiarSeccion('accesos')"><span>🔑</span> Accesos</button>
+      <button class="admin-tab" data-section="config" onclick="cambiarSeccion('config')"><span>⚙️</span> Configuración</button>
+    </div>
+
+    <!-- MIEMBROS -->
+    <section class="admin-section active" id="section-miembros">
+      <h2 class="section-title">👥 Miembros del nido</h2>
+      <div class="miembros-grid" id="miembros-grid"></div>
+      <div style="margin-top: 16px;">
+        <a href="#" id="btn-editar-nido" class="btn btn-primary"><span>✏️</span> Editar miembros</a>
+      </div>
+    </section>
+
+    <!-- SECCIONES -->
+    <section class="admin-section" id="section-secciones">
+      <h2 class="section-title">📂 Secciones activas para este nido</h2>
+      <div class="card">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Elige qué secciones pueden ver los miembros de este nido
+        </p>
+        <div class="config-grid" id="secciones-nido-grid"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🧠 Módulos del Cerebro</div>
+        <div class="config-grid" id="cerebro-nido-grid"></div>
+      </div>
+    </section>
+
+    <!-- ACCESOS -->
+    <section class="admin-section" id="section-accesos">
+      <h2 class="section-title">🔑 Accesos y permisos</h2>
+      <div class="card">
+        <div class="card-title">Permisos de miembros</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Configura qué puede hacer cada miembro del nido
+        </p>
+        <div class="accesos-lista" id="accesos-lista"></div>
+      </div>
+    </section>
+
+    <!-- CONFIG -->
+    <section class="admin-section" id="section-config">
+      <h2 class="section-title">⚙️ Configuración del nido</h2>
+      <div class="card">
+        <div class="card-title">Datos básicos</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre del nido</label>
+            <input type="text" class="form-input" id="config-nombre" placeholder="Familia García" maxlength="25">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Generación</label>
+            <select class="form-input" id="config-generacion">
+              <option value="1-bisabuelos">Gen 1 — Bisabuelos</option>
+              <option value="2-abuelos">Gen 2 — Abuelos</option>
+              <option value="3-padres">Gen 3 — Padres</option>
+              <option value="4-hijos">Gen 4 — Hijos</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción (opcional)</label>
+          <input type="text" class="form-input" id="config-descripcion" placeholder="Breve descripción...">
+        </div>
+        <button class="btn btn-primary" onclick="guardarConfigNido()">💾 Guardar cambios</button>
+      </div>
+    </section>
+  </main>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
-  <script>
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.location.href = 'login.html';
-        return;
-      }
 
-      // Obtener el nido del usuario
+  <script>
+    let currentUser = null, userData = null, nidoData = null, nidoId = null;
+
+    const seccionesDisponibles = [
+      { id: 'calendario', nombre: 'Calendario', icono: '📅', desc: 'Eventos y reservas' },
+      { id: 'tareas', nombre: 'Tareas', icono: '📋', desc: 'Lista de tareas' },
+      { id: 'mensajes', nombre: 'Mensajes', icono: '💬', desc: 'Chat familiar' },
+      { id: 'tablon', nombre: 'Tablón', icono: '📢', desc: 'Anuncios' },
+      { id: 'menus', nombre: 'Menús', icono: '🍽️', desc: 'Planificación comidas' },
+      { id: 'tienda', nombre: 'Tienda', icono: '🛒', desc: 'Lista de compra' }
+    ];
+
+    const cerebroModulos = [
+      { id: 'memoria', nombre: 'Memoria', icono: '🗄️', desc: 'Repositorio' },
+      { id: 'razonamiento', nombre: 'Razonamiento', icono: '📐', desc: 'Instrucciones' },
+      { id: 'intuicion', nombre: 'Intuición', icono: '💡', desc: 'Propuestas' },
+      { id: 'analisis', nombre: 'Análisis', icono: '📊', desc: 'Estadísticas' }
+    ];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      if (userDoc.exists && userDoc.data().nidoId) {
-        window.location.href = `nido.html?id=${userDoc.data().nidoId}`;
-      } else {
-        // Si no tiene nido asignado, buscar en nidosAdmin
-        const nidosAdmin = userDoc.data()?.nidosAdmin || [];
+      if (!userDoc.exists) { window.location.href = 'cgi.html'; return; }
+      userData = userDoc.data();
+
+      nidoId = userData.nidoId;
+      if (!nidoId) {
+        const nidosAdmin = userData.nidosAdmin || [];
         if (nidosAdmin.length > 0) {
-          window.location.href = `nido.html?id=${nidosAdmin[0]}`;
+          nidoId = nidosAdmin[0];
         } else {
           alert('No tienes un nido asignado');
           window.location.href = 'cgi.html';
+          return;
         }
       }
+
+      const nidoDoc = await db.collection('nidos').doc(nidoId).get();
+      if (!nidoDoc.exists) { alert('Nido no encontrado'); window.location.href = 'cgi.html'; return; }
+      nidoData = { id: nidoDoc.id, ...nidoDoc.data() };
+
+      // Verificar permisos
+      const isAdmin = nidoData.admins?.includes(user.uid) || nidoData.creador === user.uid;
+      if (!isAdmin) {
+        alert('No tienes permisos de administrador en este nido');
+        window.location.href = 'cgi.html';
+        return;
+      }
+
+      document.getElementById('nido-nombre').textContent = nidoData.nombre || 'Mi Nido';
+      document.getElementById('btn-editar-nido').href = `nido.html?id=${nidoId}`;
+
+      renderDatos();
     });
+
+    function renderDatos() {
+      const miembros = nidoData.miembrosData || [];
+      const admins = miembros.filter(m => m.esAdmin);
+      let mascotas = 0;
+      miembros.forEach(m => { if (m.mascotas) mascotas += m.mascotas.length; });
+
+      document.getElementById('stat-miembros').textContent = miembros.length;
+      document.getElementById('stat-admins').textContent = admins.length;
+      document.getElementById('stat-mascotas').textContent = mascotas;
+
+      renderMiembros();
+      renderSecciones();
+      renderAccesos();
+      renderConfig();
+    }
+
+    function cambiarSeccion(seccion) {
+      document.querySelectorAll('.admin-tab').forEach(t => { t.classList.remove('active'); if (t.dataset.section === seccion) t.classList.add('active'); });
+      document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(`section-${seccion}`).classList.add('active');
+    }
+
+    function renderMiembros() {
+      const miembros = nidoData.miembrosData || [];
+      document.getElementById('miembros-grid').innerHTML = miembros.map(m => {
+        const inicial = (m.nombre || m.iniciales || '?').charAt(0).toUpperCase();
+        const relaciones = { progenitor: '👨‍👩‍👧 Progenitor', descendiente: '👶 Descendiente', pareja: '💑 Pareja', otro: '👤 Otro' };
+        return `
+          <div class="miembro-card">
+            <div class="miembro-avatar">${m.iniciales || inicial}</div>
+            <div class="miembro-nombre">${m.nombre || 'Sin nombre'}</div>
+            <div class="miembro-relacion">${relaciones[m.relacion] || m.relacion}</div>
+            ${m.email ? `<div class="miembro-email">${m.email}</div>` : ''}
+            ${m.esAdmin ? '<div style="margin-top:8px;"><span style="background:var(--terracotta);color:white;padding:2px 8px;border-radius:10px;font-size:0.7rem;">Admin</span></div>' : ''}
+          </div>
+        `;
+      }).join('') || '<p style="color:var(--text-muted);">No hay miembros</p>';
+    }
+
+    function renderSecciones() {
+      const config = nidoData.seccionesActivas || {};
+      document.getElementById('secciones-nido-grid').innerHTML = seccionesDisponibles.map(sec => `
+        <div class="config-item">
+          <div class="config-item-info">
+            <span class="config-item-icon">${sec.icono}</span>
+            <div>
+              <div class="config-item-name">${sec.nombre}</div>
+              <div class="config-item-desc">${sec.desc}</div>
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${config[sec.id] !== false ? 'checked' : ''} onchange="toggleSeccionNido('${sec.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `).join('');
+
+      const cerebroConfig = nidoData.cerebroModulos || {};
+      document.getElementById('cerebro-nido-grid').innerHTML = cerebroModulos.map(mod => `
+        <div class="config-item">
+          <div class="config-item-info">
+            <span class="config-item-icon">${mod.icono}</span>
+            <div>
+              <div class="config-item-name">${mod.nombre}</div>
+              <div class="config-item-desc">${mod.desc}</div>
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${cerebroConfig[mod.id] !== false ? 'checked' : ''} onchange="toggleCerebroNido('${mod.id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `).join('');
+    }
+
+    async function toggleSeccionNido(id, activo) {
+      await db.collection('nidos').doc(nidoId).update({ [`seccionesActivas.${id}`]: activo });
+      if (!nidoData.seccionesActivas) nidoData.seccionesActivas = {};
+      nidoData.seccionesActivas[id] = activo;
+    }
+
+    async function toggleCerebroNido(id, activo) {
+      await db.collection('nidos').doc(nidoId).update({ [`cerebroModulos.${id}`]: activo });
+      if (!nidoData.cerebroModulos) nidoData.cerebroModulos = {};
+      nidoData.cerebroModulos[id] = activo;
+    }
+
+    function renderAccesos() {
+      const miembros = nidoData.miembrosData || [];
+      document.getElementById('accesos-lista').innerHTML = miembros.map((m, idx) => `
+        <div class="acceso-item">
+          <div class="acceso-info">
+            <span class="acceso-icon">👤</span>
+            <span class="acceso-nombre">${m.nombre || m.iniciales}</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${m.esAdmin ? 'checked' : ''} onchange="toggleAdmin(${idx}, this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `).join('') || '<p style="color:var(--text-muted);">No hay miembros</p>';
+    }
+
+    async function toggleAdmin(idx, esAdmin) {
+      const miembros = nidoData.miembrosData || [];
+      if (miembros[idx]) {
+        miembros[idx].esAdmin = esAdmin;
+        await db.collection('nidos').doc(nidoId).update({ miembrosData: miembros });
+        nidoData.miembrosData = miembros;
+        renderMiembros();
+      }
+    }
+
+    function renderConfig() {
+      document.getElementById('config-nombre').value = nidoData.nombre || '';
+      document.getElementById('config-generacion').value = nidoData.generacion || '3-padres';
+      document.getElementById('config-descripcion').value = nidoData.descripcion || '';
+    }
+
+    async function guardarConfigNido() {
+      const nombre = document.getElementById('config-nombre').value.trim();
+      const generacion = document.getElementById('config-generacion').value;
+      const descripcion = document.getElementById('config-descripcion').value.trim();
+
+      if (!nombre) { alert('El nombre es obligatorio'); return; }
+
+      try {
+        await db.collection('nidos').doc(nidoId).update({ nombre, generacion, descripcion });
+        nidoData.nombre = nombre;
+        nidoData.generacion = generacion;
+        document.getElementById('nido-nombre').textContent = nombre;
+        alert('✅ Configuración guardada');
+      } catch (error) {
+        alert('Error al guardar');
+      }
+    }
   </script>
-</head>
-<body>
-  <p>Redirigiendo a tu nido...</p>
 </body>
 </html>
