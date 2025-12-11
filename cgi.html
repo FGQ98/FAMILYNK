@@ -690,6 +690,8 @@
     /* ============ BUZÓN ============ */
     .buzon-card { border-left: 4px solid var(--buzon); }
 
+    .mensajes-card { border-left: 4px solid var(--sage); }
+
     .mensaje-item {
       display: flex;
       align-items: flex-start;
@@ -1221,15 +1223,16 @@
         gap: 12px;
       }
 
-      /* Orden móvil: Calendario, Tablón, Tareas, Buzón, Menú */
+      /* Orden móvil: Calendario, Mensajes, Tablón, Tareas, Menú */
       .nido-col { order: 0; }
       .calendario-col { order: 1; }
-      .tablon-col { order: 2; }
-      .tareas-col { order: 3; }
-      .buzon-col { order: 4; }
+      .mensajes-col { order: 2; }
+      .tablon-col { order: 3; }
+      .tareas-col { order: 4; }
       .menus-col { order: 5; }
 
       .tienda-panel { width: 100%; right: -100%; }
+      .chat-panel { width: 100%; right: -100%; }
 
       .card-body { padding: 10px 12px; }
     }
@@ -1468,16 +1471,16 @@
           </div>
         </div>
 
-        <!-- Buzón -->
-        <div class="buzon-col">
-          <div class="card buzon-card">
+        <!-- Mensajes (antes Buzón) -->
+        <div class="mensajes-col">
+          <div class="card mensajes-card">
             <div class="card-header">
-              <span class="card-title">📬 Buzón</span>
-              <a href="buzon.html" class="card-action">Ver todos →</a>
+              <span class="card-title">💬 Mensajes</span>
+              <a href="chat.html" class="card-action">Ver todos →</a>
             </div>
             <div class="card-body">
-              <div id="buzon-list"></div>
-              <button class="btn-nuevo" onclick="nuevoMensaje()">+ Nuevo</button>
+              <div id="mensajes-list"></div>
+              <a href="chat.html" class="btn-nuevo" style="text-decoration: none; display: inline-block;">+ Nuevo chat</a>
             </div>
           </div>
         </div>
@@ -1558,7 +1561,7 @@
       
       renderCalendario();
       renderTareas();
-      renderBuzon();
+      renderMensajes();
       renderTablon();
       renderMenus();
       cargarBadgeChat();
@@ -1819,51 +1822,66 @@
     // ============ BUZÓN (REAL) ============
     let mensajesData = [];
 
-    async function renderBuzon() {
-      const container = document.getElementById('buzon-list');
+    async function renderMensajes() {
+      const container = document.getElementById('mensajes-list');
       
       if (!currentUser || !currentFamilia) {
-        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📭</div>Sin mensajes</div>';
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">💬</div>Sin conversaciones</div>';
         return;
       }
 
       try {
-        // Cargar mensajes donde soy destinatario
-        const snap = await db.collection('mensajes')
-          .where('familiaId', '==', currentFamilia.id)
-          .where('para', '==', currentUser.uid)
-          .orderBy('fechaCreacion', 'desc')
-          .limit(5)
+        // Cargar conversaciones del chat
+        const snap = await db.collection('conversaciones')
+          .where('participantes', 'array-contains', currentUser.uid)
+          .limit(4)
           .get();
 
-        mensajesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let conversaciones = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Ordenar por último mensaje
+        conversaciones.sort((a, b) => {
+          const fechaA = a.ultimoMensaje?.fecha?.toDate?.() || new Date(0);
+          const fechaB = b.ultimoMensaje?.fecha?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
 
-        if (mensajesData.length === 0) {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📭</div>Sin mensajes</div>';
+        if (conversaciones.length === 0) {
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">💬</div>Sin conversaciones</div>';
           return;
         }
 
-        container.innerHTML = mensajesData.map(m => {
-          const iniciales = (m.deNombre || 'NN').substring(0, 2).toUpperCase();
-          const tiempo = formatearTiempo(m.fechaCreacion);
+        container.innerHTML = conversaciones.map(c => {
+          const tieneNoLeidos = c.noLeidosPor?.includes(currentUser.uid);
+          let avatar = '👤';
+          if (c.tipo === 'nido') avatar = '🪺';
+          else if (c.tipo === 'grupo') avatar = '👥';
+          
+          const nombre = c.nombre || 'Chat';
+          const tiempo = formatearTiempo(c.ultimoMensaje?.fecha);
+          const preview = c.ultimoMensaje?.texto || 'Sin mensajes';
           
           return `
-            <div class="mensaje-item ${m.leido ? '' : 'no-leido'}" onclick="verMensaje('${m.id}')">
-              <div class="mensaje-avatar">${iniciales}</div>
+            <div class="mensaje-item ${tieneNoLeidos ? 'no-leido' : ''}" onclick="abrirChat('${c.id}')">
+              <div class="mensaje-avatar">${avatar}</div>
               <div class="mensaje-content">
-                <div class="mensaje-from">${m.deNombre || 'Anónimo'}</div>
-                <div class="mensaje-preview">${m.contenido?.substring(0, 40) || ''}...</div>
+                <div class="mensaje-from">${nombre}</div>
+                <div class="mensaje-preview">${preview.substring(0, 35)}...</div>
               </div>
               <span class="mensaje-time">${tiempo}</span>
-              ${m.leido ? '' : '<div class="mensaje-badge"></div>'}
+              ${tieneNoLeidos ? '<div class="mensaje-badge"></div>' : ''}
             </div>
           `;
         }).join('');
 
       } catch (error) {
-        console.error('Error cargando mensajes:', error);
-        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📭</div>Sin mensajes</div>';
+        console.error('Error cargando conversaciones:', error);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">💬</div>Sin conversaciones</div>';
       }
+    }
+
+    function abrirChat(convId) {
+      window.location.href = `chat.html?conv=${convId}`;
     }
 
     function formatearTiempo(timestamp) {
@@ -1882,13 +1900,6 @@
       }
       
       return fecha.toLocaleDateString('es', { day: 'numeric', month: 'short' });
-    }
-
-    async function verMensaje(mensajeId) {
-      // Marcar como leído
-      await db.collection('mensajes').doc(mensajeId).update({ leido: true });
-      alert('Próximamente: Vista completa del mensaje');
-      renderBuzon();
     }
 
     // ============ TABLÓN (REAL) ============
