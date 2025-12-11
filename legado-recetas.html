@@ -360,10 +360,16 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       try {
         const snap = await db.collection('recetas')
           .where('familiaId', '==', userData.familiaId)
-          .orderBy('fechaCreacion', 'desc')
           .get();
         
-        recetasData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Ordenar en cliente
+        recetasData = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => {
+            const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+            const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+            return fechaB - fechaA;
+          });
         renderRecetas();
       } catch (error) {
         console.error('Error cargando recetas:', error);

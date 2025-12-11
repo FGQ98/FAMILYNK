@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FAMILYNK — Árbol de la Estirpe</title>
+  <title>FAMILYNK — Árbol de la Rama</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -126,6 +126,36 @@
       margin: 0 auto;
     }
 
+    /* SVG de conexiones */
+    .arbol-svg-container {
+      position: relative;
+    }
+    
+    .arbol-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .arbol-svg path {
+      fill: none;
+      stroke: var(--sage-light);
+      stroke-width: 2;
+    }
+    
+    .generacion {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .nido-card {
+      position: relative;
+    }
+
     .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
     .btn-primary { background: linear-gradient(135deg, var(--sage), var(--sage-dark)); color: white; }
     .btn-primary:hover { transform: translateY(-2px); }
@@ -160,7 +190,7 @@
   <main class="main">
     <div class="page-header">
       <div>
-        <h1 class="page-title">🌳 Árbol de la Estirpe</h1>
+        <h1 class="page-title">🌳 Árbol de la Rama</h1>
         <p class="page-subtitle" id="familia-nombre">Familia</p>
       </div>
       <button class="btn btn-primary" onclick="location.href='nido.html'">+ Nuevo nido</button>
@@ -278,14 +308,14 @@
       // Ordenar generaciones
       const genOrden = ['1-bisabuelos', '2-abuelos', '3-padres', '4-hijos'];
       
-      let html = '';
+      let html = '<div class="arbol-svg-container" id="arbol-svg-container">';
 
       genOrden.forEach((gen, idx) => {
         const nidos = porGeneracion[gen];
         if (!nidos || nidos.length === 0) return;
 
         html += `
-          <div class="generacion">
+          <div class="generacion" data-gen="${gen}">
             <div class="generacion-label">${genLabels[gen] || gen}</div>
             <div class="nidos-row">
               ${nidos.map(n => renderNidoCard(n)).join('')}
@@ -293,13 +323,127 @@
           </div>
         `;
 
-        // Conexión a siguiente generación
+        // Espacio entre generaciones
         if (idx < genOrden.length - 1 && porGeneracion[genOrden[idx + 1]]) {
-          html += '<div class="conexion-vertical"></div>';
+          html += '<div style="height: 40px;"></div>';
         }
       });
 
+      html += '</div>';
       container.innerHTML = html || '<p style="text-align:center;color:var(--text-muted);">Sin nidos registrados</p>';
+
+      // Dibujar conexiones después de renderizar
+      setTimeout(() => dibujarConexiones(), 100);
+    }
+
+    function dibujarConexiones() {
+      const svgContainer = document.getElementById('arbol-svg-container');
+      if (!svgContainer) return;
+
+      // Crear SVG
+      const rect = svgContainer.getBoundingClientRect();
+      let svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('arbol-svg');
+      svg.setAttribute('width', rect.width);
+      svg.setAttribute('height', rect.height);
+
+      // Buscar conexiones padre-hijo
+      nidosData.forEach(nido => {
+        if (!nido.nidoPadreId) return;
+
+        const padreEl = document.querySelector(`[data-nido-id="${nido.nidoPadreId}"]`);
+        const hijoEl = document.querySelector(`[data-nido-id="${nido.id}"]`);
+
+        if (padreEl && hijoEl) {
+          const padreRect = padreEl.getBoundingClientRect();
+          const hijoRect = hijoEl.getBoundingClientRect();
+          const containerRect = svgContainer.getBoundingClientRect();
+
+          // Calcular puntos
+          const x1 = padreRect.left + padreRect.width / 2 - containerRect.left;
+          const y1 = padreRect.bottom - containerRect.top;
+          const x2 = hijoRect.left + hijoRect.width / 2 - containerRect.left;
+          const y2 = hijoRect.top - containerRect.top;
+
+          // Crear path curvo
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          const midY = (y1 + y2) / 2;
+          const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+          path.setAttribute('d', d);
+          svg.appendChild(path);
+        }
+      });
+
+      // Si no hay conexiones padre-hijo definidas, conectar centros entre generaciones
+      if (svg.children.length === 0) {
+        const generaciones = document.querySelectorAll('.generacion');
+        for (let i = 0; i < generaciones.length - 1; i++) {
+          const genActual = generaciones[i];
+          const genSiguiente = generaciones[i + 1];
+          
+          const nidosActuales = genActual.querySelectorAll('.nido-card');
+          const nidosSiguientes = genSiguiente.querySelectorAll('.nido-card');
+          const containerRect = svgContainer.getBoundingClientRect();
+
+          // Conectar cada nido de arriba con líneas hacia abajo
+          nidosActuales.forEach(nidoPadre => {
+            const padreRect = nidoPadre.getBoundingClientRect();
+            const x1 = padreRect.left + padreRect.width / 2 - containerRect.left;
+            const y1 = padreRect.bottom - containerRect.top;
+
+            // Punto central de la siguiente generación
+            const firstHijo = nidosSiguientes[0];
+            const lastHijo = nidosSiguientes[nidosSiguientes.length - 1];
+            if (!firstHijo || !lastHijo) return;
+
+            const firstRect = firstHijo.getBoundingClientRect();
+            const lastRect = lastHijo.getBoundingClientRect();
+            const centerX = (firstRect.left + lastRect.right) / 2 - containerRect.left;
+            const y2 = firstRect.top - containerRect.top;
+
+            // Línea vertical hacia abajo y luego horizontal
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const midY = (y1 + y2) / 2;
+            const d = `M ${x1} ${y1} L ${x1} ${midY}`;
+            path.setAttribute('d', d);
+            svg.appendChild(path);
+          });
+
+          // Línea horizontal conectando y líneas verticales hacia los hijos
+          if (nidosSiguientes.length > 0) {
+            const firstRect = nidosSiguientes[0].getBoundingClientRect();
+            const lastRect = nidosSiguientes[nidosSiguientes.length - 1].getBoundingClientRect();
+            const containerRect = svgContainer.getBoundingClientRect();
+            
+            const genActualRect = genActual.getBoundingClientRect();
+            const y1 = genActualRect.bottom - containerRect.top + 20;
+            
+            // Línea horizontal
+            const x1 = firstRect.left + firstRect.width / 2 - containerRect.left;
+            const x2 = lastRect.left + lastRect.width / 2 - containerRect.left;
+            
+            if (nidosSiguientes.length > 1) {
+              const hLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+              hLine.setAttribute('d', `M ${x1} ${y1} L ${x2} ${y1}`);
+              svg.appendChild(hLine);
+            }
+
+            // Líneas verticales a cada hijo
+            nidosSiguientes.forEach(hijo => {
+              const hijoRect = hijo.getBoundingClientRect();
+              const x = hijoRect.left + hijoRect.width / 2 - containerRect.left;
+              const y2 = hijoRect.top - containerRect.top;
+              
+              const vLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+              vLine.setAttribute('d', `M ${x} ${y1} L ${x} ${y2}`);
+              svg.appendChild(vLine);
+            });
+          }
+        }
+      }
+
+      // Insertar SVG al inicio del contenedor
+      svgContainer.insertBefore(svg, svgContainer.firstChild);
     }
 
     function renderNidoCard(nido) {
@@ -309,7 +453,7 @@
       `).join('');
 
       return `
-        <a href="nido.html?id=${nido.id}" class="nido-card">
+        <a href="nido.html?id=${nido.id}" class="nido-card" data-nido-id="${nido.id}">
           <div class="nido-icon">🪺</div>
           <div class="nido-nombre">${nido.nombre}</div>
           <div class="nido-miembros">${miembros.length} miembro${miembros.length !== 1 ? 's' : ''}</div>
