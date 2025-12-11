@@ -1523,13 +1523,28 @@
         // Determinar la siguiente generación si es hijo que forma nido
         let nuevoNidoId = null;
         if (formaNido && nuevoNidoNombre) {
-          // Calcular siguiente generación
-          // Gen 1: bisabuelos → Gen 2: abuelos → Gen 3: padres → Gen 4: hijos
+          // Normalizar generación del nido padre (por si tiene formato antiguo)
+          // Antiguo: 2-padres = Abuelos, 3-nietos = Padres, 4-bisnietos = Hijos
+          // Nuevo:   2-abuelos, 3-padres, 4-hijos
           const genActual = nidoData.generacion || '1-bisabuelos';
-          const genNum = parseInt(genActual.charAt(0));
+          
+          // Mapeo de formato antiguo a número real
+          const genToNum = {
+            '1-bisabuelos': 1,
+            '2-padres': 2,      // antiguo formato
+            '2-abuelos': 2,
+            '3-nietos': 3,      // antiguo formato  
+            '3-padres': 3,
+            '4-bisnietos': 4,   // antiguo formato
+            '4-hijos': 4
+          };
+          
+          const genNum = genToNum[genActual] || parseInt(genActual.charAt(0)) || 1;
           const siguienteGen = Math.min(genNum + 1, 4);
           const genLabels = { 1: 'bisabuelos', 2: 'abuelos', 3: 'padres', 4: 'hijos' };
           const nuevaGeneracion = `${siguienteGen}-${genLabels[siguienteGen]}`;
+
+          console.log('Creando nido hijo:', { genActual, genNum, siguienteGen, nuevaGeneracion });
 
           // Crear el nuevo nido con el hijo como progenitor
           const nuevoNidoRef = await db.collection('nidos').add({
