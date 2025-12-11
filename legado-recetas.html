@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Recetas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 32px; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon { width: 40px; height: 40px; background: linear-gradient(135deg, var(--sage), var(--sage-light)); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .logo-text { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.3rem; color: var(--sage-dark); }
+    .back-link { display: flex; align-items: center; gap: 8px; color: var(--text-muted); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+    .back-link:hover { color: var(--sage); }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .page-header-left {}
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.6rem; font-weight: 700; display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
+
+    .btn { padding: 10px 20px; border: none; border-radius: var(--radius-sm); font-family: 'Nunito', sans-serif; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s; text-decoration: none; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream); }
+    .btn-danger { background: #e74c3c; color: white; }
+
+    /* Grid de recetas */
+    .recetas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .receta-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .receta-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-float);
+    }
+
+    .receta-card-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .receta-card-icon { font-size: 2rem; }
+    .receta-card-info { flex: 1; }
+    .receta-card-nombre { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; margin-bottom: 4px; }
+    .receta-card-autor { font-size: 0.85rem; color: var(--text-muted); }
+
+    .receta-card-meta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .receta-card-meta-item { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--text-light); }
+
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-state-icon { font-size: 4rem; margin-bottom: 16px; }
+    .empty-state-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.2rem; margin-bottom: 8px; }
+    .empty-state-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      opacity: 0; visibility: hidden;
+      transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 95%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      position: sticky;
+      top: 0;
+      background: var(--white);
+      z-index: 10;
+    }
+    
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.8rem; cursor: pointer; color: var(--text-muted); line-height: 1; }
+    .modal-close:hover { color: var(--text); }
+    
+    .receta-form { padding: 24px; }
+    .receta-basicos { margin-bottom: 20px; }
+    
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--text); }
+    .form-input {
+      width: 100%; padding: 10px 14px;
+      border: 2px solid var(--cream-dark); border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif; font-size: 0.95rem; transition: border-color 0.2s;
+    }
+    .form-input:focus { outline: none; border-color: var(--sage); }
+    
+    .receta-tabs {
+      display: flex; gap: 4px;
+      background: var(--cream); padding: 4px;
+      border-radius: var(--radius-sm); margin-bottom: 16px;
+    }
+    .receta-tab {
+      flex: 1; padding: 10px 8px; border: none; background: transparent;
+      border-radius: var(--radius-sm); font-family: 'Nunito', sans-serif;
+      font-weight: 600; font-size: 0.8rem; cursor: pointer;
+      transition: all 0.2s; color: var(--text-muted);
+    }
+    .receta-tab:hover { background: var(--white); color: var(--text); }
+    .receta-tab.active { background: var(--white); color: var(--sage); box-shadow: var(--shadow-soft); }
+    
+    .receta-tab-content { display: none; }
+    .receta-tab-content.active { display: block; }
+    
+    .tab-hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; font-style: italic; }
+    .receta-textarea { min-height: 150px; resize: vertical; line-height: 1.6; }
+    
+    .modal-footer {
+      display: flex; gap: 12px; justify-content: flex-end;
+      padding-top: 16px; border-top: 1px solid var(--cream-dark); margin-top: 16px;
+    }
+
+    /* Vista detalle receta */
+    .receta-detalle { padding: 24px; }
+    .receta-meta {
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-bottom: 20px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .receta-meta-item { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--text-light); }
+    .receta-seccion { margin-bottom: 24px; }
+    .receta-seccion-titulo {
+      font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem;
+      color: var(--sage); margin-bottom: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .receta-seccion-contenido {
+      background: var(--cream); padding: 16px;
+      border-radius: var(--radius-sm); line-height: 1.7; white-space: pre-line;
+    }
+    .receta-notas {
+      background: #FFF9E6; border-left: 4px solid #F0C040;
+      padding: 12px 16px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      font-size: 0.9rem; line-height: 1.6;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .receta-tabs { flex-wrap: wrap; }
+      .receta-tab { flex: none; width: calc(50% - 2px); }
+      .page-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="cgi.html" class="logo">
+        <div class="logo-icon">🪺</div>
+        <span class="logo-text">FAMILYNK</span>
+      </a>
+      <a href="legado.html" class="back-link">← Volver a Legado</a>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">🍳 Recetas</h1>
+        <p class="page-subtitle">Las recetas de tu familia, de generación en generación</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModalReceta()">
+        <span>➕</span> Nueva receta
+      </button>
+    </div>
+
+    <div id="loading" class="empty-state">Cargando recetas...</div>
+
+    <div id="recetas-grid" class="recetas-grid hidden">
+      <!-- Se carga dinámicamente -->
+    </div>
+
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-state-icon">🍳</div>
+      <div class="empty-state-title">Sin recetas guardadas</div>
+      <div class="empty-state-text">Crea la primera receta de tu familia</div>
+      <button class="btn btn-primary" onclick="abrirModalReceta()">➕ Nueva receta</button>
+    </div>
+  </main>
+
+  <!-- Modal Crear/Editar Receta -->
+  <div class="modal-overlay" id="modal-receta">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-receta-titulo">🍳 Nueva receta</h3>
+        <button class="modal-close" onclick="cerrarModalReceta()">×</button>
+      </div>
+      
+      <form id="form-receta" class="receta-form">
+        <div class="receta-basicos">
+          <div class="form-group">
+            <label class="form-label">Nombre de la receta *</label>
+            <input type="text" class="form-input" id="receta-nombre" placeholder="Ej: Tortilla de patatas de la abuela" required>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Autor</label>
+              <input type="text" class="form-input" id="receta-autor" placeholder="¿Quién creó o trajo esta receta?">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Versión</label>
+              <input type="text" class="form-input" id="receta-version" placeholder="Ej: Original, Moderna, Light...">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Comensales</label>
+              <input type="number" class="form-input" id="receta-comensales" placeholder="4" min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tiempo total</label>
+              <input type="text" class="form-input" id="receta-tiempo" placeholder="Ej: 45 min">
+            </div>
+          </div>
+        </div>
+
+        <div class="receta-tabs">
+          <button type="button" class="receta-tab active" onclick="cambiarTabReceta('ingredientes')">🥕 Ingredientes</button>
+          <button type="button" class="receta-tab" onclick="cambiarTabReceta('preparacion')">🔪 Preparación</button>
+          <button type="button" class="receta-tab" onclick="cambiarTabReceta('elaboracion')">🍳 Elaboración</button>
+          <button type="button" class="receta-tab" onclick="cambiarTabReceta('acabado')">✨ Acabado</button>
+        </div>
+
+        <div class="receta-tab-content active" id="tab-ingredientes">
+          <p class="tab-hint">Lista los ingredientes necesarios, uno por línea</p>
+          <textarea class="form-input receta-textarea" id="receta-ingredientes" placeholder="200g de patatas
+4 huevos
+1 cebolla mediana
+Aceite de oliva
+Sal al gusto"></textarea>
+        </div>
+
+        <div class="receta-tab-content" id="tab-preparacion">
+          <p class="tab-hint">Pasos previos: cortar, pelar, marinar...</p>
+          <textarea class="form-input receta-textarea" id="receta-preparacion" placeholder="1. Pelar y cortar las patatas en rodajas finas
+2. Picar la cebolla en juliana
+3. Batir los huevos en un bol grande
+4. Salar las patatas"></textarea>
+        </div>
+
+        <div class="receta-tab-content" id="tab-elaboracion">
+          <p class="tab-hint">El proceso de cocción principal</p>
+          <textarea class="form-input receta-textarea" id="receta-elaboracion" placeholder="1. Calentar abundante aceite en una sartén
+2. Freír las patatas a fuego medio hasta que estén tiernas
+3. Añadir la cebolla y pochar
+4. Mezclar con los huevos batidos
+5. Cuajar la tortilla dándole la vuelta"></textarea>
+        </div>
+
+        <div class="receta-tab-content" id="tab-acabado">
+          <p class="tab-hint">Presentación, acompañamientos, trucos finales</p>
+          <textarea class="form-input receta-textarea" id="receta-acabado" placeholder="Servir templada o fría
+Acompañar con pan y ensalada
+Truco: dejar reposar 5 min antes de servir"></textarea>
+        </div>
+
+        <div class="form-group" style="margin-top: 16px;">
+          <label class="form-label">📝 Notas y secretos</label>
+          <textarea class="form-input" id="receta-notas" rows="2" placeholder="Trucos de familia, variaciones, historia de la receta..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalReceta()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">💾 Guardar receta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Ver Receta -->
+  <div class="modal-overlay" id="modal-ver-receta">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="ver-receta-titulo">🍳 Receta</h3>
+        <button class="modal-close" onclick="cerrarModalVerReceta()">×</button>
+      </div>
+      
+      <div class="receta-detalle" id="receta-detalle-content">
+        <!-- Se llena dinámicamente -->
+      </div>
+      
+      <div class="modal-footer" style="padding: 16px 24px;">
+        <button class="btn btn-danger" id="btn-eliminar-receta" onclick="eliminarReceta()">🗑️ Eliminar</button>
+        <div style="flex:1;"></div>
+        <button class="btn btn-secondary" onclick="cerrarModalVerReceta()">Cerrar</button>
+        <button class="btn btn-primary" id="btn-editar-receta">✏️ Editar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let recetasData = [];
+    let recetaEditandoId = null;
+    let recetaViendoId = null;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists || !userDoc.data().familiaId) {
+        window.location.href = 'onboarding.html';
+        return;
+      }
+      userData = userDoc.data();
+
+      await cargarRecetas();
+    });
+
+    async function cargarRecetas() {
+      try {
+        const snap = await db.collection('recetas')
+          .where('familiaId', '==', userData.familiaId)
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+        
+        recetasData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderRecetas();
+      } catch (error) {
+        console.error('Error cargando recetas:', error);
+        document.getElementById('loading').innerHTML = 'Error al cargar recetas';
+      }
+    }
+
+    function renderRecetas() {
+      document.getElementById('loading').classList.add('hidden');
+      
+      if (recetasData.length === 0) {
+        document.getElementById('empty-state').classList.remove('hidden');
+        document.getElementById('recetas-grid').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('empty-state').classList.add('hidden');
+      const grid = document.getElementById('recetas-grid');
+      grid.classList.remove('hidden');
+
+      grid.innerHTML = recetasData.map(r => `
+        <div class="receta-card" onclick="verReceta('${r.id}')">
+          <div class="receta-card-header">
+            <div class="receta-card-icon">🍳</div>
+            <div class="receta-card-info">
+              <div class="receta-card-nombre">${r.nombre}</div>
+              <div class="receta-card-autor">${r.autor ? 'Por ' + r.autor : ''}${r.version ? ' · ' + r.version : ''}</div>
+            </div>
+          </div>
+          <div class="receta-card-meta">
+            ${r.comensales ? `<div class="receta-card-meta-item"><span>👥</span> ${r.comensales} pers.</div>` : ''}
+            ${r.tiempo ? `<div class="receta-card-meta-item"><span>⏱️</span> ${r.tiempo}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function abrirModalReceta(receta = null) {
+      recetaEditandoId = receta?.id || null;
+      
+      document.getElementById('modal-receta-titulo').textContent = receta ? '✏️ Editar receta' : '🍳 Nueva receta';
+      document.getElementById('form-receta').reset();
+      
+      // Reset tabs
+      document.querySelectorAll('.receta-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.receta-tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.receta-tab').classList.add('active');
+      document.getElementById('tab-ingredientes').classList.add('active');
+      
+      if (receta) {
+        document.getElementById('receta-nombre').value = receta.nombre || '';
+        document.getElementById('receta-autor').value = receta.autor || '';
+        document.getElementById('receta-version').value = receta.version || '';
+        document.getElementById('receta-comensales').value = receta.comensales || '';
+        document.getElementById('receta-tiempo').value = receta.tiempo || '';
+        document.getElementById('receta-ingredientes').value = receta.ingredientes || '';
+        document.getElementById('receta-preparacion').value = receta.preparacion || '';
+        document.getElementById('receta-elaboracion').value = receta.elaboracion || '';
+        document.getElementById('receta-acabado').value = receta.acabado || '';
+        document.getElementById('receta-notas').value = receta.notas || '';
+      }
+      
+      document.getElementById('modal-receta').classList.add('active');
+    }
+
+    function cerrarModalReceta() {
+      document.getElementById('modal-receta').classList.remove('active');
+      recetaEditandoId = null;
+    }
+
+    function cambiarTabReceta(tab) {
+      document.querySelectorAll('.receta-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.receta-tab-content').forEach(c => c.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    document.getElementById('form-receta').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        nombre: document.getElementById('receta-nombre').value.trim(),
+        autor: document.getElementById('receta-autor').value.trim(),
+        version: document.getElementById('receta-version').value.trim(),
+        comensales: document.getElementById('receta-comensales').value,
+        tiempo: document.getElementById('receta-tiempo').value.trim(),
+        ingredientes: document.getElementById('receta-ingredientes').value.trim(),
+        preparacion: document.getElementById('receta-preparacion').value.trim(),
+        elaboracion: document.getElementById('receta-elaboracion').value.trim(),
+        acabado: document.getElementById('receta-acabado').value.trim(),
+        notas: document.getElementById('receta-notas').value.trim(),
+        familiaId: userData.familiaId,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      if (!data.nombre) {
+        alert('El nombre de la receta es obligatorio');
+        return;
+      }
+      
+      try {
+        if (recetaEditandoId) {
+          await db.collection('recetas').doc(recetaEditandoId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('recetas').add(data);
+        }
+        
+        cerrarModalReceta();
+        await cargarRecetas();
+        alert('✅ Receta guardada');
+      } catch (error) {
+        console.error('Error guardando receta:', error);
+        alert('Error al guardar la receta');
+      }
+    });
+
+    function verReceta(id) {
+      const receta = recetasData.find(r => r.id === id);
+      if (!receta) return;
+      
+      recetaViendoId = id;
+      
+      document.getElementById('ver-receta-titulo').textContent = '🍳 ' + receta.nombre;
+      document.getElementById('btn-editar-receta').onclick = () => {
+        cerrarModalVerReceta();
+        abrirModalReceta(receta);
+      };
+      
+      let html = `
+        <div class="receta-meta">
+          ${receta.autor ? `<div class="receta-meta-item"><span>👤</span> ${receta.autor}</div>` : ''}
+          ${receta.version ? `<div class="receta-meta-item"><span>📝</span> ${receta.version}</div>` : ''}
+          ${receta.comensales ? `<div class="receta-meta-item"><span>👥</span> ${receta.comensales} personas</div>` : ''}
+          ${receta.tiempo ? `<div class="receta-meta-item"><span>⏱️</span> ${receta.tiempo}</div>` : ''}
+        </div>
+      `;
+      
+      if (receta.ingredientes) {
+        html += `
+          <div class="receta-seccion">
+            <div class="receta-seccion-titulo">🥕 Ingredientes</div>
+            <div class="receta-seccion-contenido">${receta.ingredientes}</div>
+          </div>
+        `;
+      }
+      
+      if (receta.preparacion) {
+        html += `
+          <div class="receta-seccion">
+            <div class="receta-seccion-titulo">🔪 Preparación</div>
+            <div class="receta-seccion-contenido">${receta.preparacion}</div>
+          </div>
+        `;
+      }
+      
+      if (receta.elaboracion) {
+        html += `
+          <div class="receta-seccion">
+            <div class="receta-seccion-titulo">🍳 Elaboración</div>
+            <div class="receta-seccion-contenido">${receta.elaboracion}</div>
+          </div>
+        `;
+      }
+      
+      if (receta.acabado) {
+        html += `
+          <div class="receta-seccion">
+            <div class="receta-seccion-titulo">✨ Acabado</div>
+            <div class="receta-seccion-contenido">${receta.acabado}</div>
+          </div>
+        `;
+      }
+      
+      if (receta.notas) {
+        html += `
+          <div class="receta-seccion">
+            <div class="receta-seccion-titulo">📝 Notas y secretos</div>
+            <div class="receta-notas">${receta.notas}</div>
+          </div>
+        `;
+      }
+      
+      document.getElementById('receta-detalle-content').innerHTML = html;
+      document.getElementById('modal-ver-receta').classList.add('active');
+    }
+
+    function cerrarModalVerReceta() {
+      document.getElementById('modal-ver-receta').classList.remove('active');
+      recetaViendoId = null;
+    }
+
+    async function eliminarReceta() {
+      if (!recetaViendoId) return;
+      if (!confirm('¿Seguro que quieres eliminar esta receta?')) return;
+      
+      try {
+        await db.collection('recetas').doc(recetaViendoId).delete();
+        cerrarModalVerReceta();
+        await cargarRecetas();
+        alert('✅ Receta eliminada');
+      } catch (error) {
+        console.error('Error eliminando receta:', error);
+        alert('Error al eliminar la receta');
+      }
+    }
+
+    // Cerrar modales con click fuera
+    document.getElementById('modal-receta').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-receta') cerrarModalReceta();
+    });
+    document.getElementById('modal-ver-receta').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-ver-receta') cerrarModalVerReceta();
+    });
+  </script>
+</body>
+</html>
