@@ -2786,36 +2786,32 @@
 
         const data = {
           nombre: document.getElementById('casero-nombre').value,
-          email: document.getElementById('casero-email').value.toLowerCase(),
+          email: document.getElementById('casero-email').value.toLowerCase().trim(),
           telefono: document.getElementById('casero-telefono').value,
           permisos: permisos,
           bienId: bienId,
-          familiaId: familiaId,
+          bienNombre: bienData.nombre || '',
+          familiaId: bienData.familiaId || familiaId,
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
+        
+        if (!data.email) {
+          alert('El email es obligatorio');
+          btn.disabled = false; btn.textContent = 'Guardar';
+          return;
+        }
         
         const ref = db.collection('bienes').doc(bienId).collection('caseros');
         
         if (editingCaseroId) {
           await ref.doc(editingCaseroId).update(data);
         } else {
-          // Verificar si ya existe un casero con ese email
-          const existente = await db.collectionGroup('caseros').where('email', '==', data.email).get();
-          
           data.creadoPor = currentUser.uid;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           data.activo = true;
           
           // Crear en subcolección del bien
-          const nuevoCasero = await ref.add(data);
-          
-          // También guardar referencia global para login
-          await db.collection('caseros').doc(nuevoCasero.id).set({
-            email: data.email,
-            nombre: data.nombre,
-            bienesAcceso: [{ bienId, bienNombre: bienData.nombre, familiaId }],
-            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
-          });
+          await ref.add(data);
         }
         
         modalCasero.classList.remove('active');
@@ -2824,11 +2820,11 @@
         renderCaserosList();
         
         if (!editingCaseroId) {
-          alert('✅ Casero añadido.\n\nPara que pueda acceder, debe registrarse en FAMILYNK con el email: ' + data.email);
+          alert('✅ Casero añadido.\n\nEmail: ' + data.email);
         }
       } catch (error) {
-        console.error(error);
-        alert('Error al guardar');
+        console.error('Error guardando casero:', error);
+        alert('Error al guardar: ' + error.message);
       }
       
       btn.disabled = false; btn.textContent = 'Guardar';
