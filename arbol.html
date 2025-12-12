@@ -118,22 +118,35 @@
     .mini-avatar:first-child { margin-left: 0; }
     .mini-avatar.fallecido { background: var(--text-muted); opacity: 0.6; }
 
-    /* Conexiones entre generaciones */
-    .conexion-entre-gen {
-      display: flex;
-      justify-content: center;
-      padding: 20px 0;
+    /* Conexiones entre generaciones - SVG */
+    .arbol-wrapper {
+      position: relative;
     }
     
-    .conexion-entre-gen::before {
-      content: '';
-      width: 2px;
-      height: 40px;
-      background: var(--sage-light);
+    .arbol-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    .arbol-svg path, .arbol-svg line {
+      fill: none;
+      stroke: var(--sage-light);
+      stroke-width: 2;
     }
 
     .generacion {
       position: relative;
+      z-index: 1;
+      margin-bottom: 50px;
+    }
+    
+    .generacion:last-child {
+      margin-bottom: 0;
     }
     
     .nido-card {
@@ -304,7 +317,7 @@
       const genOrden = ['1-bisabuelos', '2-abuelos', '3-padres', '4-hijos'];
       const generacionesActivas = genOrden.filter(g => porGeneracion[g]?.length > 0);
       
-      let html = '';
+      let html = '<div class="arbol-wrapper" id="arbol-wrapper">';
 
       generacionesActivas.forEach((gen, idx) => {
         const nidos = porGeneracion[gen];
@@ -317,14 +330,94 @@
             </div>
           </div>
         `;
-
-        // Línea de conexión a siguiente generación
-        if (idx < generacionesActivas.length - 1) {
-          html += '<div class="conexion-entre-gen"></div>';
-        }
       });
 
+      html += '</div>';
       container.innerHTML = html || '<p style="text-align:center;color:var(--text-muted);">Sin nidos registrados</p>';
+
+      // Dibujar conexiones SVG después de renderizar
+      setTimeout(() => dibujarConexionesSVG(generacionesActivas, porGeneracion), 150);
+    }
+
+    function dibujarConexionesSVG(generacionesActivas, porGeneracion) {
+      const wrapper = document.getElementById('arbol-wrapper');
+      if (!wrapper) return;
+
+      // Eliminar SVG anterior si existe
+      const oldSvg = wrapper.querySelector('.arbol-svg');
+      if (oldSvg) oldSvg.remove();
+
+      // Crear SVG
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('arbol-svg');
+      svg.setAttribute('width', wrapperRect.width);
+      svg.setAttribute('height', wrapperRect.height);
+      svg.style.width = wrapperRect.width + 'px';
+      svg.style.height = wrapperRect.height + 'px';
+
+      // Para cada par de generaciones consecutivas
+      for (let i = 0; i < generacionesActivas.length - 1; i++) {
+        const genPadre = generacionesActivas[i];
+        const genHijo = generacionesActivas[i + 1];
+        
+        const nidosPadre = porGeneracion[genPadre] || [];
+        const nidosHijo = porGeneracion[genHijo] || [];
+
+        // Buscar conexiones por nidoPadreId o por miembros compartidos
+        nidosHijo.forEach(nidoHijo => {
+          let nidoPadreConectado = null;
+
+          // Opción 1: tiene nidoPadreId explícito
+          if (nidoHijo.nidoPadreId) {
+            nidoPadreConectado = nidosPadre.find(np => np.id === nidoHijo.nidoPadreId);
+          }
+          
+          // Opción 2: buscar por miembros compartidos (el fundador del nido hijo está en un nido padre)
+          if (!nidoPadreConectado && nidoHijo.miembrosData?.length > 0) {
+            const primerMiembro = nidoHijo.miembrosData[0];
+            for (const np of nidosPadre) {
+              const encontrado = np.miembrosData?.some(m => 
+                (m.uid && m.uid === primerMiembro.uid) ||
+                (m.nombre === primerMiembro.nombre && m.iniciales === primerMiembro.iniciales)
+              );
+              if (encontrado) {
+                nidoPadreConectado = np;
+                break;
+              }
+            }
+          }
+
+          // Si encontramos conexión, dibujar línea
+          if (nidoPadreConectado) {
+            const padreEl = wrapper.querySelector(`[data-nido-id="${nidoPadreConectado.id}"]`);
+            const hijoEl = wrapper.querySelector(`[data-nido-id="${nidoHijo.id}"]`);
+
+            if (padreEl && hijoEl) {
+              const padreRect = padreEl.getBoundingClientRect();
+              const hijoRect = hijoEl.getBoundingClientRect();
+
+              // Puntos relativos al wrapper
+              const x1 = padreRect.left + padreRect.width / 2 - wrapperRect.left;
+              const y1 = padreRect.bottom - wrapperRect.top;
+              const x2 = hijoRect.left + hijoRect.width / 2 - wrapperRect.left;
+              const y2 = hijoRect.top - wrapperRect.top;
+
+              // Dibujar línea con curva suave
+              const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+              const midY = y1 + (y2 - y1) / 2;
+              
+              // Línea: baja vertical, luego horizontal, luego vertical
+              const d = `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+              path.setAttribute('d', d);
+              svg.appendChild(path);
+            }
+          }
+        });
+      }
+
+      // Insertar SVG al inicio del wrapper
+      wrapper.insertBefore(svg, wrapper.firstChild);
     }
 
     function renderNidoCard(nido) {
