@@ -1072,32 +1072,46 @@
     });
 
     async function cargarUsuario() {
-      const doc = await db.collection('usuarios').doc(currentUser.uid).get();
-      if (!doc.exists) {
-        window.location.href = 'login.html';
-        return;
+      try {
+        const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+        if (!doc.exists) {
+          console.error('Usuario no existe en Firestore');
+          window.location.href = 'login.html';
+          return;
+        }
+        userData = doc.data();
+        
+        // Verificar datos críticos
+        if (!userData.familiaId) {
+          console.error('Usuario sin familiaId:', userData);
+          alert('Error: Tu usuario no tiene familia asignada. Contacta al administrador.');
+          return;
+        }
+
+        // UI usuario
+        const nombre = userData.nombre || currentUser.email.split('@')[0];
+        document.getElementById('user-name').textContent = nombre;
+        document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+
+        // Detectar AdminSistema
+        esAdminSistema = userData.rol === 'AdminSistema';
+
+        if (esAdminSistema) {
+          // AdminSistema: ocultar pestañas de ámbito, ve todo
+          document.getElementById('ambito-tabs').classList.add('hidden');
+          ambitoActual = 'todos'; // Ve todo
+        } else {
+          // AdminNido: cargar nidos de su estirpe
+          await cargarNidosEstirpe();
+        }
+
+        // Cargar sección inicial
+        cambiarSeccion('memoria');
+        
+      } catch (error) {
+        console.error('Error cargando usuario:', error);
+        alert('Error al cargar datos de usuario: ' + error.message);
       }
-      userData = doc.data();
-
-      // UI usuario
-      const nombre = userData.nombre || currentUser.email.split('@')[0];
-      document.getElementById('user-name').textContent = nombre;
-      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
-
-      // Detectar AdminSistema
-      esAdminSistema = userData.rol === 'AdminSistema';
-
-      if (esAdminSistema) {
-        // AdminSistema: ocultar pestañas de ámbito, ve todo
-        document.getElementById('ambito-tabs').classList.add('hidden');
-        ambitoActual = 'todos'; // Ve todo
-      } else {
-        // AdminNido: cargar nidos de su estirpe
-        await cargarNidosEstirpe();
-      }
-
-      // Cargar sección inicial
-      cambiarSeccion('memoria');
     }
 
     async function cargarNidosEstirpe() {
