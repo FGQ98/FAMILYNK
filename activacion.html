@@ -16,6 +16,13 @@
       --white: #FFFFFF;
       --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
       --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      /* Colores de eventos */
+      --evento-cumple: #E91E63;
+      --evento-cumple-muted: rgba(233, 30, 99, 0.15);
+      --evento-celebracion: #FF9800;
+      --evento-celebracion-muted: rgba(255, 152, 0, 0.15);
+      --evento-hito: #2196F3;
+      --evento-hito-muted: rgba(33, 150, 243, 0.15);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
@@ -157,20 +164,157 @@
     .calendario-day:hover { background: var(--cream); }
     .calendario-day.today { background: var(--sage); color: white; font-weight: 700; }
     .calendario-day.has-event { position: relative; }
-    .calendario-day.has-event::after {
-      content: '';
+    
+    /* Puntos de eventos por tipo */
+    .calendario-day .event-dots {
       position: absolute;
       bottom: 2px;
       left: 50%;
       transform: translateX(-50%);
-      width: 4px;
-      height: 4px;
-      background: var(--terracotta);
+      display: flex;
+      gap: 2px;
+    }
+    
+    .event-dot {
+      width: 5px;
+      height: 5px;
       border-radius: 50%;
     }
+    
+    .event-dot.cumple { background: var(--evento-cumple); }
+    .event-dot.celebracion { background: var(--evento-celebracion); }
+    .event-dot.hito { background: var(--evento-hito); }
 
     /* Lista eventos */
     .eventos-list { display: flex; flex-direction: column; gap: 10px; }
+    
+    .evento-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      border-left: 4px solid var(--sage);
+      transition: all 0.2s;
+    }
+    
+    .evento-item:hover { box-shadow: var(--shadow-soft); }
+    
+    .evento-item.cumple { border-left-color: var(--evento-cumple); background: var(--evento-cumple-muted); }
+    .evento-item.celebracion { border-left-color: var(--evento-celebracion); background: var(--evento-celebracion-muted); }
+    .evento-item.hito { border-left-color: var(--evento-hito); background: var(--evento-hito-muted); }
+    
+    .evento-fecha {
+      min-width: 50px;
+      text-align: center;
+    }
+    
+    .evento-fecha-dia {
+      font-size: 1.4rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    
+    .evento-item.cumple .evento-fecha-dia { color: var(--evento-cumple); }
+    .evento-item.celebracion .evento-fecha-dia { color: var(--evento-celebracion); }
+    .evento-item.hito .evento-fecha-dia { color: var(--evento-hito); }
+    
+    .evento-fecha-mes {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    
+    .evento-info { flex: 1; }
+    
+    .evento-titulo {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    
+    .evento-detalle {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    
+    .evento-tipo-badge {
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    
+    .evento-tipo-badge.cumple { background: var(--evento-cumple); color: white; }
+    .evento-tipo-badge.celebracion { background: var(--evento-celebracion); color: white; }
+    .evento-tipo-badge.hito { background: var(--evento-hito); color: white; }
+    
+    /* Leyenda */
+    .calendario-leyenda {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--cream-dark);
+      flex-wrap: wrap;
+    }
+    
+    .leyenda-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    
+    .leyenda-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    /* Loading */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 40px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      padding: 20px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); }
 
     .evento-item {
       display: flex;
@@ -278,6 +422,28 @@
       border-color: var(--sage);
       box-shadow: 0 0 0 3px var(--sage-muted);
     }
+    
+    .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      transition: all 0.2s;
+      background: var(--white);
+    }
+    
+    .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--sage);
+      box-shadow: 0 0 0 3px var(--sage-muted);
+    }
+    
+    .form-textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
 
     .form-input-group {
       display: flex;
@@ -323,6 +489,15 @@
 
     .btn-secondary:hover {
       background: var(--cream-dark);
+    }
+    
+    .btn-danger {
+      background: #D4695A;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #c25a4b;
     }
 
     .btn-sm {
@@ -463,14 +638,11 @@
           <div class="card">
             <div class="card-header">
               <span class="card-title">📅 Próximos eventos</span>
-              <button class="btn btn-sm btn-primary">+ Evento</button>
+              <button class="btn btn-sm btn-primary" id="btn-nuevo-evento" onclick="abrirModalEvento()" style="display:none">+ Evento</button>
             </div>
             <div class="card-body">
               <div class="eventos-list" id="eventos-list">
-                <div class="empty-state">
-                  <div class="empty-icon">📅</div>
-                  <p>No hay eventos próximos</p>
-                </div>
+                <div class="loading"><div class="spinner"></div></div>
               </div>
             </div>
           </div>
@@ -495,9 +667,90 @@
                 <div class="calendario-day-header">S</div>
                 <div class="calendario-day-header">D</div>
               </div>
+              
+              <!-- Leyenda -->
+              <div class="calendario-leyenda">
+                <div class="leyenda-item">
+                  <div class="leyenda-dot" style="background:var(--evento-cumple)"></div>
+                  <span>Cumpleaños</span>
+                </div>
+                <div class="leyenda-item">
+                  <div class="leyenda-dot" style="background:var(--evento-celebracion)"></div>
+                  <span>Celebraciones</span>
+                </div>
+                <div class="leyenda-item">
+                  <div class="leyenda-dot" style="background:var(--evento-hito)"></div>
+                  <span>Hitos</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Modal Crear/Editar Evento -->
+    <div class="modal-overlay" id="modal-evento">
+      <div class="modal" style="max-width:500px">
+        <div class="modal-header">
+          <h3 class="modal-title" id="modal-evento-titulo">📅 Nuevo evento</h3>
+          <button class="modal-close" onclick="cerrarModalEvento()">×</button>
+        </div>
+        <form id="form-evento" onsubmit="guardarEvento(event)">
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Tipo de evento *</label>
+              <select class="form-select" id="evento-categoria" onchange="cambiarCategoriaEvento()" required>
+                <option value="">Selecciona...</option>
+                <optgroup label="🎉 Celebraciones">
+                  <option value="celebracion-cumple">🎂 Cumple (evento)</option>
+                  <option value="celebracion-boda">💒 Boda</option>
+                  <option value="celebracion-bautizo">⛪ Bautizo</option>
+                  <option value="celebracion-comunion">✝️ Comunión</option>
+                  <option value="celebracion-navidad">🎄 Navidad Anticipada</option>
+                  <option value="celebracion-bbq">🍖 BBQ Verano</option>
+                </optgroup>
+                <optgroup label="🏆 Hitos">
+                  <option value="hito-caceria">🦌 Cacería</option>
+                  <option value="hito-torneo">🏅 Torneo</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Título / Descripción *</label>
+              <input type="text" class="form-input" id="evento-titulo" placeholder="Ej: Comunión de Lucía, BBQ en la finca..." required>
+            </div>
+
+            <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group">
+                <label class="form-label">Fecha *</label>
+                <input type="date" class="form-input" id="evento-fecha" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Hora (opcional)</label>
+                <input type="time" class="form-input" id="evento-hora">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Lugar (opcional)</label>
+              <input type="text" class="form-input" id="evento-lugar" placeholder="Ej: Casa de los abuelos, Restaurante...">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Notas adicionales</label>
+              <textarea class="form-textarea" id="evento-notas" placeholder="Detalles, qué llevar, etc." rows="2"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer" style="display:flex;justify-content:space-between">
+            <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-evento" onclick="eliminarEvento()">🗑️ Eliminar</button>
+            <div style="display:flex;gap:12px">
+              <button type="button" class="btn btn-secondary" onclick="cerrarModalEvento()">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -722,7 +975,7 @@
       document.getElementById('user-name').textContent = nombre.split(' ')[0];
       document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
 
-      renderCalendario();
+      await cargarEventosCalendario();
       generarPassword();
       cargarInvitaciones();
     });
@@ -909,6 +1162,118 @@
     }
 
     // ============ CALENDARIO ============
+    let eventosCalendario = []; // Todos los eventos combinados
+    let eventoEditando = null;
+    let esAdminRama = false;
+
+    async function cargarEventosCalendario() {
+      if (!familiaId) return;
+      
+      eventosCalendario = [];
+      
+      try {
+        // 1. Cargar CUMPLEAÑOS automáticos desde perfiles de usuarios
+        const usuariosSnap = await db.collection('usuarios')
+          .where('familiaId', '==', familiaId)
+          .get();
+        
+        const hoy = new Date();
+        const añoActual = hoy.getFullYear();
+        
+        usuariosSnap.docs.forEach(doc => {
+          const u = doc.data();
+          if (u.fechaNacimiento) {
+            // Puede ser Timestamp o string
+            let fechaNac;
+            if (u.fechaNacimiento.toDate) {
+              fechaNac = u.fechaNacimiento.toDate();
+            } else {
+              fechaNac = new Date(u.fechaNacimiento);
+            }
+            
+            // Crear evento de cumpleaños para este año y el próximo
+            [añoActual, añoActual + 1].forEach(año => {
+              const cumple = new Date(año, fechaNac.getMonth(), fechaNac.getDate());
+              const edad = año - fechaNac.getFullYear();
+              
+              eventosCalendario.push({
+                id: `cumple-${doc.id}-${año}`,
+                tipo: 'cumple',
+                categoria: 'cumpleaños',
+                titulo: `🎂 Cumpleaños de ${u.nombre || 'Miembro'}`,
+                subtitulo: `Cumple ${edad} años`,
+                fecha: cumple,
+                usuarioId: doc.id,
+                esAutomatico: true
+              });
+            });
+          }
+        });
+        
+        // 2. Cargar CELEBRACIONES y HITOS desde Firestore
+        const eventosSnap = await db.collection('eventos-calendario')
+          .where('familiaId', '==', familiaId)
+          .get();
+        
+        eventosSnap.docs.forEach(doc => {
+          const e = doc.data();
+          let fecha = e.fecha;
+          if (fecha && fecha.toDate) fecha = fecha.toDate();
+          else if (fecha) fecha = new Date(fecha);
+          
+          // Determinar tipo base (celebracion o hito)
+          const tipoBase = e.categoria?.startsWith('hito') ? 'hito' : 'celebracion';
+          
+          // Etiqueta según categoría
+          const etiquetas = {
+            'celebracion-cumple': '🎂 Cumple',
+            'celebracion-boda': '💒 Boda',
+            'celebracion-bautizo': '⛪ Bautizo',
+            'celebracion-comunion': '✝️ Comunión',
+            'celebracion-navidad': '🎄 Navidad Anticipada',
+            'celebracion-bbq': '🍖 BBQ Verano',
+            'hito-caceria': '🦌 Cacería',
+            'hito-torneo': '🏅 Torneo'
+          };
+          
+          eventosCalendario.push({
+            id: doc.id,
+            tipo: tipoBase,
+            categoria: e.categoria,
+            titulo: e.titulo,
+            subtitulo: etiquetas[e.categoria] || e.categoria,
+            fecha: fecha,
+            hora: e.hora || null,
+            lugar: e.lugar || '',
+            notas: e.notas || '',
+            creadoPor: e.creadoPor,
+            esAutomatico: false
+          });
+        });
+        
+        // Ordenar por fecha
+        eventosCalendario.sort((a, b) => a.fecha - b.fecha);
+        
+        // Verificar si es AdminRama para mostrar botón
+        esAdminRama = userData.rol === 'AdminRama' || userData.rol === 'AdminSistema';
+        if (esAdminRama) {
+          document.getElementById('btn-nuevo-evento').style.display = 'inline-flex';
+        }
+        
+        renderCalendario();
+        renderListaEventos();
+        
+      } catch (error) {
+        console.error('Error cargando eventos:', error);
+        document.getElementById('eventos-list').innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">⚠️</div>
+            <p>Error al cargar eventos</p>
+          </div>
+        `;
+      }
+    }
+
     function cambiarMes(delta) {
       mesActual.setMonth(mesActual.getMonth() + delta);
       renderCalendario();
@@ -948,11 +1313,211 @@
       const hoy = new Date();
       for (let d = 1; d <= ultimoDia.getDate(); d++) {
         const esHoy = d === hoy.getDate() && mesActual.getMonth() === hoy.getMonth() && mesActual.getFullYear() === hoy.getFullYear();
-        html += `<div class="calendario-day ${esHoy ? 'today' : ''}">${d}</div>`;
+        
+        // Buscar eventos de este día
+        const eventosDia = eventosCalendario.filter(e => {
+          return e.fecha.getDate() === d && 
+                 e.fecha.getMonth() === mesActual.getMonth() && 
+                 e.fecha.getFullYear() === mesActual.getFullYear();
+        });
+        
+        // Generar puntos de colores
+        let dots = '';
+        if (eventosDia.length > 0) {
+          const tipos = [...new Set(eventosDia.map(e => e.tipo))];
+          dots = '<div class="event-dots">';
+          tipos.forEach(t => {
+            dots += `<div class="event-dot ${t}"></div>`;
+          });
+          dots += '</div>';
+        }
+        
+        html += `<div class="calendario-day ${esHoy ? 'today' : ''} ${eventosDia.length ? 'has-event' : ''}" 
+                      onclick="verEventosDia(${d})" 
+                      style="position:relative">${d}${dots}</div>`;
       }
 
       grid.innerHTML = html;
     }
+
+    function renderListaEventos() {
+      const container = document.getElementById('eventos-list');
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      
+      // Filtrar eventos futuros (próximos 60 días)
+      const limite = new Date(hoy);
+      limite.setDate(limite.getDate() + 60);
+      
+      const eventosProximos = eventosCalendario.filter(e => {
+        const fecha = new Date(e.fecha);
+        fecha.setHours(0, 0, 0, 0);
+        return fecha >= hoy && fecha <= limite;
+      });
+      
+      if (eventosProximos.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📅</div>
+            <p>No hay eventos en los próximos 60 días</p>
+          </div>
+        `;
+        return;
+      }
+      
+      const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      
+      container.innerHTML = eventosProximos.slice(0, 10).map(e => {
+        const puedeEditar = !e.esAutomatico && esAdminRama;
+        
+        return `
+          <div class="evento-item ${e.tipo}" ${puedeEditar ? `onclick="editarEvento('${e.id}')" style="cursor:pointer"` : ''}>
+            <div class="evento-fecha">
+              <div class="evento-fecha-dia">${e.fecha.getDate()}</div>
+              <div class="evento-fecha-mes">${mesesCortos[e.fecha.getMonth()]}</div>
+            </div>
+            <div class="evento-info">
+              <div class="evento-titulo">${e.titulo}</div>
+              <div class="evento-detalle">
+                ${e.subtitulo}
+                ${e.hora ? ` · ${e.hora}` : ''}
+                ${e.lugar ? ` · 📍 ${e.lugar}` : ''}
+              </div>
+            </div>
+            <span class="evento-tipo-badge ${e.tipo}">${e.tipo === 'cumple' ? '🎂' : (e.tipo === 'celebracion' ? '🎉' : '🏆')}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function verEventosDia(dia) {
+      const eventosDia = eventosCalendario.filter(e => {
+        return e.fecha.getDate() === dia && 
+               e.fecha.getMonth() === mesActual.getMonth() && 
+               e.fecha.getFullYear() === mesActual.getFullYear();
+      });
+      
+      if (eventosDia.length === 0) {
+        // Si es admin, abrir modal para crear evento en ese día
+        if (esAdminRama) {
+          const fecha = new Date(mesActual.getFullYear(), mesActual.getMonth(), dia);
+          abrirModalEvento(null, fecha);
+        }
+        return;
+      }
+      
+      // Mostrar eventos del día (simple alert por ahora, se puede mejorar con modal)
+      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      let msg = `📅 Eventos del ${dia} de ${meses[mesActual.getMonth()]}:\n\n`;
+      eventosDia.forEach(e => {
+        msg += `${e.tipo === 'cumple' ? '🎂' : (e.tipo === 'celebracion' ? '🎉' : '🏆')} ${e.titulo}\n`;
+        if (e.subtitulo) msg += `   ${e.subtitulo}\n`;
+        if (e.hora) msg += `   🕐 ${e.hora}\n`;
+        if (e.lugar) msg += `   📍 ${e.lugar}\n`;
+        msg += '\n';
+      });
+      alert(msg);
+    }
+
+    // Modal eventos
+    function abrirModalEvento(eventoId = null, fechaDefault = null) {
+      eventoEditando = eventoId;
+      document.getElementById('form-evento').reset();
+      document.getElementById('btn-eliminar-evento').classList.add('hidden');
+      
+      if (eventoId) {
+        // Editar existente
+        const evento = eventosCalendario.find(e => e.id === eventoId);
+        if (!evento || evento.esAutomatico) return;
+        
+        document.getElementById('modal-evento-titulo').textContent = '✏️ Editar evento';
+        document.getElementById('evento-categoria').value = evento.categoria || '';
+        document.getElementById('evento-titulo').value = evento.titulo || '';
+        document.getElementById('evento-fecha').value = evento.fecha.toISOString().split('T')[0];
+        document.getElementById('evento-hora').value = evento.hora || '';
+        document.getElementById('evento-lugar').value = evento.lugar || '';
+        document.getElementById('evento-notas').value = evento.notas || '';
+        document.getElementById('btn-eliminar-evento').classList.remove('hidden');
+      } else {
+        // Nuevo evento
+        document.getElementById('modal-evento-titulo').textContent = '📅 Nuevo evento';
+        if (fechaDefault) {
+          document.getElementById('evento-fecha').value = fechaDefault.toISOString().split('T')[0];
+        }
+      }
+      
+      document.getElementById('modal-evento').classList.add('active');
+    }
+
+    function cerrarModalEvento() {
+      document.getElementById('modal-evento').classList.remove('active');
+      eventoEditando = null;
+    }
+
+    function editarEvento(id) {
+      abrirModalEvento(id);
+    }
+
+    async function guardarEvento(e) {
+      e.preventDefault();
+      
+      const categoria = document.getElementById('evento-categoria').value;
+      const titulo = document.getElementById('evento-titulo').value.trim();
+      const fecha = document.getElementById('evento-fecha').value;
+      const hora = document.getElementById('evento-hora').value;
+      const lugar = document.getElementById('evento-lugar').value.trim();
+      const notas = document.getElementById('evento-notas').value.trim();
+      
+      if (!categoria || !titulo || !fecha) {
+        alert('Completa los campos obligatorios');
+        return;
+      }
+      
+      const data = {
+        categoria,
+        titulo,
+        fecha: new Date(fecha),
+        hora: hora || null,
+        lugar,
+        notas,
+        familiaId,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      try {
+        if (eventoEditando) {
+          await db.collection('eventos-calendario').doc(eventoEditando).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('eventos-calendario').add(data);
+        }
+        
+        cerrarModalEvento();
+        await cargarEventosCalendario();
+      } catch (error) {
+        console.error('Error guardando evento:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    }
+
+    async function eliminarEvento() {
+      if (!eventoEditando || !confirm('¿Eliminar este evento?')) return;
+      
+      try {
+        await db.collection('eventos-calendario').doc(eventoEditando).delete();
+        cerrarModalEvento();
+        await cargarEventosCalendario();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar');
+      }
+    }
+
+    // Cerrar modal con click fuera
+    document.getElementById('modal-evento').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-evento') cerrarModalEvento();
+    });
   </script>
 </body>
 </html>
