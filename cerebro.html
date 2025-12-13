@@ -822,13 +822,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title memoria">🗄️ Memoria</h2>
-          <p class="section-description">Repositorio de documentos, archivos y recursos de la rama</p>
+          <p class="section-description">Repositorio de documentos y archivos de la rama</p>
         </div>
         <div class="header-buttons">
-          <button class="btn btn-memoria" onclick="abrirModalReceta()">
-            <span>🍳</span> Nueva receta
-          </button>
-          <button class="btn btn-memoria-secondary" onclick="subirArchivo()">
+          <button class="btn btn-memoria" onclick="subirArchivo()">
             <span>📤</span> Subir archivo
           </button>
         </div>
@@ -838,8 +835,6 @@
       <div class="categories" id="memoria-categorias">
         <button class="category-chip active" onclick="filtrarMemoria('todos')">Todos</button>
         <button class="category-chip" onclick="filtrarMemoria('documentos')">📄 Documentos</button>
-        <button class="category-chip" onclick="filtrarMemoria('fotos')">📷 Fotos</button>
-        <button class="category-chip" onclick="filtrarMemoria('recetas')">🍳 Recetas</button>
         <button class="category-chip" onclick="filtrarMemoria('tradiciones')">🎄 Tradiciones</button>
         <button class="category-chip" onclick="filtrarMemoria('viajes')">✈️ Viajes</button>
       </div>
@@ -1184,63 +1179,34 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
           .limit(20)
           .get();
 
-        // Cargar recetas
-        const recetasSnap = await db.collection('recetas')
-          .where('familiaId', '==', userData.familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .limit(20)
-          .get();
-        
-        recetasData = recetasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // Combinar resultados
-        const items = [
-          ...memoriaSnap.docs.map(d => ({ id: d.id, tipo: 'archivo', ...d.data() })),
-          ...recetasData.map(r => ({ ...r, tipo: 'receta' }))
-        ];
+        // Items solo de memoria (sin recetas - ahora están en Legado)
+        const items = memoriaSnap.docs.map(d => ({ id: d.id, tipo: 'archivo', ...d.data() }));
 
         if (items.length === 0) {
           container.innerHTML = `
             <div class="empty-state">
               <div class="empty-state-icon">🗄️</div>
               <div class="empty-state-title">Memoria vacía</div>
-              <div class="empty-state-text">Crea la primera receta o sube un documento</div>
-              <div style="display: flex; gap: 12px; justify-content: center; margin-top: 16px;">
-                <button class="btn btn-memoria" onclick="abrirModalReceta()">🍳 Nueva receta</button>
-                <button class="btn btn-memoria-secondary" onclick="subirArchivo()">📤 Subir archivo</button>
-              </div>
+              <div class="empty-state-text">Sube el primer documento de tu estirpe</div>
+              <button class="btn btn-memoria" onclick="subirArchivo()">📤 Subir archivo</button>
             </div>
           `;
           return;
         }
 
         container.innerHTML = items.map(item => {
-          if (item.tipo === 'receta') {
-            return `
-              <div class="card" onclick="verReceta('${item.id}')">
-                <div class="card-icon memoria">🍳</div>
-                <div class="card-title">${item.nombre}</div>
-                <div class="card-description">${item.autor ? 'Por ' + item.autor : ''}${item.version ? ' · ' + item.version : ''}</div>
-                <div class="card-meta">
-                  <span class="card-tag">receta</span>
-                  ${item.comensales ? '<span>' + item.comensales + ' pers.</span>' : ''}
-                </div>
+          const icono = getIconoCategoria(item.categoria);
+          return `
+            <div class="card" onclick="verArchivo('${item.id}')">
+              <div class="card-icon memoria">${icono}</div>
+              <div class="card-title">${item.nombre}</div>
+              <div class="card-description">${item.descripcion || ''}</div>
+              <div class="card-meta">
+                <span class="card-tag">${item.categoria || 'documento'}</span>
+                <span>${formatearFecha(item.fechaCreacion)}</span>
               </div>
-            `;
-          } else {
-            const icono = getIconoCategoria(item.categoria);
-            return `
-              <div class="card" onclick="verArchivo('${item.id}')">
-                <div class="card-icon memoria">${icono}</div>
-                <div class="card-title">${item.nombre}</div>
-                <div class="card-description">${item.descripcion || ''}</div>
-                <div class="card-meta">
-                  <span class="card-tag">${item.categoria}</span>
-                  <span>${formatearFecha(item.fechaCreacion)}</span>
-                </div>
-              </div>
-            `;
-          }
+            </div>
+          `;
         }).join('');
 
       } catch (error) {
@@ -1251,8 +1217,6 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     function getIconoCategoria(cat) {
       const iconos = {
         'documentos': '📄',
-        'fotos': '📷',
-        'recetas': '🍳',
         'tradiciones': '🎄',
         'viajes': '✈️'
       };
@@ -1263,29 +1227,16 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       alert('Próximamente: Subir archivos a la memoria familiar');
     }
 
-    // ============ RECETAS ============
-
-    async function cargarRecetas() {
-      try {
-        const snap = await db.collection('recetas')
-          .where('familiaId', '==', userData.familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .get();
-        
-        recetasData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderRecetas();
-      } catch (error) {
-        console.error('Error cargando recetas:', error);
-      }
+    // Filtrar memoria (sin recetas)
+    function filtrarMemoria(categoria) {
+      document.querySelectorAll('#memoria-categorias .category-chip').forEach(c => {
+        c.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      // TODO: Implementar filtrado por categoría
     }
 
-    function renderRecetas() {
-      const grid = document.getElementById('memoria-grid');
-      
-      if (recetasData.length === 0) {
-        grid.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">🍳</div>
+    // ============ RAZONAMIENTO ============
             <div class="empty-state-title">Sin recetas guardadas</div>
             <div class="empty-state-text">Crea la primera receta de tu familia</div>
             <button class="btn btn-memoria" onclick="abrirModalReceta()">🍳 Nueva receta</button>
