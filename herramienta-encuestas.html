@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Encuestas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: var(--cream-dark); }
+
+    .main { max-width: 800px; margin: 0 auto; padding: 24px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    /* Cards de encuestas */
+    .encuestas-grid {
+      display: grid;
+      gap: 20px;
+    }
+
+    .encuesta-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+      transition: all 0.2s;
+    }
+
+    .encuesta-card:hover { box-shadow: var(--shadow-float); }
+
+    .encuesta-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .encuesta-titulo {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      margin-bottom: 4px;
+    }
+
+    .encuesta-descripcion {
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-top: 4px;
+    }
+
+    .encuesta-meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .encuesta-estado {
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .encuesta-estado.abierta { background: var(--sage-muted); color: var(--sage-dark); }
+    .encuesta-estado.cerrada { background: var(--cream-dark); color: var(--text-muted); }
+
+    .encuesta-body { padding: 20px; }
+
+    /* Preguntas */
+    .pregunta-item {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .pregunta-item:last-child { margin-bottom: 0; }
+
+    .pregunta-numero {
+      font-size: 0.75rem;
+      color: var(--sage-dark);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .pregunta-texto {
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    /* Opciones de respuesta */
+    .respuestas-opciones {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .respuesta-opcion {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--white);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .respuesta-opcion:hover { border-color: var(--sage-light); }
+    .respuesta-opcion.selected { border-color: var(--sage); background: var(--sage-muted); }
+    .respuesta-opcion.disabled { cursor: default; opacity: 0.7; }
+
+    .respuesta-opcion input[type="radio"],
+    .respuesta-opcion input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--sage);
+    }
+
+    .respuesta-texto-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+    }
+
+    .respuesta-texto-input:focus { outline: none; border-color: var(--sage); }
+
+    /* Escala */
+    .escala-container {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .escala-opcion {
+      flex: 1;
+      padding: 12px 8px;
+      background: var(--white);
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .escala-opcion:hover { border-color: var(--sage-light); }
+    .escala-opcion.selected { border-color: var(--sage); background: var(--sage); color: white; }
+
+    .escala-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Resultados */
+    .resultado-barra-container {
+      margin-top: 8px;
+    }
+
+    .resultado-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .resultado-texto { flex: 1; font-size: 0.85rem; }
+
+    .resultado-barra {
+      flex: 2;
+      height: 20px;
+      background: var(--cream-dark);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+
+    .resultado-barra-fill {
+      height: 100%;
+      background: var(--sage);
+      border-radius: var(--radius-full);
+      transition: width 0.3s;
+    }
+
+    .resultado-porcentaje {
+      min-width: 45px;
+      text-align: right;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--sage-dark);
+    }
+
+    .encuesta-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .participacion {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      padding: 20px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+
+    .modal-body { padding: 24px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-input, .form-textarea, .form-select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+    }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { outline: none; border-color: var(--sage); }
+
+    /* Constructor de preguntas */
+    .preguntas-constructor {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .pregunta-builder {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 16px;
+    }
+
+    .pregunta-builder-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .pregunta-builder-num {
+      font-weight: 700;
+      color: var(--sage-dark);
+    }
+
+    .btn-remove-pregunta {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: none;
+      background: var(--white);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .btn-remove-pregunta:hover { background: #D4695A; color: white; }
+
+    .pregunta-builder-body {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .opciones-builder {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .opcion-builder-item {
+      display: flex;
+      gap: 6px;
+    }
+
+    .opcion-builder-item input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+    }
+
+    .btn-add-opcion-sm {
+      padding: 6px 12px;
+      border: 1px dashed var(--cream-dark);
+      border-radius: var(--radius-sm);
+      background: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .btn-add-opcion-sm:hover { border-color: var(--sage); color: var(--sage); }
+
+    .btn-add-pregunta {
+      padding: 14px;
+      border: 2px dashed var(--cream-dark);
+      border-radius: var(--radius-md);
+      background: none;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .btn-add-pregunta:hover { border-color: var(--sage); color: var(--sage); }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="activacion.html" class="back-btn">← Activación</a>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">📊 Encuestas</h1>
+        <p class="page-subtitle">Recoge opiniones de la familia con varias preguntas</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva encuesta</button>
+    </div>
+
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="encuestas-grid" class="encuestas-grid hidden"></div>
+
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">📊</div>
+      <p class="empty-text">No hay encuestas.<br>¡Crea una para conocer la opinión de la familia!</p>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva encuesta</button>
+    </div>
+  </main>
+
+  <!-- Modal Nueva Encuesta -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">📊 Nueva encuesta</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-encuesta" onsubmit="guardarEncuesta(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Título de la encuesta *</label>
+            <input type="text" class="form-input" id="encuesta-titulo" placeholder="Ej: Preferencias para vacaciones 2025" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Descripción (opcional)</label>
+            <textarea class="form-textarea" id="encuesta-descripcion" placeholder="Explica brevemente el objetivo..." rows="2"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Preguntas *</label>
+            <div class="preguntas-constructor" id="preguntas-constructor">
+              <!-- Se llena dinámicamente -->
+            </div>
+            <button type="button" class="btn-add-pregunta" onclick="agregarPregunta()">+ Añadir pregunta</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear encuesta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let familiaId = null;
+    let encuestasData = [];
+    let miembrosData = [];
+    let preguntasBuilder = [];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      userData = userDoc.data();
+      familiaId = userData.familiaId;
+
+      await cargarMiembros();
+      await loadEncuestas();
+    });
+
+    async function cargarMiembros() {
+      const snap = await db.collection('usuarios')
+        .where('familiaId', '==', familiaId)
+        .get();
+      miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    async function loadEncuestas() {
+      try {
+        const snap = await db.collection('encuestas')
+          .where('familiaId', '==', familiaId)
+          .get();
+
+        encuestasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Ordenar por fecha (más reciente primero)
+        encuestasData.sort((a, b) => {
+          const fa = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fb = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fb - fa;
+        });
+        
+        document.getElementById('loading').classList.add('hidden');
+        renderEncuestas();
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+      }
+    }
+
+    function renderEncuestas() {
+      const container = document.getElementById('encuestas-grid');
+      const empty = document.getElementById('empty-state');
+
+      if (encuestasData.length === 0) {
+        container.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      container.classList.remove('hidden');
+
+      container.innerHTML = encuestasData.map(enc => {
+        const creador = miembrosData.find(m => m.id === enc.creadoPor);
+        const respuestas = enc.respuestas || {};
+        const totalRespuestas = Object.keys(respuestas).length;
+        const yaRespondi = respuestas[currentUser.uid] !== undefined;
+        const estadoClass = enc.cerrada ? 'cerrada' : 'abierta';
+        const estadoTexto = enc.cerrada ? '🔒 Cerrada' : '🟢 Abierta';
+
+        let preguntasHTML = '';
+        
+        enc.preguntas.forEach((preg, pIdx) => {
+          preguntasHTML += `<div class="pregunta-item">`;
+          preguntasHTML += `<div class="pregunta-numero">Pregunta ${pIdx + 1}</div>`;
+          preguntasHTML += `<div class="pregunta-texto">${preg.texto}</div>`;
+
+          const misRespuestas = respuestas[currentUser.uid] || {};
+          const miRespuesta = misRespuestas[pIdx];
+
+          if (yaRespondi || enc.cerrada) {
+            // Mostrar resultados
+            preguntasHTML += renderResultados(enc, pIdx, preg);
+          } else {
+            // Mostrar opciones para responder
+            preguntasHTML += renderOpciones(enc.id, pIdx, preg, miRespuesta);
+          }
+
+          preguntasHTML += `</div>`;
+        });
+
+        return `
+          <div class="encuesta-card">
+            <div class="encuesta-header">
+              <div>
+                <div class="encuesta-titulo">${enc.titulo}</div>
+                ${enc.descripcion ? `<div class="encuesta-descripcion">${enc.descripcion}</div>` : ''}
+                <div class="encuesta-meta">
+                  <span>👤 ${creador?.nombre || 'Desconocido'}</span>
+                  <span>📝 ${enc.preguntas.length} pregunta${enc.preguntas.length > 1 ? 's' : ''}</span>
+                </div>
+              </div>
+              <span class="encuesta-estado ${estadoClass}">${estadoTexto}</span>
+            </div>
+            <div class="encuesta-body">
+              ${preguntasHTML}
+              ${!yaRespondi && !enc.cerrada ? `
+                <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="enviarRespuestas('${enc.id}')">
+                  ✅ Enviar mis respuestas
+                </button>
+              ` : ''}
+            </div>
+            <div class="encuesta-footer">
+              <span class="participacion">${totalRespuestas} de ${miembrosData.length} han respondido</span>
+              ${enc.creadoPor === currentUser.uid ? `
+                <div style="display:flex;gap:8px;">
+                  ${!enc.cerrada ? `<button class="btn btn-sm btn-secondary" onclick="cerrarEncuesta('${enc.id}')">🔒 Cerrar</button>` : ''}
+                  <button class="btn btn-sm btn-danger" onclick="eliminarEncuesta('${enc.id}')">🗑️</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderOpciones(encuestaId, pregIdx, preg, miRespuesta) {
+      let html = '<div class="respuestas-opciones">';
+
+      if (preg.tipo === 'opciones' || preg.tipo === 'multiple') {
+        const inputType = preg.tipo === 'multiple' ? 'checkbox' : 'radio';
+        preg.opciones.forEach((op, oIdx) => {
+          const checked = preg.tipo === 'multiple' 
+            ? (Array.isArray(miRespuesta) && miRespuesta.includes(oIdx))
+            : miRespuesta === oIdx;
+          
+          html += `
+            <label class="respuesta-opcion ${checked ? 'selected' : ''}" onclick="seleccionarOpcion('${encuestaId}', ${pregIdx}, ${oIdx}, '${preg.tipo}')">
+              <input type="${inputType}" name="enc_${encuestaId}_p${pregIdx}" ${checked ? 'checked' : ''}>
+              <span>${op}</span>
+            </label>
+          `;
+        });
+      } else if (preg.tipo === 'escala') {
+        html += '<div class="escala-container">';
+        for (let i = 1; i <= 5; i++) {
+          const selected = miRespuesta === i;
+          html += `
+            <div class="escala-opcion ${selected ? 'selected' : ''}" onclick="seleccionarEscala('${encuestaId}', ${pregIdx}, ${i})">
+              ${i}
+            </div>
+          `;
+        }
+        html += '</div>';
+        html += '<div class="escala-labels"><span>Nada</span><span>Mucho</span></div>';
+      } else if (preg.tipo === 'texto') {
+        html += `
+          <input type="text" class="respuesta-texto-input" 
+                 placeholder="Escribe tu respuesta..." 
+                 data-encuesta="${encuestaId}" 
+                 data-pregunta="${pregIdx}"
+                 value="${miRespuesta || ''}"
+                 onchange="guardarTexto('${encuestaId}', ${pregIdx}, this.value)">
+        `;
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderResultados(enc, pregIdx, preg) {
+      const respuestas = enc.respuestas || {};
+      const totalRespuestas = Object.keys(respuestas).length;
+      
+      let html = '<div class="resultado-barra-container">';
+
+      if (preg.tipo === 'opciones' || preg.tipo === 'multiple') {
+        // Contar respuestas por opción
+        const conteo = {};
+        preg.opciones.forEach((_, i) => conteo[i] = 0);
+
+        Object.values(respuestas).forEach(r => {
+          const resp = r[pregIdx];
+          if (preg.tipo === 'multiple' && Array.isArray(resp)) {
+            resp.forEach(idx => { if (conteo[idx] !== undefined) conteo[idx]++; });
+          } else if (conteo[resp] !== undefined) {
+            conteo[resp]++;
+          }
+        });
+
+        preg.opciones.forEach((op, i) => {
+          const porcentaje = totalRespuestas > 0 ? (conteo[i] / totalRespuestas * 100) : 0;
+          html += `
+            <div class="resultado-item">
+              <span class="resultado-texto">${op}</span>
+              <div class="resultado-barra">
+                <div class="resultado-barra-fill" style="width: ${porcentaje}%"></div>
+              </div>
+              <span class="resultado-porcentaje">${conteo[i]} (${Math.round(porcentaje)}%)</span>
+            </div>
+          `;
+        });
+      } else if (preg.tipo === 'escala') {
+        // Promedio
+        let suma = 0, count = 0;
+        Object.values(respuestas).forEach(r => {
+          if (r[pregIdx]) { suma += r[pregIdx]; count++; }
+        });
+        const promedio = count > 0 ? (suma / count).toFixed(1) : '–';
+        html += `<div style="text-align:center;font-size:1.5rem;font-weight:700;color:var(--sage-dark)">Promedio: ${promedio} / 5</div>`;
+      } else if (preg.tipo === 'texto') {
+        // Listar respuestas
+        const textos = Object.entries(respuestas)
+          .filter(([_, r]) => r[pregIdx])
+          .map(([uid, r]) => {
+            const miembro = miembrosData.find(m => m.id === uid);
+            return `<div style="padding:8px;background:var(--white);border-radius:var(--radius-sm);margin-bottom:6px">
+              <strong>${miembro?.nombre || 'Anónimo'}:</strong> ${r[pregIdx]}
+            </div>`;
+          });
+        html += textos.join('');
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    // Guardar respuestas temporales
+    let respuestasTemp = {};
+
+    function seleccionarOpcion(encuestaId, pregIdx, opcionIdx, tipo) {
+      if (!respuestasTemp[encuestaId]) respuestasTemp[encuestaId] = {};
+      
+      if (tipo === 'multiple') {
+        if (!Array.isArray(respuestasTemp[encuestaId][pregIdx])) {
+          respuestasTemp[encuestaId][pregIdx] = [];
+        }
+        const arr = respuestasTemp[encuestaId][pregIdx];
+        const idx = arr.indexOf(opcionIdx);
+        if (idx > -1) arr.splice(idx, 1);
+        else arr.push(opcionIdx);
+      } else {
+        respuestasTemp[encuestaId][pregIdx] = opcionIdx;
+      }
+      
+      renderEncuestas();
+    }
+
+    function seleccionarEscala(encuestaId, pregIdx, valor) {
+      if (!respuestasTemp[encuestaId]) respuestasTemp[encuestaId] = {};
+      respuestasTemp[encuestaId][pregIdx] = valor;
+      renderEncuestas();
+    }
+
+    function guardarTexto(encuestaId, pregIdx, valor) {
+      if (!respuestasTemp[encuestaId]) respuestasTemp[encuestaId] = {};
+      respuestasTemp[encuestaId][pregIdx] = valor;
+    }
+
+    async function enviarRespuestas(encuestaId) {
+      const encuesta = encuestasData.find(e => e.id === encuestaId);
+      if (!encuesta) return;
+
+      const misRespuestas = respuestasTemp[encuestaId] || {};
+      
+      // Validar que todas las preguntas obligatorias estén respondidas
+      for (let i = 0; i < encuesta.preguntas.length; i++) {
+        if (misRespuestas[i] === undefined || misRespuestas[i] === '' || 
+            (Array.isArray(misRespuestas[i]) && misRespuestas[i].length === 0)) {
+          alert(`Por favor responde la pregunta ${i + 1}`);
+          return;
+        }
+      }
+
+      try {
+        const respuestasActuales = encuesta.respuestas || {};
+        respuestasActuales[currentUser.uid] = misRespuestas;
+
+        await db.collection('encuestas').doc(encuestaId).update({
+          respuestas: respuestasActuales
+        });
+
+        delete respuestasTemp[encuestaId];
+        await loadEncuestas();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al enviar respuestas');
+      }
+    }
+
+    async function cerrarEncuesta(id) {
+      if (!confirm('¿Cerrar esta encuesta? Ya no se podrá responder.')) return;
+      
+      try {
+        await db.collection('encuestas').doc(id).update({ cerrada: true });
+        await loadEncuestas();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    async function eliminarEncuesta(id) {
+      if (!confirm('¿Eliminar esta encuesta?')) return;
+      
+      try {
+        await db.collection('encuestas').doc(id).delete();
+        await loadEncuestas();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    // Constructor de preguntas
+    function agregarPregunta() {
+      const id = Date.now();
+      preguntasBuilder.push({
+        id,
+        texto: '',
+        tipo: 'opciones',
+        opciones: ['', '']
+      });
+      renderPreguntasBuilder();
+    }
+
+    function eliminarPreguntaBuilder(id) {
+      if (preguntasBuilder.length <= 1) {
+        alert('Necesitas al menos 1 pregunta');
+        return;
+      }
+      preguntasBuilder = preguntasBuilder.filter(p => p.id !== id);
+      renderPreguntasBuilder();
+    }
+
+    function renderPreguntasBuilder() {
+      const container = document.getElementById('preguntas-constructor');
+      
+      container.innerHTML = preguntasBuilder.map((p, idx) => `
+        <div class="pregunta-builder" data-id="${p.id}">
+          <div class="pregunta-builder-header">
+            <span class="pregunta-builder-num">Pregunta ${idx + 1}</span>
+            <button type="button" class="btn-remove-pregunta" onclick="eliminarPreguntaBuilder(${p.id})">×</button>
+          </div>
+          <div class="pregunta-builder-body">
+            <input type="text" class="form-input" placeholder="Escribe la pregunta..." 
+                   value="${p.texto}" onchange="actualizarPregunta(${p.id}, 'texto', this.value)" required>
+            
+            <select class="form-select" onchange="actualizarPregunta(${p.id}, 'tipo', this.value)" style="margin-top:8px">
+              <option value="opciones" ${p.tipo === 'opciones' ? 'selected' : ''}>Opción única</option>
+              <option value="multiple" ${p.tipo === 'multiple' ? 'selected' : ''}>Opción múltiple</option>
+              <option value="escala" ${p.tipo === 'escala' ? 'selected' : ''}>Escala 1-5</option>
+              <option value="texto" ${p.tipo === 'texto' ? 'selected' : ''}>Texto libre</option>
+            </select>
+
+            ${(p.tipo === 'opciones' || p.tipo === 'multiple') ? `
+              <div class="opciones-builder">
+                ${p.opciones.map((op, oIdx) => `
+                  <div class="opcion-builder-item">
+                    <input type="text" placeholder="Opción ${oIdx + 1}" value="${op}" 
+                           onchange="actualizarOpcion(${p.id}, ${oIdx}, this.value)">
+                    <button type="button" class="btn-remove-pregunta" style="width:30px;height:30px" 
+                            onclick="eliminarOpcionBuilder(${p.id}, ${oIdx})">×</button>
+                  </div>
+                `).join('')}
+                <button type="button" class="btn-add-opcion-sm" onclick="agregarOpcionBuilder(${p.id})">+ Opción</button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function actualizarPregunta(id, campo, valor) {
+      const p = preguntasBuilder.find(x => x.id === id);
+      if (p) {
+        p[campo] = valor;
+        if (campo === 'tipo') renderPreguntasBuilder();
+      }
+    }
+
+    function actualizarOpcion(pregId, opIdx, valor) {
+      const p = preguntasBuilder.find(x => x.id === pregId);
+      if (p && p.opciones) p.opciones[opIdx] = valor;
+    }
+
+    function agregarOpcionBuilder(pregId) {
+      const p = preguntasBuilder.find(x => x.id === pregId);
+      if (p && p.opciones) {
+        p.opciones.push('');
+        renderPreguntasBuilder();
+      }
+    }
+
+    function eliminarOpcionBuilder(pregId, opIdx) {
+      const p = preguntasBuilder.find(x => x.id === pregId);
+      if (p && p.opciones && p.opciones.length > 2) {
+        p.opciones.splice(opIdx, 1);
+        renderPreguntasBuilder();
+      } else {
+        alert('Necesitas al menos 2 opciones');
+      }
+    }
+
+    function abrirModal() {
+      document.getElementById('modal').classList.add('active');
+      document.getElementById('form-encuesta').reset();
+      
+      preguntasBuilder = [{
+        id: Date.now(),
+        texto: '',
+        tipo: 'opciones',
+        opciones: ['', '']
+      }];
+      renderPreguntasBuilder();
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+
+    async function guardarEncuesta(e) {
+      e.preventDefault();
+
+      const titulo = document.getElementById('encuesta-titulo').value.trim();
+      const descripcion = document.getElementById('encuesta-descripcion').value.trim();
+
+      // Validar preguntas
+      const preguntas = preguntasBuilder.map(p => {
+        const preg = {
+          texto: p.texto,
+          tipo: p.tipo
+        };
+        if (p.tipo === 'opciones' || p.tipo === 'multiple') {
+          preg.opciones = p.opciones.filter(o => o.trim());
+          if (preg.opciones.length < 2) {
+            throw new Error('Cada pregunta de opciones necesita al menos 2 opciones');
+          }
+        }
+        if (!preg.texto.trim()) {
+          throw new Error('Todas las preguntas necesitan texto');
+        }
+        return preg;
+      });
+
+      if (preguntas.length === 0) {
+        alert('Añade al menos una pregunta');
+        return;
+      }
+
+      try {
+        await db.collection('encuestas').add({
+          titulo,
+          descripcion,
+          preguntas,
+          respuestas: {},
+          cerrada: false,
+          familiaId,
+          creadoPor: currentUser.uid,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        cerrarModal();
+        await loadEncuestas();
+      } catch (error) {
+        console.error('Error:', error);
+        alert(error.message || 'Error al crear encuesta');
+      }
+    }
+
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.id === 'modal') cerrarModal();
+    });
+  </script>
+</body>
+</html>

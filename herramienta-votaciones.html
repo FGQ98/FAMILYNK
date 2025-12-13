@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Votaciones</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: var(--cream-dark); }
+
+    .main { max-width: 700px; margin: 0 auto; padding: 24px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    /* Cards de votaciones */
+    .votaciones-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .votacion-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .votacion-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+
+    .votacion-pregunta {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+    }
+
+    .votacion-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .votacion-body { padding: 20px; }
+
+    /* Opciones de voto */
+    .opciones-lista {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .opcion-item {
+      position: relative;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .opcion-item:hover { border-color: var(--sage-light); }
+    .opcion-item.votada { border-color: var(--sage); background: var(--sage-muted); }
+    .opcion-item.disabled { cursor: default; }
+
+    .opcion-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .opcion-texto {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .opcion-votos {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .opcion-item.votada .opcion-votos { color: var(--sage-dark); font-weight: 700; }
+
+    /* Barra de progreso */
+    .opcion-barra {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: var(--sage-muted);
+      border-radius: var(--radius-md);
+      transition: width 0.3s;
+    }
+
+    .opcion-item.votada .opcion-barra { background: rgba(122, 158, 126, 0.3); }
+
+    /* Votantes */
+    .opcion-votantes {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      position: relative;
+      z-index: 1;
+    }
+
+    .votacion-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .total-votos {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      padding: 20px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+
+    .modal-body { padding: 24px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+    }
+    .form-input:focus { outline: none; border-color: var(--sage); }
+
+    .form-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+
+    .form-checkbox input { width: 18px; height: 18px; accent-color: var(--sage); }
+
+    /* Opciones */
+    .opciones-input {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .opcion-input-item {
+      display: flex;
+      gap: 8px;
+    }
+
+    .opcion-input-item input {
+      flex: 1;
+      padding: 10px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+    }
+
+    .opcion-input-item input:focus { outline: none; border-color: var(--sage); }
+
+    .btn-remove-opcion {
+      width: 40px;
+      border: none;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+    }
+
+    .btn-remove-opcion:hover { background: #D4695A; color: white; }
+
+    .btn-add-opcion {
+      padding: 10px;
+      border: 2px dashed var(--cream-dark);
+      border-radius: var(--radius-md);
+      background: none;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      color: var(--text-muted);
+    }
+
+    .btn-add-opcion:hover { border-color: var(--sage); color: var(--sage); }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="activacion.html" class="back-btn">← Activación</a>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">🗳️ Votaciones</h1>
+        <p class="page-subtitle">Decide cuestiones con la familia</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva votación</button>
+    </div>
+
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="votaciones-grid" class="votaciones-grid hidden"></div>
+
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">🗳️</div>
+      <p class="empty-text">No hay votaciones activas.<br>¡Crea una para decidir algo en familia!</p>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva votación</button>
+    </div>
+  </main>
+
+  <!-- Modal Nueva Votación -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">🗳️ Nueva votación</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-votacion" onsubmit="guardarVotacion(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Pregunta *</label>
+            <input type="text" class="form-input" id="votacion-pregunta" placeholder="Ej: ¿Dónde cenamos el viernes?" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Opciones *</label>
+            <div class="opciones-input" id="opciones-input">
+              <div class="opcion-input-item">
+                <input type="text" placeholder="Opción 1" required>
+                <button type="button" class="btn-remove-opcion" onclick="eliminarOpcion(this)">×</button>
+              </div>
+              <div class="opcion-input-item">
+                <input type="text" placeholder="Opción 2" required>
+                <button type="button" class="btn-remove-opcion" onclick="eliminarOpcion(this)">×</button>
+              </div>
+            </div>
+            <button type="button" class="btn-add-opcion" onclick="agregarOpcion()">+ Añadir opción</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" id="votacion-multiple">
+              Permitir seleccionar varias opciones
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label class="form-checkbox">
+              <input type="checkbox" id="votacion-anonima">
+              Votación anónima (no mostrar quién votó qué)
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear votación</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let familiaId = null;
+    let votacionesData = [];
+    let miembrosData = [];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      userData = userDoc.data();
+      familiaId = userData.familiaId;
+
+      await cargarMiembros();
+      await loadVotaciones();
+    });
+
+    async function cargarMiembros() {
+      const snap = await db.collection('usuarios')
+        .where('familiaId', '==', familiaId)
+        .get();
+      miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    async function loadVotaciones() {
+      try {
+        const snap = await db.collection('votaciones')
+          .where('familiaId', '==', familiaId)
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+
+        votacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        document.getElementById('loading').classList.add('hidden');
+        renderVotaciones();
+      } catch (error) {
+        console.error('Error:', error);
+        // Fallback
+        try {
+          const snap = await db.collection('votaciones')
+            .where('familiaId', '==', familiaId)
+            .get();
+          votacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          document.getElementById('loading').classList.add('hidden');
+          renderVotaciones();
+        } catch (e) {
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('empty-state').classList.remove('hidden');
+        }
+      }
+    }
+
+    function renderVotaciones() {
+      const container = document.getElementById('votaciones-grid');
+      const empty = document.getElementById('empty-state');
+
+      if (votacionesData.length === 0) {
+        container.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      container.classList.remove('hidden');
+
+      container.innerHTML = votacionesData.map(v => {
+        const creador = miembrosData.find(m => m.id === v.creadoPor);
+        const votos = v.votos || {};
+        const totalVotantes = Object.keys(votos).length;
+        const yaVote = votos[currentUser.uid] !== undefined;
+
+        // Contar votos por opción
+        const conteoOpciones = {};
+        v.opciones.forEach((_, i) => conteoOpciones[i] = { count: 0, votantes: [] });
+        
+        Object.entries(votos).forEach(([odId, selecciones]) => {
+          const sels = Array.isArray(selecciones) ? selecciones : [selecciones];
+          sels.forEach(s => {
+            if (conteoOpciones[s]) {
+              conteoOpciones[s].count++;
+              const votante = miembrosData.find(m => m.id === odId);
+              if (votante) conteoOpciones[s].votantes.push(votante.nombre || 'Anónimo');
+            }
+          });
+        });
+
+        // Corregir: obtener votantes correctamente
+        Object.entries(votos).forEach(([odId, selecciones]) => {
+          const sels = Array.isArray(selecciones) ? selecciones : [selecciones];
+          sels.forEach(s => {
+            const votante = miembrosData.find(m => m.id === odId);
+            if (votante && conteoOpciones[s]) {
+              // Ya contado arriba, pero necesitamos los nombres
+            }
+          });
+        });
+
+        // Recalcular votantes
+        v.opciones.forEach((_, i) => conteoOpciones[i].votantes = []);
+        Object.entries(votos).forEach(([odId, selecciones]) => {
+          const sels = Array.isArray(selecciones) ? selecciones : [selecciones];
+          const votante = miembrosData.find(m => m.id === odId);
+          sels.forEach(s => {
+            if (conteoOpciones[s] && votante) {
+              conteoOpciones[s].votantes.push(votante.nombre || 'Anónimo');
+            }
+          });
+        });
+
+        const maxVotos = Math.max(...Object.values(conteoOpciones).map(c => c.count), 1);
+        const misVotos = votos[currentUser.uid] || [];
+        const misVotosArray = Array.isArray(misVotos) ? misVotos : [misVotos];
+
+        return `
+          <div class="votacion-card">
+            <div class="votacion-header">
+              <div class="votacion-pregunta">${v.pregunta}</div>
+              <div class="votacion-meta">
+                <span>👤 ${creador?.nombre || 'Desconocido'}</span>
+                <span>📊 ${totalVotantes} voto${totalVotantes !== 1 ? 's' : ''}</span>
+                ${v.multiple ? '<span>✅ Múltiple</span>' : ''}
+                ${v.anonima ? '<span>🕵️ Anónima</span>' : ''}
+              </div>
+            </div>
+            <div class="votacion-body">
+              <div class="opciones-lista">
+                ${v.opciones.map((opcion, i) => {
+                  const conteo = conteoOpciones[i];
+                  const porcentaje = totalVotantes > 0 ? (conteo.count / totalVotantes * 100) : 0;
+                  const esVotada = misVotosArray.includes(i);
+                  
+                  return `
+                    <div class="opcion-item ${esVotada ? 'votada' : ''} ${v.cerrada ? 'disabled' : ''}" 
+                         onclick="${!v.cerrada ? `votar('${v.id}', ${i}, ${v.multiple})` : ''}">
+                      <div class="opcion-barra" style="width: ${porcentaje}%"></div>
+                      <div class="opcion-content">
+                        <span class="opcion-texto">
+                          ${esVotada ? '✓ ' : ''}${opcion}
+                        </span>
+                        <span class="opcion-votos">${conteo.count} (${Math.round(porcentaje)}%)</span>
+                      </div>
+                      ${!v.anonima && conteo.votantes.length > 0 ? `
+                        <div class="opcion-votantes">${conteo.votantes.join(', ')}</div>
+                      ` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+            <div class="votacion-footer">
+              <span class="total-votos">${totalVotantes} de ${miembrosData.length} han votado</span>
+              ${v.creadoPor === currentUser.uid ? `
+                <div style="display:flex;gap:8px;">
+                  ${!v.cerrada ? `<button class="btn btn-sm btn-secondary" onclick="cerrarVotacion('${v.id}')">🔒 Cerrar</button>` : ''}
+                  <button class="btn btn-sm btn-danger" onclick="eliminarVotacion('${v.id}')">🗑️</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function votar(votacionId, opcionIndex, esMultiple) {
+      try {
+        const votacion = votacionesData.find(v => v.id === votacionId);
+        if (!votacion || votacion.cerrada) return;
+
+        const votosActuales = votacion.votos || {};
+        let misVotos = votosActuales[currentUser.uid];
+
+        if (esMultiple) {
+          // Múltiple: toggle opción
+          misVotos = Array.isArray(misVotos) ? misVotos : (misVotos !== undefined ? [misVotos] : []);
+          const idx = misVotos.indexOf(opcionIndex);
+          if (idx > -1) {
+            misVotos.splice(idx, 1);
+          } else {
+            misVotos.push(opcionIndex);
+          }
+          if (misVotos.length === 0) {
+            delete votosActuales[currentUser.uid];
+          } else {
+            votosActuales[currentUser.uid] = misVotos;
+          }
+        } else {
+          // Simple: cambiar o quitar
+          if (misVotos === opcionIndex) {
+            delete votosActuales[currentUser.uid];
+          } else {
+            votosActuales[currentUser.uid] = opcionIndex;
+          }
+        }
+
+        await db.collection('votaciones').doc(votacionId).update({
+          votos: votosActuales
+        });
+
+        votacion.votos = votosActuales;
+        renderVotaciones();
+      } catch (error) {
+        console.error('Error votando:', error);
+        alert('Error al votar');
+      }
+    }
+
+    async function cerrarVotacion(id) {
+      if (!confirm('¿Cerrar esta votación? Ya no se podrá votar.')) return;
+      
+      try {
+        await db.collection('votaciones').doc(id).update({ cerrada: true });
+        await loadVotaciones();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    async function eliminarVotacion(id) {
+      if (!confirm('¿Eliminar esta votación?')) return;
+      
+      try {
+        await db.collection('votaciones').doc(id).delete();
+        await loadVotaciones();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    function agregarOpcion() {
+      const container = document.getElementById('opciones-input');
+      const count = container.querySelectorAll('.opcion-input-item').length;
+      const item = document.createElement('div');
+      item.className = 'opcion-input-item';
+      item.innerHTML = `
+        <input type="text" placeholder="Opción ${count + 1}" required>
+        <button type="button" class="btn-remove-opcion" onclick="eliminarOpcion(this)">×</button>
+      `;
+      container.appendChild(item);
+    }
+
+    function eliminarOpcion(btn) {
+      const items = document.querySelectorAll('.opcion-input-item');
+      if (items.length <= 2) {
+        alert('Necesitas al menos 2 opciones');
+        return;
+      }
+      btn.parentElement.remove();
+    }
+
+    function abrirModal() {
+      document.getElementById('modal').classList.add('active');
+      document.getElementById('form-votacion').reset();
+      
+      const container = document.getElementById('opciones-input');
+      container.innerHTML = `
+        <div class="opcion-input-item">
+          <input type="text" placeholder="Opción 1" required>
+          <button type="button" class="btn-remove-opcion" onclick="eliminarOpcion(this)">×</button>
+        </div>
+        <div class="opcion-input-item">
+          <input type="text" placeholder="Opción 2" required>
+          <button type="button" class="btn-remove-opcion" onclick="eliminarOpcion(this)">×</button>
+        </div>
+      `;
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+
+    async function guardarVotacion(e) {
+      e.preventDefault();
+
+      const pregunta = document.getElementById('votacion-pregunta').value.trim();
+      const multiple = document.getElementById('votacion-multiple').checked;
+      const anonima = document.getElementById('votacion-anonima').checked;
+      
+      const opcionesInputs = document.querySelectorAll('.opcion-input-item input');
+      const opciones = [];
+      opcionesInputs.forEach(input => {
+        if (input.value.trim()) opciones.push(input.value.trim());
+      });
+
+      if (opciones.length < 2) {
+        alert('Añade al menos 2 opciones');
+        return;
+      }
+
+      try {
+        await db.collection('votaciones').add({
+          pregunta,
+          opciones,
+          multiple,
+          anonima,
+          votos: {},
+          cerrada: false,
+          familiaId,
+          creadoPor: currentUser.uid,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        cerrarModal();
+        await loadVotaciones();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al crear votación');
+      }
+    }
+
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.id === 'modal') cerrarModal();
+    });
+  </script>
+</body>
+</html>
