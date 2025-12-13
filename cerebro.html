@@ -1101,22 +1101,38 @@
     }
 
     async function cargarNidosEstirpe() {
-      // Buscar nidos descendientes del nido actual
-      nidosEstirpe = [userData.nidoId];
-      
-      // Función recursiva para encontrar nidos hijos
-      async function buscarHijos(nidoId) {
-        const snap = await db.collection('nidos')
-          .where('nidoPadreId', '==', nidoId)
-          .get();
-        
-        for (const doc of snap.docs) {
-          nidosEstirpe.push(doc.id);
-          await buscarHijos(doc.id);
-        }
+      // Protección: si no hay nidoId, usar array vacío
+      if (!userData.nidoId) {
+        nidosEstirpe = [];
+        return;
       }
 
-      await buscarHijos(userData.nidoId);
+      nidosEstirpe = [userData.nidoId];
+      
+      // Función para encontrar nidos hijos (sin recursión infinita)
+      const visitados = new Set([userData.nidoId]);
+      const porVisitar = [userData.nidoId];
+      
+      while (porVisitar.length > 0 && nidosEstirpe.length < 50) { // Límite de seguridad
+        const nidoActual = porVisitar.shift();
+        
+        try {
+          const snap = await db.collection('nidos')
+            .where('nidoPadreId', '==', nidoActual)
+            .get();
+          
+          for (const doc of snap.docs) {
+            if (!visitados.has(doc.id)) {
+              visitados.add(doc.id);
+              nidosEstirpe.push(doc.id);
+              porVisitar.push(doc.id);
+            }
+          }
+        } catch (e) {
+          console.error('Error buscando nidos hijos:', e);
+          break;
+        }
+      }
     }
 
     // ============ CAMBIO DE ÁMBITO ============
@@ -1176,14 +1192,20 @@
       switch(ambitoActual) {
         case 'nido':
           // Solo mi nido
+          if (!userData.nidoId) {
+            return baseQuery.where('familiaId', '==', userData.familiaId);
+          }
           return baseQuery.where('nidoId', '==', userData.nidoId);
         case 'estirpe':
           // Mi nido + descendientes
+          if (nidosEstirpe.length === 0) {
+            return baseQuery.where('familiaId', '==', userData.familiaId);
+          }
           return baseQuery.where('nidoId', 'in', nidosEstirpe.slice(0, 10)); // Firestore limit
         case 'comun':
           // Todo lo marcado como común
-          return baseQuery.where('visibilidad', '==', 'comun')
-                          .where('familiaId', '==', userData.familiaId);
+          return baseQuery.where('familiaId', '==', userData.familiaId)
+                          .where('visibilidad', '==', 'comun');
         default:
           return baseQuery.where('familiaId', '==', userData.familiaId);
       }
@@ -1197,7 +1219,14 @@
         let query = db.collection('memoria');
         query = construirQueryAmbito(query);
         
-        const snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
+        // Intentar con orderBy, si falla usar sin ordenar
+        let snap;
+        try {
+          snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
+        } catch (indexError) {
+          console.warn('Index no disponible, cargando sin ordenar:', indexError);
+          snap = await query.limit(20).get();
+        }
 
         if (snap.empty) {
           container.innerHTML = `
@@ -1269,7 +1298,13 @@
         let query = db.collection('pautas');
         query = construirQueryAmbito(query);
         
-        const snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
+        let snap;
+        try {
+          snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
+        } catch (indexError) {
+          console.warn('Index no disponible, cargando sin ordenar:', indexError);
+          snap = await query.limit(20).get();
+        }
 
         if (snap.empty) {
           container.innerHTML = `
@@ -1371,7 +1406,13 @@
         let query = db.collection('propuestas');
         query = construirQueryAmbito(query);
         
-        const snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
+        let snap;
+        try {
+          snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
+        } catch (indexError) {
+          console.warn('Index no disponible, cargando sin ordenar:', indexError);
+          snap = await query.limit(20).get();
+        }
 
         if (snap.empty) {
           container.innerHTML = `
