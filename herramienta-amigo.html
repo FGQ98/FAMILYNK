@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Amigo Invisible</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      --success: #7DB59A; --error: #D4695A;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: var(--cream-dark); color: var(--text); }
+    .page-icon { font-size: 1.5rem; }
+
+    .main { max-width: 800px; margin: 0 auto; padding: 24px; }
+
+    .page-header { margin-bottom: 24px; }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
+
+    /* Wizard steps */
+    .wizard-steps {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .wizard-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--cream-dark);
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      transition: all 0.3s;
+    }
+
+    .wizard-step.active {
+      background: var(--sage);
+      color: white;
+    }
+
+    .wizard-step.completed {
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+    }
+
+    .wizard-step-number {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+
+    .wizard-step.active .wizard-step-number {
+      background: rgba(255,255,255,0.3);
+    }
+
+    .wizard-step.completed .wizard-step-number {
+      background: var(--sage);
+      color: white;
+    }
+
+    /* Card */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+
+    .card-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-body { padding: 24px; }
+
+    .card-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Steps content */
+    .step-content { display: none; }
+    .step-content.active { display: block; }
+
+    /* Selector tipo */
+    .tipo-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .tipo-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--cream);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tipo-option:hover { border-color: var(--sage-light); }
+    .tipo-option.selected { border-color: var(--sage); background: var(--sage-muted); }
+
+    .tipo-option input { display: none; }
+
+    .tipo-radio {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--text-muted);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tipo-option.selected .tipo-radio {
+      border-color: var(--sage);
+    }
+
+    .tipo-option.selected .tipo-radio::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background: var(--sage);
+      border-radius: 50%;
+    }
+
+    .tipo-info { flex: 1; }
+    .tipo-nombre { font-weight: 700; margin-bottom: 2px; }
+    .tipo-desc { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Lista selección */
+    .seleccion-lista {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      margin-top: 16px;
+    }
+
+    .seleccion-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .seleccion-item:last-child { border-bottom: none; }
+    .seleccion-item:hover { background: var(--cream); }
+
+    .seleccion-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--sage);
+    }
+
+    .seleccion-item-info { flex: 1; }
+    .seleccion-item-nombre { font-weight: 600; }
+    .seleccion-item-detalle { font-size: 0.8rem; color: var(--text-muted); }
+
+    .seleccion-item-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--sage-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--sage-dark);
+      font-size: 0.85rem;
+    }
+
+    .seleccion-header {
+      padding: 12px 16px;
+      background: var(--cream);
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Presupuesto */
+    .presupuesto-input {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    .presupuesto-input input {
+      width: 150px;
+      padding: 14px 18px;
+      font-size: 1.5rem;
+      font-weight: 700;
+      text-align: center;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+    }
+
+    .presupuesto-input input:focus {
+      outline: none;
+      border-color: var(--sage);
+    }
+
+    .presupuesto-input span {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--sage-dark);
+    }
+
+    /* Botones */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); transform: translateY(-2px); }
+    .btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; transform: none; }
+
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+
+    .btn-success { background: var(--success); color: white; }
+    .btn-lg { padding: 16px 32px; font-size: 1rem; }
+
+    /* Contador */
+    .contador {
+      background: var(--sage-muted);
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      color: var(--sage-dark);
+      font-size: 0.85rem;
+    }
+
+    /* Resultado */
+    .resultado-exito {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .resultado-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    .resultado-titulo {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--sage-dark);
+    }
+
+    .resultado-mensaje {
+      color: var(--text-light);
+      margin-bottom: 24px;
+    }
+
+    /* Tabla asignaciones (solo admin) */
+    .asignaciones-admin {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    .asignaciones-admin-title {
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .asignacion-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--cream-dark);
+      font-size: 0.9rem;
+    }
+
+    .asignacion-row:last-child { border-bottom: none; }
+
+    .asignacion-flecha {
+      color: var(--sage);
+      font-weight: 700;
+    }
+
+    /* Loading */
+    .loading-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--cream-dark);
+      border-top-color: var(--sage);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      font-weight: 600;
+      color: var(--text-light);
+    }
+
+    .hidden { display: none !important; }
+
+    /* Alert */
+    .alert {
+      padding: 14px 18px;
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+
+    .alert-error {
+      background: rgba(212, 105, 90, 0.15);
+      color: #a84a32;
+      border: 1px solid var(--error);
+    }
+
+    .alert-warning {
+      background: rgba(193, 119, 87, 0.15);
+      color: var(--terracotta);
+      border: 1px solid var(--terracotta);
+    }
+
+    /* Historial */
+    .historial-item {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    .historial-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .historial-item-fecha {
+      font-weight: 700;
+    }
+
+    .historial-item-presupuesto {
+      background: var(--sage-muted);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--sage-dark);
+    }
+
+    .historial-item-participantes {
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="activacion.html" class="back-btn">← Activación</a>
+      <span class="page-icon">🎁</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <h1 class="page-title">🎁 Amigo Invisible</h1>
+      <p class="page-subtitle">Organiza el sorteo de regalos familiar</p>
+    </div>
+
+    <!-- Wizard Steps -->
+    <div class="wizard-steps" id="wizard-steps">
+      <div class="wizard-step active" data-step="1">
+        <span class="wizard-step-number">1</span>
+        <span>Participantes</span>
+      </div>
+      <div class="wizard-step" data-step="2">
+        <span class="wizard-step-number">2</span>
+        <span>Presupuesto</span>
+      </div>
+      <div class="wizard-step" data-step="3">
+        <span class="wizard-step-number">3</span>
+        <span>Sorteo</span>
+      </div>
+    </div>
+
+    <!-- STEP 1: Participantes -->
+    <div class="step-content active" id="step-1">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">👥 ¿Quiénes participan?</h2>
+        </div>
+        <div class="card-body">
+          <div id="alert-step1" class="alert alert-error hidden"></div>
+          
+          <div class="tipo-selector">
+            <label class="tipo-option selected" onclick="seleccionarTipo('todos')">
+              <input type="radio" name="tipo" value="todos" checked>
+              <div class="tipo-radio"></div>
+              <div class="tipo-info">
+                <div class="tipo-nombre">👨‍👩‍👧‍👦 Todos</div>
+                <div class="tipo-desc">Todos los miembros de la familia</div>
+              </div>
+            </label>
+            <label class="tipo-option" onclick="seleccionarTipo('generaciones')">
+              <input type="radio" name="tipo" value="generaciones">
+              <div class="tipo-radio"></div>
+              <div class="tipo-info">
+                <div class="tipo-nombre">👴👨👦 Por generación</div>
+                <div class="tipo-desc">Selecciona generaciones específicas</div>
+              </div>
+            </label>
+            <label class="tipo-option" onclick="seleccionarTipo('nidos')">
+              <input type="radio" name="tipo" value="nidos">
+              <div class="tipo-radio"></div>
+              <div class="tipo-info">
+                <div class="tipo-nombre">🏠 Por nido</div>
+                <div class="tipo-desc">Selecciona nidos completos</div>
+              </div>
+            </label>
+            <label class="tipo-option" onclick="seleccionarTipo('personas')">
+              <input type="radio" name="tipo" value="personas">
+              <div class="tipo-radio"></div>
+              <div class="tipo-info">
+                <div class="tipo-nombre">👤 Selección manual</div>
+                <div class="tipo-desc">Elige persona por persona</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Lista de selección (según tipo) -->
+          <div id="lista-seleccion" class="seleccion-lista hidden"></div>
+        </div>
+        <div class="card-footer">
+          <span class="contador" id="contador-participantes">0 participantes</span>
+          <button class="btn btn-primary" onclick="siguientePaso(2)" id="btn-paso1">
+            Siguiente →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Presupuesto -->
+    <div class="step-content" id="step-2">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">💶 Presupuesto máximo</h2>
+        </div>
+        <div class="card-body">
+          <p style="color: var(--text-light); margin-bottom: 8px;">
+            Define el presupuesto máximo para el regalo. Se comunicará a todos los participantes en el email de asignación.
+          </p>
+          
+          <div class="presupuesto-input">
+            <input type="number" id="presupuesto" value="30" min="1" max="1000">
+            <span>€</span>
+          </div>
+
+          <div class="alert alert-warning">
+            💡 <strong>Consejo:</strong> Un presupuesto entre 20€ y 50€ suele funcionar bien para regalos significativos sin presión económica.
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="anteriorPaso(1)">
+            ← Atrás
+          </button>
+          <button class="btn btn-primary" onclick="siguientePaso(3)">
+            Siguiente →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Sorteo -->
+    <div class="step-content" id="step-3">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">🎲 Realizar sorteo</h2>
+        </div>
+        <div class="card-body">
+          <div id="resumen-sorteo">
+            <p><strong>Participantes:</strong> <span id="resumen-participantes">0</span> personas</p>
+            <p><strong>Presupuesto:</strong> <span id="resumen-presupuesto">0</span>€</p>
+            <p style="margin-top: 16px; color: var(--text-light); font-size: 0.9rem;">
+              ⚠️ Los consortes (parejas) nunca se asignan entre sí.
+            </p>
+          </div>
+          
+          <div id="alert-sorteo" class="alert alert-error hidden" style="margin-top: 16px;"></div>
+
+          <div style="text-align: center; margin-top: 32px;">
+            <button class="btn btn-primary btn-lg" onclick="realizarSorteo()" id="btn-sortear">
+              🎁 Realizar Sorteo y Enviar Emails
+            </button>
+          </div>
+        </div>
+        <div class="card-footer">
+          <button class="btn btn-secondary" onclick="anteriorPaso(2)">
+            ← Atrás
+          </button>
+          <span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTADO -->
+    <div class="step-content" id="step-resultado">
+      <div class="card">
+        <div class="card-body">
+          <div class="resultado-exito">
+            <div class="resultado-icon">🎉</div>
+            <h2 class="resultado-titulo">¡Sorteo completado!</h2>
+            <p class="resultado-mensaje">
+              Se han enviado los emails a todos los participantes con su asignación.
+            </p>
+            <button class="btn btn-primary" onclick="nuevoSorteo()">
+              🔄 Nuevo sorteo
+            </button>
+          </div>
+
+          <div class="asignaciones-admin">
+            <div class="asignaciones-admin-title">🔐 Asignaciones (solo visible para ti)</div>
+            <div id="lista-asignaciones"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="card" style="margin-top: 24px;" id="historial-card">
+      <div class="card-header">
+        <h2 class="card-title">📜 Sorteos anteriores</h2>
+      </div>
+      <div class="card-body">
+        <div id="historial-lista">
+          <p style="color: var(--text-muted); text-align: center;">No hay sorteos anteriores</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Loading overlay -->
+  <div class="loading-overlay hidden" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Realizando sorteo...</div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    // ============ CONFIG ============
+    emailjs.init('eWMtiJpUqrLsA5Nel');
+    const EMAILJS_SERVICE = 'service_fcfx5od';
+    const EMAILJS_TEMPLATE_AMIGO = 'template_amigo_invisible'; // Necesitarás crear esta plantilla
+
+    let currentUser = null;
+    let userData = null;
+    let familiaId = null;
+    let familiaData = null;
+
+    let miembrosData = []; // Todos los miembros
+    let nidosData = [];
+    let generacionesData = {}; // {generacion: [miembros]}
+
+    let tipoSeleccion = 'todos';
+    let participantesSeleccionados = []; // Array de {id, nombre, email, consorteId}
+
+    // ============ INIT ============
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      userData = userDoc.data();
+      familiaId = userData.familiaId;
+
+      if (familiaId) {
+        const familiaDoc = await db.collection('familias').doc(familiaId).get();
+        if (familiaDoc.exists) familiaData = familiaDoc.data();
+      }
+
+      await cargarMiembros();
+      await cargarNidos();
+      organizarPorGeneracion();
+      actualizarContador();
+      cargarHistorial();
+    });
+
+    async function cargarMiembros() {
+      const snap = await db.collection('usuarios')
+        .where('familiaId', '==', familiaId)
+        .get();
+
+      miembrosData = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })).filter(m => m.email); // Solo los que tienen email
+    }
+
+    async function cargarNidos() {
+      const snap = await db.collection('nidos')
+        .where('familiaId', '==', familiaId)
+        .get();
+
+      nidosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    function organizarPorGeneracion() {
+      generacionesData = {};
+      miembrosData.forEach(m => {
+        const gen = m.generacion || 'Sin asignar';
+        if (!generacionesData[gen]) generacionesData[gen] = [];
+        generacionesData[gen].push(m);
+      });
+    }
+
+    // ============ SELECCIÓN TIPO ============
+    function seleccionarTipo(tipo) {
+      tipoSeleccion = tipo;
+
+      // Actualizar UI
+      document.querySelectorAll('.tipo-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.querySelector(`input[value="${tipo}"]`)) {
+          opt.classList.add('selected');
+        }
+      });
+
+      const lista = document.getElementById('lista-seleccion');
+
+      if (tipo === 'todos') {
+        lista.classList.add('hidden');
+        participantesSeleccionados = miembrosData.map(m => ({
+          id: m.id,
+          nombre: m.nombre || m.email,
+          email: m.email,
+          consorteId: m.consorteId || null
+        }));
+      } else {
+        lista.classList.remove('hidden');
+        renderListaSeleccion(tipo);
+      }
+
+      actualizarContador();
+    }
+
+    function renderListaSeleccion(tipo) {
+      const lista = document.getElementById('lista-seleccion');
+      let html = '';
+
+      if (tipo === 'generaciones') {
+        const generaciones = Object.keys(generacionesData).sort();
+        html = `
+          <div class="seleccion-header">
+            <span>Generaciones</span>
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.75rem;" onclick="toggleTodos(true)">Todas</button>
+          </div>
+        `;
+        generaciones.forEach(gen => {
+          const count = generacionesData[gen].length;
+          html += `
+            <div class="seleccion-item" onclick="toggleGeneracion('${gen}')">
+              <input type="checkbox" id="gen-${gen}" onchange="toggleGeneracion('${gen}')">
+              <div class="seleccion-item-info">
+                <div class="seleccion-item-nombre">${gen}</div>
+                <div class="seleccion-item-detalle">${count} persona${count !== 1 ? 's' : ''}</div>
+              </div>
+            </div>
+          `;
+        });
+      } else if (tipo === 'nidos') {
+        html = `
+          <div class="seleccion-header">
+            <span>Nidos</span>
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.75rem;" onclick="toggleTodos(true)">Todos</button>
+          </div>
+        `;
+        nidosData.forEach(nido => {
+          const miembrosNido = miembrosData.filter(m => m.nidoId === nido.id);
+          html += `
+            <div class="seleccion-item" onclick="toggleNido('${nido.id}')">
+              <input type="checkbox" id="nido-${nido.id}" onchange="toggleNido('${nido.id}')">
+              <div class="seleccion-item-info">
+                <div class="seleccion-item-nombre">${nido.nombre}</div>
+                <div class="seleccion-item-detalle">${miembrosNido.length} persona${miembrosNido.length !== 1 ? 's' : ''}</div>
+              </div>
+            </div>
+          `;
+        });
+      } else if (tipo === 'personas') {
+        html = `
+          <div class="seleccion-header">
+            <span>Personas</span>
+            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.75rem;" onclick="toggleTodos(true)">Todas</button>
+          </div>
+        `;
+        miembrosData.forEach(m => {
+          const inicial = (m.nombre || m.email).charAt(0).toUpperCase();
+          html += `
+            <div class="seleccion-item" onclick="togglePersona('${m.id}')">
+              <input type="checkbox" id="persona-${m.id}" onchange="togglePersona('${m.id}')">
+              <div class="seleccion-item-avatar">${inicial}</div>
+              <div class="seleccion-item-info">
+                <div class="seleccion-item-nombre">${m.nombre || 'Sin nombre'}</div>
+                <div class="seleccion-item-detalle">${m.email}</div>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      lista.innerHTML = html;
+      participantesSeleccionados = [];
+      actualizarContador();
+    }
+
+    function toggleGeneracion(gen) {
+      const checkbox = document.getElementById(`gen-${gen}`);
+      const miembrosGen = generacionesData[gen] || [];
+
+      if (checkbox.checked) {
+        // Añadir todos los de esta generación
+        miembrosGen.forEach(m => {
+          if (!participantesSeleccionados.find(p => p.id === m.id)) {
+            participantesSeleccionados.push({
+              id: m.id,
+              nombre: m.nombre || m.email,
+              email: m.email,
+              consorteId: m.consorteId || null
+            });
+          }
+        });
+      } else {
+        // Quitar todos los de esta generación
+        participantesSeleccionados = participantesSeleccionados.filter(p => 
+          !miembrosGen.find(m => m.id === p.id)
+        );
+      }
+
+      actualizarContador();
+    }
+
+    function toggleNido(nidoId) {
+      const checkbox = document.getElementById(`nido-${nidoId}`);
+      const miembrosNido = miembrosData.filter(m => m.nidoId === nidoId);
+
+      if (checkbox.checked) {
+        miembrosNido.forEach(m => {
+          if (!participantesSeleccionados.find(p => p.id === m.id)) {
+            participantesSeleccionados.push({
+              id: m.id,
+              nombre: m.nombre || m.email,
+              email: m.email,
+              consorteId: m.consorteId || null
+            });
+          }
+        });
+      } else {
+        participantesSeleccionados = participantesSeleccionados.filter(p => 
+          !miembrosNido.find(m => m.id === p.id)
+        );
+      }
+
+      actualizarContador();
+    }
+
+    function togglePersona(personaId) {
+      const checkbox = document.getElementById(`persona-${personaId}`);
+      const miembro = miembrosData.find(m => m.id === personaId);
+
+      if (checkbox.checked) {
+        if (!participantesSeleccionados.find(p => p.id === personaId)) {
+          participantesSeleccionados.push({
+            id: miembro.id,
+            nombre: miembro.nombre || miembro.email,
+            email: miembro.email,
+            consorteId: miembro.consorteId || null
+          });
+        }
+      } else {
+        participantesSeleccionados = participantesSeleccionados.filter(p => p.id !== personaId);
+      }
+
+      actualizarContador();
+    }
+
+    function toggleTodos(seleccionar) {
+      if (tipoSeleccion === 'generaciones') {
+        Object.keys(generacionesData).forEach(gen => {
+          document.getElementById(`gen-${gen}`).checked = seleccionar;
+          toggleGeneracion(gen);
+        });
+      } else if (tipoSeleccion === 'nidos') {
+        nidosData.forEach(nido => {
+          document.getElementById(`nido-${nido.id}`).checked = seleccionar;
+          toggleNido(nido.id);
+        });
+      } else if (tipoSeleccion === 'personas') {
+        miembrosData.forEach(m => {
+          document.getElementById(`persona-${m.id}`).checked = seleccionar;
+        });
+        if (seleccionar) {
+          participantesSeleccionados = miembrosData.map(m => ({
+            id: m.id,
+            nombre: m.nombre || m.email,
+            email: m.email,
+            consorteId: m.consorteId || null
+          }));
+        } else {
+          participantesSeleccionados = [];
+        }
+      }
+      actualizarContador();
+    }
+
+    function actualizarContador() {
+      const count = participantesSeleccionados.length;
+      document.getElementById('contador-participantes').textContent = `${count} participante${count !== 1 ? 's' : ''}`;
+    }
+
+    // ============ WIZARD NAVIGATION ============
+    function siguientePaso(paso) {
+      // Validaciones
+      if (paso === 2) {
+        if (participantesSeleccionados.length < 3) {
+          document.getElementById('alert-step1').textContent = 'Necesitas al menos 3 participantes para el sorteo';
+          document.getElementById('alert-step1').classList.remove('hidden');
+          return;
+        }
+        document.getElementById('alert-step1').classList.add('hidden');
+      }
+
+      if (paso === 3) {
+        document.getElementById('resumen-participantes').textContent = participantesSeleccionados.length;
+        document.getElementById('resumen-presupuesto').textContent = document.getElementById('presupuesto').value;
+      }
+
+      // Cambiar paso
+      document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+      document.getElementById(`step-${paso}`).classList.add('active');
+
+      // Actualizar wizard
+      document.querySelectorAll('.wizard-step').forEach(s => {
+        const stepNum = parseInt(s.dataset.step);
+        s.classList.remove('active', 'completed');
+        if (stepNum === paso) s.classList.add('active');
+        if (stepNum < paso) s.classList.add('completed');
+      });
+    }
+
+    function anteriorPaso(paso) {
+      document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+      document.getElementById(`step-${paso}`).classList.add('active');
+
+      document.querySelectorAll('.wizard-step').forEach(s => {
+        const stepNum = parseInt(s.dataset.step);
+        s.classList.remove('active', 'completed');
+        if (stepNum === paso) s.classList.add('active');
+        if (stepNum < paso) s.classList.add('completed');
+      });
+    }
+
+    // ============ SORTEO ============
+    async function realizarSorteo() {
+      const presupuesto = document.getElementById('presupuesto').value;
+      const alertEl = document.getElementById('alert-sorteo');
+      alertEl.classList.add('hidden');
+
+      // Validar mínimo de participantes
+      if (participantesSeleccionados.length < 3) {
+        alertEl.textContent = 'Necesitas al menos 3 participantes';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      // Realizar sorteo con restricción de consortes
+      const asignaciones = sortearConRestricciones(participantesSeleccionados);
+
+      if (!asignaciones) {
+        alertEl.textContent = 'No es posible realizar el sorteo con estas restricciones. Prueba con más participantes.';
+        alertEl.classList.remove('hidden');
+        return;
+      }
+
+      // Mostrar loading
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('loading-text').textContent = 'Enviando emails...';
+
+      try {
+        // Enviar emails
+        let enviados = 0;
+        for (const asig of asignaciones) {
+          document.getElementById('loading-text').textContent = `Enviando email ${++enviados}/${asignaciones.length}...`;
+          
+          // Aquí enviarías el email real
+          // Por ahora simulamos un delay
+          await new Promise(r => setTimeout(r, 500));
+          
+          /* 
+          // Descomentar cuando tengas la plantilla de EmailJS
+          await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE_AMIGO, {
+            email: asig.de.email,
+            nombre_receptor: asig.de.nombre,
+            nombre_asignado: asig.para.nombre,
+            presupuesto: presupuesto,
+            familia_nombre: familiaData?.nombre || 'Tu familia'
+          });
+          */
+        }
+
+        // Guardar en historial
+        await db.collection('amigo-invisible').add({
+          familiaId: familiaId,
+          fecha: firebase.firestore.FieldValue.serverTimestamp(),
+          presupuesto: parseInt(presupuesto),
+          participantes: participantesSeleccionados.map(p => p.nombre),
+          asignaciones: asignaciones.map(a => ({ de: a.de.id, para: a.para.id })),
+          creadoPor: currentUser.uid
+        });
+
+        // Mostrar resultado
+        document.getElementById('loading').classList.add('hidden');
+        mostrarResultado(asignaciones);
+
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').classList.add('hidden');
+        alertEl.textContent = 'Error al enviar emails: ' + error.message;
+        alertEl.classList.remove('hidden');
+      }
+    }
+
+    function sortearConRestricciones(participantes, intentos = 0) {
+      if (intentos > 100) return null; // Evitar bucle infinito
+
+      // Fisher-Yates shuffle
+      const mezclados = [...participantes];
+      for (let i = mezclados.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [mezclados[i], mezclados[j]] = [mezclados[j], mezclados[i]];
+      }
+
+      // Crear asignaciones rotativas (cada uno regala al siguiente)
+      const asignaciones = [];
+      for (let i = 0; i < mezclados.length; i++) {
+        const de = mezclados[i];
+        const para = mezclados[(i + 1) % mezclados.length];
+
+        // Verificar restricción de consortes
+        if (de.consorteId && de.consorteId === para.id) {
+          // Reintentar con otro shuffle
+          return sortearConRestricciones(participantes, intentos + 1);
+        }
+
+        // Verificar que no se regale a sí mismo
+        if (de.id === para.id) {
+          return sortearConRestricciones(participantes, intentos + 1);
+        }
+
+        asignaciones.push({ de, para });
+      }
+
+      return asignaciones;
+    }
+
+    function mostrarResultado(asignaciones) {
+      document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+      document.getElementById('step-resultado').classList.add('active');
+      document.getElementById('wizard-steps').classList.add('hidden');
+
+      // Mostrar lista de asignaciones para el admin
+      const lista = document.getElementById('lista-asignaciones');
+      lista.innerHTML = asignaciones.map(a => `
+        <div class="asignacion-row">
+          <span>${a.de.nombre}</span>
+          <span class="asignacion-flecha">→</span>
+          <span>${a.para.nombre}</span>
+        </div>
+      `).join('');
+
+      cargarHistorial();
+    }
+
+    function nuevoSorteo() {
+      participantesSeleccionados = [];
+      tipoSeleccion = 'todos';
+      
+      document.querySelectorAll('.step-content').forEach(s => s.classList.remove('active'));
+      document.getElementById('step-1').classList.add('active');
+      document.getElementById('wizard-steps').classList.remove('hidden');
+
+      // Reset wizard steps
+      document.querySelectorAll('.wizard-step').forEach(s => {
+        s.classList.remove('active', 'completed');
+        if (s.dataset.step === '1') s.classList.add('active');
+      });
+
+      // Reset tipo selector
+      document.querySelectorAll('.tipo-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.querySelector('input[value="todos"]')) opt.classList.add('selected');
+      });
+      document.getElementById('lista-seleccion').classList.add('hidden');
+
+      // Seleccionar todos por defecto
+      participantesSeleccionados = miembrosData.map(m => ({
+        id: m.id,
+        nombre: m.nombre || m.email,
+        email: m.email,
+        consorteId: m.consorteId || null
+      }));
+      actualizarContador();
+    }
+
+    // ============ HISTORIAL ============
+    async function cargarHistorial() {
+      try {
+        const snap = await db.collection('amigo-invisible')
+          .where('familiaId', '==', familiaId)
+          .orderBy('fecha', 'desc')
+          .limit(5)
+          .get();
+
+        const lista = document.getElementById('historial-lista');
+
+        if (snap.empty) {
+          lista.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No hay sorteos anteriores</p>';
+          return;
+        }
+
+        lista.innerHTML = snap.docs.map(doc => {
+          const d = doc.data();
+          const fecha = d.fecha?.toDate();
+          const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+          
+          return `
+            <div class="historial-item">
+              <div class="historial-item-header">
+                <span class="historial-item-fecha">📅 ${fechaStr}</span>
+                <span class="historial-item-presupuesto">${d.presupuesto}€</span>
+              </div>
+              <div class="historial-item-participantes">
+                👥 ${d.participantes?.length || 0} participantes: ${d.participantes?.slice(0, 3).join(', ')}${d.participantes?.length > 3 ? '...' : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        console.error('Error cargando historial:', error);
+      }
+    }
+  </script>
+</body>
+</html>
