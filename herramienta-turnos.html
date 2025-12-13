@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Turno Rotatorio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: var(--cream-dark); color: var(--text); }
+    .page-icon { font-size: 1.5rem; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, var(--sage), var(--sage-dark)); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    /* Tarjetas de tareas */
+    .tareas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .tarea-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+      transition: all 0.2s;
+    }
+
+    .tarea-card:hover { box-shadow: var(--shadow-float); }
+
+    .tarea-card-header {
+      padding: 16px 20px;
+      background: linear-gradient(135deg, var(--sage-muted), var(--cream));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tarea-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tarea-icon { font-size: 1.8rem; }
+
+    .tarea-nombre {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .tarea-periodicidad {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .tarea-card-body { padding: 16px 20px; }
+
+    /* Turno actual */
+    .turno-actual {
+      background: var(--sage);
+      color: white;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .turno-actual-label { font-size: 0.8rem; opacity: 0.9; }
+    .turno-actual-nombre { font-weight: 700; font-size: 1.1rem; }
+
+    .turno-actual-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    /* Lista de turnos */
+    .turnos-lista {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .turno-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--cream-dark);
+      font-size: 0.9rem;
+    }
+
+    .turno-item:last-child { border-bottom: none; }
+
+    .turno-item.actual {
+      font-weight: 700;
+      color: var(--sage-dark);
+    }
+
+    .turno-item.pasado {
+      color: var(--text-muted);
+      text-decoration: line-through;
+    }
+
+    .turno-fecha {
+      min-width: 100px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .turno-persona { flex: 1; }
+
+    .turno-check {
+      color: var(--sage);
+    }
+
+    .tarea-card-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      padding: 20px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 550px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.2rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+
+    .modal-body { padding: 24px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--sage); }
+    .form-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Selector de icono */
+    .icon-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .icon-option {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      background: var(--cream);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .icon-option:hover { border-color: var(--sage-light); }
+    .icon-option.selected { border-color: var(--sage); background: var(--sage-muted); }
+
+    /* Lista de participantes */
+    .participantes-lista {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      margin-top: 8px;
+    }
+
+    .participante-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--cream-dark);
+      cursor: pointer;
+    }
+
+    .participante-item:last-child { border-bottom: none; }
+    .participante-item:hover { background: var(--cream); }
+
+    .participante-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--sage);
+    }
+
+    .participante-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--sage-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--sage-dark);
+    }
+
+    .participante-nombre { flex: 1; font-size: 0.9rem; }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="activacion.html" class="back-btn">← Activación</a>
+      <span class="page-icon">🔄</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">🔄 Turno Rotatorio</h1>
+        <p class="page-subtitle">Organiza tareas con turnos entre los miembros</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva tarea</button>
+    </div>
+
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="tareas-grid" class="tareas-grid hidden"></div>
+
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">🔄</div>
+      <p class="empty-text">Aún no hay tareas rotatorias.<br>¡Crea la primera para organizar los turnos!</p>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva tarea</button>
+    </div>
+  </main>
+
+  <!-- Modal Crear/Editar -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">🔄 Nueva tarea rotativa</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-tarea" onsubmit="guardarTarea(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Icono</label>
+            <div class="icon-selector" id="icon-selector">
+              <div class="icon-option selected" data-icon="🧹" onclick="seleccionarIcono('🧹')">🧹</div>
+              <div class="icon-option" data-icon="🍽️" onclick="seleccionarIcono('🍽️')">🍽️</div>
+              <div class="icon-option" data-icon="🐕" onclick="seleccionarIcono('🐕')">🐕</div>
+              <div class="icon-option" data-icon="🚗" onclick="seleccionarIcono('🚗')">🚗</div>
+              <div class="icon-option" data-icon="🛒" onclick="seleccionarIcono('🛒')">🛒</div>
+              <div class="icon-option" data-icon="🗑️" onclick="seleccionarIcono('🗑️')">🗑️</div>
+              <div class="icon-option" data-icon="🧺" onclick="seleccionarIcono('🧺')">🧺</div>
+              <div class="icon-option" data-icon="🌱" onclick="seleccionarIcono('🌱')">🌱</div>
+              <div class="icon-option" data-icon="📬" onclick="seleccionarIcono('📬')">📬</div>
+              <div class="icon-option" data-icon="🛁" onclick="seleccionarIcono('🛁')">🛁</div>
+              <div class="icon-option" data-icon="🍳" onclick="seleccionarIcono('🍳')">🍳</div>
+              <div class="icon-option" data-icon="💡" onclick="seleccionarIcono('💡')">💡</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nombre de la tarea *</label>
+            <input type="text" class="form-input" id="tarea-nombre" placeholder="Ej: Poner la mesa, Sacar al perro..." required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Periodicidad</label>
+              <select class="form-select" id="tarea-periodicidad">
+                <option value="diaria">📅 Diaria</option>
+                <option value="semanal" selected>📅 Semanal</option>
+                <option value="quincenal">📅 Quincenal</option>
+                <option value="mensual">📅 Mensual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Criterio de orden</label>
+              <select class="form-select" id="tarea-criterio">
+                <option value="edad">👴→👶 Por edad (mayor a menor)</option>
+                <option value="edad-inv">👶→👴 Por edad (menor a mayor)</option>
+                <option value="alfabetico">🔤 Alfabético</option>
+                <option value="manual">✋ Asignación manual</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Fecha de inicio</label>
+            <input type="date" class="form-input" id="tarea-inicio">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">¿Quiénes participan? *</label>
+            <div class="participantes-lista" id="participantes-lista">
+              <!-- Se llena dinámicamente -->
+            </div>
+            <div class="form-hint">Selecciona las personas que rotarán en esta tarea</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar" onclick="eliminarTarea()">🗑️ Eliminar</button>
+          <div>
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-guardar">Crear tarea</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let familiaId = null;
+    let tareasData = [];
+    let miembrosData = [];
+    let editingId = null;
+    let selectedIcon = '🧹';
+    let participantesSeleccionados = [];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      
+      familiaId = userDoc.data().familiaId;
+      await cargarMiembros();
+      await loadTareas();
+    });
+
+    async function cargarMiembros() {
+      const snap = await db.collection('usuarios')
+        .where('familiaId', '==', familiaId)
+        .get();
+
+      miembrosData = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })).filter(m => m.nombre); // Solo los que tienen nombre
+
+      // Ordenar por nombre por defecto
+      miembrosData.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+    }
+
+    async function loadTareas() {
+      try {
+        const snap = await db.collection('turnos-rotativos')
+          .where('familiaId', '==', familiaId)
+          .get();
+
+        tareasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        document.getElementById('loading').classList.add('hidden');
+        renderTareas();
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+      }
+    }
+
+    function renderTareas() {
+      const container = document.getElementById('tareas-grid');
+      const empty = document.getElementById('empty-state');
+
+      if (tareasData.length === 0) {
+        container.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      container.classList.remove('hidden');
+
+      container.innerHTML = tareasData.map(t => {
+        const periodicidadTexto = {
+          'diaria': 'Diaria',
+          'semanal': 'Semanal',
+          'quincenal': 'Quincenal',
+          'mensual': 'Mensual'
+        }[t.periodicidad] || t.periodicidad;
+
+        // Calcular turnos
+        const turnos = calcularTurnos(t);
+        const turnoActual = turnos.find(tu => tu.actual);
+
+        return `
+          <div class="tarea-card">
+            <div class="tarea-card-header">
+              <div class="tarea-info">
+                <div class="tarea-icon">${t.icono || '🔄'}</div>
+                <div>
+                  <div class="tarea-nombre">${t.nombre}</div>
+                  <div class="tarea-periodicidad">📅 ${periodicidadTexto}</div>
+                </div>
+              </div>
+            </div>
+            <div class="tarea-card-body">
+              ${turnoActual ? `
+                <div class="turno-actual">
+                  <div class="turno-actual-avatar">${(turnoActual.nombre || '?').charAt(0)}</div>
+                  <div>
+                    <div class="turno-actual-label">Le toca a:</div>
+                    <div class="turno-actual-nombre">${turnoActual.nombre}</div>
+                  </div>
+                </div>
+              ` : ''}
+              <div class="turnos-lista">
+                ${turnos.slice(0, 6).map(tu => `
+                  <div class="turno-item ${tu.actual ? 'actual' : ''} ${tu.pasado ? 'pasado' : ''}">
+                    <span class="turno-fecha">${tu.fechaStr}</span>
+                    <span class="turno-persona">${tu.nombre}</span>
+                    ${tu.pasado ? '<span class="turno-check">✓</span>' : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div class="tarea-card-footer">
+              <button class="btn btn-sm btn-secondary" onclick="abrirModal('${t.id}')">✏️ Editar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function calcularTurnos(tarea) {
+      const turnos = [];
+      const participantes = ordenarParticipantes(tarea.participantes || [], tarea.criterio);
+      
+      if (participantes.length === 0) return turnos;
+
+      const fechaInicio = tarea.fechaInicio?.toDate?.() || new Date();
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      // Calcular intervalo en días
+      const intervaloDias = {
+        'diaria': 1,
+        'semanal': 7,
+        'quincenal': 14,
+        'mensual': 30
+      }[tarea.periodicidad] || 7;
+
+      // Generar turnos (3 pasados + actual + 2 futuros)
+      let fecha = new Date(fechaInicio);
+      let index = 0;
+      
+      // Avanzar hasta cerca de hoy
+      while (fecha < hoy) {
+        fecha.setDate(fecha.getDate() + intervaloDias);
+        index++;
+      }
+      
+      // Retroceder para mostrar algunos pasados
+      const indexActual = index;
+      index = Math.max(0, index - 2);
+      fecha = new Date(fechaInicio);
+      fecha.setDate(fecha.getDate() + (index * intervaloDias));
+
+      // Generar lista
+      for (let i = 0; i < 6; i++) {
+        const personaIndex = (index + i) % participantes.length;
+        const persona = participantes[personaIndex];
+        const fechaTurno = new Date(fecha);
+        fechaTurno.setDate(fechaTurno.getDate() + (i * intervaloDias));
+
+        const esActual = (index + i) === indexActual;
+        const esPasado = fechaTurno < hoy && !esActual;
+
+        turnos.push({
+          nombre: persona.nombre || 'Sin nombre',
+          fecha: fechaTurno,
+          fechaStr: fechaTurno.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+          actual: esActual,
+          pasado: esPasado
+        });
+      }
+
+      return turnos;
+    }
+
+    function ordenarParticipantes(participantesIds, criterio) {
+      let participantes = participantesIds.map(id => miembrosData.find(m => m.id === id)).filter(Boolean);
+
+      switch (criterio) {
+        case 'edad':
+          participantes.sort((a, b) => {
+            const edadA = a.fechaNacimiento?.toDate?.() || new Date();
+            const edadB = b.fechaNacimiento?.toDate?.() || new Date();
+            return edadA - edadB; // Mayor a menor
+          });
+          break;
+        case 'edad-inv':
+          participantes.sort((a, b) => {
+            const edadA = a.fechaNacimiento?.toDate?.() || new Date();
+            const edadB = b.fechaNacimiento?.toDate?.() || new Date();
+            return edadB - edadA; // Menor a mayor
+          });
+          break;
+        case 'alfabetico':
+          participantes.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+          break;
+        // 'manual' mantiene el orden guardado
+      }
+
+      return participantes;
+    }
+
+    function seleccionarIcono(icono) {
+      selectedIcon = icono;
+      document.querySelectorAll('.icon-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.dataset.icon === icono) opt.classList.add('selected');
+      });
+    }
+
+    function renderParticipantes() {
+      const lista = document.getElementById('participantes-lista');
+      lista.innerHTML = miembrosData.map(m => {
+        const checked = participantesSeleccionados.includes(m.id);
+        const inicial = (m.nombre || '?').charAt(0).toUpperCase();
+        return `
+          <div class="participante-item" onclick="toggleParticipante('${m.id}')">
+            <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleParticipante('${m.id}')">
+            <div class="participante-avatar">${inicial}</div>
+            <span class="participante-nombre">${m.nombre || 'Sin nombre'}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleParticipante(id) {
+      const index = participantesSeleccionados.indexOf(id);
+      if (index > -1) {
+        participantesSeleccionados.splice(index, 1);
+      } else {
+        participantesSeleccionados.push(id);
+      }
+      renderParticipantes();
+    }
+
+    function abrirModal(id = null) {
+      editingId = id;
+      const modal = document.getElementById('modal');
+      const form = document.getElementById('form-tarea');
+      const btnEliminar = document.getElementById('btn-eliminar');
+
+      form.reset();
+      selectedIcon = '🧹';
+      seleccionarIcono('🧹');
+      participantesSeleccionados = [];
+
+      // Fecha por defecto: hoy
+      document.getElementById('tarea-inicio').value = new Date().toISOString().split('T')[0];
+
+      if (id) {
+        const tarea = tareasData.find(t => t.id === id);
+        if (tarea) {
+          document.getElementById('modal-title').textContent = '✏️ Editar tarea';
+          document.getElementById('btn-guardar').textContent = 'Guardar';
+          document.getElementById('tarea-nombre').value = tarea.nombre || '';
+          document.getElementById('tarea-periodicidad').value = tarea.periodicidad || 'semanal';
+          document.getElementById('tarea-criterio').value = tarea.criterio || 'alfabetico';
+          
+          if (tarea.fechaInicio?.toDate) {
+            document.getElementById('tarea-inicio').value = tarea.fechaInicio.toDate().toISOString().split('T')[0];
+          }
+          
+          if (tarea.icono) {
+            selectedIcon = tarea.icono;
+            seleccionarIcono(tarea.icono);
+          }
+          
+          participantesSeleccionados = tarea.participantes || [];
+          btnEliminar.classList.remove('hidden');
+        }
+      } else {
+        document.getElementById('modal-title').textContent = '🔄 Nueva tarea rotativa';
+        document.getElementById('btn-guardar').textContent = 'Crear tarea';
+        btnEliminar.classList.add('hidden');
+      }
+
+      renderParticipantes();
+      modal.classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal').classList.remove('active');
+      editingId = null;
+    }
+
+    async function guardarTarea(e) {
+      e.preventDefault();
+      
+      if (participantesSeleccionados.length < 2) {
+        alert('Selecciona al menos 2 participantes para la rotación');
+        return;
+      }
+
+      const btn = document.getElementById('btn-guardar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const fechaInicio = document.getElementById('tarea-inicio').value;
+        
+        const data = {
+          nombre: document.getElementById('tarea-nombre').value.trim(),
+          periodicidad: document.getElementById('tarea-periodicidad').value,
+          criterio: document.getElementById('tarea-criterio').value,
+          fechaInicio: fechaInicio ? firebase.firestore.Timestamp.fromDate(new Date(fechaInicio)) : firebase.firestore.FieldValue.serverTimestamp(),
+          participantes: participantesSeleccionados,
+          icono: selectedIcon,
+          familiaId: familiaId,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (editingId) {
+          await db.collection('turnos-rotativos').doc(editingId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('turnos-rotativos').add(data);
+        }
+
+        cerrarModal();
+        await loadTareas();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+
+      btn.disabled = false;
+      btn.textContent = editingId ? 'Guardar' : 'Crear tarea';
+    }
+
+    async function eliminarTarea() {
+      if (!editingId || !confirm('¿Eliminar esta tarea rotativa?')) return;
+
+      try {
+        await db.collection('turnos-rotativos').doc(editingId).delete();
+        cerrarModal();
+        await loadTareas();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar');
+      }
+    }
+
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.id === 'modal') cerrarModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') cerrarModal();
+    });
+  </script>
+</body>
+</html>
