@@ -708,6 +708,13 @@
       border-color: var(--sage);
     }
 
+    .reparto-check {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--sage);
+    }
+
     .reparto-total {
       display: flex;
       justify-content: space-between;
@@ -1094,7 +1101,7 @@
 <body>
   <header class="header">
     <div class="header-left">
-      <a href="bienes.html" class="back-btn"><span>←</span><span>El Común</span></a>
+      <a href="lo-comun.html" class="back-btn"><span>←</span><span>Lo Común</span></a>
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary btn-sm" id="btn-editar">✏️ Editar</button>
@@ -2849,6 +2856,9 @@
       let html = `
         <thead>
           <tr>
+            <th style="width:40px;text-align:center;">
+              <span title="Seleccionar nidos participantes">✓</span>
+            </th>
             <th>Nido</th>
             <th style="text-align:right">Porcentaje</th>
           </tr>
@@ -2859,9 +2869,17 @@
       nidosData.forEach((nido, i) => {
         const color = coloresNidoHex[i % coloresNidoHex.length];
         const porcentaje = repartoData[nido.id] || 0;
+        const participa = repartoParticipantes[nido.id] !== false; // Por defecto participa si hay porcentaje > 0 o no está definido
         
         html += `
           <tr>
+            <td style="text-align:center;">
+              <input type="checkbox" class="reparto-check" 
+                id="reparto-check-${nido.id}" 
+                data-nido="${nido.id}"
+                ${participa && porcentaje > 0 ? 'checked' : ''}
+                onchange="toggleNidoReparto('${nido.id}', this.checked)">
+            </td>
             <td>
               <div class="reparto-nido-nombre">
                 <div class="reparto-nido-color" style="background:${color}"></div>
@@ -2885,8 +2903,64 @@
       actualizarTotalReparto();
     }
 
+    let repartoParticipantes = {}; // {nidoId: true/false}
+
+    function toggleNidoReparto(nidoId, participa) {
+      repartoParticipantes[nidoId] = participa;
+      
+      if (!participa) {
+        // Si desmarca, poner a 0
+        repartoData[nidoId] = 0;
+        document.getElementById(`reparto-${nidoId}`).value = 0;
+      }
+      
+      // Recalcular reparto igualitario automáticamente
+      calcularRepartoIgualitario();
+    }
+
+    function calcularRepartoIgualitario() {
+      // Obtener nidos seleccionados
+      const checks = document.querySelectorAll('.reparto-check:checked');
+      const nidosSeleccionados = Array.from(checks).map(c => c.dataset.nido);
+      
+      if (nidosSeleccionados.length === 0) {
+        // Ninguno seleccionado, todo a 0
+        nidosData.forEach(nido => {
+          repartoData[nido.id] = 0;
+          const input = document.getElementById(`reparto-${nido.id}`);
+          if (input) input.value = 0;
+        });
+      } else {
+        // Calcular reparto igualitario
+        const porcentajePorNido = Math.floor(100 / nidosSeleccionados.length);
+        const resto = 100 - (porcentajePorNido * nidosSeleccionados.length);
+        
+        nidosData.forEach(nido => {
+          const input = document.getElementById(`reparto-${nido.id}`);
+          if (nidosSeleccionados.includes(nido.id)) {
+            // Dar el resto al primero
+            const extra = (nidosSeleccionados.indexOf(nido.id) === 0) ? resto : 0;
+            repartoData[nido.id] = porcentajePorNido + extra;
+          } else {
+            repartoData[nido.id] = 0;
+          }
+          if (input) input.value = repartoData[nido.id];
+        });
+      }
+      
+      actualizarTotalReparto();
+    }
+
     function actualizarReparto(nidoId, valor) {
       repartoData[nidoId] = parseInt(valor) || 0;
+      
+      // Si pone un valor > 0, marcar el checkbox
+      const check = document.getElementById(`reparto-check-${nidoId}`);
+      if (check) {
+        check.checked = repartoData[nidoId] > 0;
+        repartoParticipantes[nidoId] = repartoData[nidoId] > 0;
+      }
+      
       actualizarTotalReparto();
     }
 
