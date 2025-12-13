@@ -395,10 +395,15 @@
     .calendario-dia.otro-mes { color: var(--text-muted); opacity: 0.5; }
     .calendario-dia.hoy { background: var(--sage-muted); font-weight: 700; }
     .calendario-dia.reservado { background: var(--sage); color: white; }
-    .calendario-dia.nido-1 { background: var(--sage); }
-    .calendario-dia.nido-2 { background: var(--terracotta); }
-    .calendario-dia.nido-3 { background: #6B8E9F; }
-    .calendario-dia.nido-4 { background: #9B8EA6; }
+    /* Colores por tipo de reserva */
+    .calendario-dia.tipo-toda-familia { background: #7A9E7E; }
+    .calendario-dia.tipo-gq-h { background: #C17757; }
+    .calendario-dia.tipo-gq-b { background: #6B8E9F; }
+    .calendario-dia.tipo-gq-g { background: #9B8EA6; }
+    .calendario-dia.tipo-gq-gc { background: #D4A574; }
+    .calendario-dia.tipo-gq-n { background: #7EAAA6; }
+    .calendario-dia.tipo-cazadores { background: #8B7355; }
+    .calendario-dia.tipo-otros { background: #9A9A9A; }
 
     .reservas-lista { margin-top: 16px; }
 
@@ -423,10 +428,15 @@
     }
 
     .reserva-item:hover { background: var(--cream-dark); }
-    .reserva-item.nido-1 { border-left-color: var(--sage); }
-    .reserva-item.nido-2 { border-left-color: var(--terracotta); }
-    .reserva-item.nido-3 { border-left-color: #6B8E9F; }
-    .reserva-item.nido-4 { border-left-color: #9B8EA6; }
+    /* Colores borde lista reservas */
+    .reserva-item.tipo-toda-familia { border-left-color: #7A9E7E; }
+    .reserva-item.tipo-gq-h { border-left-color: #C17757; }
+    .reserva-item.tipo-gq-b { border-left-color: #6B8E9F; }
+    .reserva-item.tipo-gq-g { border-left-color: #9B8EA6; }
+    .reserva-item.tipo-gq-gc { border-left-color: #D4A574; }
+    .reserva-item.tipo-gq-n { border-left-color: #7EAAA6; }
+    .reserva-item.tipo-cazadores { border-left-color: #8B7355; }
+    .reserva-item.tipo-otros { border-left-color: #9A9A9A; }
 
     .reserva-fecha { text-align: center; min-width: 50px; }
     .reserva-fecha-dia { font-size: 1.3rem; font-weight: 700; color: var(--sage-dark); }
@@ -1249,8 +1259,18 @@
       <form id="form-reserva">
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Nido / Familia</label>
-            <select class="form-select" id="reserva-nido" required><option value="">Selecciona...</option></select>
+            <label class="form-label">¿Quién reserva?</label>
+            <select class="form-select" id="reserva-tipo" required>
+              <option value="">Selecciona...</option>
+              <option value="toda-familia">👨‍👩‍👧‍👦 Toda la familia</option>
+              <option value="gq-h">Familia GQ-H</option>
+              <option value="gq-b">Familia GQ-B</option>
+              <option value="gq-g">Familia GQ-G</option>
+              <option value="gq-gc">Familia GQ-GC</option>
+              <option value="gq-n">Familia GQ-N</option>
+              <option value="cazadores">🦌 Cazadores</option>
+              <option value="otros">📋 Otros</option>
+            </select>
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -1263,8 +1283,9 @@
             </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Notas (opcional)</label>
-            <input type="text" class="form-input" id="reserva-notas" placeholder="Ej: Cumpleaños, vacaciones...">
+            <label class="form-label">Nota breve</label>
+            <input type="text" class="form-input" id="reserva-notas" placeholder="Ej: Cumpleaños abuelo, cacería otoño..." maxlength="50">
+            <div class="form-hint">Se muestra al pasar el ratón sobre la reserva</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -1663,6 +1684,18 @@
 
     const nidoColores = ['nido-1', 'nido-2', 'nido-3', 'nido-4'];
     const nidoColorMap = {};
+    
+    // Tipos de reserva con sus colores y nombres
+    const tiposReserva = {
+      'toda-familia': { nombre: '👨‍👩‍👧‍👦 Toda la familia', color: '#7A9E7E' },
+      'gq-h': { nombre: 'Familia GQ-H', color: '#C17757' },
+      'gq-b': { nombre: 'Familia GQ-B', color: '#6B8E9F' },
+      'gq-g': { nombre: 'Familia GQ-G', color: '#9B8EA6' },
+      'gq-gc': { nombre: 'Familia GQ-GC', color: '#D4A574' },
+      'gq-n': { nombre: 'Familia GQ-N', color: '#7EAAA6' },
+      'cazadores': { nombre: '🦌 Cazadores', color: '#8B7355' },
+      'otros': { nombre: '📋 Otros', color: '#9A9A9A' }
+    };
 
     const urlParams = new URLSearchParams(window.location.search);
     bienId = urlParams.get('id');
@@ -1702,10 +1735,7 @@
       if (!familiaId) return;
       const snap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
       nidosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      nidosData.forEach((n, i) => { nidoColorMap[n.id] = nidoColores[i % nidoColores.length]; });
-      
-      document.getElementById('reserva-nido').innerHTML = '<option value="">Selecciona...</option>' +
-        nidosData.map(n => `<option value="${n.id}">${n.nombre}</option>`).join('');
+      // Nidos se usan para gastos/reparto, no para reservas
     }
 
     async function loadReservas() {
@@ -2027,8 +2057,9 @@
         const reserva = getReservaParaDia(fecha);
         let clases = 'calendario-dia';
         if (esHoy) clases += ' hoy';
-        if (reserva) clases += ` reservado ${nidoColorMap[reserva.nidoId] || 'nido-1'}`;
-        html += `<div class="${clases}" onclick="clickDia(${dia})">${dia}</div>`;
+        if (reserva) clases += ` reservado tipo-${reserva.tipo || 'otros'}`;
+        const tooltip = reserva ? (reserva.notas || tiposReserva[reserva.tipo]?.nombre || '') : '';
+        html += `<div class="${clases}" onclick="clickDia(${dia})" title="${tooltip}">${dia}</div>`;
       }
       
       const totalCeldas = startDay + diasMes;
@@ -2071,15 +2102,16 @@
         const inicio = r.fechaInicio.toDate();
         const fin = r.fechaFin.toDate();
         const dias = Math.ceil((fin - inicio) / (1000*60*60*24)) + 1;
+        const tipoInfo = tiposReserva[r.tipo] || { nombre: 'Otros', color: '#9A9A9A' };
         return `
-          <div class="reserva-item ${nidoColorMap[r.nidoId] || 'nido-1'}" onclick="abrirModalReserva(reservasData.find(x=>x.id==='${r.id}'))">
+          <div class="reserva-item tipo-${r.tipo || 'otros'}" onclick="abrirModalReserva(reservasData.find(x=>x.id==='${r.id}'))" title="${r.notas || ''}">
             <div class="reserva-fecha">
               <div class="reserva-fecha-dia">${inicio.getDate()}</div>
               <div class="reserva-fecha-mes">${inicio.toLocaleDateString('es-ES', {month: 'short'}).toUpperCase()}</div>
             </div>
             <div class="reserva-info">
-              <div class="reserva-quien">${r.nidoNombre || 'Familia'}</div>
-              <div class="reserva-periodo">${formatDateRange(inicio, fin)} · ${dias} noche${dias > 1 ? 's' : ''}</div>
+              <div class="reserva-quien">${tipoInfo.nombre}</div>
+              <div class="reserva-periodo">${formatDateRange(inicio, fin)} · ${dias} noche${dias > 1 ? 's' : ''}${r.notas ? ' · ' + r.notas : ''}</div>
             </div>
           </div>
         `;
@@ -2088,13 +2120,12 @@
 
     function renderNidosLeyenda() {
       const container = document.getElementById('nidos-leyenda');
-      const nidosConReservas = [...new Set(reservasData.map(r => r.nidoId))];
-      if (nidosConReservas.length === 0) { container.innerHTML = ''; return; }
+      const tiposConReservas = [...new Set(reservasData.map(r => r.tipo))].filter(Boolean);
+      if (tiposConReservas.length === 0) { container.innerHTML = ''; return; }
       
-      const coloresHex = { 'nido-1': '#7A9E7E', 'nido-2': '#C17757', 'nido-3': '#6B8E9F', 'nido-4': '#9B8EA6' };
-      container.innerHTML = nidosConReservas.map(nidoId => {
-        const nido = nidosData.find(n => n.id === nidoId);
-        return `<div class="nido-leyenda-item"><div class="nido-leyenda-color" style="background:${coloresHex[nidoColorMap[nidoId]]}"></div><span>${nido?.nombre || '?'}</span></div>`;
+      container.innerHTML = tiposConReservas.map(tipo => {
+        const info = tiposReserva[tipo] || { nombre: tipo, color: '#9A9A9A' };
+        return `<div class="nido-leyenda-item"><div class="nido-leyenda-color" style="background:${info.color}"></div><span>${info.nombre}</span></div>`;
       }).join('');
     }
 
@@ -2109,7 +2140,7 @@
       
       if (reserva) {
         document.getElementById('modal-reserva-title').textContent = '✏️ Editar reserva';
-        document.getElementById('reserva-nido').value = reserva.nidoId || '';
+        document.getElementById('reserva-tipo').value = reserva.tipo || '';
         document.getElementById('reserva-inicio').value = formatDateInput(reserva.fechaInicio.toDate());
         document.getElementById('reserva-fin').value = formatDateInput(reserva.fechaFin.toDate());
         document.getElementById('reserva-notas').value = reserva.notas || '';
@@ -2134,11 +2165,12 @@
       btn.disabled = true; btn.textContent = 'Guardando...';
       
       try {
-        const nidoId = document.getElementById('reserva-nido').value;
-        const nido = nidosData.find(n => n.id === nidoId);
+        const tipo = document.getElementById('reserva-tipo').value;
+        const tipoInfo = tiposReserva[tipo] || { nombre: 'Otros' };
         
         const data = {
-          nidoId, nidoNombre: nido?.nombre || 'Familia',
+          tipo,
+          tipoNombre: tipoInfo.nombre,
           fechaInicio: firebase.firestore.Timestamp.fromDate(new Date(document.getElementById('reserva-inicio').value + 'T00:00:00')),
           fechaFin: firebase.firestore.Timestamp.fromDate(new Date(document.getElementById('reserva-fin').value + 'T23:59:59')),
           notas: document.getElementById('reserva-notas').value,
