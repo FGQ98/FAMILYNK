@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Amigo Invisible</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <!-- Sistema de notificaciones internas -->
   <style>
     :root {
       --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
@@ -518,20 +518,29 @@
       </div>
     </div>
 
-    <!-- STEP 2: Presupuesto -->
+    <!-- STEP 2: Presupuesto y Fecha -->
     <div class="step-content" id="step-2">
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">💶 Presupuesto máximo</h2>
+          <h2 class="card-title">💶 Presupuesto y fecha</h2>
         </div>
         <div class="card-body">
-          <p style="color: var(--text-light); margin-bottom: 8px;">
-            Define el presupuesto máximo para el regalo. Se comunicará a todos los participantes en el email de asignación.
+          <p style="color: var(--text-light); margin-bottom: 16px;">
+            Define el presupuesto máximo y cuándo se entregarán los regalos.
           </p>
           
-          <div class="presupuesto-input">
-            <input type="number" id="presupuesto" value="30" min="1" max="1000">
-            <span>€</span>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 8px;">💶 Presupuesto máximo</label>
+              <div class="presupuesto-input">
+                <input type="number" id="presupuesto" value="30" min="1" max="1000">
+                <span>€</span>
+              </div>
+            </div>
+            <div>
+              <label style="display: block; font-weight: 600; margin-bottom: 8px;">📅 Fecha de entrega</label>
+              <input type="date" id="fecha-regalo" class="fecha-input" style="width: 100%; padding: 12px 16px; border: 2px solid var(--cream-dark); border-radius: 12px; font-family: inherit; font-size: 1rem;">
+            </div>
           </div>
 
           <div class="alert alert-warning">
@@ -559,6 +568,7 @@
           <div id="resumen-sorteo">
             <p><strong>Participantes:</strong> <span id="resumen-participantes">0</span> personas</p>
             <p><strong>Presupuesto:</strong> <span id="resumen-presupuesto">0</span>€</p>
+            <p><strong>Fecha de entrega:</strong> <span id="resumen-fecha">Sin definir</span></p>
             <p style="margin-top: 16px; color: var(--text-light); font-size: 0.9rem;">
               ⚠️ Los consortes (parejas) nunca se asignan entre sí.
             </p>
@@ -568,7 +578,7 @@
 
           <div style="text-align: center; margin-top: 32px;">
             <button class="btn btn-primary btn-lg" onclick="realizarSorteo()" id="btn-sortear">
-              🎁 Realizar Sorteo y Enviar Emails
+              🎁 Realizar Sorteo
             </button>
           </div>
         </div>
@@ -589,7 +599,7 @@
             <div class="resultado-icon">🎉</div>
             <h2 class="resultado-titulo">¡Sorteo completado!</h2>
             <p class="resultado-mensaje">
-              Se han enviado los emails a todos los participantes con su asignación.
+              Cada participante puede ver a quién le tocó en sus notificaciones de FAMILYNK.
             </p>
             <button class="btn btn-primary" onclick="nuevoSorteo()">
               🔄 Nuevo sorteo
@@ -630,9 +640,7 @@
 
   <script>
     // ============ CONFIG ============
-    emailjs.init('eWMtiJpUqrLsA5Nel');
-    const EMAILJS_SERVICE = 'service_fcfx5od';
-    const EMAILJS_TEMPLATE_AMIGO = 'template_amigo_invisible'; // Necesitarás crear esta plantilla
+    // Notificaciones internas
 
     let currentUser = null;
     let userData = null;
@@ -676,7 +684,7 @@
       miembrosData = snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })).filter(m => m.email); // Solo los que tienen email
+      })); // Todos los miembros pueden participar
     }
 
     async function cargarNidos() {
@@ -915,6 +923,14 @@
       if (paso === 3) {
         document.getElementById('resumen-participantes').textContent = participantesSeleccionados.length;
         document.getElementById('resumen-presupuesto').textContent = document.getElementById('presupuesto').value;
+        
+        const fechaInput = document.getElementById('fecha-regalo').value;
+        if (fechaInput) {
+          const fecha = new Date(fechaInput);
+          document.getElementById('resumen-fecha').textContent = fecha.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        } else {
+          document.getElementById('resumen-fecha').textContent = 'Sin definir';
+        }
       }
 
       // Cambiar paso
@@ -945,6 +961,8 @@
     // ============ SORTEO ============
     async function realizarSorteo() {
       const presupuesto = document.getElementById('presupuesto').value;
+      const fechaRegaloInput = document.getElementById('fecha-regalo').value;
+      const fechaRegalo = fechaRegaloInput ? new Date(fechaRegaloInput) : null;
       const alertEl = document.getElementById('alert-sorteo');
       alertEl.classList.add('hidden');
 
@@ -966,39 +984,52 @@
 
       // Mostrar loading
       document.getElementById('loading').classList.remove('hidden');
-      document.getElementById('loading-text').textContent = 'Enviando emails...';
+      document.getElementById('loading-text').textContent = 'Guardando asignaciones...';
 
       try {
-        // Enviar emails
-        let enviados = 0;
-        for (const asig of asignaciones) {
-          document.getElementById('loading-text').textContent = `Enviando email ${++enviados}/${asignaciones.length}...`;
-          
-          // Aquí enviarías el email real
-          // Por ahora simulamos un delay
-          await new Promise(r => setTimeout(r, 500));
-          
-          /* 
-          // Descomentar cuando tengas la plantilla de EmailJS
-          await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE_AMIGO, {
-            email: asig.de.email,
-            nombre_receptor: asig.de.nombre,
-            nombre_asignado: asig.para.nombre,
-            presupuesto: presupuesto,
-            family_nombre: familiaData?.nombre || 'Tu familia'
-          });
-          */
-        }
-
-        // Guardar en historial
-        await db.collection('amigo-invisible').add({
+        // Guardar sorteo en historial
+        const sorteoRef = await db.collection('amigo-invisible').add({
           familiaId: familiaId,
           fecha: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaRegalo: fechaRegalo ? firebase.firestore.Timestamp.fromDate(fechaRegalo) : null,
           presupuesto: parseInt(presupuesto),
           participantes: participantesSeleccionados.map(p => p.nombre),
           asignaciones: asignaciones.map(a => ({ de: a.de.id, para: a.para.id })),
-          creadoPor: currentUser.uid
+          creadoPor: currentUser.uid,
+          estado: 'activo'
         });
+
+        // Formatear fecha para mensaje
+        const fechaTexto = fechaRegalo 
+          ? fechaRegalo.toLocaleDateString('es', { day: 'numeric', month: 'long' })
+          : '';
+
+        // Crear notificaciones internas para cada participante
+        let creadas = 0;
+        for (const asig of asignaciones) {
+          document.getElementById('loading-text').textContent = `Notificando ${++creadas}/${asignaciones.length}...`;
+          
+          // Crear notificación interna
+          await db.collection('notificaciones').add({
+            usuarioId: asig.de.id,
+            familiaId: familiaId,
+            tipo: 'amigo-invisible',
+            icono: '🎁',
+            titulo: '¡Amigo Invisible!',
+            mensaje: fechaTexto 
+              ? `Te ha tocado regalar a ${asig.para.nombre} (${fechaTexto})`
+              : `Te ha tocado regalar a ${asig.para.nombre}`,
+            datos: {
+              sorteoId: sorteoRef.id,
+              asignadoA: asig.para.nombre,
+              asignadoId: asig.para.id,
+              presupuesto: parseInt(presupuesto),
+              fechaRegalo: fechaRegalo ? fechaRegalo.toISOString() : null
+            },
+            leido: false,
+            fecha: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
 
         // Mostrar resultado
         document.getElementById('loading').classList.add('hidden');
@@ -1007,7 +1038,7 @@
       } catch (error) {
         console.error('Error:', error);
         document.getElementById('loading').classList.add('hidden');
-        alertEl.textContent = 'Error al enviar emails: ' + error.message;
+        alertEl.textContent = 'Error al guardar asignaciones: ' + error.message;
         alertEl.classList.remove('hidden');
       }
     }

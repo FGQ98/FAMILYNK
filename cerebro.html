@@ -7,6 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <style>
     :root {
       --sage: #7A9E7E;
@@ -40,6 +43,11 @@
       --intuicion-muted: rgba(155, 126, 184, 0.15);
       --analisis: #C17757;
       --analisis-muted: rgba(193, 119, 87, 0.15);
+
+      /* Colores por ámbito */
+      --nido: #7A9E7E;
+      --estirpe: #5B7BA3;
+      --comun: #9B7EB8;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -140,9 +148,7 @@
     }
 
     /* ============ PAGE HEADER ============ */
-    .page-header {
-      margin-bottom: 32px;
-    }
+    .page-header { margin-bottom: 24px; }
 
     .page-title {
       font-family: 'Quicksand', sans-serif;
@@ -157,6 +163,49 @@
     .page-subtitle {
       color: var(--text-muted);
       font-size: 0.95rem;
+    }
+
+    /* ============ ÁMBITO TABS (AdminNido) ============ */
+    .ambito-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      background: var(--white);
+      padding: 6px;
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-soft);
+      width: fit-content;
+    }
+
+    .ambito-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-light);
+      transition: all 0.2s;
+    }
+
+    .ambito-tab:hover { background: var(--cream); }
+
+    .ambito-tab.active[data-ambito="nido"] {
+      background: var(--nido);
+      color: white;
+    }
+    .ambito-tab.active[data-ambito="estirpe"] {
+      background: var(--estirpe);
+      color: white;
+    }
+    .ambito-tab.active[data-ambito="comun"] {
+      background: var(--comun);
+      color: white;
     }
 
     /* ============ SECCIONES TABS ============ */
@@ -189,9 +238,7 @@
       box-shadow: var(--shadow-medium);
     }
 
-    .cerebro-tab.active {
-      color: white;
-    }
+    .cerebro-tab.active { color: white; }
 
     .cerebro-tab[data-section="memoria"].active {
       background: var(--memoria);
@@ -257,6 +304,7 @@
       margin-bottom: 20px;
     }
 
+    /* ============ BOTONES ============ */
     .btn {
       padding: 10px 18px;
       border: none;
@@ -274,223 +322,61 @@
 
     .btn-memoria { background: var(--memoria); color: white; }
     .btn-memoria:hover { background: var(--sage-dark); }
-    .btn-memoria-secondary { background: var(--cream-dark); color: var(--text); }
-    .btn-memoria-secondary:hover { background: var(--cream); }
+    .btn-razonamiento { background: var(--razonamiento); color: white; }
+    .btn-razonamiento:hover { opacity: 0.9; }
+    .btn-intuicion { background: var(--intuicion); color: white; }
+    .btn-intuicion:hover { opacity: 0.9; }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream); }
 
     .header-buttons { display: flex; gap: 10px; }
 
-    /* Modal Receta */
-    .modal-overlay {
-      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.5);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 1000;
-      opacity: 0; visibility: hidden;
-      transition: all 0.3s;
-    }
-    .modal-overlay.active { opacity: 1; visibility: visible; }
-    
-    .modal {
-      background: var(--white);
-      border-radius: var(--radius-lg);
-      width: 95%;
-      max-width: 600px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-    
-    .modal-receta { max-width: 700px; }
-    
-    .modal-header {
+    /* ============ CATEGORÍAS ============ */
+    .categories {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--cream-dark);
-      position: sticky;
-      top: 0;
-      background: var(--white);
-      z-index: 10;
-    }
-    
-    .modal-title {
-      font-family: 'Quicksand', sans-serif;
-      font-size: 1.2rem;
-      font-weight: 700;
-    }
-    
-    .modal-close {
-      background: none; border: none;
-      font-size: 1.8rem; cursor: pointer;
-      color: var(--text-muted);
-      line-height: 1;
-    }
-    .modal-close:hover { color: var(--text); }
-    
-    .receta-form { padding: 24px; }
-    
-    .receta-basicos { margin-bottom: 20px; }
-    
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    
-    .form-group { margin-bottom: 16px; }
-    
-    .form-label {
-      display: block;
-      font-weight: 600;
-      font-size: 0.85rem;
-      margin-bottom: 6px;
-      color: var(--text);
-    }
-    
-    .form-input {
-      width: 100%;
-      padding: 10px 14px;
-      border: 2px solid var(--cream-dark);
-      border-radius: var(--radius-sm);
-      font-family: 'Nunito', sans-serif;
-      font-size: 0.95rem;
-      transition: border-color 0.2s;
-    }
-    .form-input:focus {
-      outline: none;
-      border-color: var(--memoria);
-    }
-    
-    .receta-tabs {
-      display: flex;
-      gap: 4px;
-      background: var(--cream);
-      padding: 4px;
-      border-radius: var(--radius-sm);
-      margin-bottom: 16px;
-    }
-    
-    .receta-tab {
-      flex: 1;
-      padding: 10px 8px;
-      border: none;
-      background: transparent;
-      border-radius: var(--radius-sm);
-      font-family: 'Nunito', sans-serif;
-      font-weight: 600;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      color: var(--text-muted);
-    }
-    .receta-tab:hover { background: var(--white); color: var(--text); }
-    .receta-tab.active {
-      background: var(--white);
-      color: var(--memoria);
-      box-shadow: var(--shadow-soft);
-    }
-    
-    .receta-tab-content {
-      display: none;
-    }
-    .receta-tab-content.active { display: block; }
-    
-    .tab-hint {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-      font-style: italic;
-    }
-    
-    .receta-textarea {
-      min-height: 150px;
-      resize: vertical;
-      line-height: 1.6;
-    }
-    
-    .modal-footer {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      padding-top: 16px;
-      border-top: 1px solid var(--cream-dark);
-      margin-top: 16px;
-    }
-
-    /* Vista detalle receta */
-    .receta-detalle { padding: 24px; }
-    
-    .receta-meta {
-      display: flex;
-      gap: 16px;
+      gap: 8px;
       flex-wrap: wrap;
       margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--cream-dark);
     }
-    
-    .receta-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.9rem;
+
+    .category-chip {
+      padding: 6px 14px;
+      background: var(--cream);
+      border: none;
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
       color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.2s;
     }
-    
-    .receta-seccion {
-      margin-bottom: 24px;
-    }
-    
-    .receta-seccion-titulo {
-      font-family: 'Quicksand', sans-serif;
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--memoria);
-      margin-bottom: 12px;
+
+    .category-chip:hover { background: var(--cream-dark); }
+    .category-chip.active { background: var(--sage); color: white; }
+
+    /* ============ BUSCADOR ============ */
+    .search-bar {
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-    
-    .receta-seccion-contenido {
-      background: var(--cream);
-      padding: 16px;
-      border-radius: var(--radius-sm);
-      line-height: 1.7;
-      white-space: pre-line;
-    }
-    
-    .receta-notas {
-      background: #FFF9E6;
-      border-left: 4px solid #F0C040;
+      gap: 12px;
       padding: 12px 16px;
-      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      background: var(--white);
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 20px;
+    }
+
+    .search-bar input {
+      flex: 1;
+      border: none;
+      background: none;
+      font-family: 'Nunito', sans-serif;
       font-size: 0.9rem;
-      line-height: 1.6;
+      outline: none;
     }
 
-    @media (max-width: 600px) {
-      .form-row { grid-template-columns: 1fr; }
-      .receta-tabs { flex-wrap: wrap; }
-      .receta-tab { flex: none; width: calc(50% - 2px); }
-      .header-buttons { flex-direction: column; gap: 8px; }
-    }
-
-    .btn-razonamiento { background: var(--razonamiento); color: white; }
-    .btn-razonamiento:hover { filter: brightness(0.9); }
-
-    .btn-intuicion { background: var(--intuicion); color: white; }
-    .btn-intuicion:hover { filter: brightness(0.9); }
-
-    .btn-analisis { background: var(--analisis); color: white; }
-    .btn-analisis:hover { filter: brightness(0.9); }
-
-    .btn-secondary {
-      background: var(--cream);
-      color: var(--text);
-    }
-
-    .btn-secondary:hover { background: var(--cream-dark); }
+    .search-bar .search-icon { color: var(--text-muted); }
 
     /* ============ CARDS GRID ============ */
     .cards-grid {
@@ -509,7 +395,7 @@
     }
 
     .card:hover {
-      transform: translateY(-2px);
+      transform: translateY(-4px);
       box-shadow: var(--shadow-medium);
     }
 
@@ -527,7 +413,6 @@
     .card-icon.memoria { background: var(--memoria-muted); }
     .card-icon.razonamiento { background: var(--razonamiento-muted); }
     .card-icon.intuicion { background: var(--intuicion-muted); }
-    .card-icon.analisis { background: var(--analisis-muted); }
 
     .card-title {
       font-weight: 700;
@@ -539,13 +424,13 @@
       font-size: 0.85rem;
       color: var(--text-light);
       line-height: 1.5;
+      margin-bottom: 12px;
     }
 
     .card-meta {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-top: 12px;
+      justify-content: space-between;
       font-size: 0.75rem;
       color: var(--text-muted);
     }
@@ -557,6 +442,10 @@
       font-size: 0.7rem;
       font-weight: 600;
     }
+
+    .card-tag.nido { background: rgba(122, 158, 126, 0.2); color: var(--nido); }
+    .card-tag.estirpe { background: rgba(91, 123, 163, 0.2); color: var(--estirpe); }
+    .card-tag.comun { background: rgba(155, 126, 184, 0.2); color: var(--comun); }
 
     /* ============ LISTA ITEMS ============ */
     .items-list {
@@ -642,71 +531,6 @@
       color: var(--text-muted);
     }
 
-    .stat-change {
-      font-size: 0.75rem;
-      margin-top: 8px;
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      display: inline-block;
-    }
-
-    .stat-change.up {
-      background: rgba(122, 158, 126, 0.15);
-      color: var(--sage-dark);
-    }
-
-    .stat-change.down {
-      background: rgba(193, 119, 87, 0.15);
-      color: var(--terracotta);
-    }
-
-    /* ============ BUSCADOR ============ */
-    .search-bar {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      background: var(--white);
-      border-radius: var(--radius-full);
-      box-shadow: var(--shadow-soft);
-      margin-bottom: 20px;
-    }
-
-    .search-bar input {
-      flex: 1;
-      border: none;
-      background: none;
-      font-family: 'Nunito', sans-serif;
-      font-size: 0.9rem;
-      outline: none;
-    }
-
-    .search-bar .search-icon { color: var(--text-muted); }
-
-    /* ============ CATEGORÍAS ============ */
-    .categories {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-
-    .category-chip {
-      padding: 6px 14px;
-      background: var(--cream);
-      border: none;
-      border-radius: var(--radius-full);
-      font-family: 'Nunito', sans-serif;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-light);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .category-chip:hover { background: var(--cream-dark); }
-    .category-chip.active { background: var(--sage); color: white; }
-
     /* ============ EMPTY STATE ============ */
     .empty-state {
       text-align: center;
@@ -732,16 +556,134 @@
       margin-bottom: 20px;
     }
 
+    /* ============ MODALES ============ */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      opacity: 0; visibility: hidden;
+      transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 95%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      position: sticky;
+      top: 0;
+      background: var(--white);
+      z-index: 10;
+    }
+    
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    
+    .modal-close {
+      background: none; border: none;
+      font-size: 1.8rem; cursor: pointer;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+    .modal-close:hover { color: var(--text); }
+
+    .modal-body { padding: 24px; }
+
+    .form-group { margin-bottom: 16px; }
+    
+    .form-label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--sage);
+    }
+
+    .form-textarea { min-height: 100px; resize: vertical; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      padding: 16px 24px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    /* Visibilidad selector */
+    .visibilidad-selector {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .visibilidad-option {
+      flex: 1;
+      padding: 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      background: var(--white);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .visibilidad-option:hover { border-color: var(--sage-light); }
+
+    .visibilidad-option.active {
+      border-color: var(--sage);
+      background: var(--sage-muted);
+    }
+
+    .visibilidad-option .vis-icon { font-size: 1.2rem; margin-bottom: 4px; }
+    .visibilidad-option .vis-label { font-size: 0.75rem; font-weight: 600; }
+
     /* ============ RESPONSIVE ============ */
     @media (max-width: 768px) {
       .header-nav { display: none; }
       .user-name { display: none; }
 
+      .ambito-tabs { width: 100%; }
+      .ambito-tab { flex: 1; justify-content: center; padding: 10px 12px; font-size: 0.8rem; }
+
       .cerebro-tabs {
         overflow-x: auto;
         flex-wrap: nowrap;
         padding-bottom: 8px;
-        -webkit-overflow-scrolling: touch;
       }
 
       .cerebro-tab {
@@ -750,13 +692,7 @@
         font-size: 0.8rem;
       }
 
-      .cards-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
+      .form-row { grid-template-columns: 1fr; }
     }
 
     .hidden { display: none !important; }
@@ -791,10 +727,23 @@
   <main class="main">
     <div class="page-header">
       <h1 class="page-title">🧠 Cerebro</h1>
-      <p class="page-subtitle">El sistema de conocimiento y organización de tu rama, estirpe o familia</p>
-      <p class="page-description" style="color: var(--text-light); font-size: 0.85rem; margin-top: 8px; max-width: 600px; line-height: 1.5;">
-        Aquí estará el conocimiento de tu rama que se puede compartir y vuestro cerebro familiar sin acceso para otros que no autorices.
-      </p>
+      <p class="page-subtitle">Conocimiento y organización familiar</p>
+    </div>
+
+    <!-- Ámbito Tabs (solo AdminNido) -->
+    <div class="ambito-tabs" id="ambito-tabs">
+      <button class="ambito-tab active" data-ambito="nido" onclick="cambiarAmbito('nido')">
+        <span>🏠</span>
+        <span>Nido</span>
+      </button>
+      <button class="ambito-tab" data-ambito="estirpe" onclick="cambiarAmbito('estirpe')">
+        <span>🌳</span>
+        <span>Estirpe</span>
+      </button>
+      <button class="ambito-tab" data-ambito="comun" onclick="cambiarAmbito('comun')">
+        <span>🌐</span>
+        <span>Común</span>
+      </button>
     </div>
 
     <!-- Tabs de secciones -->
@@ -822,21 +771,24 @@
       <div class="section-header">
         <div>
           <h2 class="section-title memoria">🗄️ Memoria</h2>
-          <p class="section-description">Repositorio de documentos y archivos de la rama</p>
+          <p class="section-description">Documentos, archivos e inventario</p>
         </div>
         <div class="header-buttons">
+          <button class="btn btn-secondary" onclick="abrirInventarioBasico()">
+            🛒 Inventario Básico
+          </button>
           <button class="btn btn-memoria" onclick="subirArchivo()">
-            <span>📤</span> Subir archivo
+            📤 Subir archivo
           </button>
         </div>
       </div>
 
-      <!-- Categorías -->
+      <!-- Categorías (sin Tradiciones ni Viajes) -->
       <div class="categories" id="memoria-categorias">
         <button class="category-chip active" onclick="filtrarMemoria('todos')">Todos</button>
         <button class="category-chip" onclick="filtrarMemoria('documentos')">📄 Documentos</button>
-        <button class="category-chip" onclick="filtrarMemoria('tradiciones')">🎄 Tradiciones</button>
-        <button class="category-chip" onclick="filtrarMemoria('viajes')">✈️ Viajes</button>
+        <button class="category-chip" onclick="filtrarMemoria('manuales')">📘 Manuales</button>
+        <button class="category-chip" onclick="filtrarMemoria('contactos')">📇 Contactos</button>
       </div>
 
       <!-- Buscador -->
@@ -847,11 +799,10 @@
 
       <!-- Grid de archivos -->
       <div class="cards-grid" id="memoria-grid">
-        <!-- Se carga dinámicamente -->
         <div class="empty-state">
           <div class="empty-state-icon">🗄️</div>
           <div class="empty-state-title">Memoria vacía</div>
-          <div class="empty-state-text">Sube el primer documento de tu estirpe</div>
+          <div class="empty-state-text">Sube el primer documento</div>
           <button class="btn btn-memoria" onclick="subirArchivo()">📤 Subir archivo</button>
         </div>
       </div>
@@ -862,10 +813,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title razonamiento">📐 Razonamiento</h2>
-          <p class="section-description">Instrucciones, pautas y procedimientos de la estirpe</p>
+          <p class="section-description">Instrucciones, pautas y procedimientos</p>
         </div>
-        <button class="btn btn-razonamiento" onclick="nuevaPauta()">
-          <span>✏️</span> Nueva pauta
+        <button class="btn btn-razonamiento" onclick="abrirModalPauta()">
+          ✏️ Nueva pauta
         </button>
       </div>
 
@@ -883,8 +834,8 @@
         <div class="empty-state">
           <div class="empty-state-icon">📐</div>
           <div class="empty-state-title">Sin pautas definidas</div>
-          <div class="empty-state-text">Crea instrucciones y procedimientos para tu familia</div>
-          <button class="btn btn-razonamiento" onclick="nuevaPauta()">✏️ Nueva pauta</button>
+          <div class="empty-state-text">Crea instrucciones para tu familia</div>
+          <button class="btn btn-razonamiento" onclick="abrirModalPauta()">✏️ Nueva pauta</button>
         </div>
       </div>
     </section>
@@ -894,10 +845,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title intuicion">💡 Intuición</h2>
-          <p class="section-description">Propuestas, sugerencias e ideas para la estirpe</p>
+          <p class="section-description">Propuestas, sugerencias e ideas</p>
         </div>
-        <button class="btn btn-intuicion" onclick="nuevaPropuesta()">
-          <span>💡</span> Nueva propuesta
+        <button class="btn btn-intuicion" onclick="abrirModalPropuesta()">
+          💡 Nueva propuesta
         </button>
       </div>
 
@@ -907,7 +858,6 @@
         <button class="category-chip" onclick="filtrarIntuicion('pendientes')">⏳ Pendientes</button>
         <button class="category-chip" onclick="filtrarIntuicion('votacion')">🗳️ En votación</button>
         <button class="category-chip" onclick="filtrarIntuicion('aprobadas')">✅ Aprobadas</button>
-        <button class="category-chip" onclick="filtrarIntuicion('descartadas')">❌ Descartadas</button>
       </div>
 
       <!-- Lista de propuestas -->
@@ -915,8 +865,8 @@
         <div class="empty-state">
           <div class="empty-state-icon">💡</div>
           <div class="empty-state-title">Sin propuestas</div>
-          <div class="empty-state-text">Comparte ideas para mejorar la vida familiar</div>
-          <button class="btn btn-intuicion" onclick="nuevaPropuesta()">💡 Nueva propuesta</button>
+          <div class="empty-state-text">Comparte ideas para mejorar</div>
+          <button class="btn btn-intuicion" onclick="abrirModalPropuesta()">💡 Nueva propuesta</button>
         </div>
       </div>
     </section>
@@ -926,10 +876,10 @@
       <div class="section-header">
         <div>
           <h2 class="section-title analisis">📊 Análisis</h2>
-          <p class="section-description">Estadísticas y métricas de la actividad familiar</p>
+          <p class="section-description">Estadísticas y métricas</p>
         </div>
         <button class="btn btn-secondary" onclick="exportarDatos()">
-          <span>📥</span> Exportar datos
+          📥 Exportar datos
         </button>
       </div>
 
@@ -944,206 +894,251 @@
           <div class="stat-label">Nidos</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value" id="stat-mensajes">0</div>
-          <div class="stat-label">Mensajes (mes)</div>
-          <div class="stat-change up">↑ 12%</div>
+          <div class="stat-value" id="stat-documentos">0</div>
+          <div class="stat-label">Documentos</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value" id="stat-tareas">0</div>
-          <div class="stat-label">Tareas completadas</div>
-          <div class="stat-change up">↑ 8%</div>
+          <div class="stat-value" id="stat-pautas">0</div>
+          <div class="stat-label">Pautas</div>
         </div>
       </div>
 
-      <!-- Categorías análisis -->
-      <div class="categories">
-        <button class="category-chip active" onclick="filtrarAnalisis('resumen')">📊 Resumen</button>
-        <button class="category-chip" onclick="filtrarAnalisis('actividad')">📈 Actividad</button>
-        <button class="category-chip" onclick="filtrarAnalisis('gastos')">💸 Gastos</button>
-        <button class="category-chip" onclick="filtrarAnalisis('uso')">👥 Uso</button>
-      </div>
-
-      <!-- Área de gráficos (placeholder) -->
+      <!-- Área de gráficos -->
       <div class="cards-grid">
-        <div class="card">
+        <div class="card" style="cursor: default;">
           <div class="card-title">📈 Actividad mensual</div>
           <div class="card-description" style="padding: 40px; text-align: center; color: var(--text-muted);">
-            Gráfico de actividad próximamente
+            Próximamente
           </div>
         </div>
-        <div class="card">
-          <div class="card-title">👥 Participación por miembro</div>
+        <div class="card" style="cursor: default;">
+          <div class="card-title">👥 Participación</div>
           <div class="card-description" style="padding: 40px; text-align: center; color: var(--text-muted);">
-            Gráfico de participación próximamente
+            Próximamente
           </div>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Modal Receta -->
-  <div class="modal-overlay" id="modal-receta">
-    <div class="modal modal-receta">
+  <!-- Modal Nueva Pauta -->
+  <div class="modal-overlay" id="modal-pauta">
+    <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title" id="modal-receta-titulo">🍳 Nueva receta</h3>
-        <button class="modal-close" onclick="cerrarModalReceta()">×</button>
+        <h3 class="modal-title">📐 Nueva pauta</h3>
+        <button class="modal-close" onclick="cerrarModalPauta()">×</button>
       </div>
-      
-      <form id="form-receta" class="receta-form">
-        <!-- Datos básicos -->
-        <div class="receta-basicos">
-          <div class="form-group">
-            <label class="form-label">Nombre de la receta *</label>
-            <input type="text" class="form-input" id="receta-nombre" placeholder="Ej: Tortilla de patatas de la abuela" required>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Título *</label>
+          <input type="text" class="form-input" id="pauta-titulo" placeholder="Ej: Protocolo de emergencias">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoría</label>
+          <select class="form-select" id="pauta-categoria">
+            <option value="hogar">🏠 Hogar</option>
+            <option value="educacion">📚 Educación</option>
+            <option value="emergencias">🚨 Emergencias</option>
+            <option value="convivencia">🤝 Convivencia</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción / Instrucciones</label>
+          <textarea class="form-textarea" id="pauta-descripcion" placeholder="Detalla la pauta..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Visibilidad</label>
+          <div class="visibilidad-selector">
+            <div class="visibilidad-option active" data-vis="nido" onclick="seleccionarVisibilidad(this, 'pauta')">
+              <div class="vis-icon">🏠</div>
+              <div class="vis-label">Solo Nido</div>
+            </div>
+            <div class="visibilidad-option" data-vis="estirpe" onclick="seleccionarVisibilidad(this, 'pauta')">
+              <div class="vis-icon">🌳</div>
+              <div class="vis-label">Mi Estirpe</div>
+            </div>
+            <div class="visibilidad-option" data-vis="comun" onclick="seleccionarVisibilidad(this, 'pauta')">
+              <div class="vis-icon">🌐</div>
+              <div class="vis-label">Común</div>
+            </div>
           </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Autor</label>
-              <input type="text" class="form-input" id="receta-autor" placeholder="¿Quién creó o trajo esta receta?">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Versión</label>
-              <input type="text" class="form-input" id="receta-version" placeholder="Ej: Original, Moderna, Light...">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Comensales</label>
-              <input type="number" class="form-input" id="receta-comensales" placeholder="4" min="1">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Tiempo total</label>
-              <input type="text" class="form-input" id="receta-tiempo" placeholder="Ej: 45 min">
-            </div>
-          </div>
         </div>
-
-        <!-- Tabs de secciones -->
-        <div class="receta-tabs">
-          <button type="button" class="receta-tab active" onclick="cambiarTabReceta('ingredientes')">🥕 Ingredientes</button>
-          <button type="button" class="receta-tab" onclick="cambiarTabReceta('preparacion')">🔪 Preparación</button>
-          <button type="button" class="receta-tab" onclick="cambiarTabReceta('elaboracion')">🍳 Elaboración</button>
-          <button type="button" class="receta-tab" onclick="cambiarTabReceta('acabado')">✨ Acabado</button>
-        </div>
-
-        <!-- Contenido de tabs -->
-        <div class="receta-tab-content active" id="tab-ingredientes">
-          <p class="tab-hint">Lista los ingredientes necesarios, uno por línea</p>
-          <textarea class="form-input receta-textarea" id="receta-ingredientes" placeholder="200g de patatas
-4 huevos
-1 cebolla mediana
-Aceite de oliva
-Sal al gusto"></textarea>
-        </div>
-
-        <div class="receta-tab-content" id="tab-preparacion">
-          <p class="tab-hint">Pasos previos: cortar, pelar, marinar...</p>
-          <textarea class="form-input receta-textarea" id="receta-preparacion" placeholder="1. Pelar y cortar las patatas en rodajas finas
-2. Picar la cebolla en juliana
-3. Batir los huevos en un bol grande
-4. Salar las patatas"></textarea>
-        </div>
-
-        <div class="receta-tab-content" id="tab-elaboracion">
-          <p class="tab-hint">El proceso de cocción principal</p>
-          <textarea class="form-input receta-textarea" id="receta-elaboracion" placeholder="1. Calentar abundante aceite en una sartén
-2. Freír las patatas a fuego medio hasta que estén tiernas
-3. Añadir la cebolla y pochar
-4. Mezclar con los huevos batidos
-5. Cuajar la tortilla dándole la vuelta"></textarea>
-        </div>
-
-        <div class="receta-tab-content" id="tab-acabado">
-          <p class="tab-hint">Presentación, acompañamientos, trucos finales</p>
-          <textarea class="form-input receta-textarea" id="receta-acabado" placeholder="Servir templada o fría
-Acompañar con pan y ensalada
-Truco: dejar reposar 5 min antes de servir"></textarea>
-        </div>
-
-        <!-- Notas adicionales -->
-        <div class="form-group" style="margin-top: 16px;">
-          <label class="form-label">📝 Notas y secretos</label>
-          <textarea class="form-input" id="receta-notas" rows="2" placeholder="Trucos de familia, variaciones, historia de la receta..."></textarea>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModalReceta()">Cancelar</button>
-          <button type="submit" class="btn btn-memoria">💾 Guardar receta</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal Ver Receta -->
-  <div class="modal-overlay" id="modal-ver-receta">
-    <div class="modal modal-receta">
-      <div class="modal-header">
-        <h3 class="modal-title" id="ver-receta-titulo">🍳 Receta</h3>
-        <button class="modal-close" onclick="cerrarModalVerReceta()">×</button>
       </div>
-      
-      <div class="receta-detalle" id="receta-detalle-content">
-        <!-- Se llena dinámicamente -->
-      </div>
-      
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="cerrarModalVerReceta()">Cerrar</button>
-        <button class="btn btn-memoria" id="btn-editar-receta" onclick="editarReceta()">✏️ Editar</button>
+        <button class="btn btn-secondary" onclick="cerrarModalPauta()">Cancelar</button>
+        <button class="btn btn-razonamiento" onclick="guardarPauta()">Guardar pauta</button>
       </div>
     </div>
   </div>
 
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="js/firebase-config.js"></script>
+  <!-- Modal Nueva Propuesta -->
+  <div class="modal-overlay" id="modal-propuesta">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">💡 Nueva propuesta</h3>
+        <button class="modal-close" onclick="cerrarModalPropuesta()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Título *</label>
+          <input type="text" class="form-input" id="propuesta-titulo" placeholder="Ej: Cambiar día de la cena familiar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-textarea" id="propuesta-descripcion" placeholder="Explica tu propuesta..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Visibilidad</label>
+          <div class="visibilidad-selector">
+            <div class="visibilidad-option active" data-vis="nido" onclick="seleccionarVisibilidad(this, 'propuesta')">
+              <div class="vis-icon">🏠</div>
+              <div class="vis-label">Solo Nido</div>
+            </div>
+            <div class="visibilidad-option" data-vis="estirpe" onclick="seleccionarVisibilidad(this, 'propuesta')">
+              <div class="vis-icon">🌳</div>
+              <div class="vis-label">Mi Estirpe</div>
+            </div>
+            <div class="visibilidad-option" data-vis="comun" onclick="seleccionarVisibilidad(this, 'propuesta')">
+              <div class="vis-icon">🌐</div>
+              <div class="vis-label">Común</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalPropuesta()">Cancelar</button>
+        <button class="btn btn-intuicion" onclick="guardarPropuesta()">Crear propuesta</button>
+      </div>
+    </div>
+  </div>
 
+  <!-- Modal Inventario Básico -->
+  <div class="modal-overlay" id="modal-inventario">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">🛒 Inventario Básico</h3>
+        <button class="modal-close" onclick="cerrarModalInventario()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-light); margin-bottom: 16px;">
+          Define los productos que deberían estar siempre disponibles. Esta configuración se usará como referencia para la Tienda de cada propiedad.
+        </p>
+        
+        <div id="inventario-lista" style="margin-bottom: 16px;">
+          <!-- Se carga dinámicamente -->
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <input type="text" class="form-input" id="nuevo-producto" placeholder="Nombre del producto..." style="flex: 1;">
+          <button class="btn btn-memoria" onclick="agregarProductoInventario()">+ Añadir</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalInventario()">Cerrar</button>
+        <button class="btn btn-memoria" onclick="guardarInventario()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Config -->
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBN30Io3mI8LKuU_HyFkT0SzKfZ3FXdIzg",
+      authDomain: "familynk-88b34.firebaseapp.com",
+      projectId: "familynk-88b34",
+      storageBucket: "familynk-88b34.firebasestorage.app",
+      messagingSenderId: "520518937195",
+      appId: "1:520518937195:web:1eb065f3e9355beabde72b"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
     let currentUser = null;
     let userData = null;
-    let recetaEditandoId = null;
-    let recetasData = [];
-    let familiaData = null;
+    let ambitoActual = 'nido';
+    let seccionActual = 'memoria';
+    let esAdminSistema = false;
+    let nidosEstirpe = []; // IDs de nidos descendientes
 
-    // Auth
+    // Auth listener
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
         window.location.href = 'login.html';
         return;
       }
-
       currentUser = user;
-
-      const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      if (!userDoc.exists || !userDoc.data().familiaId) {
-        alert('No tienes una estirpe asignada');
-        window.location.href = 'app.html';
-        return;
-      }
-
-      userData = userDoc.data();
-
-      // UI usuario
-      const nombre = userData.nombre || user.email.split('@')[0];
-      document.getElementById('user-name').textContent = nombre.split(' ')[0];
-      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
-
-      // Cargar familia
-      const familiaDoc = await db.collection('familias').doc(userData.familiaId).get();
-      if (familiaDoc.exists) {
-        familiaData = { id: familiaDoc.id, ...familiaDoc.data() };
-      }
-
-      // Cargar datos según sección activa
-      cargarMemoria();
-      cargarEstadisticas();
+      await cargarUsuario();
     });
 
-    // ============ CAMBIAR SECCIÓN ============
+    async function cargarUsuario() {
+      const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+      if (!doc.exists) {
+        window.location.href = 'login.html';
+        return;
+      }
+      userData = doc.data();
+
+      // UI usuario
+      const nombre = userData.nombre || currentUser.email.split('@')[0];
+      document.getElementById('user-name').textContent = nombre;
+      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+
+      // Detectar AdminSistema
+      esAdminSistema = userData.rol === 'AdminSistema';
+
+      if (esAdminSistema) {
+        // AdminSistema: ocultar pestañas de ámbito, ve todo
+        document.getElementById('ambito-tabs').classList.add('hidden');
+        ambitoActual = 'todos'; // Ve todo
+      } else {
+        // AdminNido: cargar nidos de su estirpe
+        await cargarNidosEstirpe();
+      }
+
+      // Cargar sección inicial
+      cambiarSeccion('memoria');
+    }
+
+    async function cargarNidosEstirpe() {
+      // Buscar nidos descendientes del nido actual
+      nidosEstirpe = [userData.nidoId];
+      
+      // Función recursiva para encontrar nidos hijos
+      async function buscarHijos(nidoId) {
+        const snap = await db.collection('nidos')
+          .where('nidoPadreId', '==', nidoId)
+          .get();
+        
+        for (const doc of snap.docs) {
+          nidosEstirpe.push(doc.id);
+          await buscarHijos(doc.id);
+        }
+      }
+
+      await buscarHijos(userData.nidoId);
+    }
+
+    // ============ CAMBIO DE ÁMBITO ============
+    function cambiarAmbito(ambito) {
+      ambitoActual = ambito;
+
+      // Actualizar tabs
+      document.querySelectorAll('.ambito-tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.ambito === ambito) {
+          tab.classList.add('active');
+        }
+      });
+
+      // Recargar sección actual
+      cargarSeccionActual();
+    }
+
+    // ============ CAMBIO DE SECCIÓN ============
     function cambiarSeccion(seccion) {
+      seccionActual = seccion;
+
       // Actualizar tabs
       document.querySelectorAll('.cerebro-tab').forEach(tab => {
         tab.classList.remove('active');
@@ -1158,12 +1153,39 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       });
       document.getElementById(`section-${seccion}`).classList.add('active');
 
-      // Cargar datos de la sección
-      switch(seccion) {
+      // Cargar datos
+      cargarSeccionActual();
+    }
+
+    function cargarSeccionActual() {
+      switch(seccionActual) {
         case 'memoria': cargarMemoria(); break;
         case 'razonamiento': cargarRazonamiento(); break;
         case 'intuicion': cargarIntuicion(); break;
         case 'analisis': cargarEstadisticas(); break;
+      }
+    }
+
+    // ============ FILTRO POR ÁMBITO ============
+    function construirQueryAmbito(baseQuery) {
+      if (esAdminSistema) {
+        // AdminSistema ve todo de la familia
+        return baseQuery.where('familiaId', '==', userData.familiaId);
+      }
+
+      switch(ambitoActual) {
+        case 'nido':
+          // Solo mi nido
+          return baseQuery.where('nidoId', '==', userData.nidoId);
+        case 'estirpe':
+          // Mi nido + descendientes
+          return baseQuery.where('nidoId', 'in', nidosEstirpe.slice(0, 10)); // Firestore limit
+        case 'comun':
+          // Todo lo marcado como común
+          return baseQuery.where('visibilidad', '==', 'comun')
+                          .where('familiaId', '==', userData.familiaId);
+        default:
+          return baseQuery.where('familiaId', '==', userData.familiaId);
       }
     }
 
@@ -1172,37 +1194,34 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       const container = document.getElementById('memoria-grid');
       
       try {
-        // Cargar documentos generales
-        const memoriaSnap = await db.collection('memoria')
-          .where('familiaId', '==', userData.familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .limit(20)
-          .get();
+        let query = db.collection('memoria');
+        query = construirQueryAmbito(query);
+        
+        const snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
 
-        // Items solo de memoria (sin recetas - ahora están en Legado)
-        const items = memoriaSnap.docs.map(d => ({ id: d.id, tipo: 'archivo', ...d.data() }));
-
-        if (items.length === 0) {
+        if (snap.empty) {
           container.innerHTML = `
             <div class="empty-state">
               <div class="empty-state-icon">🗄️</div>
               <div class="empty-state-title">Memoria vacía</div>
-              <div class="empty-state-text">Sube el primer documento de tu estirpe</div>
+              <div class="empty-state-text">Sube el primer documento</div>
               <button class="btn btn-memoria" onclick="subirArchivo()">📤 Subir archivo</button>
             </div>
           `;
           return;
         }
 
-        container.innerHTML = items.map(item => {
+        container.innerHTML = snap.docs.map(doc => {
+          const item = doc.data();
           const icono = getIconoCategoria(item.categoria);
+          const visTag = item.visibilidad || 'nido';
           return `
-            <div class="card" onclick="verArchivo('${item.id}')">
+            <div class="card" onclick="verArchivo('${doc.id}')">
               <div class="card-icon memoria">${icono}</div>
               <div class="card-title">${item.nombre}</div>
               <div class="card-description">${item.descripcion || ''}</div>
               <div class="card-meta">
-                <span class="card-tag">${item.categoria || 'documento'}</span>
+                <span class="card-tag ${visTag}">${getVisibilidadLabel(visTag)}</span>
                 <span>${formatearFecha(item.fechaCreacion)}</span>
               </div>
             </div>
@@ -1217,219 +1236,29 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     function getIconoCategoria(cat) {
       const iconos = {
         'documentos': '📄',
-        'tradiciones': '🎄',
-        'viajes': '✈️'
+        'manuales': '📘',
+        'contactos': '📇'
       };
       return iconos[cat] || '📁';
     }
 
+    function getVisibilidadLabel(vis) {
+      const labels = { 'nido': '🏠 Nido', 'estirpe': '🌳 Estirpe', 'comun': '🌐 Común' };
+      return labels[vis] || vis;
+    }
+
     function subirArchivo() {
-      alert('Próximamente: Subir archivos a la memoria familiar');
+      alert('Próximamente: Subir archivos');
     }
 
-    // Filtrar memoria (sin recetas)
-    function filtrarMemoria(categoria) {
-      document.querySelectorAll('#memoria-categorias .category-chip').forEach(c => {
-        c.classList.remove('active');
-      });
-      event.target.classList.add('active');
-      // TODO: Implementar filtrado por categoría
+    function verArchivo(id) {
+      alert('Próximamente: Ver archivo');
     }
-
-    // ============ RAZONAMIENTO ============
-            <div class="empty-state-title">Sin recetas guardadas</div>
-            <div class="empty-state-text">Crea la primera receta de tu familia</div>
-            <button class="btn btn-memoria" onclick="abrirModalReceta()">🍳 Nueva receta</button>
-          </div>
-        `;
-        return;
-      }
-
-      grid.innerHTML = recetasData.map(r => `
-        <div class="card-item" onclick="verReceta('${r.id}')">
-          <div class="card-icon">🍳</div>
-          <div class="card-content">
-            <div class="card-title">${r.nombre}</div>
-            <div class="card-description">${r.autor ? 'Por ' + r.autor : ''}${r.version ? ' · ' + r.version : ''}</div>
-          </div>
-          <div class="card-meta">${r.comensales ? r.comensales + ' pers.' : ''}</div>
-        </div>
-      `).join('');
-    }
-
-    function abrirModalReceta(receta = null) {
-      recetaEditandoId = receta?.id || null;
-      
-      document.getElementById('modal-receta-titulo').textContent = receta ? '✏️ Editar receta' : '🍳 Nueva receta';
-      document.getElementById('form-receta').reset();
-      
-      // Reset tabs
-      document.querySelectorAll('.receta-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.receta-tab-content').forEach(c => c.classList.remove('active'));
-      document.querySelector('.receta-tab').classList.add('active');
-      document.getElementById('tab-ingredientes').classList.add('active');
-      
-      if (receta) {
-        document.getElementById('receta-nombre').value = receta.nombre || '';
-        document.getElementById('receta-autor').value = receta.autor || '';
-        document.getElementById('receta-version').value = receta.version || '';
-        document.getElementById('receta-comensales').value = receta.comensales || '';
-        document.getElementById('receta-tiempo').value = receta.tiempo || '';
-        document.getElementById('receta-ingredientes').value = receta.ingredientes || '';
-        document.getElementById('receta-preparacion').value = receta.preparacion || '';
-        document.getElementById('receta-elaboracion').value = receta.elaboracion || '';
-        document.getElementById('receta-acabado').value = receta.acabado || '';
-        document.getElementById('receta-notas').value = receta.notas || '';
-      }
-      
-      document.getElementById('modal-receta').classList.add('active');
-    }
-
-    function cerrarModalReceta() {
-      document.getElementById('modal-receta').classList.remove('active');
-      recetaEditandoId = null;
-    }
-
-    function cambiarTabReceta(tab) {
-      document.querySelectorAll('.receta-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.receta-tab-content').forEach(c => c.classList.remove('active'));
-      
-      event.target.classList.add('active');
-      document.getElementById('tab-' + tab).classList.add('active');
-    }
-
-    document.getElementById('form-receta').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      const data = {
-        nombre: document.getElementById('receta-nombre').value.trim(),
-        autor: document.getElementById('receta-autor').value.trim(),
-        version: document.getElementById('receta-version').value.trim(),
-        comensales: document.getElementById('receta-comensales').value,
-        tiempo: document.getElementById('receta-tiempo').value.trim(),
-        ingredientes: document.getElementById('receta-ingredientes').value.trim(),
-        preparacion: document.getElementById('receta-preparacion').value.trim(),
-        elaboracion: document.getElementById('receta-elaboracion').value.trim(),
-        acabado: document.getElementById('receta-acabado').value.trim(),
-        notas: document.getElementById('receta-notas').value.trim(),
-        familiaId: userData.familiaId,
-        categoria: 'recetas',
-        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-      };
-      
-      if (!data.nombre) {
-        alert('El nombre de la receta es obligatorio');
-        return;
-      }
-      
-      try {
-        if (recetaEditandoId) {
-          await db.collection('recetas').doc(recetaEditandoId).update(data);
-        } else {
-          data.creadoPor = currentUser.uid;
-          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
-          await db.collection('recetas').add(data);
-        }
-        
-        cerrarModalReceta();
-        await cargarRecetas();
-        alert('✅ Receta guardada');
-      } catch (error) {
-        console.error('Error guardando receta:', error);
-        alert('Error al guardar la receta');
-      }
-    });
-
-    function verReceta(id) {
-      const receta = recetasData.find(r => r.id === id);
-      if (!receta) return;
-      
-      document.getElementById('ver-receta-titulo').textContent = '🍳 ' + receta.nombre;
-      document.getElementById('btn-editar-receta').onclick = () => {
-        cerrarModalVerReceta();
-        abrirModalReceta(receta);
-      };
-      
-      let html = `
-        <div class="receta-meta">
-          ${receta.autor ? `<div class="receta-meta-item"><span>👤</span> ${receta.autor}</div>` : ''}
-          ${receta.version ? `<div class="receta-meta-item"><span>📝</span> ${receta.version}</div>` : ''}
-          ${receta.comensales ? `<div class="receta-meta-item"><span>👥</span> ${receta.comensales} personas</div>` : ''}
-          ${receta.tiempo ? `<div class="receta-meta-item"><span>⏱️</span> ${receta.tiempo}</div>` : ''}
-        </div>
-      `;
-      
-      if (receta.ingredientes) {
-        html += `
-          <div class="receta-seccion">
-            <div class="receta-seccion-titulo">🥕 Ingredientes</div>
-            <div class="receta-seccion-contenido">${receta.ingredientes}</div>
-          </div>
-        `;
-      }
-      
-      if (receta.preparacion) {
-        html += `
-          <div class="receta-seccion">
-            <div class="receta-seccion-titulo">🔪 Preparación</div>
-            <div class="receta-seccion-contenido">${receta.preparacion}</div>
-          </div>
-        `;
-      }
-      
-      if (receta.elaboracion) {
-        html += `
-          <div class="receta-seccion">
-            <div class="receta-seccion-titulo">🍳 Elaboración</div>
-            <div class="receta-seccion-contenido">${receta.elaboracion}</div>
-          </div>
-        `;
-      }
-      
-      if (receta.acabado) {
-        html += `
-          <div class="receta-seccion">
-            <div class="receta-seccion-titulo">✨ Acabado</div>
-            <div class="receta-seccion-contenido">${receta.acabado}</div>
-          </div>
-        `;
-      }
-      
-      if (receta.notas) {
-        html += `
-          <div class="receta-seccion">
-            <div class="receta-seccion-titulo">📝 Notas y secretos</div>
-            <div class="receta-notas">${receta.notas}</div>
-          </div>
-        `;
-      }
-      
-      document.getElementById('receta-detalle-content').innerHTML = html;
-      document.getElementById('modal-ver-receta').classList.add('active');
-    }
-
-    function cerrarModalVerReceta() {
-      document.getElementById('modal-ver-receta').classList.remove('active');
-    }
-
-    // Cerrar modales con click fuera
-    document.getElementById('modal-receta').addEventListener('click', (e) => {
-      if (e.target.id === 'modal-receta') cerrarModalReceta();
-    });
-    document.getElementById('modal-ver-receta').addEventListener('click', (e) => {
-      if (e.target.id === 'modal-ver-receta') cerrarModalVerReceta();
-    });
 
     function filtrarMemoria(categoria) {
-      document.querySelectorAll('#memoria-categorias .category-chip').forEach(c => {
-        c.classList.remove('active');
-      });
+      document.querySelectorAll('#memoria-categorias .category-chip').forEach(c => c.classList.remove('active'));
       event.target.classList.add('active');
-      
-      // Filtrar recetas si es la categoría seleccionada
-      if (categoria === 'recetas' || categoria === 'todos') {
-        cargarRecetas();
-      }
+      // TODO: Implementar filtrado
     }
 
     // ============ RAZONAMIENTO ============
@@ -1437,19 +1266,18 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       const container = document.getElementById('razonamiento-list');
       
       try {
-        const snap = await db.collection('pautas')
-          .where('familiaId', '==', userData.familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .limit(20)
-          .get();
+        let query = db.collection('pautas');
+        query = construirQueryAmbito(query);
+        
+        const snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
 
         if (snap.empty) {
           container.innerHTML = `
             <div class="empty-state">
               <div class="empty-state-icon">📐</div>
               <div class="empty-state-title">Sin pautas definidas</div>
-              <div class="empty-state-text">Crea instrucciones y procedimientos para tu familia</div>
-              <button class="btn btn-razonamiento" onclick="nuevaPauta()">✏️ Nueva pauta</button>
+              <div class="empty-state-text">Crea instrucciones para tu familia</div>
+              <button class="btn btn-razonamiento" onclick="abrirModalPauta()">✏️ Nueva pauta</button>
             </div>
           `;
           return;
@@ -1457,14 +1285,19 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
 
         container.innerHTML = snap.docs.map(doc => {
           const item = doc.data();
+          const catIcono = { 'hogar': '🏠', 'educacion': '📚', 'emergencias': '🚨', 'convivencia': '🤝' };
+          const visTag = item.visibilidad || 'nido';
           return `
             <div class="list-item" onclick="verPauta('${doc.id}')">
-              <div class="list-item-icon" style="background: var(--razonamiento-muted);">📐</div>
+              <div class="list-item-icon" style="background: var(--razonamiento-muted);">${catIcono[item.categoria] || '📐'}</div>
               <div class="list-item-content">
                 <div class="list-item-title">${item.titulo}</div>
                 <div class="list-item-text">${item.descripcion || ''}</div>
               </div>
-              <div class="list-item-date">${formatearFecha(item.fechaCreacion)}</div>
+              <div>
+                <span class="card-tag ${visTag}" style="margin-bottom: 4px; display: block;">${getVisibilidadLabel(visTag)}</span>
+                <div class="list-item-date">${formatearFecha(item.fechaCreacion)}</div>
+              </div>
             </div>
           `;
         }).join('');
@@ -1474,24 +1307,51 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       }
     }
 
-    function nuevaPauta() {
-      const titulo = prompt('📐 Nueva pauta\n\nTítulo:');
-      if (!titulo) return;
-
-      const descripcion = prompt('Descripción o instrucciones:');
-      const categoria = prompt('Categoría (hogar/educacion/emergencias/convivencia):', 'hogar');
-
-      db.collection('pautas').add({
-        titulo,
-        descripcion: descripcion || '',
-        categoria: categoria || 'hogar',
-        familiaId: userData.familiaId,
-        creador: currentUser.uid,
-        fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        alert('✅ Pauta creada');
-        cargarRazonamiento();
+    function abrirModalPauta() {
+      document.getElementById('pauta-titulo').value = '';
+      document.getElementById('pauta-descripcion').value = '';
+      document.getElementById('pauta-categoria').value = 'hogar';
+      
+      // Reset visibilidad
+      document.querySelectorAll('#modal-pauta .visibilidad-option').forEach(opt => {
+        opt.classList.remove('active');
+        if (opt.dataset.vis === 'nido') opt.classList.add('active');
       });
+      
+      document.getElementById('modal-pauta').classList.add('active');
+    }
+
+    function cerrarModalPauta() {
+      document.getElementById('modal-pauta').classList.remove('active');
+    }
+
+    async function guardarPauta() {
+      const titulo = document.getElementById('pauta-titulo').value.trim();
+      if (!titulo) {
+        alert('El título es obligatorio');
+        return;
+      }
+
+      const visibilidad = document.querySelector('#modal-pauta .visibilidad-option.active')?.dataset.vis || 'nido';
+
+      try {
+        await db.collection('pautas').add({
+          titulo,
+          descripcion: document.getElementById('pauta-descripcion').value.trim(),
+          categoria: document.getElementById('pauta-categoria').value,
+          visibilidad,
+          familiaId: userData.familiaId,
+          nidoId: userData.nidoId,
+          creadoPor: currentUser.uid,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        cerrarModalPauta();
+        cargarRazonamiento();
+      } catch (error) {
+        console.error('Error guardando pauta:', error);
+        alert('Error al guardar');
+      }
     }
 
     function verPauta(id) {
@@ -1499,7 +1359,7 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     }
 
     function filtrarRazonamiento(categoria) {
-      event.target.parentElement.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('#razonamiento-categorias .category-chip').forEach(c => c.classList.remove('active'));
       event.target.classList.add('active');
     }
 
@@ -1508,19 +1368,18 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       const container = document.getElementById('intuicion-list');
       
       try {
-        const snap = await db.collection('propuestas')
-          .where('familiaId', '==', userData.familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .limit(20)
-          .get();
+        let query = db.collection('propuestas');
+        query = construirQueryAmbito(query);
+        
+        const snap = await query.orderBy('fechaCreacion', 'desc').limit(20).get();
 
         if (snap.empty) {
           container.innerHTML = `
             <div class="empty-state">
               <div class="empty-state-icon">💡</div>
               <div class="empty-state-title">Sin propuestas</div>
-              <div class="empty-state-text">Comparte ideas para mejorar la vida familiar</div>
-              <button class="btn btn-intuicion" onclick="nuevaPropuesta()">💡 Nueva propuesta</button>
+              <div class="empty-state-text">Comparte ideas para mejorar</div>
+              <button class="btn btn-intuicion" onclick="abrirModalPropuesta()">💡 Nueva propuesta</button>
             </div>
           `;
           return;
@@ -1528,12 +1387,8 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
 
         container.innerHTML = snap.docs.map(doc => {
           const item = doc.data();
-          const estadoIcon = {
-            'pendiente': '⏳',
-            'votacion': '🗳️',
-            'aprobada': '✅',
-            'descartada': '❌'
-          };
+          const estadoIcon = { 'pendiente': '⏳', 'votacion': '🗳️', 'aprobada': '✅', 'descartada': '❌' };
+          const visTag = item.visibilidad || 'nido';
           return `
             <div class="list-item" onclick="verPropuesta('${doc.id}')">
               <div class="list-item-icon" style="background: var(--intuicion-muted);">💡</div>
@@ -1541,7 +1396,10 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
                 <div class="list-item-title">${estadoIcon[item.estado] || '⏳'} ${item.titulo}</div>
                 <div class="list-item-text">${item.descripcion || ''}</div>
               </div>
-              <div class="list-item-date">${formatearFecha(item.fechaCreacion)}</div>
+              <div>
+                <span class="card-tag ${visTag}" style="margin-bottom: 4px; display: block;">${getVisibilidadLabel(visTag)}</span>
+                <div class="list-item-date">${formatearFecha(item.fechaCreacion)}</div>
+              </div>
             </div>
           `;
         }).join('');
@@ -1551,25 +1409,52 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       }
     }
 
-    function nuevaPropuesta() {
-      const titulo = prompt('💡 Nueva propuesta\n\nTítulo de la propuesta:');
-      if (!titulo) return;
-
-      const descripcion = prompt('Descripción de la propuesta:');
-
-      db.collection('propuestas').add({
-        titulo,
-        descripcion: descripcion || '',
-        estado: 'pendiente',
-        votos: [],
-        familiaId: userData.familiaId,
-        creador: currentUser.uid,
-        creadorNombre: userData.nombre || currentUser.email.split('@')[0],
-        fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
-      }).then(() => {
-        alert('✅ Propuesta creada');
-        cargarIntuicion();
+    function abrirModalPropuesta() {
+      document.getElementById('propuesta-titulo').value = '';
+      document.getElementById('propuesta-descripcion').value = '';
+      
+      // Reset visibilidad
+      document.querySelectorAll('#modal-propuesta .visibilidad-option').forEach(opt => {
+        opt.classList.remove('active');
+        if (opt.dataset.vis === 'nido') opt.classList.add('active');
       });
+      
+      document.getElementById('modal-propuesta').classList.add('active');
+    }
+
+    function cerrarModalPropuesta() {
+      document.getElementById('modal-propuesta').classList.remove('active');
+    }
+
+    async function guardarPropuesta() {
+      const titulo = document.getElementById('propuesta-titulo').value.trim();
+      if (!titulo) {
+        alert('El título es obligatorio');
+        return;
+      }
+
+      const visibilidad = document.querySelector('#modal-propuesta .visibilidad-option.active')?.dataset.vis || 'nido';
+
+      try {
+        await db.collection('propuestas').add({
+          titulo,
+          descripcion: document.getElementById('propuesta-descripcion').value.trim(),
+          estado: 'pendiente',
+          visibilidad,
+          votos: [],
+          familiaId: userData.familiaId,
+          nidoId: userData.nidoId,
+          creadoPor: currentUser.uid,
+          creadoPorNombre: userData.nombre || currentUser.email.split('@')[0],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        cerrarModalPropuesta();
+        cargarIntuicion();
+      } catch (error) {
+        console.error('Error guardando propuesta:', error);
+        alert('Error al guardar');
+      }
     }
 
     function verPropuesta(id) {
@@ -1577,7 +1462,7 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     }
 
     function filtrarIntuicion(estado) {
-      event.target.parentElement.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('#intuicion-categorias .category-chip').forEach(c => c.classList.remove('active'));
       event.target.classList.add('active');
     }
 
@@ -1598,26 +1483,17 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
         document.getElementById('stat-nidos').textContent = nidosSnap.size;
         document.getElementById('stat-miembros').textContent = totalMiembros;
 
-        // Contar mensajes del mes
-        const inicioMes = new Date();
-        inicioMes.setDate(1);
-        inicioMes.setHours(0, 0, 0, 0);
-
-        const mensajesSnap = await db.collection('mensajes-chat')
-          .where('fecha', '>=', inicioMes)
-          .limit(100)
-          .get();
-
-        document.getElementById('stat-mensajes').textContent = mensajesSnap.size;
-
-        // Contar tareas completadas
-        const tareasSnap = await db.collection('tareas')
+        // Contar documentos
+        const docSnap = await db.collection('memoria')
           .where('familiaId', '==', userData.familiaId)
-          .where('completada', '==', true)
-          .limit(100)
           .get();
+        document.getElementById('stat-documentos').textContent = docSnap.size;
 
-        document.getElementById('stat-tareas').textContent = tareasSnap.size;
+        // Contar pautas
+        const pautasSnap = await db.collection('pautas')
+          .where('familiaId', '==', userData.familiaId)
+          .get();
+        document.getElementById('stat-pautas').textContent = pautasSnap.size;
 
       } catch (error) {
         console.error('Error cargando estadísticas:', error);
@@ -1625,12 +1501,90 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     }
 
     function exportarDatos() {
-      alert('Próximamente: Exportar datos de la estirpe');
+      alert('Próximamente: Exportar datos');
     }
 
-    function filtrarAnalisis(tipo) {
-      event.target.parentElement.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
-      event.target.classList.add('active');
+    // ============ INVENTARIO BÁSICO ============
+    let inventarioItems = [];
+
+    function abrirInventarioBasico() {
+      cargarInventario();
+      document.getElementById('modal-inventario').classList.add('active');
+    }
+
+    function cerrarModalInventario() {
+      document.getElementById('modal-inventario').classList.remove('active');
+    }
+
+    async function cargarInventario() {
+      const container = document.getElementById('inventario-lista');
+      
+      try {
+        const snap = await db.collection('inventario-basico')
+          .where('familiaId', '==', userData.familiaId)
+          .orderBy('nombre')
+          .get();
+
+        inventarioItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        if (inventarioItems.length === 0) {
+          container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No hay productos configurados</p>';
+          return;
+        }
+
+        container.innerHTML = inventarioItems.map(item => `
+          <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--cream); border-radius: 8px; margin-bottom: 8px;">
+            <span style="flex: 1;">${item.nombre}</span>
+            <button onclick="eliminarProductoInventario('${item.id}')" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;">🗑️</button>
+          </div>
+        `).join('');
+
+      } catch (error) {
+        console.error('Error cargando inventario:', error);
+      }
+    }
+
+    async function agregarProductoInventario() {
+      const input = document.getElementById('nuevo-producto');
+      const nombre = input.value.trim();
+      if (!nombre) return;
+
+      try {
+        await db.collection('inventario-basico').add({
+          nombre,
+          familiaId: userData.familiaId,
+          creadoPor: currentUser.uid,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        input.value = '';
+        cargarInventario();
+      } catch (error) {
+        console.error('Error agregando producto:', error);
+      }
+    }
+
+    async function eliminarProductoInventario(id) {
+      if (!confirm('¿Eliminar este producto del inventario básico?')) return;
+
+      try {
+        await db.collection('inventario-basico').doc(id).delete();
+        cargarInventario();
+      } catch (error) {
+        console.error('Error eliminando producto:', error);
+      }
+    }
+
+    function guardarInventario() {
+      cerrarModalInventario();
+      alert('✅ Cambios guardados');
+    }
+
+    // ============ VISIBILIDAD SELECTOR ============
+    function seleccionarVisibilidad(elemento, modal) {
+      const container = elemento.parentElement;
+      container.querySelectorAll('.visibilidad-option').forEach(opt => opt.classList.remove('active'));
+      elemento.classList.add('active');
     }
 
     // ============ UTILIDADES ============
@@ -1639,6 +1593,15 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       const fecha = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
       return fecha.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
     }
+
+    // Cerrar modales con click fuera
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('active');
+        }
+      });
+    });
   </script>
 </body>
 </html>
