@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Listas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: var(--cream-dark); }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+
+    /* Layout */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-body { padding: 20px; }
+
+    /* Configurador */
+    .config-section {
+      margin-bottom: 24px;
+    }
+
+    .config-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .config-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      color: var(--sage-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Checkboxes de campos */
+    .campos-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .campo-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+
+    .campo-check:hover { border-color: var(--sage-light); }
+    .campo-check.selected { border-color: var(--sage); background: var(--sage-muted); }
+
+    .campo-check input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--sage);
+    }
+
+    .campo-check-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .campo-check-icon {
+      font-size: 1rem;
+    }
+
+    /* Select de orden */
+    .form-select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      background: var(--white);
+      cursor: pointer;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: var(--sage);
+    }
+
+    /* Filtro de grupo */
+    .filtro-grupo {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filtro-btn {
+      padding: 8px 14px;
+      background: var(--cream);
+      border: 2px solid transparent;
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filtro-btn:hover { border-color: var(--sage-light); }
+    .filtro-btn.active { background: var(--sage); color: white; border-color: var(--sage); }
+
+    /* Tabla de resultados */
+    .tabla-container {
+      overflow-x: auto;
+    }
+
+    .tabla-lista {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .tabla-lista th {
+      text-align: left;
+      padding: 14px 12px;
+      background: var(--sage);
+      color: white;
+      font-weight: 600;
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+    }
+
+    .tabla-lista th:first-child {
+      border-radius: var(--radius-md) 0 0 0;
+    }
+
+    .tabla-lista th:last-child {
+      border-radius: 0 var(--radius-md) 0 0;
+    }
+
+    .tabla-lista td {
+      padding: 12px;
+      border-bottom: 1px solid var(--cream-dark);
+      vertical-align: middle;
+    }
+
+    .tabla-lista tr:hover td {
+      background: var(--cream);
+    }
+
+    .tabla-lista tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Avatar en tabla */
+    .tabla-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--sage-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--sage-dark);
+      font-size: 0.85rem;
+    }
+
+    .tabla-nombre-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tabla-nombre {
+      font-weight: 600;
+    }
+
+    .tabla-rol {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Acciones */
+    .acciones-bar {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--cream-dark);
+      flex-wrap: wrap;
+    }
+
+    /* Stats */
+    .lista-stats {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      padding: 12px 16px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--sage-dark);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Empty */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-icon {
+      font-size: 3rem;
+      opacity: 0.3;
+      margin-bottom: 12px;
+    }
+
+    .loading { display: flex; align-items: center; justify-content: center; padding: 40px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Print styles */
+    @media print {
+      .header, .sidebar, .acciones-bar, .btn {
+        display: none !important;
+      }
+      
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
+      
+      .tabla-lista th {
+        background: #f0f0f0 !important;
+        color: #333 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="activacion.html" class="back-btn">← Activación</a>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">📋 Listas</h1>
+        <p class="page-subtitle">Genera listas personalizadas con los datos de la familia</p>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <!-- Panel de configuración -->
+      <div class="sidebar">
+        <div class="card">
+          <div class="card-header">⚙️ Configurar lista</div>
+          <div class="card-body">
+            
+            <!-- Campos a mostrar -->
+            <div class="config-section">
+              <div class="config-title">📝 Campos a mostrar</div>
+              <div class="campos-grid" id="campos-grid">
+                <label class="campo-check selected">
+                  <input type="checkbox" value="nombre" checked disabled>
+                  <span class="campo-check-icon">👤</span>
+                  <span class="campo-check-label">Nombre</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="edad">
+                  <span class="campo-check-icon">🎂</span>
+                  <span class="campo-check-label">Edad</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="cumple">
+                  <span class="campo-check-icon">📅</span>
+                  <span class="campo-check-label">Cumpleaños</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="email">
+                  <span class="campo-check-icon">✉️</span>
+                  <span class="campo-check-label">Email</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="telefono">
+                  <span class="campo-check-icon">📱</span>
+                  <span class="campo-check-label">Teléfono</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="rol">
+                  <span class="campo-check-icon">🏷️</span>
+                  <span class="campo-check-label">Rol</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="nido">
+                  <span class="campo-check-icon">🏠</span>
+                  <span class="campo-check-label">Nido</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="fechaAlta">
+                  <span class="campo-check-icon">📆</span>
+                  <span class="campo-check-label">Fecha alta</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="generacion">
+                  <span class="campo-check-icon">👴</span>
+                  <span class="campo-check-label">Generación</span>
+                </label>
+                <label class="campo-check">
+                  <input type="checkbox" value="direccion">
+                  <span class="campo-check-icon">📍</span>
+                  <span class="campo-check-label">Dirección</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Criterio de orden -->
+            <div class="config-section">
+              <div class="config-title">🔀 Ordenar por</div>
+              <select class="form-select" id="orden-select" onchange="generarLista()">
+                <option value="nombre-asc">🔤 Nombre (A → Z)</option>
+                <option value="nombre-desc">🔤 Nombre (Z → A)</option>
+                <option value="edad-asc">👶 Edad (menor a mayor)</option>
+                <option value="edad-desc">👴 Edad (mayor a menor)</option>
+                <option value="cumple-asc">📅 Próximo cumpleaños</option>
+                <option value="fechaAlta-asc">📆 Fecha alta (antiguos primero)</option>
+                <option value="fechaAlta-desc">📆 Fecha alta (recientes primero)</option>
+                <option value="generacion-asc">👴 Generación (mayores primero)</option>
+              </select>
+            </div>
+
+            <!-- Filtrar por grupo -->
+            <div class="config-section">
+              <div class="config-title">👥 Filtrar por</div>
+              <div class="filtro-grupo" id="filtro-grupo">
+                <button class="filtro-btn active" onclick="filtrarGrupo('todos')">Todos</button>
+                <button class="filtro-btn" onclick="filtrarGrupo('activos')">Activos</button>
+                <button class="filtro-btn" onclick="filtrarGrupo('adultos')">Adultos</button>
+                <button class="filtro-btn" onclick="filtrarGrupo('menores')">Menores</button>
+              </div>
+            </div>
+
+            <!-- Botón generar -->
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="generarLista()">
+              🔄 Actualizar lista
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resultado -->
+      <div class="main-col">
+        <div class="card">
+          <div class="card-header">
+            📋 Resultado
+            <span style="margin-left:auto;font-weight:400;font-size:0.85rem;color:var(--text-muted)" id="resultado-count"></span>
+          </div>
+          <div class="card-body">
+            <div id="loading" class="loading"><div class="spinner"></div></div>
+            
+            <div id="lista-stats" class="lista-stats hidden"></div>
+            
+            <div class="tabla-container">
+              <table class="tabla-lista hidden" id="tabla-lista">
+                <thead id="tabla-head"></thead>
+                <tbody id="tabla-body"></tbody>
+              </table>
+            </div>
+
+            <div id="empty-state" class="empty-state hidden">
+              <div class="empty-icon">📋</div>
+              <p>No hay miembros que mostrar</p>
+            </div>
+
+            <div class="acciones-bar" id="acciones-bar">
+              <button class="btn btn-secondary" onclick="copiarLista()">📋 Copiar</button>
+              <button class="btn btn-secondary" onclick="window.print()">🖨️ Imprimir</button>
+              <button class="btn btn-secondary" onclick="exportarCSV()">📊 Exportar CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let familiaId = null;
+    let miembrosData = [];
+    let nidosData = {};
+    let filtroActual = 'todos';
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      
+      familiaId = userDoc.data().familiaId;
+      
+      await cargarNidos();
+      await cargarMiembros();
+      generarLista();
+    });
+
+    async function cargarNidos() {
+      try {
+        const snap = await db.collection('nidos')
+          .where('familiaId', '==', familiaId)
+          .get();
+        
+        snap.docs.forEach(doc => {
+          nidosData[doc.id] = doc.data().nombre || 'Sin nombre';
+        });
+      } catch (error) {
+        console.error('Error cargando nidos:', error);
+      }
+    }
+
+    async function cargarMiembros() {
+      try {
+        const snap = await db.collection('usuarios')
+          .where('familiaId', '==', familiaId)
+          .get();
+
+        miembrosData = snap.docs.map(doc => {
+          const data = doc.data();
+          
+          // Calcular edad
+          let edad = null;
+          let fechaNacimiento = null;
+          if (data.fechaNacimiento) {
+            fechaNacimiento = data.fechaNacimiento.toDate ? data.fechaNacimiento.toDate() : new Date(data.fechaNacimiento);
+            const hoy = new Date();
+            edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+            const m = hoy.getMonth() - fechaNacimiento.getMonth();
+            if (m < 0 || (m === 0 && hoy.getDate() < fechaNacimiento.getDate())) {
+              edad--;
+            }
+          }
+
+          // Fecha de alta
+          let fechaAlta = null;
+          if (data.fechaCreacion) {
+            fechaAlta = data.fechaCreacion.toDate ? data.fechaCreacion.toDate() : new Date(data.fechaCreacion);
+          }
+
+          return {
+            id: doc.id,
+            nombre: data.nombre || data.email?.split('@')[0] || 'Sin nombre',
+            email: data.email || '',
+            telefono: data.telefono || '',
+            edad: edad,
+            fechaNacimiento: fechaNacimiento,
+            rol: data.rol || 'Usuario',
+            nidoId: data.nidoId || null,
+            nidoNombre: data.nidoId ? (nidosData[data.nidoId] || 'Desconocido') : '–',
+            fechaAlta: fechaAlta,
+            generacion: data.generacion || null,
+            direccion: data.direccion || '',
+            activo: data.activo !== false
+          };
+        });
+
+        document.getElementById('loading').classList.add('hidden');
+      } catch (error) {
+        console.error('Error cargando miembros:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+      }
+    }
+
+    function getCamposSeleccionados() {
+      const campos = ['nombre']; // Siempre incluido
+      document.querySelectorAll('#campos-grid input:checked').forEach(input => {
+        if (input.value !== 'nombre') {
+          campos.push(input.value);
+        }
+      });
+      return campos;
+    }
+
+    function filtrarGrupo(grupo) {
+      filtroActual = grupo;
+      
+      document.querySelectorAll('.filtro-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      generarLista();
+    }
+
+    function generarLista() {
+      const campos = getCamposSeleccionados();
+      const orden = document.getElementById('orden-select').value;
+      
+      // Filtrar miembros
+      let miembrosFiltrados = [...miembrosData];
+      
+      switch (filtroActual) {
+        case 'activos':
+          miembrosFiltrados = miembrosFiltrados.filter(m => m.activo);
+          break;
+        case 'adultos':
+          miembrosFiltrados = miembrosFiltrados.filter(m => m.edad !== null && m.edad >= 18);
+          break;
+        case 'menores':
+          miembrosFiltrados = miembrosFiltrados.filter(m => m.edad !== null && m.edad < 18);
+          break;
+      }
+
+      // Ordenar
+      const [campoOrden, direccion] = orden.split('-');
+      
+      miembrosFiltrados.sort((a, b) => {
+        let valA, valB;
+        
+        switch (campoOrden) {
+          case 'nombre':
+            valA = (a.nombre || '').toLowerCase();
+            valB = (b.nombre || '').toLowerCase();
+            break;
+          case 'edad':
+            valA = a.edad ?? 999;
+            valB = b.edad ?? 999;
+            break;
+          case 'cumple':
+            // Ordenar por próximo cumpleaños
+            const hoy = new Date();
+            const getCumpleProximo = (fecha) => {
+              if (!fecha) return 999;
+              const cumple = new Date(hoy.getFullYear(), fecha.getMonth(), fecha.getDate());
+              if (cumple < hoy) cumple.setFullYear(cumple.getFullYear() + 1);
+              return Math.floor((cumple - hoy) / (1000 * 60 * 60 * 24));
+            };
+            valA = getCumpleProximo(a.fechaNacimiento);
+            valB = getCumpleProximo(b.fechaNacimiento);
+            break;
+          case 'fechaAlta':
+            valA = a.fechaAlta?.getTime() || 0;
+            valB = b.fechaAlta?.getTime() || 0;
+            break;
+          case 'generacion':
+            valA = a.generacion || 99;
+            valB = b.generacion || 99;
+            break;
+          default:
+            valA = a.nombre || '';
+            valB = b.nombre || '';
+        }
+        
+        if (direccion === 'desc') {
+          return valA > valB ? -1 : (valA < valB ? 1 : 0);
+        }
+        return valA < valB ? -1 : (valA > valB ? 1 : 0);
+      });
+
+      // Renderizar
+      renderTabla(miembrosFiltrados, campos);
+      renderStats(miembrosFiltrados);
+    }
+
+    function renderTabla(miembros, campos) {
+      const thead = document.getElementById('tabla-head');
+      const tbody = document.getElementById('tabla-body');
+      const tabla = document.getElementById('tabla-lista');
+      const empty = document.getElementById('empty-state');
+      const countEl = document.getElementById('resultado-count');
+
+      countEl.textContent = `${miembros.length} miembro${miembros.length !== 1 ? 's' : ''}`;
+
+      if (miembros.length === 0) {
+        tabla.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      tabla.classList.remove('hidden');
+
+      // Headers
+      const campoLabels = {
+        nombre: '👤 Nombre',
+        edad: '🎂 Edad',
+        cumple: '📅 Cumpleaños',
+        email: '✉️ Email',
+        telefono: '📱 Teléfono',
+        rol: '🏷️ Rol',
+        nido: '🏠 Nido',
+        fechaAlta: '📆 Alta',
+        generacion: '👴 Gen.',
+        direccion: '📍 Dirección'
+      };
+
+      thead.innerHTML = '<tr>' + campos.map(c => `<th>${campoLabels[c] || c}</th>`).join('') + '</tr>';
+
+      // Body
+      const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      
+      tbody.innerHTML = miembros.map(m => {
+        const celdas = campos.map(campo => {
+          switch (campo) {
+            case 'nombre':
+              const inicial = m.nombre.charAt(0).toUpperCase();
+              return `
+                <td>
+                  <div class="tabla-nombre-cell">
+                    <div class="tabla-avatar">${inicial}</div>
+                    <div>
+                      <div class="tabla-nombre">${m.nombre}</div>
+                    </div>
+                  </div>
+                </td>
+              `;
+            case 'edad':
+              return `<td>${m.edad !== null ? m.edad + ' años' : '–'}</td>`;
+            case 'cumple':
+              if (m.fechaNacimiento) {
+                return `<td>${m.fechaNacimiento.getDate()} ${mesesCortos[m.fechaNacimiento.getMonth()]}</td>`;
+              }
+              return '<td>–</td>';
+            case 'email':
+              return `<td>${m.email || '–'}</td>`;
+            case 'telefono':
+              return `<td>${m.telefono || '–'}</td>`;
+            case 'rol':
+              return `<td>${m.rol}</td>`;
+            case 'nido':
+              return `<td>${m.nidoNombre}</td>`;
+            case 'fechaAlta':
+              if (m.fechaAlta) {
+                return `<td>${m.fechaAlta.getDate()}/${m.fechaAlta.getMonth() + 1}/${m.fechaAlta.getFullYear()}</td>`;
+              }
+              return '<td>–</td>';
+            case 'generacion':
+              const genLabels = { 1: '1ª (Abuelos)', 2: '2ª (Padres)', 3: '3ª (Hijos)', 4: '4ª (Nietos)' };
+              return `<td>${genLabels[m.generacion] || m.generacion || '–'}</td>`;
+            case 'direccion':
+              return `<td>${m.direccion || '–'}</td>`;
+            default:
+              return '<td>–</td>';
+          }
+        });
+        
+        return `<tr>${celdas.join('')}</tr>`;
+      }).join('');
+    }
+
+    function renderStats(miembros) {
+      const statsEl = document.getElementById('lista-stats');
+      
+      if (miembros.length === 0) {
+        statsEl.classList.add('hidden');
+        return;
+      }
+
+      // Calcular estadísticas
+      const edades = miembros.filter(m => m.edad !== null).map(m => m.edad);
+      const edadMedia = edades.length > 0 ? Math.round(edades.reduce((a, b) => a + b, 0) / edades.length) : null;
+      const adultos = edades.filter(e => e >= 18).length;
+      const menores = edades.filter(e => e < 18).length;
+
+      statsEl.innerHTML = `
+        <div class="stat-item">
+          <div class="stat-value">${miembros.length}</div>
+          <div class="stat-label">Total</div>
+        </div>
+        ${edadMedia !== null ? `
+          <div class="stat-item">
+            <div class="stat-value">${edadMedia}</div>
+            <div class="stat-label">Edad media</div>
+          </div>
+        ` : ''}
+        <div class="stat-item">
+          <div class="stat-value">${adultos}</div>
+          <div class="stat-label">Adultos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">${menores}</div>
+          <div class="stat-label">Menores</div>
+        </div>
+      `;
+
+      statsEl.classList.remove('hidden');
+    }
+
+    // Eventos de checkboxes
+    document.querySelectorAll('#campos-grid input').forEach(input => {
+      input.addEventListener('change', function() {
+        this.closest('.campo-check').classList.toggle('selected', this.checked);
+        generarLista();
+      });
+    });
+
+    // Copiar al portapapeles
+    function copiarLista() {
+      const tabla = document.getElementById('tabla-lista');
+      if (tabla.classList.contains('hidden')) return;
+
+      let texto = '';
+      
+      // Headers
+      const headers = Array.from(tabla.querySelectorAll('th')).map(th => th.textContent.replace(/[^\w\s]/g, '').trim());
+      texto += headers.join('\t') + '\n';
+      
+      // Filas
+      tabla.querySelectorAll('tbody tr').forEach(tr => {
+        const celdas = Array.from(tr.querySelectorAll('td')).map(td => td.textContent.trim());
+        texto += celdas.join('\t') + '\n';
+      });
+
+      navigator.clipboard.writeText(texto).then(() => {
+        alert('✅ Lista copiada al portapapeles');
+      }).catch(err => {
+        console.error('Error copiando:', err);
+      });
+    }
+
+    // Exportar CSV
+    function exportarCSV() {
+      const tabla = document.getElementById('tabla-lista');
+      if (tabla.classList.contains('hidden')) return;
+
+      let csv = '';
+      
+      // Headers
+      const headers = Array.from(tabla.querySelectorAll('th')).map(th => `"${th.textContent.replace(/[^\w\s]/g, '').trim()}"`);
+      csv += headers.join(',') + '\n';
+      
+      // Filas
+      tabla.querySelectorAll('tbody tr').forEach(tr => {
+        const celdas = Array.from(tr.querySelectorAll('td')).map(td => `"${td.textContent.trim().replace(/"/g, '""')}"`);
+        csv += celdas.join(',') + '\n';
+      });
+
+      // Descargar
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `lista_familia_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    }
+  </script>
+</body>
+</html>
