@@ -395,15 +395,8 @@
     .calendario-dia.otro-mes { color: var(--text-muted); opacity: 0.5; }
     .calendario-dia.hoy { background: var(--sage-muted); font-weight: 700; }
     .calendario-dia.reservado { background: var(--sage); color: white; }
-    /* Colores por tipo de reserva */
-    .calendario-dia.tipo-toda-familia { background: #7A9E7E; }
-    .calendario-dia.tipo-gq-h { background: #C17757; }
-    .calendario-dia.tipo-gq-b { background: #6B8E9F; }
-    .calendario-dia.tipo-gq-g { background: #9B8EA6; }
-    .calendario-dia.tipo-gq-gc { background: #D4A574; }
-    .calendario-dia.tipo-gq-n { background: #7EAAA6; }
-    .calendario-dia.tipo-cazadores { background: #8B7355; }
-    .calendario-dia.tipo-otros { background: #9A9A9A; }
+    /* Colores por tipo de reserva - se generan dinámicamente */
+    .calendario-dia.reservado { color: white; }
 
     .reservas-lista { margin-top: 16px; }
 
@@ -428,15 +421,7 @@
     }
 
     .reserva-item:hover { background: var(--cream-dark); }
-    /* Colores borde lista reservas */
-    .reserva-item.tipo-toda-familia { border-left-color: #7A9E7E; }
-    .reserva-item.tipo-gq-h { border-left-color: #C17757; }
-    .reserva-item.tipo-gq-b { border-left-color: #6B8E9F; }
-    .reserva-item.tipo-gq-g { border-left-color: #9B8EA6; }
-    .reserva-item.tipo-gq-gc { border-left-color: #D4A574; }
-    .reserva-item.tipo-gq-n { border-left-color: #7EAAA6; }
-    .reserva-item.tipo-cazadores { border-left-color: #8B7355; }
-    .reserva-item.tipo-otros { border-left-color: #9A9A9A; }
+    /* Bordes lista reservas - se generan dinámicamente */
 
     .reserva-fecha { text-align: center; min-width: 50px; }
     .reserva-fecha-dia { font-size: 1.3rem; font-weight: 700; color: var(--sage-dark); }
@@ -1261,15 +1246,7 @@
           <div class="form-group">
             <label class="form-label">¿Quién reserva?</label>
             <select class="form-select" id="reserva-tipo" required>
-              <option value="">Selecciona...</option>
-              <option value="toda-familia">👨‍👩‍👧‍👦 Toda la familia</option>
-              <option value="gq-h">Familia GQ-H</option>
-              <option value="gq-b">Familia GQ-B</option>
-              <option value="gq-g">Familia GQ-G</option>
-              <option value="gq-gc">Familia GQ-GC</option>
-              <option value="gq-n">Familia GQ-N</option>
-              <option value="cazadores">🦌 Cazadores</option>
-              <option value="otros">📋 Otros</option>
+              <option value="">Cargando...</option>
             </select>
           </div>
           <div class="form-row">
@@ -1685,17 +1662,8 @@
     const nidoColores = ['nido-1', 'nido-2', 'nido-3', 'nido-4'];
     const nidoColorMap = {};
     
-    // Tipos de reserva con sus colores y nombres
-    const tiposReserva = {
-      'toda-familia': { nombre: '👨‍👩‍👧‍👦 Toda la familia', color: '#7A9E7E' },
-      'gq-h': { nombre: 'Familia GQ-H', color: '#C17757' },
-      'gq-b': { nombre: 'Familia GQ-B', color: '#6B8E9F' },
-      'gq-g': { nombre: 'Familia GQ-G', color: '#9B8EA6' },
-      'gq-gc': { nombre: 'Familia GQ-GC', color: '#D4A574' },
-      'gq-n': { nombre: 'Familia GQ-N', color: '#7EAAA6' },
-      'cazadores': { nombre: '🦌 Cazadores', color: '#8B7355' },
-      'otros': { nombre: '📋 Otros', color: '#9A9A9A' }
-    };
+    // Tipos de reserva - se cargan desde Firebase
+    let tiposReserva = {};
 
     const urlParams = new URLSearchParams(window.location.search);
     bienId = urlParams.get('id');
@@ -1716,6 +1684,7 @@
         familiaId = bienData.familiaId;
         
         await loadNidos();
+        await loadTiposReserva();
         await loadReservas();
         await loadInventario();
         await loadGastos();
@@ -1736,6 +1705,58 @@
       const snap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
       nidosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // Nidos se usan para gastos/reparto, no para reservas
+    }
+
+    async function loadTiposReserva() {
+      try {
+        const snap = await db.collection('familias').doc(familiaId).collection('tiposReserva').orderBy('orden', 'asc').get();
+        
+        if (snap.empty) {
+          // Tipos por defecto si no hay configurados
+          tiposReserva = {
+            'toda-familia': { nombre: '👨‍👩‍👧‍👦 Toda la familia', color: '#7A9E7E' },
+            'otros': { nombre: '📋 Otros', color: '#9A9A9A' }
+          };
+        } else {
+          tiposReserva = {};
+          snap.docs.forEach(doc => {
+            const data = doc.data();
+            tiposReserva[doc.id] = {
+              nombre: (data.emoji ? data.emoji + ' ' : '') + data.nombre,
+              color: data.color
+            };
+          });
+        }
+        
+        // Actualizar el select del modal
+        const select = document.getElementById('reserva-tipo');
+        select.innerHTML = '<option value="">Selecciona...</option>' +
+          Object.entries(tiposReserva).map(([id, tipo]) => 
+            `<option value="${id}">${tipo.nombre}</option>`
+          ).join('');
+          
+        // Generar estilos dinámicos para los colores
+        generarEstilosReservas();
+      } catch (error) {
+        console.error('Error cargando tipos de reserva:', error);
+      }
+    }
+
+    function generarEstilosReservas() {
+      // Eliminar estilos previos si existen
+      const oldStyle = document.getElementById('dynamic-reserva-styles');
+      if (oldStyle) oldStyle.remove();
+      
+      let css = '';
+      Object.entries(tiposReserva).forEach(([id, tipo]) => {
+        css += `.calendario-dia.tipo-${id} { background: ${tipo.color}; }\n`;
+        css += `.reserva-item.tipo-${id} { border-left-color: ${tipo.color}; }\n`;
+      });
+      
+      const style = document.createElement('style');
+      style.id = 'dynamic-reserva-styles';
+      style.textContent = css;
+      document.head.appendChild(style);
     }
 
     async function loadReservas() {
