@@ -313,12 +313,27 @@
 
     async function loadHistorias() {
       try {
-        const snap = await db.collection('legado-historias')
-          .where('familiaId', '==', familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .get();
+        let snap;
+        try {
+          snap = await db.collection('legado-historias')
+            .where('familiaId', '==', familiaId)
+            .orderBy('fechaCreacion', 'desc')
+            .get();
+        } catch (indexError) {
+          console.warn('Índice no disponible, cargando sin ordenar:', indexError.message);
+          snap = await db.collection('legado-historias')
+            .where('familiaId', '==', familiaId)
+            .get();
+        }
 
         historiasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Ordenar manualmente si no hay índice
+        historiasData.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
         
         document.getElementById('loading').classList.add('hidden');
         renderHistorias();
@@ -483,8 +498,12 @@
         cerrarModal();
         await loadHistorias();
       } catch (error) {
-        console.error('Error:', error);
-        alert('Error al guardar: ' + error.message);
+        console.error('Error guardando historia:', error);
+        if (error.code === 'permission-denied') {
+          alert('Error de permisos: No tienes autorización para guardar. Revisa las reglas de Firestore.');
+        } else {
+          alert('Error al guardar: ' + error.message);
+        }
       }
 
       btn.disabled = false;
