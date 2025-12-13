@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Historias</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: var(--cream-dark); color: var(--text); }
+    .page-icon { font-size: 1.5rem; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+    .page-subtitle { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: linear-gradient(135deg, var(--sage), var(--sage-dark)); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    /* Lista de historias */
+    .historias-list { display: flex; flex-direction: column; gap: 20px; }
+
+    .historia-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .historia-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+
+    .historia-card.con-imagen {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+    }
+
+    @media (max-width: 600px) {
+      .historia-card.con-imagen { grid-template-columns: 1fr; }
+      .historia-imagen { height: 180px; }
+    }
+
+    .historia-imagen {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: var(--cream-dark);
+    }
+
+    .historia-body { padding: 20px; }
+
+    .historia-titulo {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+      color: var(--sage-dark);
+    }
+
+    .historia-extracto {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: var(--text-light);
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .historia-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.2rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+
+    .modal-body { padding: 24px; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
+    .form-textarea { min-height: 200px; resize: vertical; }
+    .form-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Upload area */
+    .upload-area {
+      border: 2px dashed var(--cream-dark);
+      border-radius: var(--radius-md);
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--cream);
+    }
+
+    .upload-area:hover { border-color: var(--sage); background: var(--sage-muted); }
+    .upload-area.has-image { padding: 0; border-style: solid; }
+
+    .upload-icon { font-size: 2rem; opacity: 0.5; margin-bottom: 8px; }
+    .upload-text { color: var(--text-muted); font-size: 0.85rem; }
+    .upload-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: var(--radius-md); }
+
+    .upload-remove {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .upload-wrapper { position: relative; }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="legado.html" class="back-btn">← Legado</a>
+      <span class="page-icon">📖</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">📖 Historias</h1>
+        <p class="page-subtitle">Relatos y memorias de la familia</p>
+      </div>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva historia</button>
+    </div>
+
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="historias-list" class="historias-list hidden"></div>
+
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">📖</div>
+      <p class="empty-text">Aún no hay historias.<br>¡Comparte el primer relato familiar!</p>
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva historia</button>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-title">📖 Nueva historia</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-historia">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Título *</label>
+            <input type="text" class="form-input" id="historia-titulo" placeholder="Ej: Cómo se conocieron los abuelos" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">La historia *</label>
+            <textarea class="form-textarea" id="historia-texto" placeholder="Cuenta la historia con todo el detalle que quieras..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Imagen (opcional)</label>
+            <div class="upload-wrapper">
+              <div class="upload-area" id="upload-area" onclick="document.getElementById('historia-file').click()">
+                <div id="upload-placeholder">
+                  <div class="upload-icon">📷</div>
+                  <div class="upload-text">Click para añadir una imagen</div>
+                </div>
+                <img id="upload-preview" class="upload-preview hidden">
+              </div>
+              <button type="button" class="upload-remove hidden" id="upload-remove" onclick="quitarImagen(event)">×</button>
+            </div>
+            <input type="file" id="historia-file" accept="image/*" style="display:none" onchange="previewImage(this)">
+            <div class="form-hint">Una foto relacionada con la historia</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Época o fecha</label>
+            <input type="text" class="form-input" id="historia-epoca" placeholder="Ej: Años 60, Verano 1985, Infancia de mamá...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar" onclick="eliminarHistoria()">🗑️ Eliminar</button>
+          <div>
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btn-guardar">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let familiaId = null;
+    let historiasData = [];
+    let editingId = null;
+    let selectedFile = null;
+    let currentImageUrl = null;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      
+      familiaId = userDoc.data().familiaId;
+      await loadHistorias();
+    });
+
+    async function loadHistorias() {
+      try {
+        const snap = await db.collection('legado-historias')
+          .where('familiaId', '==', familiaId)
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+
+        historiasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        document.getElementById('loading').classList.add('hidden');
+        renderHistorias();
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('empty-state').classList.remove('hidden');
+      }
+    }
+
+    function renderHistorias() {
+      const container = document.getElementById('historias-list');
+      const empty = document.getElementById('empty-state');
+
+      if (historiasData.length === 0) {
+        container.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      container.classList.remove('hidden');
+
+      container.innerHTML = historiasData.map(h => {
+        const fecha = h.fechaCreacion?.toDate?.();
+        const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        const tieneImagen = h.imagenUrl;
+
+        return `
+          <div class="historia-card ${tieneImagen ? 'con-imagen' : ''}" onclick="abrirModal('${h.id}')">
+            ${tieneImagen ? `<img src="${h.imagenUrl}" class="historia-imagen" alt="">` : ''}
+            <div class="historia-body">
+              <div class="historia-titulo">${h.titulo}</div>
+              <div class="historia-extracto">${h.texto}</div>
+              <div class="historia-meta">
+                ${h.epoca ? `<span>📅 ${h.epoca}</span>` : ''}
+                <span>Añadida: ${fechaStr}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function previewImage(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('upload-preview').src = e.target.result;
+        document.getElementById('upload-preview').classList.remove('hidden');
+        document.getElementById('upload-placeholder').classList.add('hidden');
+        document.getElementById('upload-area').classList.add('has-image');
+        document.getElementById('upload-remove').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function quitarImagen(e) {
+      e.stopPropagation();
+      selectedFile = null;
+      currentImageUrl = null;
+      document.getElementById('historia-file').value = '';
+      document.getElementById('upload-preview').classList.add('hidden');
+      document.getElementById('upload-placeholder').classList.remove('hidden');
+      document.getElementById('upload-area').classList.remove('has-image');
+      document.getElementById('upload-remove').classList.add('hidden');
+    }
+
+    function abrirModal(id = null) {
+      editingId = id;
+      selectedFile = null;
+      currentImageUrl = null;
+      const modal = document.getElementById('modal');
+      const form = document.getElementById('form-historia');
+      const btnEliminar = document.getElementById('btn-eliminar');
+
+      form.reset();
+      document.getElementById('upload-preview').classList.add('hidden');
+      document.getElementById('upload-placeholder').classList.remove('hidden');
+      document.getElementById('upload-area').classList.remove('has-image');
+      document.getElementById('upload-remove').classList.add('hidden');
+
+      if (id) {
+        const historia = historiasData.find(h => h.id === id);
+        if (historia) {
+          document.getElementById('modal-title').textContent = '✏️ Editar historia';
+          document.getElementById('historia-titulo').value = historia.titulo || '';
+          document.getElementById('historia-texto').value = historia.texto || '';
+          document.getElementById('historia-epoca').value = historia.epoca || '';
+          
+          // Mostrar imagen si existe
+          if (historia.imagenUrl) {
+            currentImageUrl = historia.imagenUrl;
+            document.getElementById('upload-preview').src = historia.imagenUrl;
+            document.getElementById('upload-preview').classList.remove('hidden');
+            document.getElementById('upload-placeholder').classList.add('hidden');
+            document.getElementById('upload-area').classList.add('has-image');
+            document.getElementById('upload-remove').classList.remove('hidden');
+          }
+          
+          btnEliminar.classList.remove('hidden');
+        }
+      } else {
+        document.getElementById('modal-title').textContent = '📖 Nueva historia';
+        btnEliminar.classList.add('hidden');
+      }
+
+      modal.classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal').classList.remove('active');
+      editingId = null;
+      selectedFile = null;
+      currentImageUrl = null;
+    }
+
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.id === 'modal') cerrarModal();
+    });
+
+    document.getElementById('form-historia').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const btn = document.getElementById('btn-guardar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        let imageUrl = currentImageUrl;
+
+        // Si hay nueva imagen, subirla
+        if (selectedFile) {
+          const storageRef = storage.ref();
+          const fileName = `legado-historias/${familiaId}/${Date.now()}_${selectedFile.name}`;
+          const fileRef = storageRef.child(fileName);
+          
+          await fileRef.put(selectedFile);
+          imageUrl = await fileRef.getDownloadURL();
+        }
+
+        const data = {
+          titulo: document.getElementById('historia-titulo').value.trim(),
+          texto: document.getElementById('historia-texto').value.trim(),
+          epoca: document.getElementById('historia-epoca').value.trim(),
+          imagenUrl: imageUrl || null,
+          familiaId: familiaId,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (editingId) {
+          await db.collection('legado-historias').doc(editingId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('legado-historias').add(data);
+        }
+
+        cerrarModal();
+        await loadHistorias();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Guardar';
+    });
+
+    async function eliminarHistoria() {
+      if (!editingId || !confirm('¿Eliminar esta historia?')) return;
+
+      try {
+        await db.collection('legado-historias').doc(editingId).delete();
+        cerrarModal();
+        await loadHistorias();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar');
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') cerrarModal();
+    });
+  </script>
+</body>
+</html>
