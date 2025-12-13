@@ -223,9 +223,9 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">📷 Fotos</h1>
-        <p class="page-subtitle">Imágenes y momentos especiales de la familia</p>
+        <p class="page-subtitle">Imágenes y momentos especiales de la familia · <span id="fotos-contador" style="font-weight:600;">0/50 fotos</span></p>
       </div>
-      <button class="btn btn-primary" onclick="abrirModal()">+ Subir foto</button>
+      <button class="btn btn-primary" id="btn-nueva-foto" onclick="abrirModal()">+ Subir foto</button>
     </div>
 
     <div id="loading" class="loading"><div class="spinner"></div></div>
@@ -296,11 +296,15 @@
   <script src="js/firebase-config.js"></script>
 
   <script>
+    const MAX_FOTOS = 50;
     let currentUser = null;
     let familiaId = null;
     let fotosData = [];
     let editingId = null;
     let selectedFile = null;
+    
+    // Inicializar Storage
+    const storage = firebase.storage();
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -315,19 +319,58 @@
 
     async function loadFotos() {
       try {
-        const snap = await db.collection('legado-fotos')
-          .where('familiaId', '==', familiaId)
-          .orderBy('fechaCreacion', 'desc')
-          .get();
+        let snap;
+        try {
+          snap = await db.collection('legado-fotos')
+            .where('familiaId', '==', familiaId)
+            .orderBy('fechaCreacion', 'desc')
+            .get();
+        } catch (indexError) {
+          console.warn('Índice no disponible, cargando sin ordenar:', indexError.message);
+          snap = await db.collection('legado-fotos')
+            .where('familiaId', '==', familiaId)
+            .get();
+        }
 
         fotosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
+        // Ordenar manualmente
+        fotosData.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
+        
         document.getElementById('loading').classList.add('hidden');
+        actualizarContador();
         renderFotos();
       } catch (error) {
         console.error('Error:', error);
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('empty-state').classList.remove('hidden');
+      }
+    }
+    
+    function actualizarContador() {
+      const contador = document.getElementById('fotos-contador');
+      if (contador) {
+        const restantes = MAX_FOTOS - fotosData.length;
+        contador.textContent = `${fotosData.length}/${MAX_FOTOS} fotos`;
+        contador.style.color = restantes <= 5 ? '#D4695A' : 'var(--text-muted)';
+      }
+      
+      // Deshabilitar botón si se llegó al límite
+      const btnSubir = document.getElementById('btn-nueva-foto');
+      if (btnSubir) {
+        if (fotosData.length >= MAX_FOTOS) {
+          btnSubir.disabled = true;
+          btnSubir.title = 'Límite de 50 fotos alcanzado';
+          btnSubir.style.opacity = '0.5';
+        } else {
+          btnSubir.disabled = false;
+          btnSubir.title = '';
+          btnSubir.style.opacity = '1';
+        }
       }
     }
 
@@ -379,6 +422,12 @@
     }
 
     function abrirModal(id = null) {
+      // Si es nueva foto, verificar límite
+      if (!id && fotosData.length >= MAX_FOTOS) {
+        alert(`Has alcanzado el límite de ${MAX_FOTOS} fotos.\n\nElimina alguna foto para poder subir más.`);
+        return;
+      }
+      
       editingId = id;
       selectedFile = null;
       const modal = document.getElementById('modal');
@@ -473,8 +522,14 @@
         cerrarModal();
         await loadFotos();
       } catch (error) {
-        console.error('Error:', error);
-        alert('Error al guardar: ' + error.message);
+        console.error('Error guardando foto:', error);
+        if (error.code === 'permission-denied') {
+          alert('Error de permisos: No tienes autorización. Revisa las reglas de Firebase.');
+        } else if (error.code === 'storage/unauthorized') {
+          alert('Error de Storage: No tienes permisos para subir archivos. Revisa las reglas de Firebase Storage.');
+        } else {
+          alert('Error al guardar: ' + error.message);
+        }
       }
 
       btn.disabled = false;
