@@ -472,17 +472,65 @@
         </ul>
       </div>
 
+      <!-- Add-on info -->
       <div class="info-section" style="background: var(--terracotta-muted); border: 2px solid var(--terracotta);">
-        <h3 class="info-title" style="color: var(--terracotta);">💎 Función Premium</h3>
-        <p style="font-size: 0.95rem; color: var(--text-light);">
-          Crear una segunda rama familiar es una función del <strong>Plan Familia</strong>. 
-          Incluye gestión ilimitada de ambas ramas y Mayordomo para bienes compartidos.
+        <h3 class="info-title" style="color: var(--terracotta);">🌳 Add-on "Crear Rama"</h3>
+        <p style="font-size: 0.95rem; color: var(--text-light); margin-bottom: 16px;">
+          Esta funcionalidad es un add-on de pago que incluye:
         </p>
+        <ul style="list-style: none; margin-bottom: 16px;">
+          <li style="padding: 8px 0; display: flex; align-items: center; gap: 10px;">
+            <span style="color: var(--success);">✓</span> Crear segunda rama familiar
+          </li>
+          <li style="padding: 8px 0; display: flex; align-items: center; gap: 10px;">
+            <span style="color: var(--success);">✓</span> CGI fusionado (ver ambas ramas)
+          </li>
+          <li style="padding: 8px 0; display: flex; align-items: center; gap: 10px;">
+            <span style="color: var(--success);">✓</span> Generaciones ilimitadas en el árbol
+          </li>
+          <li style="padding: 8px 0; display: flex; align-items: center; gap: 10px;">
+            <span style="color: var(--success);">✓</span> <strong>14 días de prueba gratuita</strong>
+          </li>
+        </ul>
       </div>
 
-      <button class="btn btn-primary" onclick="mostrarPaso(1)">
-        Comenzar →
-      </button>
+      <!-- Estado del add-on -->
+      <div class="info-section" id="addon-status">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div id="addon-icon" style="width: 50px; height: 50px; background: var(--cream); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+            🔒
+          </div>
+          <div style="flex: 1;">
+            <div id="addon-status-title" style="font-weight: 700; font-size: 1rem;">Add-on no activado</div>
+            <div id="addon-status-text" style="font-size: 0.85rem; color: var(--text-muted);">
+              Contacta con el administrador de tu familia para activar este add-on.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botones según rol -->
+      <div id="btn-container">
+        <!-- Si es admin: botón para ir a Cerebro -->
+        <a href="cerebro.html#addons" class="btn btn-primary hidden" id="btn-admin">
+          ⚙️ Activar desde Admin Panel
+        </a>
+        
+        <!-- Si NO es admin: mensaje informativo -->
+        <div class="hidden" id="msg-no-admin" style="text-align: center; padding: 20px; background: var(--cream); border-radius: var(--radius-md);">
+          <p style="color: var(--text-muted); margin-bottom: 12px;">
+            Solo los administradores pueden activar add-ons.
+          </p>
+          <p style="font-size: 0.9rem;">
+            Pide a <strong id="admin-nombre">tu administrador</strong> que active el add-on "Crear Rama" desde el panel de administración.
+          </p>
+        </div>
+
+        <!-- Si ya está activo: botón para crear -->
+        <button class="btn btn-primary hidden" id="btn-crear-rama" onclick="mostrarPaso(1)">
+          🌳 Crear mi otra Rama →
+        </button>
+      </div>
     </div>
 
     <!-- PASO 1: Datos de la nueva rama -->
@@ -700,7 +748,67 @@
         window.location.href = 'mi-nido.html';
         return;
       }
+
+      // Cargar datos de la familia para verificar add-on
+      if (userData.familiaId) {
+        const familiaDoc = await db.collection('familias').doc(userData.familiaId).get();
+        if (familiaDoc.exists) {
+          const familiaData = familiaDoc.data();
+          const addons = familiaData.addons || {};
+          const crearRamaAddon = addons.crearRama || {};
+          
+          // Verificar si es admin
+          const esAdmin = ['AdminSistema', 'AdminRama'].includes(userData.rol);
+          
+          // Verificar estado del add-on
+          const ahora = new Date();
+          const trialActivo = crearRamaAddon.trialHasta && new Date(crearRamaAddon.trialHasta) > ahora;
+          const susActiva = crearRamaAddon.suscripcionHasta && new Date(crearRamaAddon.suscripcionHasta) > ahora;
+          const addonActivo = crearRamaAddon.activo || trialActivo || susActiva;
+          
+          // Actualizar UI según estado
+          actualizarEstadoAddon(addonActivo, trialActivo, crearRamaAddon, esAdmin);
+        }
+      }
     });
+
+    function actualizarEstadoAddon(activo, enTrial, addonData, esAdmin) {
+      const iconEl = document.getElementById('addon-icon');
+      const titleEl = document.getElementById('addon-status-title');
+      const textEl = document.getElementById('addon-status-text');
+      const statusSection = document.getElementById('addon-status');
+      
+      if (activo) {
+        // Add-on activo
+        iconEl.textContent = '✅';
+        iconEl.style.background = 'var(--sage-muted)';
+        
+        if (enTrial) {
+          const diasRestantes = Math.ceil((new Date(addonData.trialHasta) - new Date()) / (1000 * 60 * 60 * 24));
+          titleEl.textContent = `Prueba gratuita activa`;
+          titleEl.style.color = 'var(--sage-dark)';
+          textEl.textContent = `Te quedan ${diasRestantes} días de prueba.`;
+        } else {
+          titleEl.textContent = 'Add-on activo';
+          titleEl.style.color = 'var(--sage-dark)';
+          textEl.textContent = 'Ya puedes crear tu segunda rama familiar.';
+        }
+        
+        statusSection.style.background = 'var(--sage-muted)';
+        statusSection.style.border = '2px solid var(--sage)';
+        
+        // Mostrar botón para crear
+        document.getElementById('btn-crear-rama').classList.remove('hidden');
+        
+      } else {
+        // Add-on NO activo
+        if (esAdmin) {
+          document.getElementById('btn-admin').classList.remove('hidden');
+        } else {
+          document.getElementById('msg-no-admin').classList.remove('hidden');
+        }
+      }
+    }
 
     // Navegación entre pasos
     function mostrarPaso(paso) {
