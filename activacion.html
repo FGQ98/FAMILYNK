@@ -591,14 +591,18 @@
     let mesActual = new Date();
     let eventosData = [];
 
-    // Auth con espera de confirmación
+    // Fix: esperar confirmación antes de redirigir
+    let authChecked = false;
     auth.onAuthStateChanged(async (user) => {
-      console.log('🔐 Auth state:', user ? user.email : 'null');
+      // Evitar múltiples ejecuciones
+      if (authChecked) return;
       
       if (!user) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Esperar - Firebase puede disparar null mientras restaura sesión
+        await new Promise(r => setTimeout(r, 800));
         const confirmedUser = auth.currentUser;
         if (!confirmedUser) {
+          authChecked = true;
           window.location.href = 'login.html';
           return;
         }
@@ -607,6 +611,7 @@
         currentUser = user;
       }
       
+      authChecked = true;
       try {
         await cargarUsuario();
       } catch (error) {
