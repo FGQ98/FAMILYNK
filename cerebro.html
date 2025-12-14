@@ -1133,36 +1133,67 @@
     let esAdminSistema = false;
     let nidosEstirpe = [];
 
-    // Sistema de auth robusto
+    // Forzar persistencia LOCAL (sobrevive cierres de pestaña)
+    debugLog('Configurando persistencia LOCAL...');
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .then(() => {
+        debugLog('Persistencia configurada', 'success');
+      })
+      .catch((error) => {
+        debugLog(`Error en persistencia: ${error.message}`, 'error');
+      });
+
+    // Sistema de auth con múltiples intentos
     debugLog('Esperando estado de autenticación...');
     
-    // Usar onAuthStateChanged pero con protección
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      debugLog(`Auth callback recibido: ${user ? user.email : 'null'}`);
+    async function verificarAuth() {
+      // Intento 1: verificar inmediatamente
+      let user = auth.currentUser;
+      debugLog(`Intento 1 - currentUser: ${user ? user.email : 'null'}`);
       
-      // Si recibimos null, esperar un poco más
-      if (!user) {
-        debugLog('Usuario null, esperando 1 segundo...', 'warning');
-        await new Promise(r => setTimeout(r, 1000));
-        
-        // Verificar de nuevo
-        const recheck = auth.currentUser;
-        debugLog(`Re-verificación: ${recheck ? recheck.email : 'sigue null'}`);
-        
-        if (!recheck) {
-          debugLog('No hay sesión activa, redirigiendo a login...', 'error');
-          await new Promise(r => setTimeout(r, 1000)); // Pausa para ver el log
-          window.location.href = 'login.html';
-          return;
-        }
-        currentUser = recheck;
-      } else {
-        currentUser = user;
+      if (user) {
+        return user;
       }
       
-      // Desuscribirse para evitar llamadas múltiples
-      unsubscribe();
+      // Intento 2: esperar al listener
+      debugLog('Esperando callback de onAuthStateChanged...');
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          debugLog('Timeout de 3 segundos alcanzado', 'warning');
+          resolve(null);
+        }, 3000);
+        
+        const unsub = auth.onAuthStateChanged((u) => {
+          clearTimeout(timeout);
+          unsub();
+          debugLog(`Callback recibido: ${u ? u.email : 'null'}`);
+          resolve(u);
+        });
+      });
+    }
+    
+    // Ejecutar verificación
+    verificarAuth().then(async (user) => {
+      if (!user) {
+        // NO redirigir automáticamente - mostrar opciones
+        debugLog('No se detectó sesión activa', 'error');
+        document.getElementById('loading-screen').innerHTML = `
+          <div style="text-align: center; padding: 40px; font-family: 'Nunito', sans-serif;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🔐</div>
+            <h2 style="color: #C17757; margin-bottom: 16px;">Sesión no detectada</h2>
+            <p style="color: #666; margin: 20px 0;">No se pudo verificar tu sesión de usuario.</p>
+            <p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">Esto puede ser un problema temporal de conexión.</p>
+            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+              <button onclick="location.reload()" style="padding: 12px 24px; background: #7A9E7E; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">🔄 Reintentar</button>
+              <a href="login.html" style="padding: 12px 24px; background: #f0f0f0; color: #333; text-decoration: none; border-radius: 8px; font-weight: 600;">Ir a Login</a>
+              <a href="cgi.html" style="padding: 12px 24px; background: #f0f0f0; color: #333; text-decoration: none; border-radius: 8px; font-weight: 600;">← Volver</a>
+            </div>
+          </div>
+        `;
+        return;
+      }
       
+      currentUser = user;
       debugLog(`Usuario confirmado: ${currentUser.email}`, 'success');
       debugLog(`UID: ${currentUser.uid}`);
       
