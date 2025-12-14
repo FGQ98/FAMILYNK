@@ -699,6 +699,38 @@
   </style>
 </head>
 <body>
+  <!-- Pantalla de carga con debug -->
+  <div id="loading-screen" style="
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--cream);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    font-family: 'Nunito', sans-serif;
+  ">
+    <div style="font-size: 4rem; margin-bottom: 20px;">🧠</div>
+    <div style="font-size: 1.2rem; color: var(--sage-dark); margin-bottom: 10px;">Cargando Cerebro...</div>
+    <div id="loading-status" style="font-size: 0.9rem; color: var(--text-muted);">Verificando autenticación...</div>
+    <div id="debug-log" style="
+      margin-top: 30px;
+      padding: 15px;
+      background: #f0f0f0;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      max-width: 90%;
+      max-height: 200px;
+      overflow-y: auto;
+      text-align: left;
+      color: #333;
+    "></div>
+  </div>
+
+  <!-- Contenido principal (oculto hasta verificar auth) -->
+  <div id="app-content" style="display: none;">
   <!-- Header -->
   <header class="header">
     <div class="header-left">
@@ -1040,8 +1072,45 @@
     </div>
   </div>
 
+  </div><!-- FIN app-content -->
+
   <!-- Firebase Config -->
   <script>
+    // Función de debug que muestra en pantalla
+    function debugLog(msg, type = 'info') {
+      const logDiv = document.getElementById('debug-log');
+      const statusDiv = document.getElementById('loading-status');
+      const time = new Date().toLocaleTimeString();
+      const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
+      
+      console.log(`${icons[type]} ${msg}`);
+      
+      if (logDiv) {
+        logDiv.innerHTML += `<div>${icons[type]} ${time} - ${msg}</div>`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+      if (statusDiv) {
+        statusDiv.textContent = msg;
+      }
+    }
+
+    function showError(title, message, uid = '') {
+      document.getElementById('loading-screen').innerHTML = `
+        <div style="text-align: center; padding: 40px;">
+          <div style="font-size: 3rem; margin-bottom: 20px;">🧠</div>
+          <h2 style="color: #C17757; margin-bottom: 16px;">${title}</h2>
+          <p style="color: #666; margin: 20px 0; max-width: 400px;">${message}</p>
+          ${uid ? `<p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">UID: ${uid}</p>` : ''}
+          <a href="cgi.html" style="display: inline-block; padding: 12px 24px; background: #7A9E7E; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">← Volver al inicio</a>
+        </div>
+      `;
+    }
+
+    function showApp() {
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('app-content').style.display = 'block';
+    }
+
     const firebaseConfig = {
       apiKey: "AIzaSyBN30Io3mI8LKuU_HyFkT0SzKfZ3FXdIzg",
       authDomain: "familynk-88b34.firebaseapp.com",
@@ -1050,66 +1119,63 @@
       messagingSenderId: "520518937195",
       appId: "1:520518937195:web:1eb065f3e9355beabde72b"
     };
+    
+    debugLog('Inicializando Firebase...');
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+    debugLog('Firebase inicializado', 'success');
 
     let currentUser = null;
     let userData = null;
     let ambitoActual = 'nido';
     let seccionActual = 'memoria';
     let esAdminSistema = false;
-    let nidosEstirpe = []; // IDs de nidos descendientes
+    let nidosEstirpe = [];
 
-    // Auth listener con espera para evitar redirección prematura
-    let authChecked = false;
+    // Sistema de auth robusto
+    debugLog('Esperando estado de autenticación...');
     
-    auth.onAuthStateChanged(async (user) => {
-      // Evitar múltiples ejecuciones
-      if (authChecked) return;
-      authChecked = true;
+    // Usar onAuthStateChanged pero con protección
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      debugLog(`Auth callback recibido: ${user ? user.email : 'null'}`);
       
-      console.log('🔐 Auth state changed:', user ? user.email : 'no user');
-      
+      // Si recibimos null, esperar un poco más
       if (!user) {
-        // Esperar un momento por si Firebase está inicializando
-        console.log('⏳ No hay usuario, esperando confirmación...');
-        await new Promise(resolve => setTimeout(resolve, 500));
+        debugLog('Usuario null, esperando 1 segundo...', 'warning');
+        await new Promise(r => setTimeout(r, 1000));
         
         // Verificar de nuevo
-        const currentAuthUser = auth.currentUser;
-        if (!currentAuthUser) {
-          console.log('❌ Confirmado: no hay usuario, redirigiendo a login');
+        const recheck = auth.currentUser;
+        debugLog(`Re-verificación: ${recheck ? recheck.email : 'sigue null'}`);
+        
+        if (!recheck) {
+          debugLog('No hay sesión activa, redirigiendo a login...', 'error');
+          await new Promise(r => setTimeout(r, 1000)); // Pausa para ver el log
           window.location.href = 'login.html';
           return;
         }
-        // Si ahora sí hay usuario, usarlo
-        currentUser = currentAuthUser;
+        currentUser = recheck;
       } else {
         currentUser = user;
       }
       
-      console.log('✅ Usuario confirmado:', currentUser.email);
+      // Desuscribirse para evitar llamadas múltiples
+      unsubscribe();
+      
+      debugLog(`Usuario confirmado: ${currentUser.email}`, 'success');
+      debugLog(`UID: ${currentUser.uid}`);
       
       try {
         await cargarUsuario();
       } catch (error) {
-        console.error('💥 Error fatal en cargarUsuario:', error);
-        // NO redirigir, mostrar error en página
-        document.body.innerHTML = `
-          <div style="padding: 40px; text-align: center; font-family: 'Nunito', sans-serif;">
-            <div style="font-size: 3rem; margin-bottom: 20px;">🧠</div>
-            <h2 style="color: #C17757; margin-bottom: 16px;">Error al cargar Cerebro</h2>
-            <p style="color: #666; margin: 20px 0; max-width: 400px; margin-left: auto; margin-right: auto;">${error.message}</p>
-            <p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">UID: ${currentUser.uid}</p>
-            <a href="cgi.html" style="display: inline-block; padding: 12px 24px; background: #7A9E7E; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">← Volver al inicio</a>
-          </div>
-        `;
+        debugLog(`Error fatal: ${error.message}`, 'error');
+        showError('Error al cargar Cerebro', error.message, currentUser.uid);
       }
     });
 
     async function cargarUsuario() {
-      console.log('👤 Cargando usuario:', currentUser.uid);
+      debugLog('Cargando datos de usuario...');
       
       // 1. Obtener documento del usuario
       const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
@@ -1119,15 +1185,18 @@
       }
       
       userData = userDoc.data();
-      console.log('📋 Datos de usuario:', userData);
+      debugLog(`Datos obtenidos: ${userData.nombre || 'sin nombre'}`, 'success');
       
       // 2. Verificar campos críticos
       if (!userData.familiaId) {
         throw new Error('Tu usuario no tiene familia asignada (familiaId). Contacta al administrador.');
       }
+      debugLog(`FamiliaId: ${userData.familiaId}`);
       
       // 3. Verificar rol - Cerebro requiere permisos de admin
       const rolesPermitidos = ['AdminSistema', 'AdminRama', 'AdminNido'];
+      debugLog(`Rol del usuario: ${userData.rol || 'sin definir'}`);
+      
       if (!rolesPermitidos.includes(userData.rol)) {
         throw new Error(`Tu rol "${userData.rol || 'sin definir'}" no tiene acceso a Cerebro. Se requiere: AdminSistema, AdminRama o AdminNido.`);
       }
@@ -1139,25 +1208,28 @@
       
       // 5. Detectar tipo de admin
       esAdminSistema = userData.rol === 'AdminSistema';
-      console.log('🔑 Rol:', userData.rol, '| Es AdminSistema:', esAdminSistema);
+      debugLog(`Es AdminSistema: ${esAdminSistema}`);
       
       if (esAdminSistema) {
         // AdminSistema: ocultar pestañas de ámbito, ve todo
         document.getElementById('ambito-tabs').classList.add('hidden');
         ambitoActual = 'todos';
+        debugLog('Modo AdminSistema: ve todos los ámbitos');
       } else {
         // AdminRama o AdminNido: cargar nidos de su estirpe
         if (userData.nidoId) {
+          debugLog('Cargando nidos de la estirpe...');
           await cargarNidosEstirpe();
-          console.log('🪺 Nidos de estirpe cargados:', nidosEstirpe.length);
+          debugLog(`Nidos cargados: ${nidosEstirpe.length}`, 'success');
         } else {
-          console.warn('⚠️ Usuario sin nidoId, usando solo familiaId para queries');
+          debugLog('Usuario sin nidoId, usando solo familiaId', 'warning');
           nidosEstirpe = [];
         }
       }
       
-      // 6. Cargar sección inicial
-      console.log('✅ Usuario cargado correctamente, mostrando Memoria');
+      // 6. Mostrar la app y cargar sección inicial
+      debugLog('¡Todo listo! Mostrando Cerebro...', 'success');
+      showApp();
       cambiarSeccion('memoria');
     }
 
