@@ -84,6 +84,7 @@
     .logo-icon {
       height: 2.6rem;
       width: auto;
+      filter: hue-rotate(20deg) saturate(0.65) brightness(1.1); /* Ajustar al sage */
     }
 
     .logo-text {
@@ -1055,57 +1056,73 @@
     let esAdminSistema = false;
     let nidosEstirpe = []; // IDs de nidos descendientes
 
-    // Auth listener
+    // Auth listener con espera de confirmación
     auth.onAuthStateChanged(async (user) => {
+      console.log('🔐 Auth state:', user ? user.email : 'null (esperando...)');
+      
       if (!user) {
-        window.location.href = 'login.html';
-        return;
-      }
-      currentUser = user;
-      await cargarUsuario();
-    });
-
-    async function cargarUsuario() {
-      try {
-        const doc = await db.collection('usuarios').doc(currentUser.uid).get();
-        if (!doc.exists) {
-          console.error('Usuario no existe en Firestore');
+        // Esperar un momento - a veces Firebase dispara null mientras inicializa
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verificar de nuevo
+        const confirmedUser = auth.currentUser;
+        if (!confirmedUser) {
+          console.log('❌ Confirmado: no hay usuario');
           window.location.href = 'login.html';
           return;
         }
-        userData = doc.data();
-        
-        // Verificar datos críticos
-        if (!userData.familiaId) {
-          console.error('Usuario sin familiaId:', userData);
-          alert('Error: Tu usuario no tiene familia asignada. Contacta al administrador.');
-          return;
-        }
-
-        // UI usuario
-        const nombre = userData.nombre || currentUser.email.split('@')[0];
-        document.getElementById('user-name').textContent = nombre;
-        document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
-
-        // Detectar AdminSistema
-        esAdminSistema = userData.rol === 'AdminSistema';
-
-        if (esAdminSistema) {
-          // AdminSistema: ocultar pestañas de ámbito, ve todo
-          document.getElementById('ambito-tabs').classList.add('hidden');
-          ambitoActual = 'todos'; // Ve todo
-        } else {
-          // AdminNido: cargar nidos de su estirpe
-          await cargarNidosEstirpe();
-        }
-
-        // Cargar sección inicial
-        cambiarSeccion('memoria');
-        
-      } catch (error) {
-        console.error('Error cargando usuario:', error);
-        alert('Error al cargar datos de usuario: ' + error.message);
+        currentUser = confirmedUser;
+      } else {
+        currentUser = user;
       }
+      
+      try {
+        await cargarUsuario();
+      } catch (error) {
+        console.error('💥 Error en cargarUsuario:', error);
+        document.querySelector('.main').innerHTML = `
+          <div style="padding: 40px; text-align: center;">
+            <h2 style="color: var(--terracotta);">Error al cargar Cerebro</h2>
+            <p style="color: var(--text-muted); margin: 20px 0;">${error.message}</p>
+            <a href="cgi.html" class="btn btn-memoria">← Volver al inicio</a>
+          </div>
+        `;
+      }
+    });
+
+    async function cargarUsuario() {
+      console.log('👤 Cargando usuario:', currentUser.uid);
+      
+      const doc = await db.collection('usuarios').doc(currentUser.uid).get();
+      if (!doc.exists) {
+        throw new Error('Tu usuario no existe en la base de datos.');
+      }
+      
+      userData = doc.data();
+      console.log('📋 Datos:', userData);
+      
+      if (!userData.familiaId) {
+        throw new Error('Tu usuario no tiene familia asignada.');
+      }
+
+      // UI usuario
+      const nombre = userData.nombre || currentUser.email.split('@')[0];
+      document.getElementById('user-name').textContent = nombre;
+      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+
+      // Detectar AdminSistema
+      esAdminSistema = userData.rol === 'AdminSistema';
+
+      if (esAdminSistema) {
+        document.getElementById('ambito-tabs').classList.add('hidden');
+        ambitoActual = 'todos';
+      } else {
+        await cargarNidosEstirpe();
+      }
+
+      // Cargar sección inicial
+      console.log('✅ Usuario cargado, mostrando Memoria');
+      cambiarSeccion('memoria');
     }
 
     async function cargarNidosEstirpe() {
