@@ -1362,7 +1362,7 @@
             <!-- Se llena dinámicamente -->
           </div>
           <div class="estirpe-dropdown-divider"></div>
-          <a href="crear-rama.html" class="estirpe-dropdown-action">
+          <a href="mi-perfil.html#crear-rama" class="estirpe-dropdown-action">
             <span>➕</span> Crear/vincular rama
           </a>
         </div>
@@ -1407,6 +1407,7 @@
         <div class="dropdown-menu">
           <a href="mi-perfil.html"><span>👤</span> Mi perfil</a>
           <a href="configuracion.html"><span>⚙️</span> Configuración</a>
+          <a href="admin-panel.html" id="admin-panel-link" class="hidden" style="color: var(--terracotta);"><span>🛡️</span> Admin Panel</a>
           <div class="dropdown-divider"></div>
           <button id="logout-btn"><span>🚪</span> Cerrar sesión</button>
         </div>
@@ -1654,37 +1655,16 @@
         return;
       }
 
-      // Cargar estirpes del usuario (incluyendo ramas adicionales)
-      let estirpesIds = userData.estirpes || [userData.familiaId];
-      
-      // Añadir ramas adicionales creadas por el usuario
-      const ramasAdicionales = userData.ramasAdicionales || [];
-      ramasAdicionales.forEach(rama => {
-        if (!estirpesIds.includes(rama.familiaId)) {
-          estirpesIds.push(rama.familiaId);
-        }
-      });
-      
+      // Cargar estirpes del usuario
+      const estirpesIds = userData.estirpes || [userData.familiaId];
       const estirpeActiva = userData.estirpeActiva || userData.familiaId;
       
       // Cargar todas las estirpes
       estirpesUsuario = [];
       for (const estirpeId of estirpesIds) {
-        if (!estirpeId) continue;
-        try {
-          const estirpeDoc = await db.collection('familias').doc(estirpeId).get();
-          if (estirpeDoc.exists) {
-            const data = estirpeDoc.data();
-            // Marcar si es rama adicional para mostrar badge
-            const esRamaAdicional = ramasAdicionales.some(r => r.familiaId === estirpeId);
-            estirpesUsuario.push({ 
-              id: estirpeDoc.id, 
-              ...data,
-              esRamaAdicional
-            });
-          }
-        } catch (e) {
-          console.warn('Error cargando estirpe:', estirpeId, e);
+        const estirpeDoc = await db.collection('familias').doc(estirpeId).get();
+        if (estirpeDoc.exists) {
+          estirpesUsuario.push({ id: estirpeDoc.id, ...estirpeDoc.data() });
         }
       }
       
@@ -1734,7 +1714,7 @@
       const list = document.getElementById('estirpe-dropdown-list');
       list.innerHTML = estirpesUsuario.map(e => `
         <div class="estirpe-dropdown-item ${e.id === currentFamilia?.id ? 'active' : ''}" onclick="cambiarEstirpe('${e.id}')">
-          <span class="estirpe-dropdown-item-icon">${e.esRamaAdicional ? '🌳' : '🪺'}</span>
+          <span class="estirpe-dropdown-item-icon">🪺</span>
           <span class="estirpe-dropdown-item-name">${e.nombre}</span>
           ${e.id === currentFamilia?.id ? '<span class="estirpe-dropdown-item-check">✓</span>' : ''}
         </div>
@@ -1783,11 +1763,14 @@
       const mobileContainer = document.getElementById('mobile-admin-buttons');
       let html = '';
 
-      // Super Admin (Diseñador del sistema) - tiene acceso total
-      const isSuperAdmin = userData.superAdmin === true;
+      // Super Admin o AdminSistema - tiene acceso al Admin Panel
+      const isAdminSistema = userData.superAdmin === true || 
+        userData.rol === 'AdminSistema' ||
+        userData.rol === 'adminsistema';
 
       // Admin Rama Familiar (antes "Admin Sistema")
       const isAdminRama = userData.rol === 'adminRama' || 
+        userData.rol === 'AdminRama' ||
         userData.rol === 'adminSistema' || // compatibilidad
         (currentFamilia?.adminsGenerales?.includes(currentUser.uid)) ||
         (currentFamilia?.fundador === currentUser.uid) ||
@@ -1810,9 +1793,12 @@
         html += `<a href="admin-rama.html" class="admin-btn rama"><span>🔧</span> Admin Rama</a>`;
       }
 
-      // 4. Botón NEGRO - Admin Sistema (solo superAdmin/Diseñador)
-      if (isSuperAdmin) {
-        html += `<a href="admin-sistema.html" class="admin-btn sistema"><span>⚡</span> Admin Sistema</a>`;
+      // 4. Botón NEGRO - Admin Panel (AdminSistema)
+      if (isAdminSistema) {
+        html += `<a href="admin-panel.html" class="admin-btn sistema"><span>🛡️</span> Admin Panel</a>`;
+        // También mostrar en dropdown
+        const adminPanelLink = document.getElementById('admin-panel-link');
+        if (adminPanelLink) adminPanelLink.classList.remove('hidden');
       }
 
       container.innerHTML = html;
