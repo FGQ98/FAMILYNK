@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Admin Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --terracotta: #C17757;
+      --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --admin: #4A5568;
+      --admin-light: #718096;
+      --admin-dark: #2D3748;
+      --admin-muted: rgba(74, 85, 104, 0.1);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #48BB78;
+      --warning: #ECC94B;
+      --error: #F56565;
+      --info: #4299E1;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.1);
+      --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 50px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ============ HEADER ============ */
+    .header {
+      background: linear-gradient(135deg, var(--admin-dark) 0%, var(--admin) 100%);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-medium);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 20px; }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 38px;
+      height: 38px;
+      background: rgba(255,255,255,0.15);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .logo-text {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: white;
+    }
+
+    .logo-badge {
+      padding: 3px 10px;
+      background: var(--terracotta);
+      color: white;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .header-link {
+      color: rgba(255,255,255,0.7);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+
+    .header-link:hover { color: white; }
+
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: var(--radius-full);
+      color: white;
+      font-size: 0.85rem;
+    }
+
+    .user-badge-avatar {
+      width: 28px;
+      height: 28px;
+      background: var(--sage);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+
+    /* ============ LAYOUT ============ */
+    .layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 62px);
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+
+    /* ============ SIDEBAR ============ */
+    .sidebar {
+      background: var(--white);
+      border-right: 1px solid var(--cream-dark);
+      padding: 20px 0;
+    }
+
+    .sidebar-section { margin-bottom: 24px; }
+
+    .sidebar-title {
+      padding: 0 20px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .sidebar-nav { list-style: none; }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      color: var(--text-light);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .sidebar-link:hover { background: var(--cream); color: var(--text); }
+
+    .sidebar-link.active {
+      background: var(--admin-muted);
+      color: var(--admin-dark);
+      border-right: 3px solid var(--admin);
+    }
+
+    .sidebar-link-icon { font-size: 1.1rem; width: 24px; text-align: center; }
+
+    .sidebar-link-badge {
+      margin-left: auto;
+      padding: 2px 8px;
+      background: var(--info);
+      color: white;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    /* ============ MAIN ============ */
+    .main {
+      padding: 24px;
+      max-width: 1400px;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-header {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--admin-dark);
+      margin-bottom: 4px;
+    }
+
+    .section-description {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* ============ STATS GRID ============ */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .stat-icon.usuarios { background: var(--sage-muted); }
+    .stat-icon.familias { background: var(--terracotta-muted); }
+    .stat-icon.addons { background: rgba(236, 201, 75, 0.2); }
+    .stat-icon.activos { background: rgba(72, 187, 120, 0.2); }
+
+    .stat-info { flex: 1; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--admin-dark); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+    .stat-change {
+      font-size: 0.75rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .stat-change.up { background: rgba(72, 187, 120, 0.2); color: var(--success); }
+    .stat-change.down { background: rgba(245, 101, 101, 0.2); color: var(--error); }
+
+    /* ============ CARD ============ */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-body { padding: 20px; }
+
+    .card-footer {
+      padding: 12px 20px;
+      background: var(--cream);
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* ============ TABLE ============ */
+    .table-container { overflow-x: auto; }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .table th, .table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+
+    .table th {
+      background: var(--cream);
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .table tr:hover { background: var(--cream); }
+
+    .table-avatar {
+      width: 36px;
+      height: 36px;
+      background: var(--sage);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .table-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .table-user-name { font-weight: 600; }
+    .table-user-email { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* ============ BADGES ============ */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-success { background: rgba(72, 187, 120, 0.2); color: var(--success); }
+    .badge-warning { background: rgba(236, 201, 75, 0.2); color: #B7791F; }
+    .badge-error { background: rgba(245, 101, 101, 0.2); color: var(--error); }
+    .badge-info { background: rgba(66, 153, 225, 0.2); color: var(--info); }
+    .badge-neutral { background: var(--cream-dark); color: var(--text-muted); }
+
+    .badge-role {
+      padding: 3px 8px;
+      font-size: 0.7rem;
+    }
+
+    .badge-role.admin-sistema { background: var(--admin); color: white; }
+    .badge-role.admin-rama { background: var(--sage); color: white; }
+    .badge-role.admin-nido { background: var(--terracotta); color: white; }
+    .badge-role.miembro { background: var(--cream-dark); color: var(--text-light); }
+
+    /* ============ BUTTONS ============ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn-primary { background: var(--admin); color: white; }
+    .btn-primary:hover { background: var(--admin-dark); }
+
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-warning { background: var(--warning); color: var(--admin-dark); }
+
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .btn-icon { padding: 8px; min-width: 36px; justify-content: center; }
+
+    /* ============ SEARCH & FILTERS ============ */
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 250px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 16px 10px 40px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus { outline: none; border-color: var(--admin); }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .filter-select {
+      padding: 10px 16px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      background: var(--white);
+      cursor: pointer;
+    }
+
+    .filter-select:focus { outline: none; border-color: var(--admin); }
+
+    /* ============ PAGINATION ============ */
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pagination-info { font-size: 0.85rem; color: var(--text-muted); }
+
+    .pagination-btn {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--cream-dark);
+      background: var(--white);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+
+    .pagination-btn:hover { background: var(--cream); }
+    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ============ MODAL ============ */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      padding: 20px;
+    }
+
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+
+    .modal-body { padding: 24px; }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* ============ FORM ============ */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+    }
+
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--admin); }
+
+    /* ============ EMPTY STATE ============ */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state-title { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+
+    /* ============ LOADING ============ */
+    .loading { display: flex; align-items: center; justify-content: center; padding: 40px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--admin); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 600px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .toolbar { flex-direction: column; }
+      .search-box { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <a href="cgi.html" class="logo">
+        <div class="logo-icon">🪺</div>
+        <span class="logo-text">FAMILYNK</span>
+        <span class="logo-badge">ADMIN</span>
+      </a>
+    </div>
+    <div class="header-right">
+      <a href="cgi.html" class="header-link">← Volver al CGI</a>
+      <div class="user-badge">
+        <div class="user-badge-avatar" id="user-avatar">?</div>
+        <span id="user-name">Admin</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Layout -->
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">General</div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-link active" data-section="dashboard" onclick="cambiarSeccion('dashboard')">
+            <span class="sidebar-link-icon">📊</span>
+            Dashboard
+          </button>
+        </nav>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Gestión</div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-link" data-section="usuarios" onclick="cambiarSeccion('usuarios')">
+            <span class="sidebar-link-icon">👥</span>
+            Usuarios
+            <span class="sidebar-link-badge" id="badge-usuarios">0</span>
+          </button>
+          <button class="sidebar-link" data-section="familias" onclick="cambiarSeccion('familias')">
+            <span class="sidebar-link-icon">👨‍👩‍👧‍👦</span>
+            Familias
+            <span class="sidebar-link-badge" id="badge-familias">0</span>
+          </button>
+          <button class="sidebar-link" data-section="nidos" onclick="cambiarSeccion('nidos')">
+            <span class="sidebar-link-icon">🪺</span>
+            Nidos
+          </button>
+        </nav>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Sistema</div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-link" data-section="addons" onclick="cambiarSeccion('addons')">
+            <span class="sidebar-link-icon">⚡</span>
+            Add-ons
+          </button>
+          <button class="sidebar-link" data-section="invitaciones" onclick="cambiarSeccion('invitaciones')">
+            <span class="sidebar-link-icon">✉️</span>
+            Invitaciones
+          </button>
+          <button class="sidebar-link" data-section="config" onclick="cambiarSeccion('config')">
+            <span class="sidebar-link-icon">⚙️</span>
+            Configuración
+          </button>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <!-- ============ DASHBOARD ============ -->
+      <section class="section active" id="section-dashboard">
+        <div class="section-header">
+          <h1 class="section-title">📊 Dashboard</h1>
+          <p class="section-description">Resumen general de FAMILYNK</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon usuarios">👥</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-total-usuarios">-</div>
+              <div class="stat-label">Usuarios registrados</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon familias">👨‍👩‍👧‍👦</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-total-familias">-</div>
+              <div class="stat-label">Familias</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon addons">⚡</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-addons-activos">-</div>
+              <div class="stat-label">Add-ons activos</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon activos">🟢</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-activos-hoy">-</div>
+              <div class="stat-label">Activos hoy</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">📈 Últimos registros</span>
+            </div>
+            <div class="card-body" id="ultimos-usuarios">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">👨‍👩‍👧‍👦 Últimas familias</span>
+            </div>
+            <div class="card-body" id="ultimas-familias">
+              <div class="loading"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">⚡ Add-ons por familia</span>
+          </div>
+          <div class="card-body" id="addons-resumen">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ USUARIOS ============ -->
+      <section class="section" id="section-usuarios">
+        <div class="section-header">
+          <h1 class="section-title">👥 Usuarios</h1>
+          <p class="section-description">Gestión de usuarios registrados</p>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-usuarios" placeholder="Buscar por nombre o email...">
+          </div>
+          <select class="filter-select" id="filter-rol">
+            <option value="">Todos los roles</option>
+            <option value="AdminSistema">AdminSistema</option>
+            <option value="AdminRama">AdminRama</option>
+            <option value="AdminNido">AdminNido</option>
+            <option value="Miembro">Miembro</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Rol</th>
+                  <th>Familia</th>
+                  <th>Registro</th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-usuarios">
+                <tr>
+                  <td colspan="6">
+                    <div class="loading"><div class="spinner"></div></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer">
+            <span class="pagination-info" id="usuarios-info">Cargando...</span>
+            <div class="pagination">
+              <button class="pagination-btn" id="usuarios-prev" disabled>←</button>
+              <button class="pagination-btn" id="usuarios-next">→</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ FAMILIAS ============ -->
+      <section class="section" id="section-familias">
+        <div class="section-header">
+          <h1 class="section-title">👨‍👩‍👧‍👦 Familias</h1>
+          <p class="section-description">Gestión de familias registradas</p>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-familias" placeholder="Buscar familia...">
+          </div>
+          <select class="filter-select" id="filter-plan">
+            <option value="">Todos los planes</option>
+            <option value="free">FREE</option>
+            <option value="familia">FAMILIA</option>
+            <option value="rama">RAMA</option>
+          </select>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Familia</th>
+                  <th>Plan</th>
+                  <th>Miembros</th>
+                  <th>Add-ons</th>
+                  <th>Creación</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-familias">
+                <tr>
+                  <td colspan="6">
+                    <div class="loading"><div class="spinner"></div></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer">
+            <span class="pagination-info" id="familias-info">Cargando...</span>
+            <div class="pagination">
+              <button class="pagination-btn" id="familias-prev" disabled>←</button>
+              <button class="pagination-btn" id="familias-next">→</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ NIDOS ============ -->
+      <section class="section" id="section-nidos">
+        <div class="section-header">
+          <h1 class="section-title">🪺 Nidos</h1>
+          <p class="section-description">Gestión de nidos familiares</p>
+        </div>
+
+        <div class="toolbar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-nidos" placeholder="Buscar nido...">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Nido</th>
+                  <th>Familia</th>
+                  <th>Generación</th>
+                  <th>Miembros</th>
+                  <th>Creación</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-nidos">
+                <tr>
+                  <td colspan="6">
+                    <div class="loading"><div class="spinner"></div></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ ADD-ONS ============ -->
+      <section class="section" id="section-addons">
+        <div class="section-header">
+          <h1 class="section-title">⚡ Add-ons</h1>
+          <p class="section-description">Estado de add-ons por familia</p>
+        </div>
+
+        <div class="stats-grid" style="margin-bottom: 24px;">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(232, 164, 77, 0.2);">🌳</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-crear-rama">-</div>
+              <div class="stat-label">Crear Rama activos</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(139, 115, 85, 0.2);">🎩</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-mayordomo">-</div>
+              <div class="stat-label">Mayordomo activos</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(66, 153, 225, 0.2);">🧪</div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-trials">-</div>
+              <div class="stat-label">En período trial</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 Detalle por familia</span>
+          </div>
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Familia</th>
+                  <th>🌳 Crear Rama</th>
+                  <th>🎩 Mayordomo</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-addons">
+                <tr>
+                  <td colspan="4">
+                    <div class="loading"><div class="spinner"></div></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ INVITACIONES ============ -->
+      <section class="section" id="section-invitaciones">
+        <div class="section-header">
+          <h1 class="section-title">✉️ Invitaciones</h1>
+          <p class="section-description">Invitaciones pendientes por email</p>
+        </div>
+
+        <div class="card">
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Familia</th>
+                  <th>Tipo</th>
+                  <th>Invitado por</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-invitaciones">
+                <tr>
+                  <td colspan="6">
+                    <div class="loading"><div class="spinner"></div></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CONFIGURACIÓN ============ -->
+      <section class="section" id="section-config">
+        <div class="section-header">
+          <h1 class="section-title">⚙️ Configuración</h1>
+          <p class="section-description">Ajustes globales de FAMILYNK</p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">📋 Plan FREE - Límites</span>
+          </div>
+          <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
+              <div class="form-group">
+                <label class="form-label">Máx. generaciones</label>
+                <input type="number" class="form-input" id="config-generaciones" value="2">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Máx. imágenes</label>
+                <input type="number" class="form-input" id="config-imagenes" value="200">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Días trial add-ons</label>
+                <input type="number" class="form-input" id="config-trial" value="14">
+              </div>
+            </div>
+            <button class="btn btn-primary" onclick="guardarConfiguracion()" style="margin-top: 16px;">
+              💾 Guardar configuración
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">🔧 Herramientas</span>
+          </div>
+          <div class="card-body">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <button class="btn btn-secondary" onclick="exportarUsuarios()">
+                📥 Exportar usuarios
+              </button>
+              <button class="btn btn-secondary" onclick="exportarFamilias()">
+                📥 Exportar familias
+              </button>
+              <button class="btn btn-warning" onclick="limpiarTrialsExpirados()">
+                🧹 Limpiar trials expirados
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal Usuario -->
+  <div class="modal-overlay" id="modal-usuario">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">👤 Detalles del usuario</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body" id="modal-usuario-body">
+        <!-- Se carga dinámicamente -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+        <button class="btn btn-primary" id="btn-guardar-usuario" onclick="guardarUsuario()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Familia -->
+  <div class="modal-overlay" id="modal-familia">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">👨‍👩‍👧‍👦 Detalles de la familia</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body" id="modal-familia-body">
+        <!-- Se carga dinámicamente -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+        <button class="btn btn-primary" id="btn-guardar-familia" onclick="guardarFamilia()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    // ============ VARIABLES GLOBALES ============
+    let currentUser = null;
+    let userData = null;
+    let seccionActual = 'dashboard';
+
+    // Datos cargados
+    let usuariosData = [];
+    let familiasData = [];
+    let nidosData = [];
+    let invitacionesData = [];
+
+    // Para edición
+    let editingUserId = null;
+    let editingFamiliaId = null;
+
+    // ============ AUTH ============
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      userData = userDoc.data();
+
+      // Solo AdminSistema puede acceder
+      if (userData.rol !== 'AdminSistema') {
+        alert('Acceso denegado. Solo administradores del sistema.');
+        window.location.href = 'cgi.html';
+        return;
+      }
+
+      // Actualizar UI
+      const nombre = userData.nombre || user.email.split('@')[0];
+      document.getElementById('user-name').textContent = nombre.split(' ')[0];
+      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+
+      // Cargar dashboard
+      cargarDashboard();
+    });
+
+    // ============ NAVEGACIÓN ============
+    function cambiarSeccion(seccion) {
+      seccionActual = seccion;
+
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.classList.toggle('active', link.dataset.section === seccion);
+      });
+
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(`section-${seccion}`).classList.add('active');
+
+      // Cargar datos de la sección
+      switch(seccion) {
+        case 'dashboard': cargarDashboard(); break;
+        case 'usuarios': cargarUsuarios(); break;
+        case 'familias': cargarFamilias(); break;
+        case 'nidos': cargarNidos(); break;
+        case 'addons': cargarAddons(); break;
+        case 'invitaciones': cargarInvitaciones(); break;
+      }
+    }
+
+    // ============ DASHBOARD ============
+    async function cargarDashboard() {
+      try {
+        // Contar usuarios
+        const usersSnap = await db.collection('usuarios').get();
+        usuariosData = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        document.getElementById('stat-total-usuarios').textContent = usuariosData.length;
+        document.getElementById('badge-usuarios').textContent = usuariosData.length;
+
+        // Contar familias
+        const famSnap = await db.collection('familias').get();
+        familiasData = famSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        document.getElementById('stat-total-familias').textContent = familiasData.length;
+        document.getElementById('badge-familias').textContent = familiasData.length;
+
+        // Contar add-ons activos
+        let addonsActivos = 0;
+        let crearRamaActivos = 0;
+        let mayordomoActivos = 0;
+        let enTrial = 0;
+        const ahora = new Date();
+
+        familiasData.forEach(f => {
+          const addons = f.addons || {};
+          
+          if (addons.crearRama?.activo || (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) > ahora)) {
+            crearRamaActivos++;
+            addonsActivos++;
+            if (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) > ahora && !addons.crearRama?.suscripcionHasta) {
+              enTrial++;
+            }
+          }
+          
+          if (addons.mayordomo?.activo || (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) > ahora)) {
+            mayordomoActivos++;
+            addonsActivos++;
+            if (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) > ahora && !addons.mayordomo?.suscripcionHasta) {
+              enTrial++;
+            }
+          }
+        });
+
+        document.getElementById('stat-addons-activos').textContent = addonsActivos;
+        document.getElementById('stat-activos-hoy').textContent = '-'; // TODO: implementar tracking
+
+        // Últimos usuarios
+        const ultimosUsuarios = usuariosData
+          .filter(u => u.fechaCreacion)
+          .sort((a, b) => {
+            const fa = a.fechaCreacion?.toDate?.() || new Date(a.fechaCreacion);
+            const fb = b.fechaCreacion?.toDate?.() || new Date(b.fechaCreacion);
+            return fb - fa;
+          })
+          .slice(0, 5);
+
+        document.getElementById('ultimos-usuarios').innerHTML = ultimosUsuarios.length > 0
+          ? ultimosUsuarios.map(u => `
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--cream-dark);">
+                <div class="table-avatar">${(u.nombre || u.email || '?').charAt(0).toUpperCase()}</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600;">${u.nombre || 'Sin nombre'}</div>
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">${u.email || ''}</div>
+                </div>
+                <span class="badge badge-role ${(u.rol || 'miembro').toLowerCase().replace(' ', '-')}">${u.rol || 'Miembro'}</span>
+              </div>
+            `).join('')
+          : '<p style="color: var(--text-muted); text-align: center;">Sin usuarios recientes</p>';
+
+        // Últimas familias
+        const ultimasFamilias = familiasData
+          .filter(f => f.fechaCreacion)
+          .sort((a, b) => {
+            const fa = a.fechaCreacion?.toDate?.() || new Date(a.fechaCreacion);
+            const fb = b.fechaCreacion?.toDate?.() || new Date(b.fechaCreacion);
+            return fb - fa;
+          })
+          .slice(0, 5);
+
+        document.getElementById('ultimas-familias').innerHTML = ultimasFamilias.length > 0
+          ? ultimasFamilias.map(f => `
+              <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--cream-dark);">
+                <div style="width: 40px; height: 40px; background: var(--terracotta-muted); border-radius: 8px; display: flex; align-items: center; justify-content: center;">👨‍👩‍👧‍👦</div>
+                <div style="flex: 1;">
+                  <div style="font-weight: 600;">${f.nombre || 'Sin nombre'}</div>
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">${f.apellidoPrincipal || ''}</div>
+                </div>
+                <span class="badge ${f.plan === 'free' ? 'badge-neutral' : 'badge-success'}">${(f.plan || 'free').toUpperCase()}</span>
+              </div>
+            `).join('')
+          : '<p style="color: var(--text-muted); text-align: center;">Sin familias recientes</p>';
+
+        // Resumen add-ons
+        document.getElementById('addons-resumen').innerHTML = `
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+            <div style="padding: 20px; background: var(--cream); border-radius: 8px;">
+              <div style="font-size: 2rem; margin-bottom: 8px;">🌳</div>
+              <div style="font-size: 1.5rem; font-weight: 700;">${crearRamaActivos}</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Crear Rama</div>
+            </div>
+            <div style="padding: 20px; background: var(--cream); border-radius: 8px;">
+              <div style="font-size: 2rem; margin-bottom: 8px;">🎩</div>
+              <div style="font-size: 1.5rem; font-weight: 700;">${mayordomoActivos}</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Mayordomo</div>
+            </div>
+            <div style="padding: 20px; background: var(--cream); border-radius: 8px;">
+              <div style="font-size: 2rem; margin-bottom: 8px;">🧪</div>
+              <div style="font-size: 1.5rem; font-weight: 700;">${enTrial}</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">En trial</div>
+            </div>
+          </div>
+        `;
+
+      } catch (error) {
+        console.error('Error cargando dashboard:', error);
+      }
+    }
+
+    // ============ USUARIOS ============
+    async function cargarUsuarios() {
+      const tbody = document.getElementById('tabla-usuarios');
+      
+      try {
+        if (usuariosData.length === 0) {
+          const snap = await db.collection('usuarios').get();
+          usuariosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        const search = document.getElementById('search-usuarios').value.toLowerCase();
+        const filtroRol = document.getElementById('filter-rol').value;
+
+        let filtrados = usuariosData.filter(u => {
+          const matchSearch = !search || 
+            (u.nombre || '').toLowerCase().includes(search) || 
+            (u.email || '').toLowerCase().includes(search);
+          const matchRol = !filtroRol || u.rol === filtroRol;
+          return matchSearch && matchRol;
+        });
+
+        document.getElementById('usuarios-info').textContent = `${filtrados.length} usuarios`;
+
+        if (filtrados.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No se encontraron usuarios</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtrados.map(u => {
+          const familia = familiasData.find(f => f.id === u.familiaId);
+          const fecha = u.fechaCreacion?.toDate?.() || new Date(u.fechaCreacion);
+          const fechaStr = fecha ? fecha.toLocaleDateString('es') : '-';
+
+          return `
+            <tr>
+              <td>
+                <div class="table-user">
+                  <div class="table-avatar">${(u.nombre || u.email || '?').charAt(0).toUpperCase()}</div>
+                  <div>
+                    <div class="table-user-name">${u.nombre || 'Sin nombre'}</div>
+                    <div class="table-user-email">${u.email || ''}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge badge-role ${(u.rol || 'miembro').toLowerCase().replace(' ', '-')}">${u.rol || 'Miembro'}</span></td>
+              <td>${familia?.nombre || '-'}</td>
+              <td>${fechaStr}</td>
+              <td><span class="badge badge-success">Activo</span></td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="verUsuario('${u.id}')">👁️</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error cargando usuarios:', error);
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Error al cargar usuarios</td></tr>';
+      }
+    }
+
+    function verUsuario(uid) {
+      const usuario = usuariosData.find(u => u.id === uid);
+      if (!usuario) return;
+
+      editingUserId = uid;
+      const familia = familiasData.find(f => f.id === usuario.familiaId);
+
+      document.getElementById('modal-usuario-body').innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-input" id="edit-user-nombre" value="${usuario.nombre || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" value="${usuario.email || ''}" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Rol</label>
+          <select class="form-select" id="edit-user-rol">
+            <option value="Miembro" ${usuario.rol === 'Miembro' ? 'selected' : ''}>Miembro</option>
+            <option value="AdminNido" ${usuario.rol === 'AdminNido' ? 'selected' : ''}>AdminNido</option>
+            <option value="AdminRama" ${usuario.rol === 'AdminRama' ? 'selected' : ''}>AdminRama</option>
+            <option value="AdminSistema" ${usuario.rol === 'AdminSistema' ? 'selected' : ''}>AdminSistema</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Familia</label>
+          <input type="text" class="form-input" value="${familia?.nombre || 'Sin familia'}" disabled>
+        </div>
+        <div class="form-group">
+          <label class="form-label">UID</label>
+          <input type="text" class="form-input" value="${uid}" disabled style="font-family: monospace; font-size: 0.8rem;">
+        </div>
+      `;
+
+      document.getElementById('modal-usuario').classList.add('active');
+    }
+
+    async function guardarUsuario() {
+      if (!editingUserId) return;
+
+      try {
+        await db.collection('usuarios').doc(editingUserId).update({
+          nombre: document.getElementById('edit-user-nombre').value,
+          rol: document.getElementById('edit-user-rol').value
+        });
+
+        cerrarModales();
+        usuariosData = []; // Forzar recarga
+        cargarUsuarios();
+        alert('✅ Usuario actualizado');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    // ============ FAMILIAS ============
+    async function cargarFamilias() {
+      const tbody = document.getElementById('tabla-familias');
+      
+      try {
+        if (familiasData.length === 0) {
+          const snap = await db.collection('familias').get();
+          familiasData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        const search = document.getElementById('search-familias').value.toLowerCase();
+        const filtroPlan = document.getElementById('filter-plan').value;
+
+        let filtradas = familiasData.filter(f => {
+          const matchSearch = !search || (f.nombre || '').toLowerCase().includes(search);
+          const matchPlan = !filtroPlan || f.plan === filtroPlan;
+          return matchSearch && matchPlan;
+        });
+
+        document.getElementById('familias-info').textContent = `${filtradas.length} familias`;
+
+        if (filtradas.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No se encontraron familias</td></tr>';
+          return;
+        }
+
+        const ahora = new Date();
+
+        tbody.innerHTML = filtradas.map(f => {
+          const miembros = usuariosData.filter(u => u.familiaId === f.id).length;
+          const fecha = f.fechaCreacion?.toDate?.() || new Date(f.fechaCreacion);
+          const fechaStr = fecha ? fecha.toLocaleDateString('es') : '-';
+
+          // Calcular add-ons activos
+          const addons = f.addons || {};
+          const crearRamaActivo = addons.crearRama?.activo || (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) > ahora);
+          const mayordomoActivo = addons.mayordomo?.activo || (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) > ahora);
+
+          let addonsHTML = '';
+          if (crearRamaActivo) addonsHTML += '<span title="Crear Rama">🌳</span> ';
+          if (mayordomoActivo) addonsHTML += '<span title="Mayordomo">🎩</span>';
+          if (!addonsHTML) addonsHTML = '-';
+
+          return `
+            <tr>
+              <td>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 36px; height: 36px; background: var(--terracotta-muted); border-radius: 8px; display: flex; align-items: center; justify-content: center;">👨‍👩‍👧‍👦</div>
+                  <div>
+                    <div style="font-weight: 600;">${f.nombre || 'Sin nombre'}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">${f.apellidoPrincipal || ''}</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="badge ${f.plan === 'free' || !f.plan ? 'badge-neutral' : 'badge-success'}">${(f.plan || 'free').toUpperCase()}</span></td>
+              <td>${miembros}</td>
+              <td style="font-size: 1.2rem;">${addonsHTML}</td>
+              <td>${fechaStr}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="verFamilia('${f.id}')">👁️</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error cargando familias:', error);
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Error al cargar familias</td></tr>';
+      }
+    }
+
+    function verFamilia(fid) {
+      const familia = familiasData.find(f => f.id === fid);
+      if (!familia) return;
+
+      editingFamiliaId = fid;
+      const addons = familia.addons || {};
+      const limites = familia.limites || {};
+      const ahora = new Date();
+
+      const crearRamaActivo = addons.crearRama?.activo || (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) > ahora);
+      const mayordomoActivo = addons.mayordomo?.activo || (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) > ahora);
+
+      document.getElementById('modal-familia-body').innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-input" id="edit-fam-nombre" value="${familia.nombre || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plan</label>
+          <select class="form-select" id="edit-fam-plan">
+            <option value="free" ${familia.plan === 'free' || !familia.plan ? 'selected' : ''}>FREE</option>
+            <option value="familia" ${familia.plan === 'familia' ? 'selected' : ''}>FAMILIA</option>
+            <option value="rama" ${familia.plan === 'rama' ? 'selected' : ''}>RAMA</option>
+          </select>
+        </div>
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--cream-dark);">
+        <h4 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-muted);">⚡ ADD-ONS</h4>
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="edit-fam-crearrama" ${crearRamaActivo ? 'checked' : ''}>
+            <span>🌳 Crear Rama</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="edit-fam-mayordomo" ${mayordomoActivo ? 'checked' : ''}>
+            <span>🎩 Mayordomo</span>
+          </label>
+        </div>
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid var(--cream-dark);">
+        <h4 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-muted);">📊 LÍMITES</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label class="form-label">Generaciones</label>
+            <input type="number" class="form-input" id="edit-fam-gen" value="${limites.generaciones || 2}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Imágenes</label>
+            <input type="number" class="form-input" id="edit-fam-img" value="${limites.imagenes || 200}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ID Familia</label>
+          <input type="text" class="form-input" value="${fid}" disabled style="font-family: monospace; font-size: 0.8rem;">
+        </div>
+      `;
+
+      document.getElementById('modal-familia').classList.add('active');
+    }
+
+    async function guardarFamilia() {
+      if (!editingFamiliaId) return;
+
+      try {
+        const crearRamaChecked = document.getElementById('edit-fam-crearrama').checked;
+        const mayordomoChecked = document.getElementById('edit-fam-mayordomo').checked;
+
+        const updateData = {
+          nombre: document.getElementById('edit-fam-nombre').value,
+          plan: document.getElementById('edit-fam-plan').value,
+          'addons.crearRama.activo': crearRamaChecked,
+          'addons.mayordomo.activo': mayordomoChecked,
+          'limites.generaciones': parseInt(document.getElementById('edit-fam-gen').value) || 2,
+          'limites.imagenes': parseInt(document.getElementById('edit-fam-img').value) || 200
+        };
+
+        // Si se activa un add-on que no tenía trial, darle 14 días
+        const familia = familiasData.find(f => f.id === editingFamiliaId);
+        const ahora = new Date();
+        
+        if (crearRamaChecked && !familia.addons?.crearRama?.trialHasta) {
+          const trial = new Date();
+          trial.setDate(trial.getDate() + 14);
+          updateData['addons.crearRama.trialHasta'] = trial.toISOString();
+        }
+
+        if (mayordomoChecked && !familia.addons?.mayordomo?.trialHasta) {
+          const trial = new Date();
+          trial.setDate(trial.getDate() + 14);
+          updateData['addons.mayordomo.trialHasta'] = trial.toISOString();
+        }
+
+        await db.collection('familias').doc(editingFamiliaId).update(updateData);
+
+        cerrarModales();
+        familiasData = []; // Forzar recarga
+        cargarFamilias();
+        alert('✅ Familia actualizada');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    // ============ NIDOS ============
+    async function cargarNidos() {
+      const tbody = document.getElementById('tabla-nidos');
+      
+      try {
+        const snap = await db.collection('nidos').get();
+        nidosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        const search = document.getElementById('search-nidos').value.toLowerCase();
+
+        let filtrados = nidosData.filter(n => {
+          return !search || (n.nombre || '').toLowerCase().includes(search);
+        });
+
+        if (filtrados.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No se encontraron nidos</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtrados.map(n => {
+          const familia = familiasData.find(f => f.id === n.familiaId);
+          const miembros = n.miembrosData?.length || n.miembros?.length || 0;
+          const fecha = n.fechaCreacion?.toDate?.() || new Date(n.fechaCreacion);
+          const fechaStr = fecha ? fecha.toLocaleDateString('es') : '-';
+
+          const genLabels = {
+            '1-bisabuelos': 'G1 - Bisabuelos',
+            '2-abuelos': 'G2 - Abuelos',
+            '3-padres': 'G3 - Padres',
+            '4-hijos': 'G4 - Hijos'
+          };
+
+          return `
+            <tr>
+              <td style="font-weight: 600;">${n.nombre || 'Sin nombre'}</td>
+              <td>${familia?.nombre || '-'}</td>
+              <td><span class="badge badge-info">${genLabels[n.generacion] || n.generacion || '-'}</span></td>
+              <td>${miembros}</td>
+              <td>${fechaStr}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="alert('Ver nido: ${n.id}')">👁️</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error cargando nidos:', error);
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Error al cargar nidos</td></tr>';
+      }
+    }
+
+    // ============ ADD-ONS ============
+    async function cargarAddons() {
+      const tbody = document.getElementById('tabla-addons');
+      
+      try {
+        if (familiasData.length === 0) {
+          const snap = await db.collection('familias').get();
+          familiasData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        const ahora = new Date();
+        let crearRamaCount = 0;
+        let mayordomoCount = 0;
+        let trialsCount = 0;
+
+        tbody.innerHTML = familiasData.map(f => {
+          const addons = f.addons || {};
+          
+          const crearRama = addons.crearRama || {};
+          const crearRamaActivo = crearRama.activo || (crearRama.trialHasta && new Date(crearRama.trialHasta) > ahora);
+          const crearRamaTrial = crearRama.trialHasta && new Date(crearRama.trialHasta) > ahora && !crearRama.suscripcionHasta;
+          
+          const mayordomo = addons.mayordomo || {};
+          const mayordomoActivo = mayordomo.activo || (mayordomo.trialHasta && new Date(mayordomo.trialHasta) > ahora);
+          const mayordomoTrial = mayordomo.trialHasta && new Date(mayordomo.trialHasta) > ahora && !mayordomo.suscripcionHasta;
+
+          if (crearRamaActivo) crearRamaCount++;
+          if (mayordomoActivo) mayordomoCount++;
+          if (crearRamaTrial) trialsCount++;
+          if (mayordomoTrial) trialsCount++;
+
+          const crearRamaBadge = crearRamaActivo 
+            ? (crearRamaTrial ? '<span class="badge badge-warning">Trial</span>' : '<span class="badge badge-success">Activo</span>')
+            : '<span class="badge badge-neutral">No</span>';
+
+          const mayordomoBadge = mayordomoActivo 
+            ? (mayordomoTrial ? '<span class="badge badge-warning">Trial</span>' : '<span class="badge badge-success">Activo</span>')
+            : '<span class="badge badge-neutral">No</span>';
+
+          return `
+            <tr>
+              <td style="font-weight: 600;">${f.nombre || 'Sin nombre'}</td>
+              <td>${crearRamaBadge}</td>
+              <td>${mayordomoBadge}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="verFamilia('${f.id}')">⚙️</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        document.getElementById('stat-crear-rama').textContent = crearRamaCount;
+        document.getElementById('stat-mayordomo').textContent = mayordomoCount;
+        document.getElementById('stat-trials').textContent = trialsCount;
+
+      } catch (error) {
+        console.error('Error cargando add-ons:', error);
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Error al cargar</td></tr>';
+      }
+    }
+
+    // ============ INVITACIONES ============
+    async function cargarInvitaciones() {
+      const tbody = document.getElementById('tabla-invitaciones');
+      
+      try {
+        const snap = await db.collection('invitaciones-email').orderBy('fechaCreacion', 'desc').limit(50).get();
+        invitacionesData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (invitacionesData.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No hay invitaciones</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = invitacionesData.map(inv => {
+          const familia = familiasData.find(f => f.id === inv.familiaId);
+          const fecha = inv.fechaCreacion?.toDate?.() || new Date(inv.fechaCreacion);
+          const fechaStr = fecha ? fecha.toLocaleDateString('es') : '-';
+
+          const estadoBadge = inv.estado === 'pendiente' 
+            ? '<span class="badge badge-warning">Pendiente</span>'
+            : inv.estado === 'aceptada'
+            ? '<span class="badge badge-success">Aceptada</span>'
+            : '<span class="badge badge-error">Expirada</span>';
+
+          return `
+            <tr>
+              <td>${inv.email || '-'}</td>
+              <td>${familia?.nombre || '-'}</td>
+              <td><span class="badge badge-info">${inv.tipo || '-'}</span></td>
+              <td>${inv.invitadoPor ? 'Usuario' : '-'}</td>
+              <td>${fechaStr}</td>
+              <td>${estadoBadge}</td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error('Error cargando invitaciones:', error);
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Error al cargar</td></tr>';
+      }
+    }
+
+    // ============ CONFIGURACIÓN ============
+    async function guardarConfiguracion() {
+      alert('✅ Configuración guardada (TODO: implementar guardado en Firebase)');
+    }
+
+    function exportarUsuarios() {
+      const csv = 'Nombre,Email,Rol,FamiliaID\n' + 
+        usuariosData.map(u => `"${u.nombre || ''}","${u.email || ''}","${u.rol || ''}","${u.familiaId || ''}"`).join('\n');
+      
+      descargarCSV(csv, 'usuarios_familynk.csv');
+    }
+
+    function exportarFamilias() {
+      const csv = 'Nombre,Apellido,Plan,ID\n' + 
+        familiasData.map(f => `"${f.nombre || ''}","${f.apellidoPrincipal || ''}","${f.plan || 'free'}","${f.id}"`).join('\n');
+      
+      descargarCSV(csv, 'familias_familynk.csv');
+    }
+
+    function descargarCSV(contenido, nombre) {
+      const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = nombre;
+      link.click();
+    }
+
+    async function limpiarTrialsExpirados() {
+      if (!confirm('¿Limpiar todos los trials expirados?')) return;
+      
+      const ahora = new Date();
+      let limpiados = 0;
+
+      for (const f of familiasData) {
+        const addons = f.addons || {};
+        let needsUpdate = false;
+        const updateData = {};
+
+        if (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) < ahora) {
+          updateData['addons.crearRama.activo'] = false;
+          needsUpdate = true;
+        }
+
+        if (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) < ahora) {
+          updateData['addons.mayordomo.activo'] = false;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await db.collection('familias').doc(f.id).update(updateData);
+          limpiados++;
+        }
+      }
+
+      alert(`✅ Limpiados ${limpiados} trials expirados`);
+      familiasData = [];
+      cargarDashboard();
+    }
+
+    // ============ MODALES ============
+    function cerrarModales() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      editingUserId = null;
+      editingFamiliaId = null;
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) cerrarModales();
+      });
+    });
+
+    // ============ EVENT LISTENERS ============
+    document.getElementById('search-usuarios').addEventListener('input', cargarUsuarios);
+    document.getElementById('filter-rol').addEventListener('change', cargarUsuarios);
+    document.getElementById('search-familias').addEventListener('input', cargarFamilias);
+    document.getElementById('filter-plan').addEventListener('change', cargarFamilias);
+    document.getElementById('search-nidos').addEventListener('input', cargarNidos);
+  </script>
+</body>
+</html>
