@@ -1362,7 +1362,7 @@
             <!-- Se llena dinámicamente -->
           </div>
           <div class="estirpe-dropdown-divider"></div>
-          <a href="mi-perfil.html#crear-rama" class="estirpe-dropdown-action">
+          <a href="crear-rama.html" class="estirpe-dropdown-action">
             <span>➕</span> Crear/vincular rama
           </a>
         </div>
@@ -1654,16 +1654,37 @@
         return;
       }
 
-      // Cargar estirpes del usuario
-      const estirpesIds = userData.estirpes || [userData.familiaId];
+      // Cargar estirpes del usuario (incluyendo ramas adicionales)
+      let estirpesIds = userData.estirpes || [userData.familiaId];
+      
+      // Añadir ramas adicionales creadas por el usuario
+      const ramasAdicionales = userData.ramasAdicionales || [];
+      ramasAdicionales.forEach(rama => {
+        if (!estirpesIds.includes(rama.familiaId)) {
+          estirpesIds.push(rama.familiaId);
+        }
+      });
+      
       const estirpeActiva = userData.estirpeActiva || userData.familiaId;
       
       // Cargar todas las estirpes
       estirpesUsuario = [];
       for (const estirpeId of estirpesIds) {
-        const estirpeDoc = await db.collection('familias').doc(estirpeId).get();
-        if (estirpeDoc.exists) {
-          estirpesUsuario.push({ id: estirpeDoc.id, ...estirpeDoc.data() });
+        if (!estirpeId) continue;
+        try {
+          const estirpeDoc = await db.collection('familias').doc(estirpeId).get();
+          if (estirpeDoc.exists) {
+            const data = estirpeDoc.data();
+            // Marcar si es rama adicional para mostrar badge
+            const esRamaAdicional = ramasAdicionales.some(r => r.familiaId === estirpeId);
+            estirpesUsuario.push({ 
+              id: estirpeDoc.id, 
+              ...data,
+              esRamaAdicional
+            });
+          }
+        } catch (e) {
+          console.warn('Error cargando estirpe:', estirpeId, e);
         }
       }
       
@@ -1713,7 +1734,7 @@
       const list = document.getElementById('estirpe-dropdown-list');
       list.innerHTML = estirpesUsuario.map(e => `
         <div class="estirpe-dropdown-item ${e.id === currentFamilia?.id ? 'active' : ''}" onclick="cambiarEstirpe('${e.id}')">
-          <span class="estirpe-dropdown-item-icon">🪺</span>
+          <span class="estirpe-dropdown-item-icon">${e.esRamaAdicional ? '🌳' : '🪺'}</span>
           <span class="estirpe-dropdown-item-name">${e.nombre}</span>
           ${e.id === currentFamilia?.id ? '<span class="estirpe-dropdown-item-check">✓</span>' : ''}
         </div>
