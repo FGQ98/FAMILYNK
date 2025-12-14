@@ -599,6 +599,52 @@
 
     .btn-remove-item:hover { opacity: 1; }
 
+    /* Tabs de ámbito */
+    .ambito-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 4px;
+      background: var(--white);
+      border-radius: var(--radius-full);
+      width: fit-content;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .ambito-tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ambito-tab:hover { color: var(--text); background: var(--cream); }
+    
+    .ambito-tab.active {
+      background: var(--sage);
+      color: white;
+    }
+
+    .ambito-tab-count {
+      padding: 2px 8px;
+      background: rgba(0,0,0,0.1);
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+    }
+
+    .ambito-tab.active .ambito-tab-count { background: rgba(255,255,255,0.2); }
+
+    .hidden { display: none !important; }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-nav { display: none; }
@@ -641,6 +687,18 @@
       </div>
       <button class="btn btn-primary" onclick="abrirModalBien()">
         <span>+</span> Nuevo bien
+      </button>
+    </div>
+
+    <!-- Tabs de ámbito -->
+    <div class="ambito-tabs" id="ambito-tabs">
+      <button class="ambito-tab active" data-ambito="rama" onclick="cambiarAmbito('rama')">
+        <span>🌳</span> Rama
+        <span class="ambito-tab-count" id="count-rama">0</span>
+      </button>
+      <button class="ambito-tab" data-ambito="nido" onclick="cambiarAmbito('nido')">
+        <span>🏠</span> Mi Nido
+        <span class="ambito-tab-count" id="count-nido">0</span>
       </button>
     </div>
 
@@ -820,8 +878,10 @@
     let currentUser = null;
     let userData = null;
     let familiaId = null;
+    let nidoId = null;
     let bienesData = [];
     let filtroActual = 'todos';
+    let ambitoActual = 'rama';
     let editingBienId = null;
 
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
@@ -836,11 +896,17 @@
       
       userData = userDoc.data();
       familiaId = userData.familiaId;
+      nidoId = userData.nidoId || null;
 
       if (!familiaId) {
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('empty-state').classList.remove('hidden');
         return;
+      }
+
+      // Si el usuario no tiene nidoId, ocultar tab de Nido
+      if (!nidoId) {
+        document.getElementById('ambito-tabs').classList.add('hidden');
       }
 
       const nombre = userData.nombre || user.email.split('@')[0];
@@ -853,6 +919,7 @@
     // ========== CARGAR BIENES ==========
     async function loadBienes() {
       try {
+        // Cargar TODOS los bienes de la familia primero
         let snap;
         try {
           snap = await db.collection('bienes')
@@ -865,13 +932,28 @@
             .get();
         }
 
-        bienesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const todosBienes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        bienesData.sort((a, b) => {
+        todosBienes.sort((a, b) => {
           const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
           const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
           return fechaB - fechaA;
         });
+
+        // Separar por ámbito
+        const bienesRama = todosBienes.filter(b => !b.nidoId || b.esRama);
+        const bienesNido = nidoId ? todosBienes.filter(b => b.nidoId === nidoId && !b.esRama) : [];
+
+        // Actualizar contadores
+        document.getElementById('count-rama').textContent = bienesRama.length;
+        document.getElementById('count-nido').textContent = bienesNido.length;
+
+        // Filtrar según ámbito actual
+        if (ambitoActual === 'rama') {
+          bienesData = bienesRama;
+        } else {
+          bienesData = bienesNido;
+        }
         
         document.getElementById('loading').classList.add('hidden');
         renderBienes();
@@ -938,6 +1020,19 @@
       document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
       event.target.classList.add('active');
       renderBienes();
+    }
+
+    // ========== CAMBIAR ÁMBITO ==========
+    function cambiarAmbito(ambito) {
+      ambitoActual = ambito;
+      
+      // Actualizar tabs
+      document.querySelectorAll('.ambito-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.ambito === ambito);
+      });
+      
+      // Recargar bienes
+      loadBienes();
     }
 
     // ========== MODAL ==========
@@ -1128,6 +1223,15 @@
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
 
+        // Asignar ámbito según tab activo
+        if (ambitoActual === 'nido' && nidoId) {
+          bienData.nidoId = nidoId;
+          bienData.esRama = false;
+        } else {
+          bienData.nidoId = null;
+          bienData.esRama = true;
+        }
+
         if (editingBienId) {
           // Actualizar existente
           await db.collection('bienes').doc(editingBienId).update(bienData);
@@ -1136,6 +1240,7 @@
           bienData.creadoPor = currentUser.uid;
           bienData.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           bienData.mayordomo = { activo: false };
+          bienData.mayordomoActivo = false;
           bienData.mayordomoModulos = {
             reservas: false,
             inventario: false,
