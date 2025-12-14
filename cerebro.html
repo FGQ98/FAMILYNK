@@ -699,38 +699,6 @@
   </style>
 </head>
 <body>
-  <!-- Pantalla de carga con debug -->
-  <div id="loading-screen" style="
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--cream);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    font-family: 'Nunito', sans-serif;
-  ">
-    <div style="font-size: 4rem; margin-bottom: 20px;">🧠</div>
-    <div style="font-size: 1.2rem; color: var(--sage-dark); margin-bottom: 10px;">Cargando Cerebro...</div>
-    <div id="loading-status" style="font-size: 0.9rem; color: var(--text-muted);">Verificando autenticación...</div>
-    <div id="debug-log" style="
-      margin-top: 30px;
-      padding: 15px;
-      background: #f0f0f0;
-      border-radius: 8px;
-      font-family: monospace;
-      font-size: 0.75rem;
-      max-width: 90%;
-      max-height: 200px;
-      overflow-y: auto;
-      text-align: left;
-      color: #333;
-    "></div>
-  </div>
-
-  <!-- Contenido principal (oculto hasta verificar auth) -->
-  <div id="app-content" style="display: none;">
   <!-- Header -->
   <header class="header">
     <div class="header-left">
@@ -803,12 +771,9 @@
       <div class="section-header">
         <div>
           <h2 class="section-title memoria">🗄️ Memoria</h2>
-          <p class="section-description">Documentos, archivos e inventario</p>
+          <p class="section-description">Documentos y archivos familiares</p>
         </div>
         <div class="header-buttons">
-          <button class="btn btn-secondary" onclick="abrirInventarioBasico()">
-            🛒 Inventario Básico
-          </button>
           <button class="btn btn-memoria" onclick="subirArchivo()">
             📤 Subir archivo
           </button>
@@ -1044,81 +1009,11 @@
     </div>
   </div>
 
-  <!-- Modal Inventario Básico -->
-  <div class="modal-overlay" id="modal-inventario">
-    <div class="modal" style="max-width: 700px;">
-      <div class="modal-header">
-        <h3 class="modal-title">🛒 Inventario Básico</h3>
-        <button class="modal-close" onclick="cerrarModalInventario()">×</button>
-      </div>
-      <div class="modal-body">
-        <p style="color: var(--text-light); margin-bottom: 16px;">
-          Define los productos que deberían estar siempre disponibles. Esta configuración se usará como referencia para la Tienda de cada propiedad.
-        </p>
-        
-        <div id="inventario-lista" style="margin-bottom: 16px;">
-          <!-- Se carga dinámicamente -->
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <input type="text" class="form-input" id="nuevo-producto" placeholder="Nombre del producto..." style="flex: 1;">
-          <button class="btn btn-memoria" onclick="agregarProductoInventario()">+ Añadir</button>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="cerrarModalInventario()">Cerrar</button>
-        <button class="btn btn-memoria" onclick="guardarInventario()">Guardar cambios</button>
-      </div>
-    </div>
-  </div>
-
-  </div><!-- FIN app-content -->
-
-  <!-- Funciones de debug -->
-  <script>
-    function debugLog(msg, type = 'info') {
-      const logDiv = document.getElementById('debug-log');
-      const statusDiv = document.getElementById('loading-status');
-      const time = new Date().toLocaleTimeString();
-      const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
-      
-      console.log(`${icons[type]} ${msg}`);
-      
-      if (logDiv) {
-        logDiv.innerHTML += `<div>${icons[type]} ${time} - ${msg}</div>`;
-        logDiv.scrollTop = logDiv.scrollHeight;
-      }
-      if (statusDiv) {
-        statusDiv.textContent = msg;
-      }
-    }
-
-    function showError(title, message, uid = '') {
-      document.getElementById('loading-screen').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-          <div style="font-size: 3rem; margin-bottom: 20px;">🧠</div>
-          <h2 style="color: #C17757; margin-bottom: 16px;">${title}</h2>
-          <p style="color: #666; margin: 20px 0; max-width: 400px;">${message}</p>
-          ${uid ? `<p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">UID: ${uid}</p>` : ''}
-          <a href="cgi.html" style="display: inline-block; padding: 12px 24px; background: #7A9E7E; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">← Volver al inicio</a>
-        </div>
-      `;
-    }
-
-    function showApp() {
-      document.getElementById('loading-screen').style.display = 'none';
-      document.getElementById('app-content').style.display = 'block';
-    }
-  </script>
-
   <!-- Firebase Config - MISMO archivo que login.html -->
   <script src="js/firebase-config.js"></script>
 
   <!-- Lógica de Cerebro -->
   <script>
-    debugLog('Firebase cargado desde config compartido', 'success');
-    debugLog(`Proyecto: ${firebase.app().options.projectId}`);
-
     let currentUser = null;
     let userData = null;
     let ambitoActual = 'nido';
@@ -1126,68 +1021,44 @@
     let esAdminSistema = false;
     let nidosEstirpe = [];
 
-    // Esperar un momento para que firebase-config.js procese primero
-    setTimeout(async () => {
-      debugLog('Verificando sesión...');
-      
-      // Comprobar si ya hay usuario (firebase-config.js ya lo detectó)
-      const user = auth.currentUser;
-      debugLog(`Usuario actual: ${user ? user.email : 'null'}`);
-      
-      if (user) {
-        currentUser = user;
-        debugLog(`Sesión encontrada: ${user.email}`, 'success');
-        
-        try {
-          await cargarUsuario();
-        } catch (error) {
-          debugLog(`Error: ${error.message}`, 'error');
-          showError('Error al cargar Cerebro', error.message, user.uid);
-        }
-      } else {
-        // No hay sesión - mostrar opciones
-        debugLog('No hay sesión activa', 'error');
-        document.getElementById('loading-screen').innerHTML = `
-          <div style="text-align: center; padding: 40px; font-family: 'Nunito', sans-serif;">
-            <div style="font-size: 3rem; margin-bottom: 20px;">🔐</div>
-            <h2 style="color: #C17757; margin-bottom: 16px;">Sesión no detectada</h2>
-            <p style="color: #666; margin: 20px 0;">No se pudo verificar tu sesión de usuario.</p>
-            <p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">Proyecto: ${firebase.app().options.projectId}</p>
-            <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-              <button onclick="location.reload()" style="padding: 12px 24px; background: #7A9E7E; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">🔄 Reintentar</button>
-              <a href="login.html" style="padding: 12px 24px; background: #f0f0f0; color: #333; text-decoration: none; border-radius: 8px; font-weight: 600;">Ir a Login</a>
-              <a href="cgi.html" style="padding: 12px 24px; background: #f0f0f0; color: #333; text-decoration: none; border-radius: 8px; font-weight: 600;">← Volver</a>
-            </div>
-          </div>
-        `;
+    // Auth listener
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
       }
-    }, 1500); // Esperar 1.5 segundos para que Firebase termine de cargar
+      
+      currentUser = user;
+      
+      try {
+        await cargarUsuario();
+      } catch (error) {
+        console.error('Error cargando Cerebro:', error);
+        alert('Error: ' + error.message);
+        window.location.href = 'cgi.html';
+      }
+    });
 
     async function cargarUsuario() {
-      debugLog('Cargando datos de usuario...');
-      
       // 1. Obtener documento del usuario
       const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
       
       if (!userDoc.exists) {
-        throw new Error('Tu usuario no existe en la base de datos. Contacta al administrador.');
+        throw new Error('Tu usuario no existe en la base de datos.');
       }
       
       userData = userDoc.data();
-      debugLog(`Datos obtenidos: ${userData.nombre || 'sin nombre'}`, 'success');
       
       // 2. Verificar campos críticos
       if (!userData.familiaId) {
-        throw new Error('Tu usuario no tiene familia asignada (familiaId). Contacta al administrador.');
+        throw new Error('Tu usuario no tiene familia asignada.');
       }
-      debugLog(`FamiliaId: ${userData.familiaId}`);
       
       // 3. Verificar rol - Cerebro requiere permisos de admin
       const rolesPermitidos = ['AdminSistema', 'AdminRama', 'AdminNido'];
-      debugLog(`Rol del usuario: ${userData.rol || 'sin definir'}`);
       
       if (!rolesPermitidos.includes(userData.rol)) {
-        throw new Error(`Tu rol "${userData.rol || 'sin definir'}" no tiene acceso a Cerebro. Se requiere: AdminSistema, AdminRama o AdminNido.`);
+        throw new Error(`Tu rol "${userData.rol || 'sin definir'}" no tiene acceso a Cerebro.`);
       }
       
       // 4. UI del usuario
@@ -1197,28 +1068,21 @@
       
       // 5. Detectar tipo de admin
       esAdminSistema = userData.rol === 'AdminSistema';
-      debugLog(`Es AdminSistema: ${esAdminSistema}`);
       
       if (esAdminSistema) {
         // AdminSistema: ocultar pestañas de ámbito, ve todo
         document.getElementById('ambito-tabs').classList.add('hidden');
         ambitoActual = 'todos';
-        debugLog('Modo AdminSistema: ve todos los ámbitos');
       } else {
         // AdminRama o AdminNido: cargar nidos de su estirpe
         if (userData.nidoId) {
-          debugLog('Cargando nidos de la estirpe...');
           await cargarNidosEstirpe();
-          debugLog(`Nidos cargados: ${nidosEstirpe.length}`, 'success');
         } else {
-          debugLog('Usuario sin nidoId, usando solo familiaId', 'warning');
           nidosEstirpe = [];
         }
       }
       
-      // 6. Mostrar la app y cargar sección inicial
-      debugLog('¡Todo listo! Mostrando Cerebro...', 'success');
-      showApp();
+      // 6. Cargar sección inicial
       cambiarSeccion('memoria');
     }
 
@@ -1665,82 +1529,6 @@
 
     function exportarDatos() {
       alert('Próximamente: Exportar datos');
-    }
-
-    // ============ INVENTARIO BÁSICO ============
-    let inventarioItems = [];
-
-    function abrirInventarioBasico() {
-      cargarInventario();
-      document.getElementById('modal-inventario').classList.add('active');
-    }
-
-    function cerrarModalInventario() {
-      document.getElementById('modal-inventario').classList.remove('active');
-    }
-
-    async function cargarInventario() {
-      const container = document.getElementById('inventario-lista');
-      
-      try {
-        const snap = await db.collection('inventario-basico')
-          .where('familiaId', '==', userData.familiaId)
-          .orderBy('nombre')
-          .get();
-
-        inventarioItems = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        if (inventarioItems.length === 0) {
-          container.innerHTML = '<p style="color: var(--text-muted); text-align: center;">No hay productos configurados</p>';
-          return;
-        }
-
-        container.innerHTML = inventarioItems.map(item => `
-          <div style="display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--cream); border-radius: 8px; margin-bottom: 8px;">
-            <span style="flex: 1;">${item.nombre}</span>
-            <button onclick="eliminarProductoInventario('${item.id}')" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;">🗑️</button>
-          </div>
-        `).join('');
-
-      } catch (error) {
-        console.error('Error cargando inventario:', error);
-      }
-    }
-
-    async function agregarProductoInventario() {
-      const input = document.getElementById('nuevo-producto');
-      const nombre = input.value.trim();
-      if (!nombre) return;
-
-      try {
-        await db.collection('inventario-basico').add({
-          nombre,
-          familiaId: userData.familiaId,
-          creadoPor: currentUser.uid,
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        input.value = '';
-        cargarInventario();
-      } catch (error) {
-        console.error('Error agregando producto:', error);
-      }
-    }
-
-    async function eliminarProductoInventario(id) {
-      if (!confirm('¿Eliminar este producto del inventario básico?')) return;
-
-      try {
-        await db.collection('inventario-basico').doc(id).delete();
-        cargarInventario();
-      } catch (error) {
-        console.error('Error eliminando producto:', error);
-      }
-    }
-
-    function guardarInventario() {
-      cerrarModalInventario();
-      alert('✅ Cambios guardados');
     }
 
     // ============ VISIBILIDAD SELECTOR ============
