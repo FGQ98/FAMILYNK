@@ -1061,17 +1061,35 @@
     let esAdminSistema = false;
     let nidosEstirpe = []; // IDs de nidos descendientes
 
-    // Auth listener con mejor manejo de errores
+    // Auth listener con espera para evitar redirección prematura
+    let authChecked = false;
+    
     auth.onAuthStateChanged(async (user) => {
+      // Evitar múltiples ejecuciones
+      if (authChecked) return;
+      authChecked = true;
+      
       console.log('🔐 Auth state changed:', user ? user.email : 'no user');
       
       if (!user) {
-        console.log('❌ No hay usuario, redirigiendo a login');
-        window.location.href = 'login.html';
-        return;
+        // Esperar un momento por si Firebase está inicializando
+        console.log('⏳ No hay usuario, esperando confirmación...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verificar de nuevo
+        const currentAuthUser = auth.currentUser;
+        if (!currentAuthUser) {
+          console.log('❌ Confirmado: no hay usuario, redirigiendo a login');
+          window.location.href = 'login.html';
+          return;
+        }
+        // Si ahora sí hay usuario, usarlo
+        currentUser = currentAuthUser;
+      } else {
+        currentUser = user;
       }
       
-      currentUser = user;
+      console.log('✅ Usuario confirmado:', currentUser.email);
       
       try {
         await cargarUsuario();
