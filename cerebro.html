@@ -1061,57 +1061,86 @@
     let esAdminSistema = false;
     let nidosEstirpe = []; // IDs de nidos descendientes
 
-    // Auth listener
+    // Auth listener con mejor manejo de errores
     auth.onAuthStateChanged(async (user) => {
+      console.log('🔐 Auth state changed:', user ? user.email : 'no user');
+      
       if (!user) {
+        console.log('❌ No hay usuario, redirigiendo a login');
         window.location.href = 'login.html';
         return;
       }
+      
       currentUser = user;
-      await cargarUsuario();
+      
+      try {
+        await cargarUsuario();
+      } catch (error) {
+        console.error('💥 Error fatal en cargarUsuario:', error);
+        // NO redirigir, mostrar error en página
+        document.body.innerHTML = `
+          <div style="padding: 40px; text-align: center; font-family: 'Nunito', sans-serif;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🧠</div>
+            <h2 style="color: #C17757; margin-bottom: 16px;">Error al cargar Cerebro</h2>
+            <p style="color: #666; margin: 20px 0; max-width: 400px; margin-left: auto; margin-right: auto;">${error.message}</p>
+            <p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">UID: ${currentUser.uid}</p>
+            <a href="cgi.html" style="display: inline-block; padding: 12px 24px; background: #7A9E7E; color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">← Volver al inicio</a>
+          </div>
+        `;
+      }
     });
 
     async function cargarUsuario() {
-      try {
-        const doc = await db.collection('usuarios').doc(currentUser.uid).get();
-        if (!doc.exists) {
-          console.error('Usuario no existe en Firestore');
-          window.location.href = 'login.html';
-          return;
-        }
-        userData = doc.data();
-        
-        // Verificar datos críticos
-        if (!userData.familiaId) {
-          console.error('Usuario sin familiaId:', userData);
-          alert('Error: Tu usuario no tiene familia asignada. Contacta al administrador.');
-          return;
-        }
-
-        // UI usuario
-        const nombre = userData.nombre || currentUser.email.split('@')[0];
-        document.getElementById('user-name').textContent = nombre;
-        document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
-
-        // Detectar AdminSistema
-        esAdminSistema = userData.rol === 'AdminSistema';
-
-        if (esAdminSistema) {
-          // AdminSistema: ocultar pestañas de ámbito, ve todo
-          document.getElementById('ambito-tabs').classList.add('hidden');
-          ambitoActual = 'todos'; // Ve todo
-        } else {
-          // AdminNido: cargar nidos de su estirpe
-          await cargarNidosEstirpe();
-        }
-
-        // Cargar sección inicial
-        cambiarSeccion('memoria');
-        
-      } catch (error) {
-        console.error('Error cargando usuario:', error);
-        alert('Error al cargar datos de usuario: ' + error.message);
+      console.log('👤 Cargando usuario:', currentUser.uid);
+      
+      // 1. Obtener documento del usuario
+      const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+      
+      if (!userDoc.exists) {
+        throw new Error('Tu usuario no existe en la base de datos. Contacta al administrador.');
       }
+      
+      userData = userDoc.data();
+      console.log('📋 Datos de usuario:', userData);
+      
+      // 2. Verificar campos críticos
+      if (!userData.familiaId) {
+        throw new Error('Tu usuario no tiene familia asignada (familiaId). Contacta al administrador.');
+      }
+      
+      // 3. Verificar rol - Cerebro requiere permisos de admin
+      const rolesPermitidos = ['AdminSistema', 'AdminRama', 'AdminNido'];
+      if (!rolesPermitidos.includes(userData.rol)) {
+        throw new Error(`Tu rol "${userData.rol || 'sin definir'}" no tiene acceso a Cerebro. Se requiere: AdminSistema, AdminRama o AdminNido.`);
+      }
+      
+      // 4. UI del usuario
+      const nombre = userData.nombre || currentUser.email.split('@')[0];
+      document.getElementById('user-name').textContent = nombre;
+      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+      
+      // 5. Detectar tipo de admin
+      esAdminSistema = userData.rol === 'AdminSistema';
+      console.log('🔑 Rol:', userData.rol, '| Es AdminSistema:', esAdminSistema);
+      
+      if (esAdminSistema) {
+        // AdminSistema: ocultar pestañas de ámbito, ve todo
+        document.getElementById('ambito-tabs').classList.add('hidden');
+        ambitoActual = 'todos';
+      } else {
+        // AdminRama o AdminNido: cargar nidos de su estirpe
+        if (userData.nidoId) {
+          await cargarNidosEstirpe();
+          console.log('🪺 Nidos de estirpe cargados:', nidosEstirpe.length);
+        } else {
+          console.warn('⚠️ Usuario sin nidoId, usando solo familiaId para queries');
+          nidosEstirpe = [];
+        }
+      }
+      
+      // 6. Cargar sección inicial
+      console.log('✅ Usuario cargado correctamente, mostrando Memoria');
+      cambiarSeccion('memoria');
     }
 
     async function cargarNidosEstirpe() {
