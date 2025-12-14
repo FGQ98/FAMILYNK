@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Mantenimiento</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4; --cream-medium: #FAF5EF;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --mayordomo: #8B7355; --mayordomo-light: #A69076; --mayordomo-muted: rgba(139, 115, 85, 0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --warning: #E9A23B; --warning-muted: rgba(233, 162, 59, 0.15);
+      --danger: #D4695A; --danger-muted: rgba(212, 105, 90, 0.15);
+      --success: #7DB59A; --success-muted: rgba(125, 181, 154, 0.15);
+      --info: #5B8FB9; --info-muted: rgba(91, 143, 185, 0.15);
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* Header */
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .bien-badge { padding: 4px 10px; background: var(--mayordomo-muted); color: var(--mayordomo); border-radius: var(--radius-full); font-size: 0.8rem; font-weight: 600; }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    /* Tabs principales */
+    .main-tabs { display: flex; gap: 8px; margin-bottom: 24px; background: var(--white); padding: 8px; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); }
+    .main-tab {
+      flex: 1; padding: 14px 20px; background: transparent; border: none; border-radius: var(--radius-md);
+      font-family: 'Quicksand', sans-serif; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .main-tab:hover { background: var(--cream); }
+    .main-tab.active { background: var(--mayordomo); color: white; }
+    .main-tab .tab-count { font-size: 0.75rem; padding: 2px 8px; background: rgba(255,255,255,0.2); border-radius: var(--radius-full); }
+    .main-tab.active .tab-count { background: rgba(255,255,255,0.3); }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Toolbar */
+    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 200px; position: relative; }
+    .search-box input {
+      width: 100%; padding: 10px 14px 10px 40px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.9rem; background: var(--white);
+    }
+    .search-box input:focus { outline: none; border-color: var(--mayordomo); }
+    .search-box::before { content: '🔍'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 0.9rem; }
+    
+    .filter-select {
+      padding: 10px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.85rem; background: var(--white); cursor: pointer;
+    }
+    .filter-select:focus { outline: none; border-color: var(--mayordomo); }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-mayordomo { background: var(--mayordomo); color: white; }
+    .btn-mayordomo:hover { background: var(--mayordomo-light); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+    .btn-danger { background: var(--danger); color: white; }
+
+    /* Cards de reparación */
+    .items-grid { display: flex; flex-direction: column; gap: 12px; }
+
+    .item-card {
+      background: var(--white); border-radius: var(--radius-lg); padding: 16px 20px;
+      box-shadow: var(--shadow-soft); cursor: pointer; transition: all 0.2s;
+      display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center;
+    }
+    .item-card:hover { box-shadow: var(--shadow-float); transform: translateY(-2px); }
+
+    .item-priority {
+      width: 8px; height: 60px; border-radius: 4px;
+    }
+    .item-priority.alta { background: var(--danger); }
+    .item-priority.media { background: var(--warning); }
+    .item-priority.baja { background: var(--sage); }
+
+    .item-content { flex: 1; }
+    .item-ref { font-size: 0.75rem; color: var(--mayordomo); font-weight: 700; margin-bottom: 4px; }
+    .item-title { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+    .item-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: var(--text-muted); }
+    .item-meta span { display: flex; align-items: center; gap: 4px; }
+
+    .item-status {
+      padding: 6px 12px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;
+    }
+    .item-status.pendiente { background: var(--warning-muted); color: var(--warning); }
+    .item-status.en-curso { background: var(--info-muted); color: var(--info); }
+    .item-status.completada { background: var(--success-muted); color: var(--success); }
+
+    /* Plan periódico cards */
+    .plan-card {
+      background: var(--white); border-radius: var(--radius-lg); padding: 16px 20px;
+      box-shadow: var(--shadow-soft); cursor: pointer; transition: all 0.2s;
+      display: grid; grid-template-columns: auto 1fr auto auto; gap: 16px; align-items: center;
+    }
+    .plan-card:hover { box-shadow: var(--shadow-float); transform: translateY(-2px); }
+
+    .plan-icon {
+      width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--mayordomo-muted);
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+    }
+
+    .plan-periodicidad {
+      padding: 6px 12px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600;
+      background: var(--cream-dark); color: var(--text-light);
+    }
+
+    .plan-proxima {
+      text-align: right;
+    }
+    .plan-proxima-label { font-size: 0.7rem; color: var(--text-muted); }
+    .plan-proxima-fecha { font-weight: 700; font-size: 0.9rem; }
+    .plan-proxima-fecha.vencida { color: var(--danger); }
+    .plan-proxima-fecha.proxima { color: var(--warning); }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 24px; }
+    .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
+    .empty-title { font-family: 'Quicksand', sans-serif; font-weight: 700; margin-bottom: 8px; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex;
+      align-items: center; justify-content: center; z-index: 1000;
+      opacity: 0; visibility: hidden; transition: all 0.3s; padding: 24px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 600px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--cream-dark);
+      display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--white); z-index: 1;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: var(--cream); border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; }
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; gap: 12px; justify-content: space-between; }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.9rem; background: var(--white);
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--mayordomo); }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    .ref-badge {
+      display: inline-block; padding: 8px 16px; background: var(--mayordomo-muted); color: var(--mayordomo);
+      border-radius: var(--radius-md); font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .item-card { grid-template-columns: auto 1fr; }
+      .item-card .item-status { grid-column: 1 / -1; justify-self: start; margin-top: 8px; }
+      .plan-card { grid-template-columns: 1fr; gap: 12px; }
+      .plan-card .plan-icon { display: none; }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .search-box { min-width: 100%; }
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="#" class="back-btn" id="back-btn">← Volver al bien</a>
+    <div class="header-title">
+      <span>🔧</span>
+      <span>Mantenimiento</span>
+      <span class="bien-badge" id="bien-nombre">Cargando...</span>
+    </div>
+    <div></div>
+  </header>
+
+  <main class="main">
+    <!-- Tabs principales -->
+    <div class="main-tabs">
+      <button class="main-tab active" id="tab-reparaciones" onclick="cambiarTab('reparaciones')">
+        <span>🛠️</span>
+        <span>Reparaciones</span>
+        <span class="tab-count" id="count-reparaciones">0</span>
+      </button>
+      <button class="main-tab" id="tab-plan" onclick="cambiarTab('plan')">
+        <span>📋</span>
+        <span>Plan Periódico</span>
+        <span class="tab-count" id="count-plan">0</span>
+      </button>
+      <button class="main-tab" id="tab-taller" onclick="cambiarTab('taller')">
+        <span>🧰</span>
+        <span>Taller</span>
+        <span class="tab-count" id="count-taller">0</span>
+      </button>
+    </div>
+
+    <!-- ==================== TAB REPARACIONES ==================== -->
+    <div class="tab-content active" id="content-reparaciones">
+      <div class="toolbar">
+        <div class="search-box">
+          <input type="text" id="buscar-reparaciones" placeholder="Buscar por referencia, descripción, zona...">
+        </div>
+        <select class="filter-select" id="filtro-estado-rep" onchange="filtrarReparaciones()">
+          <option value="todos">Todos los estados</option>
+          <option value="pendiente">⏳ Pendiente</option>
+          <option value="en-curso">🔄 En curso</option>
+          <option value="completada">✅ Completada</option>
+        </select>
+        <select class="filter-select" id="filtro-prioridad-rep" onchange="filtrarReparaciones()">
+          <option value="todos">Todas las prioridades</option>
+          <option value="alta">🔴 Alta</option>
+          <option value="media">🟡 Media</option>
+          <option value="baja">🟢 Baja</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="exportarReparacionesPDF()">📥 PDF</button>
+        <button class="btn btn-mayordomo" onclick="abrirModalReparacion()">+ Nueva reparación</button>
+      </div>
+
+      <div class="items-grid" id="lista-reparaciones">
+        <div class="empty-state">
+          <div class="empty-icon">🔧</div>
+          <div class="empty-title">Sin reparaciones</div>
+          <div class="empty-text">No hay reparaciones registradas</div>
+          <button class="btn btn-mayordomo" onclick="abrirModalReparacion()">+ Nueva reparación</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB PLAN PERIÓDICO ==================== -->
+    <div class="tab-content" id="content-plan">
+      <div class="toolbar">
+        <div class="search-box">
+          <input type="text" id="buscar-plan" placeholder="Buscar por zona, descripción, tipo...">
+        </div>
+        <select class="filter-select" id="filtro-periodicidad" onchange="filtrarPlan()">
+          <option value="todos">Todas las periodicidades</option>
+          <option value="diaria">Diaria</option>
+          <option value="semanal">Semanal</option>
+          <option value="quincenal">Quincenal</option>
+          <option value="mensual">Mensual</option>
+          <option value="bimensual">Bimensual</option>
+          <option value="trimestral">Trimestral</option>
+          <option value="semestral">Semestral</option>
+          <option value="anual">Anual</option>
+          <option value="bianual">Bianual</option>
+        </select>
+        <select class="filter-select" id="filtro-tipo-mant" onchange="filtrarPlan()">
+          <option value="todos">Todos los tipos</option>
+          <option value="revisar">👁️ Revisar</option>
+          <option value="limpiar">🧹 Limpiar</option>
+          <option value="engrasar">🛢️ Engrasar</option>
+          <option value="sustituir">🔄 Sustituir piezas</option>
+          <option value="segar">🌿 Segar</option>
+          <option value="podar">✂️ Podar</option>
+          <option value="quitar">🗑️ Quitar</option>
+          <option value="pintar">🎨 Pintar</option>
+          <option value="apretar">🔩 Apretar</option>
+          <option value="plagas">🐛 Plagas</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="exportarPlanPDF()">📥 PDF</button>
+        <button class="btn btn-mayordomo" onclick="abrirModalPlan()">+ Nueva tarea</button>
+      </div>
+
+      <div class="items-grid" id="lista-plan">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">Sin tareas programadas</div>
+          <div class="empty-text">No hay tareas de mantenimiento periódico</div>
+          <button class="btn btn-mayordomo" onclick="abrirModalPlan()">+ Nueva tarea</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB TALLER ==================== -->
+    <div class="tab-content" id="content-taller">
+      <div class="toolbar">
+        <div class="search-box">
+          <input type="text" id="buscar-taller" placeholder="Buscar por número, descripción, ubicación...">
+        </div>
+        <select class="filter-select" id="filtro-categoria-taller" onchange="filtrarTaller()">
+          <option value="todos">Todas las categorías</option>
+          <option value="mobiliario">🪑 Mobiliario</option>
+          <option value="maquinas">⚙️ Máquinas</option>
+          <option value="electricas">🔌 Herramientas eléctricas</option>
+          <option value="neumaticas">💨 Herramientas neumáticas</option>
+          <option value="destornilladores">🪛 Destornilladores</option>
+          <option value="alicates">🔧 Alicates / Tenazas</option>
+          <option value="sierras">🪚 Sierras</option>
+          <option value="martillos">🔨 Martillos</option>
+          <option value="llaves">🔩 Llaves</option>
+          <option value="medicion">📏 Medición</option>
+          <option value="jardineria">🌳 Jardinería</option>
+          <option value="limpieza">🧹 Limpieza</option>
+          <option value="seguridad">🦺 Seguridad / EPIs</option>
+          <option value="consumibles">📦 Consumibles</option>
+          <option value="otros">🔧 Otros</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="exportarTallerPDF()">📥 PDF</button>
+        <button class="btn btn-mayordomo" onclick="abrirModalTaller()">+ Nuevo útil</button>
+      </div>
+
+      <div class="items-grid" id="lista-taller">
+        <div class="empty-state">
+          <div class="empty-icon">🧰</div>
+          <div class="empty-title">Taller vacío</div>
+          <div class="empty-text">No hay útiles registrados</div>
+          <button class="btn btn-mayordomo" onclick="abrirModalTaller()">+ Nuevo útil</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== MODAL REPARACIÓN ==================== -->
+  <div class="modal-overlay" id="modal-reparacion">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-rep-titulo">🛠️ Nueva reparación</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-reparacion">
+        <div class="modal-body">
+          <!-- Referencia (solo visible al editar) -->
+          <div class="form-group" id="grupo-referencia" style="text-align:center;margin-bottom:20px;">
+            <span class="ref-badge" id="rep-referencia">REP-0001</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Descripción de la avería *</label>
+            <textarea class="form-textarea" id="rep-descripcion" placeholder="Describe la avería o problema..." required></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Zona *</label>
+              <select class="form-select" id="rep-zona" required>
+                <option value="">Seleccionar...</option>
+                <option value="exterior">🏡 Exterior / Jardín</option>
+                <option value="garaje">🚗 Garaje</option>
+                <option value="cocina">🍳 Cocina</option>
+                <option value="salon">🛋️ Salón</option>
+                <option value="comedor">🍽️ Comedor</option>
+                <option value="dormitorio">🛏️ Dormitorio</option>
+                <option value="bano">🚿 Baño</option>
+                <option value="terraza">☀️ Terraza</option>
+                <option value="piscina">🏊 Piscina</option>
+                <option value="sotano">📦 Sótano</option>
+                <option value="trastero">🗄️ Trastero</option>
+                <option value="escaleras">🪜 Escaleras</option>
+                <option value="tejado">🏠 Tejado</option>
+                <option value="instalaciones">⚡ Instalaciones</option>
+                <option value="otro">📍 Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Prioridad *</label>
+              <select class="form-select" id="rep-prioridad" required>
+                <option value="baja">🟢 Baja - Puede esperar</option>
+                <option value="media" selected>🟡 Media - Pronto</option>
+                <option value="alta">🔴 Alta - Urgente</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Actuación prevista</label>
+            <textarea class="form-textarea" id="rep-actuacion" placeholder="Qué se va a hacer para solucionar..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Responsable</label>
+              <select class="form-select" id="rep-responsable">
+                <option value="">Sin asignar</option>
+                <option value="casero">👷 Casero</option>
+                <option value="electricista">⚡ Electricista</option>
+                <option value="fontanero">🚿 Fontanero</option>
+                <option value="albanil">🧱 Albañil</option>
+                <option value="carpintero">🪚 Carpintero</option>
+                <option value="mecanico">🔧 Mecánico</option>
+                <option value="jardinero">🌳 Jardinero</option>
+                <option value="especialista">🎓 Especialista</option>
+                <option value="propietario">🏠 Propietario</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha límite</label>
+              <input type="date" class="form-input" id="rep-fecha-limite">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Estado</label>
+            <select class="form-select" id="rep-estado">
+              <option value="pendiente">⏳ Pendiente</option>
+              <option value="en-curso">🔄 En curso</option>
+              <option value="completada">✅ Completada</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-rep" onclick="eliminarReparacion()">🗑️ Eliminar</button>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+            <button type="submit" class="btn btn-mayordomo">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL PLAN PERIÓDICO ==================== -->
+  <div class="modal-overlay" id="modal-plan">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-plan-titulo">📋 Nueva tarea periódica</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-plan">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Tipo de mantenimiento *</label>
+              <select class="form-select" id="plan-tipo" required>
+                <option value="">Seleccionar...</option>
+                <option value="revisar">👁️ Revisar</option>
+                <option value="limpiar">🧹 Limpiar</option>
+                <option value="engrasar">🛢️ Engrasar</option>
+                <option value="sustituir">🔄 Sustituir piezas</option>
+                <option value="segar">🌿 Segar</option>
+                <option value="podar">✂️ Podar</option>
+                <option value="quitar">🗑️ Quitar</option>
+                <option value="pintar">🎨 Pintar</option>
+                <option value="apretar">🔩 Apretar</option>
+                <option value="plagas">🐛 Plagas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Zona *</label>
+              <select class="form-select" id="plan-zona" required>
+                <option value="">Seleccionar...</option>
+                <option value="exterior">🏡 Exterior / Jardín</option>
+                <option value="garaje">🚗 Garaje</option>
+                <option value="cocina">🍳 Cocina</option>
+                <option value="salon">🛋️ Salón</option>
+                <option value="comedor">🍽️ Comedor</option>
+                <option value="dormitorio">🛏️ Dormitorio</option>
+                <option value="bano">🚿 Baño</option>
+                <option value="terraza">☀️ Terraza</option>
+                <option value="piscina">🏊 Piscina</option>
+                <option value="sotano">📦 Sótano</option>
+                <option value="trastero">🗄️ Trastero</option>
+                <option value="escaleras">🪜 Escaleras</option>
+                <option value="tejado">🏠 Tejado</option>
+                <option value="instalaciones">⚡ Instalaciones</option>
+                <option value="general">🏠 General</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Descripción de la tarea *</label>
+            <textarea class="form-textarea" id="plan-descripcion" placeholder="Describe qué hay que hacer..." required></textarea>
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">Periodicidad *</label>
+              <select class="form-select" id="plan-periodicidad" required>
+                <option value="diaria">Diaria</option>
+                <option value="semanal">Semanal</option>
+                <option value="quincenal">Quincenal</option>
+                <option value="mensual" selected>Mensual</option>
+                <option value="bimensual">Bimensual</option>
+                <option value="trimestral">Trimestral</option>
+                <option value="semestral">Semestral</option>
+                <option value="anual">Anual</option>
+                <option value="bianual">Bianual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tiempo estimado</label>
+              <select class="form-select" id="plan-tiempo">
+                <option value="">Sin estimar</option>
+                <option value="15min">15 minutos</option>
+                <option value="30min">30 minutos</option>
+                <option value="1h">1 hora</option>
+                <option value="2h">2 horas</option>
+                <option value="medio-dia">Medio día</option>
+                <option value="dia-completo">Día completo</option>
+                <option value="varios-dias">Varios días</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Operario</label>
+              <select class="form-select" id="plan-operario">
+                <option value="">Sin asignar</option>
+                <option value="casero">👷 Casero</option>
+                <option value="electricista">⚡ Electricista</option>
+                <option value="fontanero">🚿 Fontanero</option>
+                <option value="albanil">🧱 Albañil</option>
+                <option value="carpintero">🪚 Carpintero</option>
+                <option value="mecanico">🔧 Mecánico</option>
+                <option value="jardinero">🌳 Jardinero</option>
+                <option value="especialista">🎓 Especialista</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Próxima ejecución</label>
+            <input type="date" class="form-input" id="plan-proxima">
+            <div class="form-hint">Fecha de la próxima vez que debe realizarse esta tarea</div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notas adicionales</label>
+            <textarea class="form-textarea" id="plan-notas" placeholder="Materiales necesarios, precauciones, etc."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-plan" onclick="eliminarPlan()">🗑️ Eliminar</button>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+            <button type="submit" class="btn btn-mayordomo">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL TALLER ==================== -->
+  <div class="modal-overlay" id="modal-taller">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-taller-titulo">🧰 Nuevo útil</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-taller">
+        <div class="modal-body">
+          <!-- Número (solo visible al editar) -->
+          <div class="form-group" id="grupo-numero-util" style="text-align:center;margin-bottom:20px;">
+            <span class="ref-badge" id="util-numero">UTL-0001</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Categoría *</label>
+            <select class="form-select" id="util-categoria" required>
+              <option value="">Seleccionar...</option>
+              <option value="mobiliario">🪑 Mobiliario (mesas, estanterías, armarios)</option>
+              <option value="maquinas">⚙️ Máquinas (taladro columna, torno, sierra cinta)</option>
+              <option value="electricas">🔌 Herramientas eléctricas (taladro, amoladora, lijadora)</option>
+              <option value="neumaticas">💨 Herramientas neumáticas (pistola, clavadora)</option>
+              <option value="destornilladores">🪛 Destornilladores</option>
+              <option value="alicates">🔧 Alicates / Tenazas / Pinzas</option>
+              <option value="sierras">🪚 Sierras (manual, serrucho, arco)</option>
+              <option value="martillos">🔨 Martillos / Mazas</option>
+              <option value="llaves">🔩 Llaves (fijas, inglesa, allen, carraca)</option>
+              <option value="medicion">📏 Medición (metro, nivel, escuadra)</option>
+              <option value="jardineria">🌳 Jardinería (tijeras, rastrillo, azada)</option>
+              <option value="limpieza">🧹 Limpieza (escoba, fregona, aspirador)</option>
+              <option value="seguridad">🦺 Seguridad / EPIs (guantes, gafas, casco)</option>
+              <option value="consumibles">📦 Consumibles (tornillos, clavos, cintas)</option>
+              <option value="otros">🔧 Otros</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Descripción *</label>
+            <input type="text" class="form-input" id="util-descripcion" placeholder="Ej: Taladro percutor Bosch GSB 18V-55" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Fecha de adquisición</label>
+              <input type="date" class="form-input" id="util-fecha">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-select" id="util-estado">
+                <option value="operativo">✅ Operativo</option>
+                <option value="revision">🔧 Necesita revisión</option>
+                <option value="averiado">❌ Averiado</option>
+                <option value="prestado">📤 Prestado</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ubicación</label>
+            <input type="text" class="form-input" id="util-ubicacion" placeholder="Ej: Armario 2, Balda 3 / Garaje pared norte">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notas (opcional)</label>
+            <textarea class="form-textarea" id="util-notas" placeholder="Marca, modelo, número de serie, observaciones..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-util" onclick="eliminarUtil()">🗑️ Eliminar</button>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+            <button type="submit" class="btn btn-mayordomo">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let familiaId = null;
+    let bienId = null;
+    let bienData = null;
+    let reparacionesData = [];
+    let planData = [];
+    let tallerData = [];
+    let editingRepId = null;
+    let editingPlanId = null;
+    let editingUtilId = null;
+    let tabActual = 'reparaciones';
+
+    // Obtener bienId de URL
+    const urlParams = new URLSearchParams(window.location.search);
+    bienId = urlParams.get('bien');
+
+    if (!bienId) {
+      alert('No se especificó el bien');
+      window.location.href = 'lo-comun.html';
+    }
+
+    // Iconos y labels
+    const tipoIconos = {
+      revisar: '👁️', limpiar: '🧹', engrasar: '🛢️', sustituir: '🔄',
+      segar: '🌿', podar: '✂️', quitar: '🗑️', pintar: '🎨', apretar: '🔩', plagas: '🐛'
+    };
+    const tipoLabels = {
+      revisar: 'Revisar', limpiar: 'Limpiar', engrasar: 'Engrasar', sustituir: 'Sustituir',
+      segar: 'Segar', podar: 'Podar', quitar: 'Quitar', pintar: 'Pintar', apretar: 'Apretar', plagas: 'Plagas'
+    };
+    const zonaLabels = {
+      exterior: '🏡 Exterior', garaje: '🚗 Garaje', cocina: '🍳 Cocina', salon: '🛋️ Salón',
+      comedor: '🍽️ Comedor', dormitorio: '🛏️ Dormitorio', bano: '🚿 Baño', terraza: '☀️ Terraza',
+      piscina: '🏊 Piscina', sotano: '📦 Sótano', trastero: '🗄️ Trastero', escaleras: '🪜 Escaleras',
+      tejado: '🏠 Tejado', instalaciones: '⚡ Instalaciones', general: '🏠 General', otro: '📍 Otro'
+    };
+    const periodicidadLabels = {
+      diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual',
+      bimensual: 'Bimensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual', bianual: 'Bianual'
+    };
+    const responsableLabels = {
+      casero: '👷 Casero', electricista: '⚡ Electricista', fontanero: '🚿 Fontanero',
+      albanil: '🧱 Albañil', carpintero: '🪚 Carpintero', mecanico: '🔧 Mecánico',
+      jardinero: '🌳 Jardinero', especialista: '🎓 Especialista', propietario: '🏠 Propietario'
+    };
+    const categoriaIconos = {
+      mobiliario: '🪑', maquinas: '⚙️', electricas: '🔌', neumaticas: '💨',
+      destornilladores: '🪛', alicates: '🔧', sierras: '🪚', martillos: '🔨',
+      llaves: '🔩', medicion: '📏', jardineria: '🌳', limpieza: '🧹',
+      seguridad: '🦺', consumibles: '📦', otros: '🔧'
+    };
+    const categoriaLabels = {
+      mobiliario: 'Mobiliario', maquinas: 'Máquinas', electricas: 'H. Eléctricas', neumaticas: 'H. Neumáticas',
+      destornilladores: 'Destornilladores', alicates: 'Alicates', sierras: 'Sierras', martillos: 'Martillos',
+      llaves: 'Llaves', medicion: 'Medición', jardineria: 'Jardinería', limpieza: 'Limpieza',
+      seguridad: 'Seguridad', consumibles: 'Consumibles', otros: 'Otros'
+    };
+    const estadoUtilLabels = {
+      operativo: '✅ Operativo', revision: '🔧 Revisión', averiado: '❌ Averiado', prestado: '📤 Prestado'
+    };
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      familiaId = userDoc.data().familiaId;
+
+      // Cargar bien
+      const bienDoc = await db.collection('bienes').doc(bienId).get();
+      if (!bienDoc.exists) {
+        alert('Bien no encontrado');
+        window.location.href = 'lo-comun.html';
+        return;
+      }
+      bienData = bienDoc.data();
+      document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
+      document.getElementById('back-btn').href = `bien.html?id=${bienId}`;
+
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      await Promise.all([cargarReparaciones(), cargarPlan(), cargarTaller()]);
+    }
+
+    // ==================== REPARACIONES ====================
+    async function cargarReparaciones() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('reparaciones')
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+        
+        reparacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        document.getElementById('count-reparaciones').textContent = reparacionesData.length;
+        renderReparaciones();
+      } catch (error) {
+        console.error('Error cargando reparaciones:', error);
+      }
+    }
+
+    function renderReparaciones() {
+      const container = document.getElementById('lista-reparaciones');
+      const busqueda = document.getElementById('buscar-reparaciones').value.toLowerCase();
+      const filtroEstado = document.getElementById('filtro-estado-rep').value;
+      const filtroPrioridad = document.getElementById('filtro-prioridad-rep').value;
+
+      let items = reparacionesData.filter(r => {
+        if (busqueda && !r.descripcion?.toLowerCase().includes(busqueda) && 
+            !r.referencia?.toLowerCase().includes(busqueda) &&
+            !r.zona?.toLowerCase().includes(busqueda)) return false;
+        if (filtroEstado !== 'todos' && r.estado !== filtroEstado) return false;
+        if (filtroPrioridad !== 'todos' && r.prioridad !== filtroPrioridad) return false;
+        return true;
+      });
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🔧</div>
+            <div class="empty-title">Sin resultados</div>
+            <div class="empty-text">No hay reparaciones que coincidan</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map(r => {
+        const fechaLimite = r.fechaLimite ? new Date(r.fechaLimite).toLocaleDateString('es', { day: 'numeric', month: 'short' }) : '';
+        return `
+          <div class="item-card" onclick="abrirModalReparacion('${r.id}')">
+            <div class="item-priority ${r.prioridad || 'media'}"></div>
+            <div class="item-content">
+              <div class="item-ref">${r.referencia || 'REP-????'}</div>
+              <div class="item-title">${r.descripcion || 'Sin descripción'}</div>
+              <div class="item-meta">
+                <span>📍 ${zonaLabels[r.zona] || r.zona || 'Sin zona'}</span>
+                ${r.responsable ? `<span>👷 ${responsableLabels[r.responsable] || r.responsable}</span>` : ''}
+                ${fechaLimite ? `<span>📅 ${fechaLimite}</span>` : ''}
+              </div>
+            </div>
+            <div class="item-status ${r.estado || 'pendiente'}">${estadoLabel(r.estado)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function estadoLabel(estado) {
+      const labels = { pendiente: '⏳ Pendiente', 'en-curso': '🔄 En curso', completada: '✅ Completada' };
+      return labels[estado] || '⏳ Pendiente';
+    }
+
+    function filtrarReparaciones() {
+      renderReparaciones();
+    }
+
+    document.getElementById('buscar-reparaciones').addEventListener('input', renderReparaciones);
+
+    // Modal Reparación
+    function abrirModalReparacion(id = null) {
+      editingRepId = id;
+      document.getElementById('form-reparacion').reset();
+      document.getElementById('btn-eliminar-rep').classList.toggle('hidden', !id);
+
+      if (id) {
+        const rep = reparacionesData.find(r => r.id === id);
+        if (!rep) return;
+
+        document.getElementById('modal-rep-titulo').textContent = '✏️ Editar reparación';
+        document.getElementById('grupo-referencia').style.display = 'block';
+        document.getElementById('rep-referencia').textContent = rep.referencia || 'REP-????';
+        document.getElementById('rep-descripcion').value = rep.descripcion || '';
+        document.getElementById('rep-zona').value = rep.zona || '';
+        document.getElementById('rep-prioridad').value = rep.prioridad || 'media';
+        document.getElementById('rep-actuacion').value = rep.actuacion || '';
+        document.getElementById('rep-responsable').value = rep.responsable || '';
+        document.getElementById('rep-fecha-limite').value = rep.fechaLimite || '';
+        document.getElementById('rep-estado').value = rep.estado || 'pendiente';
+      } else {
+        document.getElementById('modal-rep-titulo').textContent = '🛠️ Nueva reparación';
+        document.getElementById('grupo-referencia').style.display = 'none';
+      }
+
+      document.getElementById('modal-reparacion').classList.add('active');
+    }
+
+    document.getElementById('form-reparacion').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      try {
+        const data = {
+          descripcion: document.getElementById('rep-descripcion').value,
+          zona: document.getElementById('rep-zona').value,
+          prioridad: document.getElementById('rep-prioridad').value,
+          actuacion: document.getElementById('rep-actuacion').value,
+          responsable: document.getElementById('rep-responsable').value,
+          fechaLimite: document.getElementById('rep-fecha-limite').value,
+          estado: document.getElementById('rep-estado').value,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const ref = db.collection('bienes').doc(bienId).collection('reparaciones');
+
+        if (editingRepId) {
+          await ref.doc(editingRepId).update(data);
+        } else {
+          // Generar referencia
+          const count = reparacionesData.length + 1;
+          data.referencia = `REP-${String(count).padStart(4, '0')}`;
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarModales();
+        await cargarReparaciones();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    });
+
+    async function eliminarReparacion() {
+      if (!editingRepId || !confirm('¿Eliminar esta reparación?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('reparaciones').doc(editingRepId).delete();
+        cerrarModales();
+        await cargarReparaciones();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    // ==================== PLAN PERIÓDICO ====================
+    async function cargarPlan() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('plan-mantenimiento')
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+        
+        planData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        document.getElementById('count-plan').textContent = planData.length;
+        renderPlan();
+      } catch (error) {
+        console.error('Error cargando plan:', error);
+      }
+    }
+
+    function renderPlan() {
+      const container = document.getElementById('lista-plan');
+      const busqueda = document.getElementById('buscar-plan').value.toLowerCase();
+      const filtroPeriodicidad = document.getElementById('filtro-periodicidad').value;
+      const filtroTipo = document.getElementById('filtro-tipo-mant').value;
+
+      let items = planData.filter(p => {
+        if (busqueda && !p.descripcion?.toLowerCase().includes(busqueda) && 
+            !p.zona?.toLowerCase().includes(busqueda) &&
+            !p.tipo?.toLowerCase().includes(busqueda)) return false;
+        if (filtroPeriodicidad !== 'todos' && p.periodicidad !== filtroPeriodicidad) return false;
+        if (filtroTipo !== 'todos' && p.tipo !== filtroTipo) return false;
+        return true;
+      });
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">Sin resultados</div>
+            <div class="empty-text">No hay tareas que coincidan</div>
+          </div>
+        `;
+        return;
+      }
+
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      container.innerHTML = items.map(p => {
+        const proxima = p.proximaEjecucion ? new Date(p.proximaEjecucion) : null;
+        let proximaClass = '';
+        if (proxima) {
+          proxima.setHours(0, 0, 0, 0);
+          const diffDias = Math.ceil((proxima - hoy) / (1000 * 60 * 60 * 24));
+          if (diffDias < 0) proximaClass = 'vencida';
+          else if (diffDias <= 7) proximaClass = 'proxima';
+        }
+
+        return `
+          <div class="plan-card" onclick="abrirModalPlan('${p.id}')">
+            <div class="plan-icon">${tipoIconos[p.tipo] || '🔧'}</div>
+            <div class="item-content">
+              <div class="item-title">${p.descripcion || 'Sin descripción'}</div>
+              <div class="item-meta">
+                <span>📍 ${zonaLabels[p.zona] || p.zona || 'Sin zona'}</span>
+                ${p.operario ? `<span>👷 ${responsableLabels[p.operario] || p.operario}</span>` : ''}
+                ${p.tiempoEstimado ? `<span>⏱️ ${tiempoLabel(p.tiempoEstimado)}</span>` : ''}
+              </div>
+            </div>
+            <div class="plan-periodicidad">${periodicidadLabels[p.periodicidad] || p.periodicidad}</div>
+            <div class="plan-proxima">
+              <div class="plan-proxima-label">Próxima</div>
+              <div class="plan-proxima-fecha ${proximaClass}">
+                ${proxima ? proxima.toLocaleDateString('es', { day: 'numeric', month: 'short' }) : 'Sin fecha'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function tiempoLabel(tiempo) {
+      const labels = {
+        '15min': '15 min', '30min': '30 min', '1h': '1 hora', '2h': '2 horas',
+        'medio-dia': '½ día', 'dia-completo': '1 día', 'varios-dias': '+1 día'
+      };
+      return labels[tiempo] || tiempo;
+    }
+
+    function filtrarPlan() {
+      renderPlan();
+    }
+
+    document.getElementById('buscar-plan').addEventListener('input', renderPlan);
+
+    // Modal Plan
+    function abrirModalPlan(id = null) {
+      editingPlanId = id;
+      document.getElementById('form-plan').reset();
+      document.getElementById('btn-eliminar-plan').classList.toggle('hidden', !id);
+
+      if (id) {
+        const plan = planData.find(p => p.id === id);
+        if (!plan) return;
+
+        document.getElementById('modal-plan-titulo').textContent = '✏️ Editar tarea';
+        document.getElementById('plan-tipo').value = plan.tipo || '';
+        document.getElementById('plan-zona').value = plan.zona || '';
+        document.getElementById('plan-descripcion').value = plan.descripcion || '';
+        document.getElementById('plan-periodicidad').value = plan.periodicidad || 'mensual';
+        document.getElementById('plan-tiempo').value = plan.tiempoEstimado || '';
+        document.getElementById('plan-operario').value = plan.operario || '';
+        document.getElementById('plan-proxima').value = plan.proximaEjecucion || '';
+        document.getElementById('plan-notas').value = plan.notas || '';
+      } else {
+        document.getElementById('modal-plan-titulo').textContent = '📋 Nueva tarea periódica';
+        // Fecha por defecto: hoy
+        document.getElementById('plan-proxima').value = new Date().toISOString().split('T')[0];
+      }
+
+      document.getElementById('modal-plan').classList.add('active');
+    }
+
+    document.getElementById('form-plan').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      try {
+        const data = {
+          tipo: document.getElementById('plan-tipo').value,
+          zona: document.getElementById('plan-zona').value,
+          descripcion: document.getElementById('plan-descripcion').value,
+          periodicidad: document.getElementById('plan-periodicidad').value,
+          tiempoEstimado: document.getElementById('plan-tiempo').value,
+          operario: document.getElementById('plan-operario').value,
+          proximaEjecucion: document.getElementById('plan-proxima').value,
+          notas: document.getElementById('plan-notas').value,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const ref = db.collection('bienes').doc(bienId).collection('plan-mantenimiento');
+
+        if (editingPlanId) {
+          await ref.doc(editingPlanId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarModales();
+        await cargarPlan();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    });
+
+    async function eliminarPlan() {
+      if (!editingPlanId || !confirm('¿Eliminar esta tarea periódica?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('plan-mantenimiento').doc(editingPlanId).delete();
+        cerrarModales();
+        await cargarPlan();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    // ==================== TABS ====================
+    function cambiarTab(tab) {
+      tabActual = tab;
+      document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      document.getElementById(`content-${tab}`).classList.add('active');
+    }
+
+    // ==================== EXPORTAR PDF ====================
+    function exportarReparacionesPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text(`Reparaciones - ${bienData.nombre || 'Bien'}`, 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Generado: ${new Date().toLocaleDateString('es')}`, 14, 28);
+
+      const headers = [['Ref.', 'Descripción', 'Zona', 'Prioridad', 'Estado', 'Responsable', 'Fecha límite']];
+      const data = reparacionesData.map(r => [
+        r.referencia || '',
+        (r.descripcion || '').substring(0, 40),
+        zonaLabels[r.zona]?.replace(/[^\w\s]/g, '') || r.zona || '',
+        r.prioridad || '',
+        r.estado || '',
+        responsableLabels[r.responsable]?.replace(/[^\w\s]/g, '') || r.responsable || '',
+        r.fechaLimite || ''
+      ]);
+
+      doc.autoTable({
+        head: headers,
+        body: data,
+        startY: 35,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [139, 115, 85] }
+      });
+
+      doc.save(`reparaciones_${bienData.nombre || 'bien'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    function exportarPlanPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text(`Plan de Mantenimiento - ${bienData.nombre || 'Bien'}`, 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Generado: ${new Date().toLocaleDateString('es')}`, 14, 28);
+
+      const headers = [['Tipo', 'Descripción', 'Zona', 'Periodicidad', 'Operario', 'Próxima']];
+      const data = planData.map(p => [
+        tipoLabels[p.tipo] || p.tipo || '',
+        (p.descripcion || '').substring(0, 40),
+        zonaLabels[p.zona]?.replace(/[^\w\s]/g, '') || p.zona || '',
+        periodicidadLabels[p.periodicidad] || p.periodicidad || '',
+        responsableLabels[p.operario]?.replace(/[^\w\s]/g, '') || p.operario || '',
+        p.proximaEjecucion || ''
+      ]);
+
+      doc.autoTable({
+        head: headers,
+        body: data,
+        startY: 35,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [139, 115, 85] }
+      });
+
+      doc.save(`plan_mantenimiento_${bienData.nombre || 'bien'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    // ==================== TALLER ====================
+    async function cargarTaller() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('taller')
+          .orderBy('numero', 'asc')
+          .get();
+        
+        tallerData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        document.getElementById('count-taller').textContent = tallerData.length;
+        renderTaller();
+      } catch (error) {
+        console.error('Error cargando taller:', error);
+        // Si falla por índice, cargar sin ordenar
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('taller').get();
+          tallerData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          document.getElementById('count-taller').textContent = tallerData.length;
+          renderTaller();
+        } catch (e) {
+          console.error('Error:', e);
+        }
+      }
+    }
+
+    function renderTaller() {
+      const container = document.getElementById('lista-taller');
+      const busqueda = document.getElementById('buscar-taller').value.toLowerCase();
+      const filtroCategoria = document.getElementById('filtro-categoria-taller').value;
+
+      let items = tallerData.filter(u => {
+        if (busqueda && !u.descripcion?.toLowerCase().includes(busqueda) && 
+            !u.numero?.toLowerCase().includes(busqueda) &&
+            !u.ubicacion?.toLowerCase().includes(busqueda)) return false;
+        if (filtroCategoria !== 'todos' && u.categoria !== filtroCategoria) return false;
+        return true;
+      });
+
+      if (items.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🧰</div>
+            <div class="empty-title">Sin resultados</div>
+            <div class="empty-text">No hay útiles que coincidan</div>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = items.map(u => {
+        const fechaAdq = u.fechaAdquisicion ? new Date(u.fechaAdquisicion).toLocaleDateString('es', { month: 'short', year: 'numeric' }) : '';
+        return `
+          <div class="plan-card" onclick="abrirModalTaller('${u.id}')">
+            <div class="plan-icon">${categoriaIconos[u.categoria] || '🔧'}</div>
+            <div class="item-content">
+              <div class="item-ref">${u.numero || 'UTL-????'}</div>
+              <div class="item-title">${u.descripcion || 'Sin descripción'}</div>
+              <div class="item-meta">
+                <span>📂 ${categoriaLabels[u.categoria] || u.categoria || 'Sin categoría'}</span>
+                ${u.ubicacion ? `<span>📍 ${u.ubicacion}</span>` : ''}
+                ${fechaAdq ? `<span>📅 ${fechaAdq}</span>` : ''}
+              </div>
+            </div>
+            <div class="item-status ${u.estado || 'operativo'}" style="background:${estadoColor(u.estado)}">${estadoUtilLabels[u.estado] || '✅ Operativo'}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function estadoColor(estado) {
+      const colors = {
+        operativo: 'var(--success-muted)',
+        revision: 'var(--warning-muted)',
+        averiado: 'var(--danger-muted)',
+        prestado: 'var(--info-muted)'
+      };
+      return colors[estado] || 'var(--success-muted)';
+    }
+
+    function filtrarTaller() {
+      renderTaller();
+    }
+
+    document.getElementById('buscar-taller').addEventListener('input', renderTaller);
+
+    // Modal Taller
+    function abrirModalTaller(id = null) {
+      editingUtilId = id;
+      document.getElementById('form-taller').reset();
+      document.getElementById('btn-eliminar-util').classList.toggle('hidden', !id);
+
+      if (id) {
+        const util = tallerData.find(u => u.id === id);
+        if (!util) return;
+
+        document.getElementById('modal-taller-titulo').textContent = '✏️ Editar útil';
+        document.getElementById('grupo-numero-util').style.display = 'block';
+        document.getElementById('util-numero').textContent = util.numero || 'UTL-????';
+        document.getElementById('util-categoria').value = util.categoria || '';
+        document.getElementById('util-descripcion').value = util.descripcion || '';
+        document.getElementById('util-fecha').value = util.fechaAdquisicion || '';
+        document.getElementById('util-estado').value = util.estado || 'operativo';
+        document.getElementById('util-ubicacion').value = util.ubicacion || '';
+        document.getElementById('util-notas').value = util.notas || '';
+      } else {
+        document.getElementById('modal-taller-titulo').textContent = '🧰 Nuevo útil';
+        document.getElementById('grupo-numero-util').style.display = 'none';
+      }
+
+      document.getElementById('modal-taller').classList.add('active');
+    }
+
+    document.getElementById('form-taller').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      try {
+        const data = {
+          categoria: document.getElementById('util-categoria').value,
+          descripcion: document.getElementById('util-descripcion').value,
+          fechaAdquisicion: document.getElementById('util-fecha').value,
+          estado: document.getElementById('util-estado').value,
+          ubicacion: document.getElementById('util-ubicacion').value,
+          notas: document.getElementById('util-notas').value,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const ref = db.collection('bienes').doc(bienId).collection('taller');
+
+        if (editingUtilId) {
+          await ref.doc(editingUtilId).update(data);
+        } else {
+          // Generar número
+          const count = tallerData.length + 1;
+          data.numero = `UTL-${String(count).padStart(4, '0')}`;
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarModales();
+        await cargarTaller();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    });
+
+    async function eliminarUtil() {
+      if (!editingUtilId || !confirm('¿Eliminar este útil del taller?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('taller').doc(editingUtilId).delete();
+        cerrarModales();
+        await cargarTaller();
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+    function exportarTallerPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.text(`Taller - ${bienData.nombre || 'Bien'}`, 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Inventario de útiles y herramientas`, 14, 26);
+      doc.text(`Generado: ${new Date().toLocaleDateString('es')}`, 14, 32);
+
+      const headers = [['Nº', 'Categoría', 'Descripción', 'Estado', 'Ubicación', 'F. Adquisición']];
+      const data = tallerData.map(u => [
+        u.numero || '',
+        categoriaLabels[u.categoria] || u.categoria || '',
+        (u.descripcion || '').substring(0, 35),
+        u.estado || 'operativo',
+        (u.ubicacion || '').substring(0, 20),
+        u.fechaAdquisicion || ''
+      ]);
+
+      doc.autoTable({
+        head: headers,
+        body: data,
+        startY: 38,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [139, 115, 85] }
+      });
+
+      doc.save(`taller_${bienData.nombre || 'bien'}_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    // ==================== UTILIDADES ====================
+    function cerrarModales() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) cerrarModales();
+      });
+    });
+  </script>
+</body>
+</html>
