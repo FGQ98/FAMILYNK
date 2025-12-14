@@ -1512,6 +1512,8 @@
       const nuevoNidoNombre = document.getElementById('nuevo-nido-nombre').value;
       const nuevoNidoFecha = document.getElementById('nuevo-nido-fecha').value;
 
+      console.log('📝 Datos del formulario:', { relacion, formaNido, nuevoNidoNombre });
+
       const btn = document.getElementById('modal-añadir');
       btn.disabled = true;
       btn.textContent = formaNido ? 'Creando miembro y nido...' : 'Añadiendo...';
@@ -1539,12 +1541,12 @@
             '4-hijos': 4
           };
           
-          const genNum = genToNum[genActual] || parseInt(genActual.charAt(0)) || 1;
+          const genNum = genToNum[genActual] || parseInt(genActual.charAt(0)) || 3;
           const siguienteGen = Math.min(genNum + 1, 4);
           const genLabels = { 1: 'bisabuelos', 2: 'abuelos', 3: 'padres', 4: 'hijos' };
           const nuevaGeneracion = `${siguienteGen}-${genLabels[siguienteGen]}`;
 
-          console.log('Creando nido hijo:', { genActual, genNum, siguienteGen, nuevaGeneracion });
+          console.log('🌳 Creando nido hijo:', { genActual, genNum, siguienteGen, nuevaGeneracion, nidoOrigenId: nidoId });
 
           // Crear el nuevo nido con el hijo como progenitor
           const nuevoNidoRef = await db.collection('nidos').add({
@@ -1572,10 +1574,11 @@
           });
 
           nuevoNidoId = nuevoNidoRef.id;
+          console.log('✅ Nido creado con ID:', nuevoNidoId);
         }
 
         // Add new member to current nido (como descendiente con referencia a su nido)
-        miembrosData.push({
+        const nuevoMiembro = {
           iniciales,
           nombre,
           email,
@@ -1584,14 +1587,19 @@
           esAdmin,
           relacion,  // 'descendiente' en el nido padre
           mascotas: getMascotasFromForm(),
-          nidoPropio: nuevoNidoId,  // Enlace a su nuevo nido
+          nidoPropio: nuevoNidoId || null,  // Enlace a su nuevo nido
           fechaCreacion: new Date().toISOString()
-        });
+        };
+        
+        console.log('👤 Añadiendo miembro:', nuevoMiembro);
+        miembrosData.push(nuevoMiembro);
 
         // Update Firestore
+        console.log('💾 Guardando en Firestore...');
         await db.collection('nidos').doc(nidoId).update({
           miembrosData: miembrosData
         });
+        console.log('✅ Firestore actualizado');
 
         // Update local data and UI
         nidoData.miembrosData = miembrosData;
@@ -1603,14 +1611,14 @@
 
         // Mostrar mensaje si se creó nido
         if (nuevoNidoId) {
-          if (confirm(`✅ Se ha creado el nido "${nuevoNidoNombre}". ¿Quieres ir a editarlo?`)) {
+          if (confirm(`✅ Nido "${nuevoNidoNombre}" creado correctamente.\n\n¿Quieres ir a editarlo ahora?`)) {
             window.location.href = `nido.html?id=${nuevoNidoId}`;
           }
         }
 
       } catch (error) {
-        console.error('Error adding member:', error);
-        alert('Error al añadir miembro');
+        console.error('❌ Error adding member:', error);
+        alert('Error al añadir miembro: ' + error.message);
       }
 
       btn.disabled = false;
