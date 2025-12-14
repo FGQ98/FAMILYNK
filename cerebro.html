@@ -7,9 +7,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
     :root {
       --sage: #7A9E7E;
@@ -1074,9 +1074,8 @@
 
   </div><!-- FIN app-content -->
 
-  <!-- Firebase Config -->
+  <!-- Funciones de debug -->
   <script>
-    // Función de debug que muestra en pantalla
     function debugLog(msg, type = 'info') {
       const logDiv = document.getElementById('debug-log');
       const statusDiv = document.getElementById('loading-status');
@@ -1110,21 +1109,15 @@
       document.getElementById('loading-screen').style.display = 'none';
       document.getElementById('app-content').style.display = 'block';
     }
+  </script>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBN30Io3mI8LKuU_HyFkT0SzKfZ3FXdIzg",
-      authDomain: "familynk-88b34.firebaseapp.com",
-      projectId: "familynk-88b34",
-      storageBucket: "familynk-88b34.firebasestorage.app",
-      messagingSenderId: "520518937195",
-      appId: "1:520518937195:web:1eb065f3e9355beabde72b"
-    };
-    
-    debugLog('Inicializando Firebase...');
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    debugLog('Firebase inicializado', 'success');
+  <!-- Firebase Config - MISMO archivo que login.html -->
+  <script src="js/firebase-config.js"></script>
+
+  <!-- Lógica de Cerebro -->
+  <script>
+    debugLog('Firebase cargado desde config compartido', 'success');
+    debugLog(`Proyecto: ${firebase.app().options.projectId}`);
 
     let currentUser = null;
     let userData = null;
@@ -1133,56 +1126,33 @@
     let esAdminSistema = false;
     let nidosEstirpe = [];
 
-    // Forzar persistencia LOCAL (sobrevive cierres de pestaña)
-    debugLog('Configurando persistencia LOCAL...');
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-      .then(() => {
-        debugLog('Persistencia configurada', 'success');
-      })
-      .catch((error) => {
-        debugLog(`Error en persistencia: ${error.message}`, 'error');
-      });
-
-    // Sistema de auth con múltiples intentos
-    debugLog('Esperando estado de autenticación...');
-    
-    async function verificarAuth() {
-      // Intento 1: verificar inmediatamente
-      let user = auth.currentUser;
-      debugLog(`Intento 1 - currentUser: ${user ? user.email : 'null'}`);
+    // Esperar un momento para que firebase-config.js procese primero
+    setTimeout(async () => {
+      debugLog('Verificando sesión...');
+      
+      // Comprobar si ya hay usuario (firebase-config.js ya lo detectó)
+      const user = auth.currentUser;
+      debugLog(`Usuario actual: ${user ? user.email : 'null'}`);
       
       if (user) {
-        return user;
-      }
-      
-      // Intento 2: esperar al listener
-      debugLog('Esperando callback de onAuthStateChanged...');
-      return new Promise((resolve) => {
-        const timeout = setTimeout(() => {
-          debugLog('Timeout de 3 segundos alcanzado', 'warning');
-          resolve(null);
-        }, 3000);
+        currentUser = user;
+        debugLog(`Sesión encontrada: ${user.email}`, 'success');
         
-        const unsub = auth.onAuthStateChanged((u) => {
-          clearTimeout(timeout);
-          unsub();
-          debugLog(`Callback recibido: ${u ? u.email : 'null'}`);
-          resolve(u);
-        });
-      });
-    }
-    
-    // Ejecutar verificación
-    verificarAuth().then(async (user) => {
-      if (!user) {
-        // NO redirigir automáticamente - mostrar opciones
-        debugLog('No se detectó sesión activa', 'error');
+        try {
+          await cargarUsuario();
+        } catch (error) {
+          debugLog(`Error: ${error.message}`, 'error');
+          showError('Error al cargar Cerebro', error.message, user.uid);
+        }
+      } else {
+        // No hay sesión - mostrar opciones
+        debugLog('No hay sesión activa', 'error');
         document.getElementById('loading-screen').innerHTML = `
           <div style="text-align: center; padding: 40px; font-family: 'Nunito', sans-serif;">
             <div style="font-size: 3rem; margin-bottom: 20px;">🔐</div>
             <h2 style="color: #C17757; margin-bottom: 16px;">Sesión no detectada</h2>
             <p style="color: #666; margin: 20px 0;">No se pudo verificar tu sesión de usuario.</p>
-            <p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">Esto puede ser un problema temporal de conexión.</p>
+            <p style="color: #999; font-size: 0.85rem; margin-bottom: 24px;">Proyecto: ${firebase.app().options.projectId}</p>
             <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
               <button onclick="location.reload()" style="padding: 12px 24px; background: #7A9E7E; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">🔄 Reintentar</button>
               <a href="login.html" style="padding: 12px 24px; background: #f0f0f0; color: #333; text-decoration: none; border-radius: 8px; font-weight: 600;">Ir a Login</a>
@@ -1190,20 +1160,8 @@
             </div>
           </div>
         `;
-        return;
       }
-      
-      currentUser = user;
-      debugLog(`Usuario confirmado: ${currentUser.email}`, 'success');
-      debugLog(`UID: ${currentUser.uid}`);
-      
-      try {
-        await cargarUsuario();
-      } catch (error) {
-        debugLog(`Error fatal: ${error.message}`, 'error');
-        showError('Error al cargar Cerebro', error.message, currentUser.uid);
-      }
-    });
+    }, 1500); // Esperar 1.5 segundos para que Firebase termine de cargar
 
     async function cargarUsuario() {
       debugLog('Cargando datos de usuario...');
