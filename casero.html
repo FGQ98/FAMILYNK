@@ -344,6 +344,165 @@
 
     .hidden { display: none !important; }
 
+    /* Pedidos */
+    .pedido-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      border: 2px solid var(--cream-dark);
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .pedido-card:hover {
+      border-color: var(--sage-light);
+    }
+
+    .pedido-card.urgente {
+      border-color: var(--warning);
+      background: var(--warning-muted);
+    }
+
+    .pedido-header {
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .pedido-info {
+      flex: 1;
+    }
+
+    .pedido-nido {
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .pedido-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 10px;
+      margin-top: 2px;
+    }
+
+    .pedido-estado {
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .pedido-estado.pendiente {
+      background: var(--warning-muted);
+      color: var(--warning);
+    }
+
+    .pedido-estado.en_proceso {
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+    }
+
+    .pedido-badge {
+      background: var(--terracotta);
+      color: white;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+
+    /* Modal pedido detalle */
+    .pedido-items-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .pedido-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+    }
+
+    .pedido-item-check {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--sage);
+    }
+
+    .pedido-item-info {
+      flex: 1;
+    }
+
+    .pedido-item-nombre {
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .pedido-item-grupo {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .pedido-item-cantidad {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--sage-dark);
+    }
+
+    .pedido-seccion {
+      margin-bottom: 16px;
+    }
+
+    .pedido-seccion-titulo {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .pedido-totales {
+      background: var(--cream);
+      padding: 14px;
+      border-radius: var(--radius-md);
+      margin-top: 16px;
+    }
+
+    .pedido-total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+    }
+
+    .pedido-total-row:last-child {
+      margin-bottom: 0;
+      padding-top: 8px;
+      border-top: 1px dashed var(--cream-dark);
+      font-weight: 700;
+    }
+
+    .form-input-total {
+      width: 100px;
+      padding: 6px 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      text-align: right;
+    }
+
     /* Sin acceso */
     .no-access {
       text-align: center;
@@ -487,6 +646,22 @@
     </div>
   </div>
 
+  <!-- Modal Pedido -->
+  <div class="modal-overlay" id="modal-pedido">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-pedido-titulo">Detalle del pedido</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body" id="modal-pedido-body" style="max-height: 400px; overflow-y: auto;"></div>
+      <div class="modal-footer" style="flex-wrap: wrap; gap: 8px;">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
+        <button type="button" class="btn" style="background: var(--warning); color: white;" onclick="procesarPedido('en_proceso')">En proceso</button>
+        <button type="button" class="btn btn-primary" onclick="procesarPedido('completar')">Completar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -504,8 +679,11 @@
       mantenimiento: [],
       limpieza: [],
       gastos: [],
-      documentos: []
+      documentos: [],
+      pedidos: []
     };
+
+    let pedidoActual = null;
 
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
 
@@ -638,11 +816,30 @@
       if (permisosActuales.documentos?.ver) {
         datosModulos.documentos = bienActual.bien.documentos || [];
       }
+
+      // Pedidos (siempre visible para caseros)
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('pedidos')
+          .where('estado', 'in', ['pendiente', 'en_proceso'])
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+        datosModulos.pedidos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (error) {
+        console.log('Cargando pedidos sin índice:', error);
+        // Fallback sin índice compuesto
+        const snap = await db.collection('bienes').doc(bienId).collection('pedidos').get();
+        datosModulos.pedidos = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(p => p.estado === 'pendiente' || p.estado === 'en_proceso');
+      }
     }
 
     function renderModulos() {
       const container = document.getElementById('modulos-grid');
       let html = '';
+
+      // PEDIDOS (siempre primero para caseros)
+      html += renderModuloPedidos();
 
       // RESERVAS
       if (permisosActuales.reservas?.ver) {
@@ -684,6 +881,199 @@
       if (p.crear) badges += '<span class="permiso-badge crear">Crear</span>';
       if (p.editar) badges += '<span class="permiso-badge editar">Editar</span>';
       return badges;
+    }
+
+    // ========== PEDIDOS ==========
+    function renderModuloPedidos() {
+      const pedidos = datosModulos.pedidos;
+      const pendientes = pedidos.filter(p => p.estado === 'pendiente').length;
+
+      let itemsHtml = '';
+      if (pedidos.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">No hay pedidos pendientes</div>';
+      } else {
+        itemsHtml = pedidos.slice(0, 5).map(p => {
+          const fecha = p.fechaCreacion?.toDate ? 
+            p.fechaCreacion.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 
+            '';
+          const esUrgente = p.estado === 'pendiente';
+
+          return `
+            <div class="pedido-card ${esUrgente ? 'urgente' : ''}" onclick="abrirPedido('${p.id}')">
+              <div class="pedido-header">
+                <div class="pedido-info">
+                  <div class="pedido-nido">${p.nidoNombre || 'Pedido'}</div>
+                  <div class="pedido-meta">
+                    <span>${fecha}</span>
+                    <span>${p.totalItems || p.items?.length || 0} productos</span>
+                  </div>
+                </div>
+                <span class="pedido-estado ${p.estado}">${p.estado === 'pendiente' ? 'Pendiente' : 'En proceso'}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      return `
+        <div class="modulo-card" style="grid-column: 1 / -1;">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">
+              Pedidos
+              ${pendientes > 0 ? `<span class="pedido-badge">${pendientes} nuevo${pendientes > 1 ? 's' : ''}</span>` : ''}
+            </div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+        </div>
+      `;
+    }
+
+    function abrirPedido(pedidoId) {
+      pedidoActual = datosModulos.pedidos.find(p => p.id === pedidoId);
+      if (!pedidoActual) return;
+
+      const modal = document.getElementById('modal-pedido');
+      const body = document.getElementById('modal-pedido-body');
+
+      // Separar items por tipo
+      const reposicion = pedidoActual.items?.filter(i => i.tipo === 'reposicion') || [];
+      const especiales = pedidoActual.items?.filter(i => i.tipo === 'especial') || [];
+
+      let html = '';
+
+      if (reposicion.length > 0) {
+        html += `
+          <div class="pedido-seccion">
+            <div class="pedido-seccion-titulo">Reposición (${reposicion.length})</div>
+            <div class="pedido-items-list">
+              ${reposicion.map((item, idx) => `
+                <div class="pedido-item">
+                  <input type="checkbox" class="pedido-item-check" data-idx="${idx}" data-tipo="reposicion" checked>
+                  <div class="pedido-item-info">
+                    <div class="pedido-item-nombre">${item.nombre}</div>
+                    <div class="pedido-item-grupo">${item.grupo || ''}</div>
+                  </div>
+                  <div class="pedido-item-cantidad">${item.cantidad} ${item.unidad || 'uds'}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (especiales.length > 0) {
+        html += `
+          <div class="pedido-seccion">
+            <div class="pedido-seccion-titulo">Especiales (${especiales.length})</div>
+            <div class="pedido-items-list">
+              ${especiales.map((item, idx) => `
+                <div class="pedido-item">
+                  <input type="checkbox" class="pedido-item-check" data-idx="${idx}" data-tipo="especial" checked>
+                  <div class="pedido-item-info">
+                    <div class="pedido-item-nombre">${item.nombre}</div>
+                    <div class="pedido-item-grupo">${item.grupo || ''}</div>
+                  </div>
+                  <div class="pedido-item-cantidad">${item.cantidad} ${item.unidad || 'uds'}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="pedido-totales">
+          <div class="pedido-total-row">
+            <span>Solicitado por:</span>
+            <span>${pedidoActual.solicitadoPorNombre || 'Usuario'}</span>
+          </div>
+          <div class="pedido-total-row">
+            <span>Total importe (opcional):</span>
+            <input type="number" class="form-input-total" id="pedido-importe" step="0.01" placeholder="0.00"> €
+          </div>
+        </div>
+      `;
+
+      body.innerHTML = html;
+      
+      // Actualizar título con estado
+      document.getElementById('modal-pedido-titulo').textContent = 
+        `Pedido de ${pedidoActual.nidoNombre || 'Nido'}`;
+
+      modal.classList.add('active');
+    }
+
+    async function procesarPedido(accion) {
+      if (!pedidoActual) return;
+
+      const bienId = bienActual.bienId;
+      const importe = parseFloat(document.getElementById('pedido-importe').value) || 0;
+      
+      // Obtener items marcados como comprados
+      const checksReposicion = document.querySelectorAll('.pedido-item-check[data-tipo="reposicion"]:checked');
+      const checksEspeciales = document.querySelectorAll('.pedido-item-check[data-tipo="especial"]:checked');
+
+      try {
+        if (accion === 'completar') {
+          // Actualizar inventario para items de reposición
+          const itemsReposicion = pedidoActual.items?.filter(i => i.tipo === 'reposicion') || [];
+          
+          for (const check of checksReposicion) {
+            const idx = parseInt(check.dataset.idx);
+            const item = itemsReposicion[idx];
+            if (item && item.id) {
+              // Buscar el producto en inventario y actualizar stock
+              const invRef = db.collection('bienes').doc(bienId).collection('inventario').doc(item.id);
+              const invDoc = await invRef.get();
+              if (invDoc.exists) {
+                const invData = invDoc.data();
+                await invRef.update({
+                  stock: (invData.stock || 0) + item.cantidad
+                });
+              }
+            }
+          }
+
+          // Registrar gasto si hay importe
+          if (importe > 0) {
+            await db.collection('bienes').doc(bienId).collection('gastos').add({
+              concepto: `Pedido ${pedidoActual.nidoNombre || ''}`,
+              importe: importe,
+              categoria: 'compras',
+              fecha: new Date().toISOString().split('T')[0],
+              pedidoId: pedidoActual.id,
+              creadoPor: currentUser.uid,
+              fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+
+          // Marcar pedido como completado
+          const totalChecked = checksReposicion.length + checksEspeciales.length;
+          const totalItems = pedidoActual.items?.length || 0;
+          const estadoFinal = totalChecked < totalItems ? 'parcial' : 'completado';
+
+          await db.collection('bienes').doc(bienId).collection('pedidos').doc(pedidoActual.id).update({
+            estado: estadoFinal,
+            completadoPor: currentUser.uid,
+            fechaCompletado: firebase.firestore.FieldValue.serverTimestamp(),
+            importeTotal: importe || null
+          });
+
+        } else if (accion === 'en_proceso') {
+          // Solo marcar como en proceso
+          await db.collection('bienes').doc(bienId).collection('pedidos').doc(pedidoActual.id).update({
+            estado: 'en_proceso'
+          });
+        }
+
+        cerrarModal();
+        await cargarDatosModulos();
+        renderModulos();
+
+      } catch (error) {
+        console.error('Error procesando pedido:', error);
+        alert('Error: ' + error.message);
+      }
     }
 
     // ========== RESERVAS ==========
@@ -950,10 +1340,15 @@
 
     // ========== MODALES ==========
     const modalAdd = document.getElementById('modal-add');
+    const modalPedido = document.getElementById('modal-pedido');
     const formAdd = document.getElementById('form-add');
     let modalTipo = null;
 
-    function cerrarModal() { modalAdd.classList.remove('active'); }
+    function cerrarModal() { 
+      modalAdd.classList.remove('active'); 
+      modalPedido.classList.remove('active');
+      pedidoActual = null;
+    }
 
     function abrirModalInventario() {
       modalTipo = 'inventario';
