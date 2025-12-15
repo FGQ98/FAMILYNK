@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Eventos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      
+      --caceria: #8D6E63;
+      --torneo: #5C6BC0;
+      --fiesta: #EC407A;
+      --otro: #78909C;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    .main { max-width: 1000px; margin: 0 auto; padding: 24px; }
+
+    /* Categorías */
+    .categorias { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .categoria-btn { padding: 10px 20px; background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-full); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+    .categoria-btn:hover { border-color: var(--sage-light); }
+    .categoria-btn.active { background: var(--sage); color: white; border-color: var(--sage); }
+    .categoria-btn .count { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; }
+    .categoria-btn.active .count { background: rgba(255,255,255,0.3); }
+
+    /* Grid de eventos */
+    .eventos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+
+    .evento-card { background: var(--white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-soft); transition: all 0.2s; cursor: pointer; }
+    .evento-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-medium); }
+
+    .evento-header { padding: 20px; position: relative; }
+    .evento-header.caceria { background: linear-gradient(135deg, var(--caceria), #A1887F); }
+    .evento-header.torneo { background: linear-gradient(135deg, var(--torneo), #7986CB); }
+    .evento-header.fiesta { background: linear-gradient(135deg, var(--fiesta), #F48FB1); }
+    .evento-header.otro { background: linear-gradient(135deg, var(--otro), #90A4AE); }
+
+    .evento-tipo { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.8); margin-bottom: 8px; }
+    .evento-nombre { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; color: white; }
+    .evento-fecha { color: rgba(255,255,255,0.9); font-size: 0.85rem; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+
+    .evento-body { padding: 16px 20px; }
+    .evento-descripcion { font-size: 0.9rem; color: var(--text-light); line-height: 1.5; margin-bottom: 12px; }
+    .evento-meta { display: flex; gap: 16px; font-size: 0.8rem; color: var(--text-muted); }
+    .evento-meta-item { display: flex; align-items: center; gap: 4px; }
+
+    .evento-footer { padding: 12px 20px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .evento-asistentes { display: flex; }
+    .evento-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--sage-muted); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--sage-dark); margin-left: -8px; border: 2px solid var(--white); }
+    .evento-avatar:first-child { margin-left: 0; }
+    .evento-asistentes-count { font-size: 0.8rem; color: var(--text-muted); margin-left: 8px; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.5; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 550px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; gap: 8px; justify-content: space-between; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
+    .form-textarea { min-height: 100px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Tipo selector */
+    .tipo-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px; }
+    .tipo-option { padding: 12px; text-align: center; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
+    .tipo-option:hover { border-color: var(--sage-light); }
+    .tipo-option.selected { border-color: var(--sage); background: var(--sage-muted); }
+    .tipo-option-icon { font-size: 1.5rem; margin-bottom: 4px; }
+    .tipo-option-label { font-size: 0.75rem; font-weight: 600; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="activacion.html" class="back-btn">← Activación</a>
+      <h1 class="header-title">🎉 Eventos</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo evento</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <!-- Filtros por tipo -->
+      <div class="categorias">
+        <button class="categoria-btn active" onclick="filtrar('todos', this)">
+          🌍 Todos <span class="count" id="count-todos">0</span>
+        </button>
+        <button class="categoria-btn" onclick="filtrar('caceria', this)">
+          🦌 Cacería <span class="count" id="count-caceria">0</span>
+        </button>
+        <button class="categoria-btn" onclick="filtrar('torneo', this)">
+          🏆 Torneo <span class="count" id="count-torneo">0</span>
+        </button>
+        <button class="categoria-btn" onclick="filtrar('fiesta', this)">
+          🎊 Fiesta <span class="count" id="count-fiesta">0</span>
+        </button>
+        <button class="categoria-btn" onclick="filtrar('otro', this)">
+          📌 Otro <span class="count" id="count-otro">0</span>
+        </button>
+      </div>
+
+      <!-- Grid de eventos -->
+      <div class="eventos-grid" id="eventos-grid"></div>
+
+      <!-- Empty state -->
+      <div class="empty-state hidden" id="empty-state">
+        <div class="empty-icon">🎉</div>
+        <p class="empty-text">Aún no hay eventos creados.<br>¡Organiza el primer evento familiar!</p>
+        <button class="btn btn-primary" onclick="abrirModal()">+ Crear evento</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-evento">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">🎉 Nuevo evento</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Tipo -->
+        <div class="form-label">Tipo de evento</div>
+        <div class="tipo-selector">
+          <div class="tipo-option selected" data-tipo="caceria" onclick="seleccionarTipo('caceria', this)">
+            <div class="tipo-option-icon">🦌</div>
+            <div class="tipo-option-label">Cacería</div>
+          </div>
+          <div class="tipo-option" data-tipo="torneo" onclick="seleccionarTipo('torneo', this)">
+            <div class="tipo-option-icon">🏆</div>
+            <div class="tipo-option-label">Torneo</div>
+          </div>
+          <div class="tipo-option" data-tipo="fiesta" onclick="seleccionarTipo('fiesta', this)">
+            <div class="tipo-option-icon">🎊</div>
+            <div class="tipo-option-label">Fiesta</div>
+          </div>
+          <div class="tipo-option" data-tipo="otro" onclick="seleccionarTipo('otro', this)">
+            <div class="tipo-option-icon">📌</div>
+            <div class="tipo-option-label">Otro</div>
+          </div>
+        </div>
+        <input type="hidden" id="evento-tipo" value="caceria">
+
+        <div class="form-group">
+          <label class="form-label">Nombre del evento *</label>
+          <input type="text" class="form-input" id="evento-nombre" placeholder="Ej: Cacería de Navidad, Torneo de pádel..." required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha *</label>
+            <input type="date" class="form-input" id="evento-fecha" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora</label>
+            <input type="time" class="form-input" id="evento-hora">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Lugar</label>
+          <input type="text" class="form-input" id="evento-lugar" placeholder="Ej: Finca familiar, Club deportivo...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-textarea" id="evento-descripcion" placeholder="Detalles del evento, qué llevar, horarios..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Máximo participantes</label>
+          <input type="number" class="form-input" id="evento-max" placeholder="Dejar vacío si no hay límite" min="1">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm hidden" id="btn-eliminar" onclick="eliminarEvento()">🗑️ Eliminar</button>
+        <div>
+          <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarEvento()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let eventosData = [];
+    let filtroActual = 'todos';
+    let editingId = null;
+
+    const tipoLabels = {
+      caceria: { icon: '🦌', label: 'Cacería' },
+      torneo: { icon: '🏆', label: 'Torneo' },
+      fiesta: { icon: '🎊', label: 'Fiesta' },
+      otro: { icon: '📌', label: 'Otro' }
+    };
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      try {
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        userData = userDoc.exists ? userDoc.data() : {};
+        await cargarEventos();
+      } catch (e) {
+        console.error('Error:', e);
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+    });
+
+    async function cargarEventos() {
+      if (!userData.familiaId) {
+        renderEventos();
+        return;
+      }
+
+      const snap = await db.collection('eventos')
+        .where('familiaId', '==', userData.familiaId)
+        .orderBy('fecha', 'desc')
+        .get();
+
+      eventosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      actualizarContadores();
+      renderEventos();
+    }
+
+    function actualizarContadores() {
+      document.getElementById('count-todos').textContent = eventosData.length;
+      ['caceria', 'torneo', 'fiesta', 'otro'].forEach(tipo => {
+        const count = eventosData.filter(e => e.tipo === tipo).length;
+        document.getElementById(`count-${tipo}`).textContent = count;
+      });
+    }
+
+    function filtrar(tipo, btn) {
+      filtroActual = tipo;
+      document.querySelectorAll('.categoria-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderEventos();
+    }
+
+    function renderEventos() {
+      const grid = document.getElementById('eventos-grid');
+      const empty = document.getElementById('empty-state');
+
+      let eventos = filtroActual === 'todos' 
+        ? eventosData 
+        : eventosData.filter(e => e.tipo === filtroActual);
+
+      if (eventos.length === 0) {
+        grid.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      grid.classList.remove('hidden');
+
+      grid.innerHTML = eventos.map(e => {
+        const fecha = new Date(e.fecha);
+        const fechaStr = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+        const tipo = tipoLabels[e.tipo] || tipoLabels.otro;
+
+        return `
+          <div class="evento-card" onclick="editarEvento('${e.id}')">
+            <div class="evento-header ${e.tipo}">
+              <div class="evento-tipo">${tipo.icon} ${tipo.label}</div>
+              <div class="evento-nombre">${e.nombre}</div>
+              <div class="evento-fecha">📅 ${fechaStr}${e.hora ? ' · ' + e.hora : ''}</div>
+            </div>
+            <div class="evento-body">
+              ${e.descripcion ? `<div class="evento-descripcion">${e.descripcion}</div>` : ''}
+              <div class="evento-meta">
+                ${e.lugar ? `<div class="evento-meta-item">📍 ${e.lugar}</div>` : ''}
+                ${e.maxParticipantes ? `<div class="evento-meta-item">👥 Máx. ${e.maxParticipantes}</div>` : ''}
+              </div>
+            </div>
+            <div class="evento-footer">
+              <div class="evento-asistentes">
+                <div class="evento-avatar">?</div>
+                <span class="evento-asistentes-count">Sin confirmar</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function seleccionarTipo(tipo, el) {
+      document.querySelectorAll('.tipo-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('evento-tipo').value = tipo;
+    }
+
+    function abrirModal() {
+      editingId = null;
+      document.getElementById('modal-titulo').textContent = '🎉 Nuevo evento';
+      document.getElementById('evento-tipo').value = 'caceria';
+      document.querySelectorAll('.tipo-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector('.tipo-option[data-tipo="caceria"]').classList.add('selected');
+      document.getElementById('evento-nombre').value = '';
+      document.getElementById('evento-fecha').value = '';
+      document.getElementById('evento-hora').value = '';
+      document.getElementById('evento-lugar').value = '';
+      document.getElementById('evento-descripcion').value = '';
+      document.getElementById('evento-max').value = '';
+      document.getElementById('btn-eliminar').classList.add('hidden');
+      document.getElementById('modal-evento').classList.add('active');
+    }
+
+    function editarEvento(id) {
+      const evento = eventosData.find(e => e.id === id);
+      if (!evento) return;
+
+      editingId = id;
+      document.getElementById('modal-titulo').textContent = '✏️ Editar evento';
+      document.getElementById('evento-tipo').value = evento.tipo;
+      document.querySelectorAll('.tipo-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector(`.tipo-option[data-tipo="${evento.tipo}"]`)?.classList.add('selected');
+      document.getElementById('evento-nombre').value = evento.nombre;
+      document.getElementById('evento-fecha').value = evento.fecha;
+      document.getElementById('evento-hora').value = evento.hora || '';
+      document.getElementById('evento-lugar').value = evento.lugar || '';
+      document.getElementById('evento-descripcion').value = evento.descripcion || '';
+      document.getElementById('evento-max').value = evento.maxParticipantes || '';
+      document.getElementById('btn-eliminar').classList.remove('hidden');
+      document.getElementById('modal-evento').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-evento').classList.remove('active');
+    }
+
+    async function guardarEvento() {
+      const tipo = document.getElementById('evento-tipo').value;
+      const nombre = document.getElementById('evento-nombre').value.trim();
+      const fecha = document.getElementById('evento-fecha').value;
+      const hora = document.getElementById('evento-hora').value;
+      const lugar = document.getElementById('evento-lugar').value.trim();
+      const descripcion = document.getElementById('evento-descripcion').value.trim();
+      const maxParticipantes = document.getElementById('evento-max').value;
+
+      if (!nombre || !fecha) {
+        alert('Nombre y fecha son obligatorios');
+        return;
+      }
+
+      const eventoData = {
+        tipo,
+        nombre,
+        fecha,
+        hora,
+        lugar,
+        descripcion,
+        maxParticipantes: maxParticipantes ? parseInt(maxParticipantes) : null,
+        familiaId: userData.familiaId,
+        creadoPor: currentUser.uid,
+        fechaActualizacion: new Date().toISOString()
+      };
+
+      try {
+        if (editingId) {
+          await db.collection('eventos').doc(editingId).update(eventoData);
+        } else {
+          eventoData.fechaCreacion = new Date().toISOString();
+          eventoData.asistentes = [];
+          await db.collection('eventos').add(eventoData);
+        }
+
+        await cargarEventos();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function eliminarEvento() {
+      if (!editingId) return;
+      if (!confirm('¿Eliminar este evento?')) return;
+
+      try {
+        await db.collection('eventos').doc(editingId).delete();
+        await cargarEventos();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('modal-evento').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-evento') cerrarModal();
+    });
+  </script>
+</body>
+</html>

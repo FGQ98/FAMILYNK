@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Días Especiales</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      
+      --cumple: #E91E63;
+      --aniversario: #9C27B0;
+      --familiar: #4CAF50;
+      --otro: #FF9800;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: var(--white); padding: 4px; border-radius: var(--radius-full); box-shadow: var(--shadow-soft); }
+    .tab { flex: 1; padding: 12px 20px; text-align: center; border: none; background: none; font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-full); transition: all 0.2s; color: var(--text-light); }
+    .tab:hover { background: var(--cream); }
+    .tab.active { background: var(--sage); color: white; }
+
+    /* Próximos */
+    .proximos-section { margin-bottom: 32px; }
+    .proximos-title { font-family: 'Quicksand', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--text-light); }
+    .proximos-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .proximo-card { display: flex; align-items: center; gap: 16px; padding: 16px 20px; background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); transition: all 0.2s; cursor: pointer; }
+    .proximo-card:hover { transform: translateX(4px); box-shadow: var(--shadow-medium); }
+    .proximo-card.cumple { border-left: 4px solid var(--cumple); }
+    .proximo-card.aniversario { border-left: 4px solid var(--aniversario); }
+    .proximo-card.familiar { border-left: 4px solid var(--familiar); }
+    .proximo-card.otro { border-left: 4px solid var(--otro); }
+
+    .proximo-fecha { text-align: center; min-width: 50px; }
+    .proximo-dia { font-size: 1.5rem; font-weight: 700; color: var(--sage-dark); }
+    .proximo-mes { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); }
+    .proximo-info { flex: 1; }
+    .proximo-nombre { font-weight: 600; font-size: 1rem; margin-bottom: 2px; }
+    .proximo-tipo { font-size: 0.8rem; color: var(--text-muted); }
+    .proximo-countdown { text-align: right; }
+    .proximo-dias { font-size: 1.2rem; font-weight: 700; color: var(--terracotta); }
+    .proximo-label { font-size: 0.7rem; color: var(--text-muted); }
+
+    /* Lista completa */
+    .lista-section { display: none; }
+    .lista-section.active { display: block; }
+
+    .mes-group { margin-bottom: 24px; }
+    .mes-title { font-family: 'Quicksand', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--sage-dark); padding: 8px 0; border-bottom: 2px solid var(--sage-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .dia-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--white); border-radius: var(--radius-md); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+    .dia-item:hover { background: var(--cream); }
+    .dia-numero { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
+    .dia-numero.cumple { background: rgba(233,30,99,0.15); color: var(--cumple); }
+    .dia-numero.aniversario { background: rgba(156,39,176,0.15); color: var(--aniversario); }
+    .dia-numero.familiar { background: rgba(76,175,80,0.15); color: var(--familiar); }
+    .dia-numero.otro { background: rgba(255,152,0,0.15); color: var(--otro); }
+    .dia-info { flex: 1; }
+    .dia-nombre { font-weight: 600; font-size: 0.9rem; }
+    .dia-detalle { font-size: 0.75rem; color: var(--text-muted); }
+    .dia-icon { font-size: 1.2rem; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.5; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; gap: 8px; justify-content: space-between; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-input, .form-select { width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--sage); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="activacion.html" class="back-btn">← Activación</a>
+      <h1 class="header-title">🎂 Días Especiales</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="abrirModal()">+ Añadir</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="cambiarTab('proximos', this)">🔜 Próximos</button>
+        <button class="tab" onclick="cambiarTab('cumples', this)">🎂 Cumpleaños</button>
+        <button class="tab" onclick="cambiarTab('todos', this)">📅 Todos</button>
+      </div>
+
+      <!-- Próximos (default) -->
+      <div class="lista-section active" id="section-proximos">
+        <div class="proximos-list" id="proximos-list"></div>
+        <div class="empty-state hidden" id="empty-proximos">
+          <div class="empty-icon">🎂</div>
+          <p class="empty-text">No hay días especiales próximos</p>
+        </div>
+      </div>
+
+      <!-- Cumpleaños -->
+      <div class="lista-section" id="section-cumples">
+        <div id="cumples-list"></div>
+        <div class="empty-state hidden" id="empty-cumples">
+          <div class="empty-icon">🎂</div>
+          <p class="empty-text">No hay cumpleaños registrados</p>
+        </div>
+      </div>
+
+      <!-- Todos -->
+      <div class="lista-section" id="section-todos">
+        <div id="todos-list"></div>
+        <div class="empty-state hidden" id="empty-todos">
+          <div class="empty-icon">📅</div>
+          <p class="empty-text">No hay días especiales registrados</p>
+          <button class="btn btn-primary" onclick="abrirModal()">+ Añadir día especial</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-dia">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">🎂 Nuevo día especial</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="dia-tipo">
+            <option value="cumple">🎂 Cumpleaños</option>
+            <option value="aniversario">💍 Aniversario</option>
+            <option value="familiar">👨‍👩‍👧‍👦 Día familiar</option>
+            <option value="otro">⭐ Otro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nombre / Título *</label>
+          <input type="text" class="form-input" id="dia-nombre" placeholder="Ej: Cumple de María, Aniversario papás..." required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Día *</label>
+            <select class="form-select" id="dia-dia">
+              <script>for(let i=1;i<=31;i++) document.write(`<option value="${i}">${i}</option>`);</script>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mes *</label>
+            <select class="form-select" id="dia-mes">
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Año de inicio (opcional)</label>
+          <input type="number" class="form-input" id="dia-año" placeholder="Ej: 1990" min="1900" max="2100">
+          <div class="form-hint">Para cumpleaños: año de nacimiento. Para aniversarios: año del evento.</div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <input type="text" class="form-input" id="dia-notas" placeholder="Ej: Le gustan los libros, Celebrar en familia...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm hidden" id="btn-eliminar" onclick="eliminarDia()">🗑️</button>
+        <div>
+          <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarDia()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let diasData = [];
+    let editingId = null;
+
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const tipoIcons = { cumple: '🎂', aniversario: '💍', familiar: '👨‍👩‍👧‍👦', otro: '⭐' };
+    const tipoLabels = { cumple: 'Cumpleaños', aniversario: 'Aniversario', familiar: 'Día familiar', otro: 'Día especial' };
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      try {
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        userData = userDoc.exists ? userDoc.data() : {};
+        await cargarDias();
+      } catch (e) {
+        console.error('Error:', e);
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+    });
+
+    async function cargarDias() {
+      if (!userData.familiaId) {
+        renderTodos();
+        return;
+      }
+
+      const snap = await db.collection('diasEspeciales')
+        .where('familiaId', '==', userData.familiaId)
+        .get();
+
+      diasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      renderProximos();
+      renderCumples();
+      renderTodos();
+    }
+
+    function calcularDiasHasta(dia, mes) {
+      const hoy = new Date();
+      const año = hoy.getFullYear();
+      let fecha = new Date(año, mes - 1, dia);
+      
+      if (fecha < hoy) {
+        fecha = new Date(año + 1, mes - 1, dia);
+      }
+      
+      const diff = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
+      return diff;
+    }
+
+    function renderProximos() {
+      const lista = document.getElementById('proximos-list');
+      const empty = document.getElementById('empty-proximos');
+
+      // Ordenar por días hasta el evento
+      const proximos = diasData
+        .map(d => ({ ...d, diasHasta: calcularDiasHasta(d.dia, d.mes) }))
+        .sort((a, b) => a.diasHasta - b.diasHasta)
+        .slice(0, 10);
+
+      if (proximos.length === 0) {
+        lista.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      lista.innerHTML = proximos.map(d => {
+        const edad = d.añoInicio ? (new Date().getFullYear() - d.añoInicio + (d.diasHasta > 0 ? 1 : 0)) : null;
+        
+        return `
+          <div class="proximo-card ${d.tipo}" onclick="editarDia('${d.id}')">
+            <div class="proximo-fecha">
+              <div class="proximo-dia">${d.dia}</div>
+              <div class="proximo-mes">${meses[d.mes - 1].substring(0, 3)}</div>
+            </div>
+            <div class="proximo-info">
+              <div class="proximo-nombre">${tipoIcons[d.tipo]} ${d.nombre}</div>
+              <div class="proximo-tipo">${tipoLabels[d.tipo]}${edad ? ` · Cumple ${edad} años` : ''}</div>
+            </div>
+            <div class="proximo-countdown">
+              <div class="proximo-dias">${d.diasHasta === 0 ? '¡Hoy!' : d.diasHasta}</div>
+              <div class="proximo-label">${d.diasHasta === 0 ? '' : d.diasHasta === 1 ? 'día' : 'días'}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderCumples() {
+      const container = document.getElementById('cumples-list');
+      const empty = document.getElementById('empty-cumples');
+
+      const cumples = diasData.filter(d => d.tipo === 'cumple').sort((a, b) => {
+        if (a.mes !== b.mes) return a.mes - b.mes;
+        return a.dia - b.dia;
+      });
+
+      if (cumples.length === 0) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+
+      // Agrupar por mes
+      const porMes = {};
+      cumples.forEach(d => {
+        if (!porMes[d.mes]) porMes[d.mes] = [];
+        porMes[d.mes].push(d);
+      });
+
+      container.innerHTML = Object.keys(porMes).map(mes => `
+        <div class="mes-group">
+          <div class="mes-title">${meses[mes - 1]}</div>
+          ${porMes[mes].map(d => {
+            const edad = d.añoInicio ? (new Date().getFullYear() - d.añoInicio) : null;
+            return `
+              <div class="dia-item" onclick="editarDia('${d.id}')">
+                <div class="dia-numero cumple">${d.dia}</div>
+                <div class="dia-info">
+                  <div class="dia-nombre">${d.nombre}</div>
+                  <div class="dia-detalle">${edad ? `Cumple ${edad} años` : 'Cumpleaños'}</div>
+                </div>
+                <div class="dia-icon">🎂</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `).join('');
+    }
+
+    function renderTodos() {
+      const container = document.getElementById('todos-list');
+      const empty = document.getElementById('empty-todos');
+
+      if (diasData.length === 0) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+
+      // Ordenar por mes y día
+      const ordenados = [...diasData].sort((a, b) => {
+        if (a.mes !== b.mes) return a.mes - b.mes;
+        return a.dia - b.dia;
+      });
+
+      // Agrupar por mes
+      const porMes = {};
+      ordenados.forEach(d => {
+        if (!porMes[d.mes]) porMes[d.mes] = [];
+        porMes[d.mes].push(d);
+      });
+
+      container.innerHTML = Object.keys(porMes).map(mes => `
+        <div class="mes-group">
+          <div class="mes-title">${meses[mes - 1]}</div>
+          ${porMes[mes].map(d => `
+            <div class="dia-item" onclick="editarDia('${d.id}')">
+              <div class="dia-numero ${d.tipo}">${d.dia}</div>
+              <div class="dia-info">
+                <div class="dia-nombre">${d.nombre}</div>
+                <div class="dia-detalle">${tipoLabels[d.tipo]}</div>
+              </div>
+              <div class="dia-icon">${tipoIcons[d.tipo]}</div>
+            </div>
+          `).join('')}
+        </div>
+      `).join('');
+    }
+
+    function cambiarTab(tab, btn) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+
+      document.querySelectorAll('.lista-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(`section-${tab}`).classList.add('active');
+    }
+
+    function abrirModal() {
+      editingId = null;
+      document.getElementById('modal-titulo').textContent = '🎂 Nuevo día especial';
+      document.getElementById('dia-tipo').value = 'cumple';
+      document.getElementById('dia-nombre').value = '';
+      document.getElementById('dia-dia').value = '1';
+      document.getElementById('dia-mes').value = '1';
+      document.getElementById('dia-año').value = '';
+      document.getElementById('dia-notas').value = '';
+      document.getElementById('btn-eliminar').classList.add('hidden');
+      document.getElementById('modal-dia').classList.add('active');
+    }
+
+    function editarDia(id) {
+      const dia = diasData.find(d => d.id === id);
+      if (!dia) return;
+
+      editingId = id;
+      document.getElementById('modal-titulo').textContent = '✏️ Editar día especial';
+      document.getElementById('dia-tipo').value = dia.tipo;
+      document.getElementById('dia-nombre').value = dia.nombre;
+      document.getElementById('dia-dia').value = dia.dia;
+      document.getElementById('dia-mes').value = dia.mes;
+      document.getElementById('dia-año').value = dia.añoInicio || '';
+      document.getElementById('dia-notas').value = dia.notas || '';
+      document.getElementById('btn-eliminar').classList.remove('hidden');
+      document.getElementById('modal-dia').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-dia').classList.remove('active');
+    }
+
+    async function guardarDia() {
+      const tipo = document.getElementById('dia-tipo').value;
+      const nombre = document.getElementById('dia-nombre').value.trim();
+      const dia = parseInt(document.getElementById('dia-dia').value);
+      const mes = parseInt(document.getElementById('dia-mes').value);
+      const añoInicio = document.getElementById('dia-año').value ? parseInt(document.getElementById('dia-año').value) : null;
+      const notas = document.getElementById('dia-notas').value.trim();
+
+      if (!nombre) {
+        alert('El nombre es obligatorio');
+        return;
+      }
+
+      const diaData = {
+        tipo,
+        nombre,
+        dia,
+        mes,
+        añoInicio,
+        notas,
+        familiaId: userData.familiaId,
+        creadoPor: currentUser.uid,
+        fechaActualizacion: new Date().toISOString()
+      };
+
+      try {
+        if (editingId) {
+          await db.collection('diasEspeciales').doc(editingId).update(diaData);
+        } else {
+          diaData.fechaCreacion = new Date().toISOString();
+          await db.collection('diasEspeciales').add(diaData);
+        }
+
+        await cargarDias();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function eliminarDia() {
+      if (!editingId) return;
+      if (!confirm('¿Eliminar este día especial?')) return;
+
+      try {
+        await db.collection('diasEspeciales').doc(editingId).delete();
+        await cargarDias();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('modal-dia').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-dia') cerrarModal();
+    });
+  </script>
+</body>
+</html>

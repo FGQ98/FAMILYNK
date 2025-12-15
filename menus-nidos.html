@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Menús del Nido</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      
+      --comida: #FF9800;
+      --cena: #5C6BC0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+    /* Controles */
+    .controles { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .vista-toggle { display: flex; background: var(--white); border-radius: var(--radius-full); padding: 4px; box-shadow: var(--shadow-soft); }
+    .vista-btn { padding: 8px 16px; border: none; background: none; font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: var(--radius-full); color: var(--text-light); transition: all 0.2s; }
+    .vista-btn.active { background: var(--sage); color: white; }
+
+    .nav-fecha { display: flex; align-items: center; gap: 12px; }
+    .nav-fecha button { background: var(--white); border: none; width: 36px; height: 36px; border-radius: var(--radius-sm); cursor: pointer; font-size: 1rem; box-shadow: var(--shadow-soft); }
+    .nav-fecha button:hover { background: var(--cream); }
+    .fecha-actual { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem; min-width: 200px; text-align: center; }
+
+    /* Vista Día */
+    .vista-dia { display: none; }
+    .vista-dia.active { display: block; }
+
+    .dia-card { background: var(--white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-soft); }
+    .dia-header { padding: 20px; background: linear-gradient(135deg, var(--sage), var(--sage-dark)); color: white; text-align: center; }
+    .dia-fecha { font-family: 'Quicksand', sans-serif; font-size: 1.3rem; font-weight: 700; }
+    .dia-content { display: grid; grid-template-columns: 1fr 1fr; }
+    @media (max-width: 600px) { .dia-content { grid-template-columns: 1fr; } }
+
+    .menu-seccion { padding: 24px; }
+    .menu-seccion.comida { border-right: 1px solid var(--cream-dark); }
+    @media (max-width: 600px) { .menu-seccion.comida { border-right: none; border-bottom: 1px solid var(--cream-dark); } }
+
+    .menu-titulo { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+    .menu-icon { font-size: 1.5rem; }
+    .menu-label { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem; }
+    .menu-label.comida { color: var(--comida); }
+    .menu-label.cena { color: var(--cena); }
+
+    .menu-plato { padding: 12px; background: var(--cream); border-radius: var(--radius-md); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+    .menu-plato:hover { background: var(--cream-dark); }
+    .menu-plato-nombre { font-weight: 600; font-size: 0.9rem; }
+    .menu-plato-notas { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    .menu-vacio { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.85rem; }
+    .menu-add { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; border: 2px dashed var(--cream-dark); border-radius: var(--radius-md); cursor: pointer; color: var(--text-muted); font-size: 0.85rem; transition: all 0.2s; }
+    .menu-add:hover { border-color: var(--sage); color: var(--sage); }
+
+    /* Vista Semana */
+    .vista-semana { display: none; }
+    .vista-semana.active { display: block; }
+
+    .semana-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    @media (max-width: 900px) { .semana-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (max-width: 600px) { .semana-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .semana-dia { background: var(--white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-soft); }
+    .semana-dia-header { padding: 10px; background: var(--sage-muted); text-align: center; }
+    .semana-dia-nombre { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); }
+    .semana-dia-numero { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--sage-dark); }
+    .semana-dia.hoy .semana-dia-header { background: var(--sage); }
+    .semana-dia.hoy .semana-dia-nombre, .semana-dia.hoy .semana-dia-numero { color: white; }
+
+    .semana-dia-body { padding: 10px; min-height: 120px; }
+    .semana-comida, .semana-cena { padding: 6px; border-radius: var(--radius-sm); margin-bottom: 6px; font-size: 0.75rem; cursor: pointer; }
+    .semana-comida { background: rgba(255,152,0,0.1); border-left: 3px solid var(--comida); }
+    .semana-cena { background: rgba(92,107,192,0.1); border-left: 3px solid var(--cena); }
+    .semana-add { font-size: 0.7rem; color: var(--text-muted); text-align: center; cursor: pointer; padding: 6px; }
+    .semana-add:hover { color: var(--sage); }
+
+    /* Vista Mes */
+    .vista-mes { display: none; }
+    .vista-mes.active { display: block; }
+
+    .mes-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .mes-weekday { text-align: center; font-size: 0.7rem; font-weight: 700; color: var(--text-muted); padding: 8px 0; text-transform: uppercase; }
+    .mes-dia { background: var(--white); border-radius: var(--radius-sm); padding: 8px; min-height: 80px; cursor: pointer; transition: all 0.2s; }
+    .mes-dia:hover { box-shadow: var(--shadow-soft); }
+    .mes-dia.otro-mes { opacity: 0.4; }
+    .mes-dia.hoy { background: var(--sage-muted); }
+    .mes-dia-num { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+    .mes-dia-menus { font-size: 0.65rem; }
+    .mes-dia-menus .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 2px; }
+    .mes-dia-menus .dot.comida { background: var(--comida); }
+    .mes-dia-menus .dot.cena { background: var(--cena); }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 450px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; gap: 8px; justify-content: space-between; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
+    .form-textarea { min-height: 80px; resize: vertical; }
+
+    .tipo-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tipo-btn { flex: 1; padding: 12px; text-align: center; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; font-weight: 600; }
+    .tipo-btn:hover { border-color: var(--sage-light); }
+    .tipo-btn.comida.selected { border-color: var(--comida); background: rgba(255,152,0,0.1); color: var(--comida); }
+    .tipo-btn.cena.selected { border-color: var(--cena); background: rgba(92,107,192,0.1); color: var(--cena); }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="mi-nido.html" class="back-btn">← Mi Nido</a>
+      <h1 class="header-title">🍽️ Menús del Nido</h1>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <!-- Controles -->
+      <div class="controles">
+        <div class="vista-toggle">
+          <button class="vista-btn active" onclick="cambiarVista('dia', this)">Día</button>
+          <button class="vista-btn" onclick="cambiarVista('semana', this)">Semana</button>
+          <button class="vista-btn" onclick="cambiarVista('mes', this)">Mes</button>
+        </div>
+        <div class="nav-fecha">
+          <button onclick="navegarAnterior()">◀</button>
+          <span class="fecha-actual" id="fecha-actual">Hoy</span>
+          <button onclick="navegarSiguiente()">▶</button>
+        </div>
+      </div>
+
+      <!-- Vista Día -->
+      <div class="vista-dia active" id="vista-dia">
+        <div class="dia-card">
+          <div class="dia-header">
+            <div class="dia-fecha" id="dia-fecha">Lunes, 16 de Diciembre</div>
+          </div>
+          <div class="dia-content">
+            <div class="menu-seccion comida">
+              <div class="menu-titulo">
+                <span class="menu-icon">☀️</span>
+                <span class="menu-label comida">Comida</span>
+              </div>
+              <div id="menu-comida"></div>
+              <div class="menu-add" onclick="abrirModal('comida')">+ Añadir plato</div>
+            </div>
+            <div class="menu-seccion cena">
+              <div class="menu-titulo">
+                <span class="menu-icon">🌙</span>
+                <span class="menu-label cena">Cena</span>
+              </div>
+              <div id="menu-cena"></div>
+              <div class="menu-add" onclick="abrirModal('cena')">+ Añadir plato</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista Semana -->
+      <div class="vista-semana" id="vista-semana">
+        <div class="semana-grid" id="semana-grid"></div>
+      </div>
+
+      <!-- Vista Mes -->
+      <div class="vista-mes" id="vista-mes">
+        <div class="mes-grid" id="mes-grid">
+          <div class="mes-weekday">Lun</div>
+          <div class="mes-weekday">Mar</div>
+          <div class="mes-weekday">Mié</div>
+          <div class="mes-weekday">Jue</div>
+          <div class="mes-weekday">Vie</div>
+          <div class="mes-weekday">Sáb</div>
+          <div class="mes-weekday">Dom</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-menu">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">🍽️ Añadir plato</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="tipo-toggle">
+          <div class="tipo-btn comida selected" onclick="seleccionarTipo('comida', this)">☀️ Comida</div>
+          <div class="tipo-btn cena" onclick="seleccionarTipo('cena', this)">🌙 Cena</div>
+        </div>
+        <input type="hidden" id="menu-tipo" value="comida">
+
+        <div class="form-group">
+          <label class="form-label">Plato *</label>
+          <input type="text" class="form-input" id="menu-plato" placeholder="Ej: Lentejas, Pescado al horno..." required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notas (opcional)</label>
+          <textarea class="form-textarea" id="menu-notas" placeholder="Ingredientes, acompañamientos, receta..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary hidden" id="btn-eliminar" onclick="eliminarMenu()">🗑️</button>
+        <div>
+          <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarMenu()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let menusData = [];
+    let fechaActual = new Date();
+    let vistaActual = 'dia';
+    let editingId = null;
+    let editingFecha = null;
+
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const diasSemanaCorto = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      try {
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        userData = userDoc.exists ? userDoc.data() : {};
+        await cargarMenus();
+      } catch (e) {
+        console.error('Error:', e);
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+      actualizarVista();
+    });
+
+    async function cargarMenus() {
+      if (!userData.nidoId) return;
+
+      // Cargar menús del mes actual y adyacentes
+      const inicioMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - 1, 1);
+      const finMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 2, 0);
+
+      const snap = await db.collection('menus')
+        .where('nidoId', '==', userData.nidoId)
+        .where('fecha', '>=', formatFecha(inicioMes))
+        .where('fecha', '<=', formatFecha(finMes))
+        .get();
+
+      menusData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    function formatFecha(date) {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    }
+
+    function cambiarVista(vista, btn) {
+      vistaActual = vista;
+      document.querySelectorAll('.vista-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      
+      document.querySelectorAll('.vista-dia, .vista-semana, .vista-mes').forEach(v => v.classList.remove('active'));
+      document.getElementById(`vista-${vista}`).classList.add('active');
+      
+      actualizarVista();
+    }
+
+    function navegarAnterior() {
+      if (vistaActual === 'dia') fechaActual.setDate(fechaActual.getDate() - 1);
+      else if (vistaActual === 'semana') fechaActual.setDate(fechaActual.getDate() - 7);
+      else fechaActual.setMonth(fechaActual.getMonth() - 1);
+      actualizarVista();
+    }
+
+    function navegarSiguiente() {
+      if (vistaActual === 'dia') fechaActual.setDate(fechaActual.getDate() + 1);
+      else if (vistaActual === 'semana') fechaActual.setDate(fechaActual.getDate() + 7);
+      else fechaActual.setMonth(fechaActual.getMonth() + 1);
+      actualizarVista();
+    }
+
+    function actualizarVista() {
+      if (vistaActual === 'dia') renderDia();
+      else if (vistaActual === 'semana') renderSemana();
+      else renderMes();
+    }
+
+    function renderDia() {
+      const fechaStr = formatFecha(fechaActual);
+      const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+      document.getElementById('fecha-actual').textContent = fechaActual.toLocaleDateString('es-ES', opciones);
+      document.getElementById('dia-fecha').textContent = fechaActual.toLocaleDateString('es-ES', opciones);
+
+      const menusDia = menusData.filter(m => m.fecha === fechaStr);
+      
+      ['comida', 'cena'].forEach(tipo => {
+        const container = document.getElementById(`menu-${tipo}`);
+        const platos = menusDia.filter(m => m.tipo === tipo);
+        
+        if (platos.length === 0) {
+          container.innerHTML = '<div class="menu-vacio">Sin platos</div>';
+        } else {
+          container.innerHTML = platos.map(p => `
+            <div class="menu-plato" onclick="editarMenu('${p.id}')">
+              <div class="menu-plato-nombre">${p.plato}</div>
+              ${p.notas ? `<div class="menu-plato-notas">${p.notas}</div>` : ''}
+            </div>
+          `).join('');
+        }
+      });
+    }
+
+    function renderSemana() {
+      // Encontrar lunes de la semana
+      const lunes = new Date(fechaActual);
+      lunes.setDate(lunes.getDate() - (lunes.getDay() === 0 ? 6 : lunes.getDay() - 1));
+
+      const domingo = new Date(lunes);
+      domingo.setDate(domingo.getDate() + 6);
+
+      document.getElementById('fecha-actual').textContent = 
+        `${lunes.getDate()} - ${domingo.getDate()} ${meses[domingo.getMonth()]}`;
+
+      const grid = document.getElementById('semana-grid');
+      const hoy = formatFecha(new Date());
+
+      let html = '';
+      for (let i = 0; i < 7; i++) {
+        const dia = new Date(lunes);
+        dia.setDate(dia.getDate() + i);
+        const fechaStr = formatFecha(dia);
+        const esHoy = fechaStr === hoy;
+
+        const menusDia = menusData.filter(m => m.fecha === fechaStr);
+        const comidas = menusDia.filter(m => m.tipo === 'comida');
+        const cenas = menusDia.filter(m => m.tipo === 'cena');
+
+        html += `
+          <div class="semana-dia ${esHoy ? 'hoy' : ''}" onclick="irADia('${fechaStr}')">
+            <div class="semana-dia-header">
+              <div class="semana-dia-nombre">${diasSemanaCorto[(i + 1) % 7]}</div>
+              <div class="semana-dia-numero">${dia.getDate()}</div>
+            </div>
+            <div class="semana-dia-body">
+              ${comidas.map(m => `<div class="semana-comida">${m.plato}</div>`).join('')}
+              ${cenas.map(m => `<div class="semana-cena">${m.plato}</div>`).join('')}
+              ${menusDia.length === 0 ? '<div class="semana-add">+ Añadir</div>' : ''}
+            </div>
+          </div>
+        `;
+      }
+      grid.innerHTML = html;
+    }
+
+    function renderMes() {
+      document.getElementById('fecha-actual').textContent = 
+        `${meses[fechaActual.getMonth()]} ${fechaActual.getFullYear()}`;
+
+      const grid = document.getElementById('mes-grid');
+      // Mantener encabezados
+      const weekdays = grid.querySelectorAll('.mes-weekday');
+      grid.innerHTML = '';
+      weekdays.forEach(w => grid.appendChild(w));
+
+      const primerDia = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+      const ultimoDia = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0);
+      
+      let diaInicio = primerDia.getDay() - 1;
+      if (diaInicio < 0) diaInicio = 6;
+
+      const hoy = formatFecha(new Date());
+
+      // Días del mes anterior
+      const diasMesAnterior = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 0).getDate();
+      for (let i = diaInicio - 1; i >= 0; i--) {
+        const div = document.createElement('div');
+        div.className = 'mes-dia otro-mes';
+        div.innerHTML = `<div class="mes-dia-num">${diasMesAnterior - i}</div>`;
+        grid.appendChild(div);
+      }
+
+      // Días del mes actual
+      for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+        const fecha = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth()+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+        const menusDia = menusData.filter(m => m.fecha === fecha);
+        const tieneComida = menusDia.some(m => m.tipo === 'comida');
+        const tieneCena = menusDia.some(m => m.tipo === 'cena');
+
+        const div = document.createElement('div');
+        div.className = `mes-dia ${fecha === hoy ? 'hoy' : ''}`;
+        div.innerHTML = `
+          <div class="mes-dia-num">${dia}</div>
+          <div class="mes-dia-menus">
+            ${tieneComida ? '<span class="dot comida"></span>' : ''}
+            ${tieneCena ? '<span class="dot cena"></span>' : ''}
+          </div>
+        `;
+        div.onclick = () => irADia(fecha);
+        grid.appendChild(div);
+      }
+    }
+
+    function irADia(fechaStr) {
+      fechaActual = new Date(fechaStr);
+      vistaActual = 'dia';
+      document.querySelectorAll('.vista-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector('.vista-btn').classList.add('active');
+      document.querySelectorAll('.vista-dia, .vista-semana, .vista-mes').forEach(v => v.classList.remove('active'));
+      document.getElementById('vista-dia').classList.add('active');
+      renderDia();
+    }
+
+    function seleccionarTipo(tipo, el) {
+      document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('menu-tipo').value = tipo;
+    }
+
+    function abrirModal(tipo = 'comida') {
+      editingId = null;
+      editingFecha = formatFecha(fechaActual);
+      document.getElementById('modal-titulo').textContent = '🍽️ Añadir plato';
+      document.getElementById('menu-tipo').value = tipo;
+      document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelector(`.tipo-btn.${tipo}`).classList.add('selected');
+      document.getElementById('menu-plato').value = '';
+      document.getElementById('menu-notas').value = '';
+      document.getElementById('btn-eliminar').classList.add('hidden');
+      document.getElementById('modal-menu').classList.add('active');
+    }
+
+    function editarMenu(id) {
+      const menu = menusData.find(m => m.id === id);
+      if (!menu) return;
+
+      editingId = id;
+      editingFecha = menu.fecha;
+      document.getElementById('modal-titulo').textContent = '✏️ Editar plato';
+      document.getElementById('menu-tipo').value = menu.tipo;
+      document.querySelectorAll('.tipo-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelector(`.tipo-btn.${menu.tipo}`).classList.add('selected');
+      document.getElementById('menu-plato').value = menu.plato;
+      document.getElementById('menu-notas').value = menu.notas || '';
+      document.getElementById('btn-eliminar').classList.remove('hidden');
+      document.getElementById('modal-menu').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-menu').classList.remove('active');
+    }
+
+    async function guardarMenu() {
+      const tipo = document.getElementById('menu-tipo').value;
+      const plato = document.getElementById('menu-plato').value.trim();
+      const notas = document.getElementById('menu-notas').value.trim();
+
+      if (!plato) {
+        alert('El plato es obligatorio');
+        return;
+      }
+
+      const menuData = {
+        tipo,
+        plato,
+        notas,
+        fecha: editingFecha,
+        nidoId: userData.nidoId,
+        creadoPor: currentUser.uid,
+        fechaActualizacion: new Date().toISOString()
+      };
+
+      try {
+        if (editingId) {
+          await db.collection('menus').doc(editingId).update(menuData);
+        } else {
+          menuData.fechaCreacion = new Date().toISOString();
+          await db.collection('menus').add(menuData);
+        }
+
+        await cargarMenus();
+        actualizarVista();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function eliminarMenu() {
+      if (!editingId) return;
+      if (!confirm('¿Eliminar este plato?')) return;
+
+      try {
+        await db.collection('menus').doc(editingId).delete();
+        await cargarMenus();
+        actualizarVista();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('modal-menu').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-menu') cerrarModal();
+    });
+  </script>
+</body>
+</html>

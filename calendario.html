@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Calendario</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      
+      /* Colores por tipo */
+      --cumple: #E91E63;
+      --evento: #FF9800;
+      --cita: #2196F3;
+      --reserva: #9C27B0;
+      --especial: #4CAF50;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .header-actions { display: flex; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    /* Layout */
+    .calendar-layout { display: grid; grid-template-columns: 1fr 320px; gap: 24px; }
+    @media (max-width: 900px) { .calendar-layout { grid-template-columns: 1fr; } }
+
+    /* Calendario */
+    .calendar-card { background: var(--white); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-soft); }
+    .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .calendar-nav { display: flex; align-items: center; gap: 12px; }
+    .calendar-nav button { background: var(--cream); border: none; width: 36px; height: 36px; border-radius: var(--radius-sm); cursor: pointer; font-size: 1rem; }
+    .calendar-nav button:hover { background: var(--cream-dark); }
+    .calendar-month { font-family: 'Quicksand', sans-serif; font-size: 1.3rem; font-weight: 700; }
+    .calendar-today { padding: 8px 16px; background: var(--sage-muted); color: var(--sage-dark); border-radius: var(--radius-full); font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; }
+
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .calendar-weekday { text-align: center; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); padding: 8px 0; text-transform: uppercase; }
+    .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 6px; border-radius: var(--radius-sm); cursor: pointer; position: relative; font-size: 0.85rem; }
+    .calendar-day:hover { background: var(--cream); }
+    .calendar-day.other-month { color: var(--text-muted); opacity: 0.5; }
+    .calendar-day.today { background: var(--sage); color: white; font-weight: 700; }
+    .calendar-day.today:hover { background: var(--sage-dark); }
+    .calendar-day.selected { outline: 2px solid var(--terracotta); }
+    .calendar-day .day-number { margin-bottom: 4px; }
+    .calendar-day .day-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
+    .day-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .day-dot.cumple { background: var(--cumple); }
+    .day-dot.evento { background: var(--evento); }
+    .day-dot.cita { background: var(--cita); }
+    .day-dot.reserva { background: var(--reserva); }
+    .day-dot.especial { background: var(--especial); }
+
+    /* Sidebar */
+    .sidebar { display: flex; flex-direction: column; gap: 16px; }
+    .sidebar-card { background: var(--white); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-soft); }
+    .sidebar-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+    /* Filtros */
+    .filtro-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; cursor: pointer; }
+    .filtro-item input { display: none; }
+    .filtro-check { width: 18px; height: 18px; border: 2px solid var(--cream-dark); border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+    .filtro-item input:checked + .filtro-check { background: var(--sage); border-color: var(--sage); color: white; }
+    .filtro-color { width: 12px; height: 12px; border-radius: 50%; }
+    .filtro-label { font-size: 0.85rem; flex: 1; }
+
+    /* Eventos del día */
+    .eventos-dia { max-height: 300px; overflow-y: auto; }
+    .evento-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px; background: var(--cream); border-radius: var(--radius-md); margin-bottom: 8px; cursor: pointer; transition: all 0.2s; }
+    .evento-item:hover { background: var(--cream-dark); }
+    .evento-color { width: 4px; border-radius: 2px; align-self: stretch; }
+    .evento-color.cumple { background: var(--cumple); }
+    .evento-color.evento { background: var(--evento); }
+    .evento-color.cita { background: var(--cita); }
+    .evento-color.reserva { background: var(--reserva); }
+    .evento-color.especial { background: var(--especial); }
+    .evento-info { flex: 1; }
+    .evento-titulo { font-weight: 600; font-size: 0.85rem; margin-bottom: 2px; }
+    .evento-hora { font-size: 0.75rem; color: var(--text-muted); }
+    .evento-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; gap: 8px; justify-content: flex-end; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-input, .form-select { width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--sage); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="activacion.html" class="back-btn">← Activación</a>
+      <h1 class="header-title">📅 Calendario Familiar</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nuevo</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="calendar-layout hidden">
+      <!-- Calendario -->
+      <div class="calendar-card">
+        <div class="calendar-header">
+          <div class="calendar-nav">
+            <button onclick="mesAnterior()">◀</button>
+            <span class="calendar-month" id="calendar-month">Diciembre 2024</span>
+            <button onclick="mesSiguiente()">▶</button>
+          </div>
+          <button class="calendar-today" onclick="irAHoy()">Hoy</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid">
+          <div class="calendar-weekday">Lun</div>
+          <div class="calendar-weekday">Mar</div>
+          <div class="calendar-weekday">Mié</div>
+          <div class="calendar-weekday">Jue</div>
+          <div class="calendar-weekday">Vie</div>
+          <div class="calendar-weekday">Sáb</div>
+          <div class="calendar-weekday">Dom</div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <!-- Filtros -->
+        <div class="sidebar-card">
+          <div class="sidebar-title">🎨 Filtros</div>
+          <label class="filtro-item">
+            <input type="checkbox" checked data-tipo="cumple" onchange="toggleFiltro(this)">
+            <span class="filtro-check">✓</span>
+            <span class="filtro-color" style="background: var(--cumple);"></span>
+            <span class="filtro-label">Cumpleaños</span>
+          </label>
+          <label class="filtro-item">
+            <input type="checkbox" checked data-tipo="especial" onchange="toggleFiltro(this)">
+            <span class="filtro-check">✓</span>
+            <span class="filtro-color" style="background: var(--especial);"></span>
+            <span class="filtro-label">Días especiales</span>
+          </label>
+          <label class="filtro-item">
+            <input type="checkbox" checked data-tipo="evento" onchange="toggleFiltro(this)">
+            <span class="filtro-check">✓</span>
+            <span class="filtro-color" style="background: var(--evento);"></span>
+            <span class="filtro-label">Eventos</span>
+          </label>
+          <label class="filtro-item">
+            <input type="checkbox" checked data-tipo="cita" onchange="toggleFiltro(this)">
+            <span class="filtro-check">✓</span>
+            <span class="filtro-color" style="background: var(--cita);"></span>
+            <span class="filtro-label">Citas</span>
+          </label>
+          <label class="filtro-item">
+            <input type="checkbox" checked data-tipo="reserva" onchange="toggleFiltro(this)">
+            <span class="filtro-check">✓</span>
+            <span class="filtro-color" style="background: var(--reserva);"></span>
+            <span class="filtro-label">Reservas</span>
+          </label>
+        </div>
+
+        <!-- Eventos del día seleccionado -->
+        <div class="sidebar-card">
+          <div class="sidebar-title" id="eventos-dia-titulo">📋 Hoy</div>
+          <div class="eventos-dia" id="eventos-dia">
+            <div class="evento-empty">Selecciona un día</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Nuevo Evento -->
+  <div class="modal-overlay" id="modal-evento">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">📅 Nuevo evento</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="evento-tipo">
+            <option value="cita">📍 Cita</option>
+            <option value="evento">🎉 Evento</option>
+            <option value="reserva">🏠 Reserva</option>
+            <option value="especial">⭐ Día especial</option>
+            <option value="cumple">🎂 Cumpleaños</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Título *</label>
+          <input type="text" class="form-input" id="evento-titulo" placeholder="Ej: Cena familiar, Médico..." required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha *</label>
+            <input type="date" class="form-input" id="evento-fecha" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora</label>
+            <input type="time" class="form-input" id="evento-hora">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" class="form-input" id="evento-descripcion" placeholder="Detalles adicionales...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Repetir</label>
+          <select class="form-select" id="evento-repetir">
+            <option value="">No repetir</option>
+            <option value="anual">Cada año</option>
+            <option value="mensual">Cada mes</option>
+            <option value="semanal">Cada semana</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarEvento()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let eventosData = [];
+    let fechaActual = new Date();
+    let fechaSeleccionada = new Date();
+    let filtrosActivos = ['cumple', 'especial', 'evento', 'cita', 'reserva'];
+    let editingId = null;
+
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      try {
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        userData = userDoc.exists ? userDoc.data() : {};
+        await cargarEventos();
+      } catch (e) {
+        console.error('Error:', e);
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+      renderCalendario();
+      mostrarEventosDia(new Date());
+    });
+
+    async function cargarEventos() {
+      if (!userData.familiaId) return;
+
+      const snap = await db.collection('calendario')
+        .where('familiaId', '==', userData.familiaId)
+        .get();
+
+      eventosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    function renderCalendario() {
+      const grid = document.getElementById('calendar-grid');
+      // Limpiar días anteriores (mantener encabezados)
+      const weekdays = grid.querySelectorAll('.calendar-weekday');
+      grid.innerHTML = '';
+      weekdays.forEach(w => grid.appendChild(w));
+
+      document.getElementById('calendar-month').textContent = `${meses[fechaActual.getMonth()]} ${fechaActual.getFullYear()}`;
+
+      const primerDia = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+      const ultimoDia = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0);
+      
+      // Ajustar para que lunes = 0
+      let diaInicio = primerDia.getDay() - 1;
+      if (diaInicio < 0) diaInicio = 6;
+
+      const hoy = new Date();
+      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+
+      // Días del mes anterior
+      const diasMesAnterior = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 0).getDate();
+      for (let i = diaInicio - 1; i >= 0; i--) {
+        const dia = diasMesAnterior - i;
+        const div = document.createElement('div');
+        div.className = 'calendar-day other-month';
+        div.innerHTML = `<span class="day-number">${dia}</span>`;
+        grid.appendChild(div);
+      }
+
+      // Días del mes actual
+      for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+        const fecha = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth()+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+        const eventosDelDia = eventosData.filter(e => e.fecha === fecha && filtrosActivos.includes(e.tipo));
+        
+        const div = document.createElement('div');
+        div.className = 'calendar-day';
+        if (fecha === hoyStr) div.classList.add('today');
+        if (fecha === formatFecha(fechaSeleccionada)) div.classList.add('selected');
+        
+        let dotsHtml = '';
+        if (eventosDelDia.length > 0) {
+          const tipos = [...new Set(eventosDelDia.map(e => e.tipo))];
+          dotsHtml = `<div class="day-dots">${tipos.slice(0,3).map(t => `<span class="day-dot ${t}"></span>`).join('')}</div>`;
+        }
+
+        div.innerHTML = `<span class="day-number">${dia}</span>${dotsHtml}`;
+        div.onclick = () => seleccionarDia(new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia));
+        grid.appendChild(div);
+      }
+
+      // Días del mes siguiente
+      const diasRestantes = 42 - (diaInicio + ultimoDia.getDate());
+      for (let dia = 1; dia <= diasRestantes; dia++) {
+        const div = document.createElement('div');
+        div.className = 'calendar-day other-month';
+        div.innerHTML = `<span class="day-number">${dia}</span>`;
+        grid.appendChild(div);
+      }
+    }
+
+    function formatFecha(date) {
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+    }
+
+    function mesAnterior() {
+      fechaActual.setMonth(fechaActual.getMonth() - 1);
+      renderCalendario();
+    }
+
+    function mesSiguiente() {
+      fechaActual.setMonth(fechaActual.getMonth() + 1);
+      renderCalendario();
+    }
+
+    function irAHoy() {
+      fechaActual = new Date();
+      fechaSeleccionada = new Date();
+      renderCalendario();
+      mostrarEventosDia(new Date());
+    }
+
+    function seleccionarDia(fecha) {
+      fechaSeleccionada = fecha;
+      renderCalendario();
+      mostrarEventosDia(fecha);
+    }
+
+    function mostrarEventosDia(fecha) {
+      const fechaStr = formatFecha(fecha);
+      const eventos = eventosData.filter(e => e.fecha === fechaStr && filtrosActivos.includes(e.tipo));
+      
+      const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+      document.getElementById('eventos-dia-titulo').textContent = `📋 ${fecha.toLocaleDateString('es-ES', opciones)}`;
+
+      const container = document.getElementById('eventos-dia');
+      if (eventos.length === 0) {
+        container.innerHTML = '<div class="evento-empty">Sin eventos este día</div>';
+        return;
+      }
+
+      container.innerHTML = eventos.map(e => `
+        <div class="evento-item" onclick="editarEvento('${e.id}')">
+          <div class="evento-color ${e.tipo}"></div>
+          <div class="evento-info">
+            <div class="evento-titulo">${e.titulo}</div>
+            <div class="evento-hora">${e.hora || 'Todo el día'}${e.descripcion ? ' · ' + e.descripcion : ''}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleFiltro(checkbox) {
+      const tipo = checkbox.dataset.tipo;
+      if (checkbox.checked) {
+        filtrosActivos.push(tipo);
+      } else {
+        filtrosActivos = filtrosActivos.filter(f => f !== tipo);
+      }
+      renderCalendario();
+      mostrarEventosDia(fechaSeleccionada);
+    }
+
+    function abrirModal() {
+      editingId = null;
+      document.getElementById('modal-titulo').textContent = '📅 Nuevo evento';
+      document.getElementById('evento-tipo').value = 'cita';
+      document.getElementById('evento-titulo').value = '';
+      document.getElementById('evento-fecha').value = formatFecha(fechaSeleccionada);
+      document.getElementById('evento-hora').value = '';
+      document.getElementById('evento-descripcion').value = '';
+      document.getElementById('evento-repetir').value = '';
+      document.getElementById('modal-evento').classList.add('active');
+    }
+
+    function editarEvento(id) {
+      const evento = eventosData.find(e => e.id === id);
+      if (!evento) return;
+
+      editingId = id;
+      document.getElementById('modal-titulo').textContent = '✏️ Editar evento';
+      document.getElementById('evento-tipo').value = evento.tipo;
+      document.getElementById('evento-titulo').value = evento.titulo;
+      document.getElementById('evento-fecha').value = evento.fecha;
+      document.getElementById('evento-hora').value = evento.hora || '';
+      document.getElementById('evento-descripcion').value = evento.descripcion || '';
+      document.getElementById('evento-repetir').value = evento.repetir || '';
+      document.getElementById('modal-evento').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-evento').classList.remove('active');
+    }
+
+    async function guardarEvento() {
+      const tipo = document.getElementById('evento-tipo').value;
+      const titulo = document.getElementById('evento-titulo').value.trim();
+      const fecha = document.getElementById('evento-fecha').value;
+      const hora = document.getElementById('evento-hora').value;
+      const descripcion = document.getElementById('evento-descripcion').value.trim();
+      const repetir = document.getElementById('evento-repetir').value;
+
+      if (!titulo || !fecha) {
+        alert('Título y fecha son obligatorios');
+        return;
+      }
+
+      const eventoData = {
+        tipo,
+        titulo,
+        fecha,
+        hora,
+        descripcion,
+        repetir,
+        familiaId: userData.familiaId,
+        creadoPor: currentUser.uid,
+        fechaActualizacion: new Date().toISOString()
+      };
+
+      try {
+        if (editingId) {
+          await db.collection('calendario').doc(editingId).update(eventoData);
+        } else {
+          eventoData.fechaCreacion = new Date().toISOString();
+          await db.collection('calendario').add(eventoData);
+        }
+
+        await cargarEventos();
+        renderCalendario();
+        mostrarEventosDia(fechaSeleccionada);
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('modal-evento').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-evento') cerrarModal();
+    });
+  </script>
+</body>
+</html>
