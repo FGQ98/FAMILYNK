@@ -368,12 +368,32 @@
 
     .modal-header {
       padding: 24px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .modal-title {
       font-family: 'Quicksand', sans-serif;
       font-size: 1.2rem;
       font-weight: 700;
+    }
+
+    .btn-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px 8px;
+      line-height: 1;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+
+    .btn-close:hover {
+      background: var(--cream);
+      color: var(--text);
     }
 
     .modal-body {
@@ -412,6 +432,11 @@
       outline: none;
       border-color: var(--sage);
       box-shadow: 0 0 0 3px var(--sage-muted);
+    }
+
+    textarea.form-input {
+      resize: vertical;
+      min-height: 80px;
     }
 
     .form-row {
@@ -813,7 +838,7 @@
       </h1>
     </div>
     <div class="header-actions">
-      <button class="btn btn-secondary btn-sm hidden" id="btn-editar-nido">✏️ Editar</button>
+      <button class="btn btn-secondary btn-sm hidden" id="btn-editar-nido" onclick="abrirModalEditarNido()">✏️ Editar</button>
     </div>
   </header>
 
@@ -1044,6 +1069,43 @@
           <button type="submit" class="btn btn-primary" id="modal-añadir">Añadir miembro</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Editar Nido -->
+  <div class="modal-overlay" id="modal-editar-nido">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ Editar Nido</h3>
+        <button class="btn-close" onclick="cerrarModalEditarNido()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nombre del nido</label>
+          <input type="text" class="form-input" id="edit-nido-nombre" maxlength="30" placeholder="Ej: Familia García">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Generación</label>
+          <select class="form-input" id="edit-nido-generacion">
+            <option value="1-bisabuelos">1ª - Bisabuelos</option>
+            <option value="2-abuelos">2ª - Abuelos</option>
+            <option value="3-padres">3ª - Padres</option>
+            <option value="4-hijos">4ª - Hijos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción (opcional)</label>
+          <textarea class="form-input" id="edit-nido-descripcion" rows="3" maxlength="200" placeholder="Una breve descripción del nido..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de formación (opcional)</label>
+          <input type="date" class="form-input" id="edit-nido-fecha">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalEditarNido()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarEdicionNido()">💾 Guardar</button>
+      </div>
     </div>
   </div>
 
@@ -1575,6 +1637,22 @@
 
           nuevoNidoId = nuevoNidoRef.id;
           console.log('✅ Nido creado con ID:', nuevoNidoId);
+
+          // Si el hijo tiene email, buscar si existe como usuario y actualizar su nidoId
+          if (email) {
+            try {
+              const usuarioQuery = await db.collection('usuarios').where('email', '==', email).limit(1).get();
+              if (!usuarioQuery.empty) {
+                const usuarioDoc = usuarioQuery.docs[0];
+                await db.collection('usuarios').doc(usuarioDoc.id).update({
+                  nidoId: nuevoNidoId
+                });
+                console.log('✅ Usuario actualizado con nuevo nidoId:', usuarioDoc.id);
+              }
+            } catch (e) {
+              console.warn('No se pudo actualizar usuario:', e);
+            }
+          }
         }
 
         // Add new member to current nido (como descendiente con referencia a su nido)
@@ -1781,6 +1859,69 @@
 
       modal.classList.add('active');
     }
+
+    // ============ EDITAR NIDO ============
+    function abrirModalEditarNido() {
+      document.getElementById('edit-nido-nombre').value = nidoData.nombre || '';
+      document.getElementById('edit-nido-generacion').value = nidoData.generacion || '3-padres';
+      document.getElementById('edit-nido-descripcion').value = nidoData.descripcion || '';
+      document.getElementById('edit-nido-fecha').value = nidoData.fechaFormacion || '';
+      document.getElementById('modal-editar-nido').classList.add('active');
+    }
+
+    function cerrarModalEditarNido() {
+      document.getElementById('modal-editar-nido').classList.remove('active');
+    }
+
+    async function guardarEdicionNido() {
+      const nombre = document.getElementById('edit-nido-nombre').value.trim();
+      const generacion = document.getElementById('edit-nido-generacion').value;
+      const descripcion = document.getElementById('edit-nido-descripcion').value.trim();
+      const fechaFormacion = document.getElementById('edit-nido-fecha').value || null;
+
+      if (!nombre) {
+        alert('El nombre es obligatorio');
+        return;
+      }
+
+      try {
+        await db.collection('nidos').doc(nidoId).update({
+          nombre,
+          generacion,
+          descripcion,
+          fechaFormacion
+        });
+
+        // Actualizar datos locales y UI
+        nidoData.nombre = nombre;
+        nidoData.generacion = generacion;
+        nidoData.descripcion = descripcion;
+        nidoData.fechaFormacion = fechaFormacion;
+
+        document.getElementById('header-nido-name').textContent = nombre;
+        document.getElementById('nido-nombre').textContent = nombre;
+        
+        const genLabels = {
+          '1-bisabuelos': '1ª Generación · Bisabuelos',
+          '2-abuelos': '2ª Generación · Abuelos',
+          '3-padres': '3ª Generación · Padres',
+          '4-hijos': '4ª Generación · Hijos'
+        };
+        document.getElementById('nido-generacion').textContent = genLabels[generacion] || generacion;
+        document.getElementById('nido-descripcion').textContent = descripcion || '';
+
+        cerrarModalEditarNido();
+        alert('✅ Nido actualizado');
+      } catch (error) {
+        console.error('Error guardando nido:', error);
+        alert('Error: ' + error.message);
+      }
+    }
+
+    // Cerrar modal editar nido al hacer click fuera
+    document.getElementById('modal-editar-nido').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-editar-nido') cerrarModalEditarNido();
+    });
   </script>
 </body>
 </html>
