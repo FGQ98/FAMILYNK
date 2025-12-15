@@ -111,6 +111,14 @@
     .badge-role.adminrama { background: var(--sage); color: white; }
     .badge-role.adminnido { background: var(--terracotta); color: white; }
     .badge-role.miembro { background: var(--cream-dark); color: var(--text-light); }
+    .badge-plan { padding: 3px 10px; font-size: 0.7rem; font-weight: 700; }
+    .badge-plan.gratuito { background: var(--cream-dark); color: var(--text-muted); }
+    .badge-plan.plus { background: rgba(122, 158, 126, 0.2); color: var(--sage-dark); }
+    .badge-plan.premium { background: rgba(193, 119, 87, 0.2); color: var(--terracotta); }
+    .badge-tipo { padding: 2px 6px; font-size: 0.6rem; }
+    .badge-tipo.pago { background: rgba(72, 187, 120, 0.15); color: var(--success); }
+    .badge-tipo.cortesia { background: rgba(156, 39, 176, 0.15); color: #9C27B0; }
+    .badge-tipo.trial { background: rgba(66, 153, 225, 0.15); color: var(--info); }
 
     /* BUTTONS */
     .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
@@ -137,7 +145,8 @@
     .form-label { display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 4px; }
     .form-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; }
     .form-input, .form-select, .form-textarea { width: 100%; padding: 8px 10px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.8rem; }
-    .form-input:focus, .form-select:focus { outline: none; border-color: var(--admin); }
+    .form-textarea { resize: vertical; min-height: 60px; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--admin); }
     .form-textarea { min-height: 70px; resize: vertical; }
     .form-check { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; }
     .form-check input { width: 16px; height: 16px; }
@@ -416,6 +425,67 @@
       <!-- PLANES -->
       <section class="section" id="section-planes">
         <div class="section-header"><div><h1 class="section-title">💳 Planes y precios</h1></div></div>
+        
+        <!-- GESTIÓN PLANES POR FAMILIA -->
+        <div class="card mb-2">
+          <div class="card-header">
+            <span class="card-title">🎁 Asignar plan a familia</span>
+          </div>
+          <div class="card-body">
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label">Buscar familia</label>
+                <div class="search-box" style="margin: 0;">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" class="search-input" id="search-plan-familia" placeholder="Nombre de familia o email del fundador..." oninput="buscarFamiliaParaPlan()">
+                </div>
+              </div>
+            </div>
+            <div id="resultados-familia-plan" class="hidden">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Familia</th>
+                    <th>Fundador</th>
+                    <th>Plan actual</th>
+                    <th>Asignar</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-familia-plan"></tbody>
+              </table>
+            </div>
+            <p id="sin-resultados-plan" class="text-muted text-center hidden" style="padding: 20px;">Escribe para buscar familias...</p>
+          </div>
+        </div>
+
+        <!-- FAMILIAS CON PLAN ACTIVO -->
+        <div class="card mb-2">
+          <div class="card-header">
+            <span class="card-title">👑 Familias con planes de pago</span>
+            <span class="badge badge-info" id="badge-planes-activos">0</span>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Familia</th>
+                    <th>Plan</th>
+                    <th>Tipo</th>
+                    <th>Expira</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-planes-activos">
+                  <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <h3 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-light);">Configuración de planes</h3>
         <h3 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-light);">Plan base</h3>
         <div class="plan-grid mb-2">
           <div class="plan-card">
@@ -586,6 +656,21 @@
   <div class="modal-overlay" id="modal-familia"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="modal-familia-titulo">👨‍👩‍👧‍👦 Familia</h3><button class="modal-close" onclick="cerrarModales()">×</button></div><div class="modal-body" id="modal-familia-body"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="guardarFamilia()">Guardar</button></div></div></div>
   <div class="modal-overlay" id="modal-invitacion"><div class="modal"><div class="modal-header"><h3 class="modal-title">✉️ Invitación</h3><button class="modal-close" onclick="cerrarModales()">×</button></div><div class="modal-body" id="modal-invitacion-body"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="enviarInvitacion()">Enviar</button></div></div></div>
   <div class="modal-overlay" id="modal-servicio"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="modal-servicio-titulo">🔌 Servicio</h3><button class="modal-close" onclick="cerrarModales()">×</button></div><div class="modal-body" id="modal-servicio-body"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="guardarServicio()">Guardar</button></div></div></div>
+  
+  <!-- Modal Asignar Plan -->
+  <div class="modal-overlay" id="modal-asignar-plan">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">💳 Asignar plan</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body" id="modal-asignar-plan-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarPlanFamilia()">Guardar</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -595,7 +680,7 @@
   <script>
     let currentUser = null, userData = null;
     let usuariosData = [], familiasData = [], nidosData = [], invitacionesData = [], logsData = [];
-    let editingUserId = null, editingFamiliaId = null;
+    let editingUserId = null, editingFamiliaId = null, editingPlanFamiliaId = null;
 
     // AUTH
     auth.onAuthStateChanged(async (user) => {
@@ -617,7 +702,7 @@
       document.querySelectorAll('.sidebar-link').forEach(l => l.classList.toggle('active', l.dataset.section === seccion));
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.getElementById(`section-${seccion}`).classList.add('active');
-      const cargas = { dashboard: cargarDashboard, usuarios: cargarUsuarios, familias: cargarFamilias, nidos: cargarNidos, invitaciones: cargarInvitaciones, addons: cargarAddons, logs: cargarLogs };
+      const cargas = { dashboard: cargarDashboard, usuarios: cargarUsuarios, familias: cargarFamilias, nidos: cargarNidos, invitaciones: cargarInvitaciones, addons: cargarAddons, logs: cargarLogs, planes: cargarPlanesActivos };
       if (cargas[seccion]) cargas[seccion]();
     }
 
@@ -967,8 +1052,198 @@
       a.click();
     }
 
+    // GESTIÓN DE PLANES
+    function buscarFamiliaParaPlan() {
+      const search = document.getElementById('search-plan-familia').value.toLowerCase().trim();
+      const container = document.getElementById('resultados-familia-plan');
+      const tbody = document.getElementById('tabla-familia-plan');
+      const sinResultados = document.getElementById('sin-resultados-plan');
+
+      if (search.length < 2) {
+        container.classList.add('hidden');
+        sinResultados.classList.remove('hidden');
+        sinResultados.textContent = 'Escribe al menos 2 caracteres...';
+        return;
+      }
+
+      // Buscar en familias y usuarios (fundadores)
+      const resultados = familiasData.filter(f => {
+        const matchNombre = (f.nombre || '').toLowerCase().includes(search);
+        const fundador = usuariosData.find(u => u.id === f.fundador || u.id === f.creador);
+        const matchFundador = fundador && ((fundador.email || '').toLowerCase().includes(search) || (fundador.nombre || '').toLowerCase().includes(search));
+        return matchNombre || matchFundador;
+      });
+
+      if (resultados.length === 0) {
+        container.classList.add('hidden');
+        sinResultados.classList.remove('hidden');
+        sinResultados.textContent = 'No se encontraron familias';
+        return;
+      }
+
+      sinResultados.classList.add('hidden');
+      container.classList.remove('hidden');
+
+      tbody.innerHTML = resultados.map(f => {
+        const fundador = usuariosData.find(u => u.id === f.fundador || u.id === f.creador);
+        const plan = f.plan || 'gratuito';
+        return `
+          <tr>
+            <td style="font-weight: 600;">${f.nombre || 'Sin nombre'}</td>
+            <td>${fundador?.email || '-'}</td>
+            <td><span class="badge badge-plan ${plan}">${plan.toUpperCase()}</span></td>
+            <td><button class="btn btn-sm btn-primary" onclick="abrirModalAsignarPlan('${f.id}')">Asignar</button></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function abrirModalAsignarPlan(familiaId) {
+      const f = familiasData.find(x => x.id === familiaId);
+      if (!f) return;
+
+      editingPlanFamiliaId = familiaId;
+      const plan = f.plan || 'gratuito';
+      const planTipo = f.planTipo || 'pago';
+      const planExpira = f.planExpira || '';
+
+      document.getElementById('modal-asignar-plan-body').innerHTML = `
+        <div style="background: var(--cream); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <strong>${f.nombre || 'Sin nombre'}</strong>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Plan actual: <span class="badge badge-plan ${plan}">${plan.toUpperCase()}</span></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plan</label>
+          <select class="form-select" id="asignar-plan-tipo">
+            <option value="gratuito" ${plan === 'gratuito' ? 'selected' : ''}>Gratuito</option>
+            <option value="plus" ${plan === 'plus' ? 'selected' : ''}>Plus</option>
+            <option value="premium" ${plan === 'premium' ? 'selected' : ''}>Premium</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de asignación</label>
+          <select class="form-select" id="asignar-plan-modalidad">
+            <option value="cortesia" ${planTipo === 'cortesia' ? 'selected' : ''}>🎁 Cortesía (gratis)</option>
+            <option value="pago" ${planTipo === 'pago' ? 'selected' : ''}>💳 Pago</option>
+            <option value="trial" ${planTipo === 'trial' ? 'selected' : ''}>🧪 Trial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha expiración (opcional)</label>
+          <input type="date" class="form-input" id="asignar-plan-expira" value="${planExpira ? planExpira.split('T')[0] : ''}">
+          <div class="form-hint">Dejar vacío para plan sin expiración</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas (interno)</label>
+          <textarea class="form-textarea" id="asignar-plan-notas" rows="2" placeholder="Ej: Beta tester, colaborador...">${f.planNotas || ''}</textarea>
+        </div>
+      `;
+      document.getElementById('modal-asignar-plan').classList.add('active');
+    }
+
+    async function guardarPlanFamilia() {
+      if (!editingPlanFamiliaId) return;
+
+      const plan = document.getElementById('asignar-plan-tipo').value;
+      const planTipo = document.getElementById('asignar-plan-modalidad').value;
+      const expiraInput = document.getElementById('asignar-plan-expira').value;
+      const notas = document.getElementById('asignar-plan-notas').value;
+
+      try {
+        const updateData = {
+          plan: plan,
+          planTipo: planTipo,
+          planNotas: notas,
+          planActualizadoPor: currentUser.uid,
+          planActualizadoFecha: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (expiraInput) {
+          updateData.planExpira = new Date(expiraInput).toISOString();
+        } else {
+          updateData.planExpira = firebase.firestore.FieldValue.delete();
+        }
+
+        await db.collection('familias').doc(editingPlanFamiliaId).update(updateData);
+
+        const familia = familiasData.find(f => f.id === editingPlanFamiliaId);
+        await registrarLog('config', `asignó plan ${plan.toUpperCase()} (${planTipo}) a ${familia?.nombre || 'familia'}`);
+
+        // Actualizar datos locales
+        const idx = familiasData.findIndex(f => f.id === editingPlanFamiliaId);
+        if (idx >= 0) {
+          familiasData[idx].plan = plan;
+          familiasData[idx].planTipo = planTipo;
+          familiasData[idx].planExpira = expiraInput ? new Date(expiraInput).toISOString() : null;
+          familiasData[idx].planNotas = notas;
+        }
+
+        cerrarModales();
+        cargarPlanesActivos();
+        document.getElementById('search-plan-familia').value = '';
+        document.getElementById('resultados-familia-plan').classList.add('hidden');
+        alert('✅ Plan asignado correctamente');
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function cargarPlanesActivos() {
+      const tbody = document.getElementById('tabla-planes-activos');
+      if (!tbody) return;
+
+      try {
+        const conPlan = familiasData.filter(f => f.plan && f.plan !== 'gratuito');
+        document.getElementById('badge-planes-activos').textContent = conPlan.length;
+
+        if (conPlan.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay familias con planes de pago</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = conPlan.map(f => {
+          const expira = f.planExpira ? new Date(f.planExpira).toLocaleDateString('es') : 'Sin límite';
+          const tipoClass = f.planTipo || 'pago';
+          const tipoLabel = { pago: '💳 Pago', cortesia: '🎁 Cortesía', trial: '🧪 Trial' }[tipoClass] || tipoClass;
+          return `
+            <tr>
+              <td style="font-weight: 600;">${f.nombre || 'Sin nombre'}</td>
+              <td><span class="badge badge-plan ${f.plan}">${(f.plan || '').toUpperCase()}</span></td>
+              <td><span class="badge badge-tipo ${tipoClass}">${tipoLabel}</span></td>
+              <td>${expira}</td>
+              <td><button class="btn btn-sm btn-secondary" onclick="abrirModalAsignarPlan('${f.id}')">✏️</button></td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Error cargando planes</td></tr>';
+      }
+    }
+
+    async function quitarPlan(familiaId) {
+      if (!confirm('¿Quitar plan de pago a esta familia? Volverá al plan gratuito.')) return;
+      try {
+        await db.collection('familias').doc(familiaId).update({
+          plan: 'gratuito',
+          planTipo: firebase.firestore.FieldValue.delete(),
+          planExpira: firebase.firestore.FieldValue.delete(),
+          planNotas: firebase.firestore.FieldValue.delete()
+        });
+        const familia = familiasData.find(f => f.id === familiaId);
+        await registrarLog('config', `quitó plan de pago a ${familia?.nombre || 'familia'}`);
+        
+        const idx = familiasData.findIndex(f => f.id === familiaId);
+        if (idx >= 0) familiasData[idx].plan = 'gratuito';
+        
+        cargarPlanesActivos();
+        alert('✅ Plan eliminado');
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
     // MODALES
-    function cerrarModales() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); editingUserId = null; editingFamiliaId = null; }
+    function cerrarModales() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); editingUserId = null; editingFamiliaId = null; editingPlanFamiliaId = null; }
     document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('click', (e) => { if (e.target === m) cerrarModales(); }); });
 
     // EVENT LISTENERS
