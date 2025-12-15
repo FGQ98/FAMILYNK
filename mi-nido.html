@@ -263,6 +263,86 @@
     .btn-sm { padding: 6px 10px; font-size: 0.75rem; }
     .btn-primary { background: var(--sage); color: white; }
 
+    /* Casas */
+    .casa-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .casa-item:last-child { border-bottom: none; }
+    .casa-info { flex: 1; }
+    .casa-nombre { font-weight: 600; font-size: 0.85rem; }
+    .casa-tipo { font-size: 0.7rem; color: var(--text-muted); }
+    .casa-actions { display: flex; gap: 4px; }
+    .casa-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+    .casa-actions button:hover { opacity: 1; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 400px;
+      box-shadow: var(--shadow-float);
+    }
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .modal-body { padding: 16px; }
+    .modal-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .form-group { margin-bottom: 12px; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+    .form-input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+    }
+    .form-input:focus { outline: none; border-color: var(--sage); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+
     .loading { display: flex; align-items: center; justify-content: center; min-height: 300px; }
     .spinner {
       width: 40px;
@@ -365,6 +445,7 @@
           <div class="card">
             <div class="card-header">
               <span class="card-title">🏠 Hogares</span>
+              <button class="btn btn-sm btn-primary" onclick="abrirModalCasa()">+</button>
             </div>
             <div class="card-body" id="hogares-list">
               <p style="color:var(--text-muted);font-size:0.85rem;">Sin hogares asignados</p>
@@ -375,6 +456,38 @@
     </div>
   </main>
 
+  <!-- Modal Casa -->
+  <div class="modal-overlay" id="modal-casa">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-casa-titulo">🏠 Añadir vivienda</h3>
+        <button class="modal-close" onclick="cerrarModalCasa()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-input" id="casa-tipo">
+            <option value="principal">🏠 Principal</option>
+            <option value="segunda">🏖️ 2ª Vivienda</option>
+            <option value="otra">🏢 Otra</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre</label>
+          <input type="text" class="form-input" id="casa-nombre" placeholder="Ej: Casa Madrid" maxlength="40">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Dirección (opcional)</label>
+          <input type="text" class="form-input" id="casa-direccion" placeholder="Calle, ciudad..." maxlength="100">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalCasa()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarCasa()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -382,6 +495,7 @@
 
   <script>
     let currentUser, userData, nidoData;
+    let editingCasaIndex = null;
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -479,6 +593,7 @@
         
         nidoData = { id: nidoDoc.id, ...nidoDoc.data() };
         renderNido();
+        renderCasas();
 
       } catch (error) {
         console.error('Error:', error);
@@ -544,6 +659,100 @@
       let edad = hoy.getFullYear() - nac.getFullYear();
       return `${edad} años`;
     }
+
+    // ============ CASAS ============
+    function renderCasas() {
+      const casas = nidoData.casas || [];
+      const container = document.getElementById('hogares-list');
+      
+      if (casas.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">Sin viviendas</p>';
+        return;
+      }
+
+      const tipoLabels = { principal: 'Principal', segunda: '2ª Vivienda', otra: 'Otra' };
+      container.innerHTML = casas.map((casa, i) => `
+        <div class="casa-item">
+          <div class="casa-info">
+            <div class="casa-nombre">${casa.nombre || 'Sin nombre'}</div>
+            <div class="casa-tipo">${tipoLabels[casa.tipo] || 'Otra'}${casa.direccion ? ' · ' + casa.direccion : ''}</div>
+          </div>
+          <div class="casa-actions">
+            <button onclick="editarCasa(${i})">✏️</button>
+            <button onclick="eliminarCasa(${i})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function abrirModalCasa() {
+      editingCasaIndex = null;
+      document.getElementById('modal-casa-titulo').textContent = '🏠 Añadir vivienda';
+      document.getElementById('casa-tipo').value = 'principal';
+      document.getElementById('casa-nombre').value = '';
+      document.getElementById('casa-direccion').value = '';
+      document.getElementById('modal-casa').classList.add('active');
+    }
+
+    function editarCasa(index) {
+      const casa = nidoData.casas[index];
+      if (!casa) return;
+      editingCasaIndex = index;
+      document.getElementById('modal-casa-titulo').textContent = '✏️ Editar vivienda';
+      document.getElementById('casa-tipo').value = casa.tipo || 'principal';
+      document.getElementById('casa-nombre').value = casa.nombre || '';
+      document.getElementById('casa-direccion').value = casa.direccion || '';
+      document.getElementById('modal-casa').classList.add('active');
+    }
+
+    function cerrarModalCasa() {
+      document.getElementById('modal-casa').classList.remove('active');
+      editingCasaIndex = null;
+    }
+
+    async function guardarCasa() {
+      const nombre = document.getElementById('casa-nombre').value.trim();
+      if (!nombre) { alert('El nombre es obligatorio'); return; }
+
+      const casaData = {
+        tipo: document.getElementById('casa-tipo').value,
+        nombre,
+        direccion: document.getElementById('casa-direccion').value.trim()
+      };
+
+      try {
+        const casas = nidoData.casas || [];
+        if (editingCasaIndex !== null) {
+          casas[editingCasaIndex] = { ...casas[editingCasaIndex], ...casaData };
+        } else {
+          casaData.id = Date.now().toString();
+          casas.push(casaData);
+        }
+
+        await db.collection('nidos').doc(nidoData.id).update({ casas });
+        nidoData.casas = casas;
+        renderCasas();
+        cerrarModalCasa();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function eliminarCasa(index) {
+      if (!confirm('¿Eliminar esta vivienda?')) return;
+      try {
+        const casas = nidoData.casas.filter((_, i) => i !== index);
+        await db.collection('nidos').doc(nidoData.id).update({ casas });
+        nidoData.casas = casas;
+        renderCasas();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('modal-casa').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-casa') cerrarModalCasa();
+    });
   </script>
 </body>
 </html>
