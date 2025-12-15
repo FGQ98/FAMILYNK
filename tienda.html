@@ -998,8 +998,40 @@
         return;
       }
 
+      // Verificar que Mayordomo esté activo
+      const mayordomoActivo = await verificarMayordomo();
+      if (!mayordomoActivo) {
+        mostrarMayordomoInactivo();
+        return;
+      }
+
       await cargarNidosUsuario();
     });
+
+    // ========== VERIFICAR MAYORDOMO ==========
+    async function verificarMayordomo() {
+      try {
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) return false;
+        
+        const bien = bienDoc.data();
+        return bien.mayordomoActivo === true;
+      } catch (error) {
+        console.error('Error verificando Mayordomo:', error);
+        return false;
+      }
+    }
+
+    function mostrarMayordomoInactivo() {
+      document.getElementById('estado-sin-nido').innerHTML = `
+        <div class="empty-state-icon">M</div>
+        <div class="empty-state-title">Mayordomo no activo</div>
+        <p class="empty-state-text">Para usar la Tienda, el administrador debe activar Mayordomo en la ficha del bien.</p>
+        <button class="btn btn-secondary" onclick="history.back()" style="margin-top: 16px;">Volver</button>
+      `;
+      document.getElementById('estado-sin-nido').classList.remove('hidden');
+      document.getElementById('contenido-principal').classList.add('hidden');
+    }
 
     // ========== CARGAR NIDOS ==========
     async function cargarNidosUsuario() {
