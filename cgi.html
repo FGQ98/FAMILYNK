@@ -848,6 +848,89 @@
     .menu-comida { display: flex; gap: 3px; }
     .menu-comida-tipo { color: var(--text-muted); }
 
+    /* ============ MI PLAN ============ */
+    .plan-card { border-left: 4px solid var(--sage); }
+
+    .plan-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .plan-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--sage-muted);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--sage-dark);
+    }
+
+    .plan-details {
+      flex: 1;
+    }
+
+    .plan-nombre {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .plan-tipo {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    .plan-stats {
+      display: flex;
+      gap: 12px;
+      font-size: 0.75rem;
+    }
+
+    .plan-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .plan-stat-label {
+      color: var(--text-muted);
+      font-size: 0.65rem;
+    }
+
+    .plan-stat-value {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .plan-upgrade {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      background: var(--sage-muted);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--sage-dark);
+      text-decoration: none;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+
+    .plan-upgrade:hover {
+      background: var(--sage);
+      color: white;
+    }
+
     /* ============ BTN NUEVO ============ */
     .btn-nuevo {
       width: 100%;
@@ -1288,6 +1371,22 @@
       border-top: 1px solid var(--cream-dark);
     }
 
+    /* ============ FOOTER ============ */
+    .app-footer {
+      text-align: center;
+      padding: 16px 24px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .app-footer a {
+      color: var(--sage-dark);
+      text-decoration: none;
+      margin: 0 8px;
+    }
+
+    .app-footer a:hover { text-decoration: underline; }
+
     /* ============ RESPONSIVE ============ */
     @media (max-width: 1100px) {
       .dashboard-grid {
@@ -1612,9 +1711,46 @@
             </div>
           </div>
         </div>
+
+        <!-- Mi Plan -->
+        <div class="plan-col">
+          <div class="card plan-card">
+            <div class="card-header">
+              <span class="card-title">📋 Mi Plan</span>
+              <a href="planes.html" class="card-action">Ver planes →</a>
+            </div>
+            <div class="card-body">
+              <div class="plan-info">
+                <div class="plan-icon" id="plan-icon">G</div>
+                <div class="plan-details">
+                  <div class="plan-nombre" id="plan-nombre">Gratuito</div>
+                  <div class="plan-tipo" id="plan-tipo">Plan base</div>
+                </div>
+              </div>
+              <div class="plan-stats">
+                <div class="plan-stat">
+                  <span class="plan-stat-label">Fotos</span>
+                  <span class="plan-stat-value" id="plan-fotos">0 / 150</span>
+                </div>
+                <div class="plan-stat">
+                  <span class="plan-stat-label">Generaciones</span>
+                  <span class="plan-stat-value" id="plan-generaciones">3</span>
+                </div>
+              </div>
+              <a href="planes.html" class="plan-upgrade" id="plan-upgrade">Mejorar plan</a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
+
+  <footer class="app-footer">
+    <a href="planes.html">Planes</a>
+    <a href="#">Privacidad</a>
+    <a href="#">Términos</a>
+    <span>© 2025 FAMILYNK</span>
+  </footer>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -1699,6 +1835,33 @@
       renderTablon();
       renderMenus();
       cargarBadgeChat();
+      renderPlan();
+    }
+
+    // ============ MI PLAN ============
+    function renderPlan() {
+      // Datos del plan desde familia o usuario
+      const plan = currentFamilia?.plan || userData?.plan || 'gratuito';
+      const fotos = currentFamilia?.fotosUsadas || 0;
+      
+      const planes = {
+        'gratuito': { nombre: 'Gratuito', icon: 'G', tipo: 'Plan base', maxFotos: 150, generaciones: 3 },
+        'plus': { nombre: 'Plus', icon: '+', tipo: 'Plan familiar', maxFotos: 500, generaciones: 4 },
+        'premium': { nombre: 'Premium', icon: 'P', tipo: 'Todo incluido', maxFotos: '∞', generaciones: '∞' }
+      };
+
+      const planData = planes[plan] || planes['gratuito'];
+
+      document.getElementById('plan-icon').textContent = planData.icon;
+      document.getElementById('plan-nombre').textContent = planData.nombre;
+      document.getElementById('plan-tipo').textContent = planData.tipo;
+      document.getElementById('plan-fotos').textContent = `${fotos} / ${planData.maxFotos}`;
+      document.getElementById('plan-generaciones').textContent = planData.generaciones;
+
+      // Ocultar botón mejorar si ya tiene Premium
+      if (plan === 'premium') {
+        document.getElementById('plan-upgrade').style.display = 'none';
+      }
     }
 
     // ============ SELECTOR DE ESTIRPES ============
