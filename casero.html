@@ -509,6 +509,131 @@
       padding: 60px 24px;
     }
 
+    /* Toma de inventario */
+    .toma-lugar-header {
+      padding: 10px 14px;
+      background: var(--mayordomo);
+      color: white;
+      border-radius: var(--radius-md);
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .toma-grupo-header {
+      padding: 8px 12px;
+      background: var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .toma-grupo-header:hover {
+      background: var(--cream);
+    }
+
+    .toma-scroll {
+      max-height: 50vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .toma-lugar {
+      margin-bottom: 16px;
+    }
+
+    .toma-lugar-content {
+      padding-left: 8px;
+    }
+
+    .toma-lugar-content.collapsed {
+      display: none;
+    }
+
+    .toma-grupo {
+      margin-bottom: 10px;
+    }
+
+    .toma-articulos {
+      padding-left: 8px;
+    }
+
+    .toma-articulos.collapsed {
+      display: none;
+    }
+
+    .toma-cantidad {
+      width: 60px;
+      padding: 6px 8px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .toma-cantidad:focus {
+      outline: none;
+      border-color: var(--mayordomo);
+    }
+
+    .toma-cantidad.bajo {
+      border-color: var(--error);
+      background: rgba(212, 105, 90, 0.1);
+    }
+
+    .toma-cantidad.ok {
+      border-color: var(--success);
+    }
+
+    .toma-resumen {
+      display: flex;
+      gap: 16px;
+      padding: 14px;
+      background: var(--white);
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .toma-stat {
+      flex: 1;
+      text-align: center;
+    }
+
+    .toma-stat-num {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .toma-stat-num.ok { color: var(--success); }
+    .toma-stat-num.warning { color: var(--warning); }
+    .toma-stat-num.danger { color: var(--error); }
+
+    .toma-stat-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .toma-min {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      min-width: 50px;
+      text-align: right;
+    }
+
     .no-access-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
     .no-access h2 { font-family: 'Quicksand', sans-serif; margin-bottom: 8px; }
     .no-access p { color: var(--text-muted); }
@@ -658,6 +783,39 @@
         <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
         <button type="button" class="btn" style="background: var(--warning); color: white;" onclick="procesarPedido('en_proceso')">En proceso</button>
         <button type="button" class="btn btn-primary" onclick="procesarPedido('completar')">Completar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Toma de Inventario -->
+  <div class="modal-overlay" id="modal-toma">
+    <div class="modal" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Toma de Inventario</h3>
+        <button class="modal-close" onclick="cerrarModalToma()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="toma-resumen">
+          <div class="toma-stat">
+            <div class="toma-stat-num ok" id="toma-stat-ok">0</div>
+            <div class="toma-stat-label">En stock</div>
+          </div>
+          <div class="toma-stat">
+            <div class="toma-stat-num warning" id="toma-stat-bajo">0</div>
+            <div class="toma-stat-label">Bajo mínimo</div>
+          </div>
+          <div class="toma-stat">
+            <div class="toma-stat-num danger" id="toma-stat-agotado">0</div>
+            <div class="toma-stat-label">Agotados</div>
+          </div>
+        </div>
+        <div class="toma-scroll" id="toma-scroll">
+          <p style="text-align:center; padding:24px; color:var(--text-muted);">Cargando inventario...</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalToma()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarToma()">Guardar toma</button>
       </div>
     </div>
   </div>
@@ -1175,6 +1333,7 @@
           <div class="modulo-card-body">${itemsHtml}</div>
           ${p.crear ? `
             <div class="modulo-card-footer">
+              <button class="btn btn-sm btn-secondary" onclick="abrirModalTomaInventario()">Toma</button>
               <button class="btn btn-sm btn-primary" onclick="abrirModalInventario()">+ Añadir</button>
             </div>
           ` : ''}
@@ -1487,6 +1646,165 @@
       auth.signOut().then(() => {
         window.location.href = 'login.html';
       });
+    }
+
+    // ========== TOMA DE INVENTARIO ==========
+    let inventarioToma = null;
+    let tomaData = {};
+
+    async function abrirModalTomaInventario() {
+      document.getElementById('modal-toma').classList.add('active');
+      tomaData = {};
+      await cargarInventarioParaToma();
+    }
+
+    async function cargarInventarioParaToma() {
+      const container = document.getElementById('toma-scroll');
+      
+      try {
+        const doc = await db.collection('bienes').doc(bienActual.bienId).get();
+        inventarioToma = doc.data()?.inventario || null;
+        
+        if (!inventarioToma || Object.keys(inventarioToma).length === 0) {
+          container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-muted);">No hay inventario configurado para este bien.</div>';
+          return;
+        }
+        
+        renderListaToma();
+        calcularEstadisticasToma();
+        
+      } catch (error) {
+        console.error('Error cargando inventario:', error);
+        container.innerHTML = '<div style="text-align:center; padding:24px; color:var(--error);">Error al cargar el inventario</div>';
+      }
+    }
+
+    function renderListaToma() {
+      const container = document.getElementById('toma-scroll');
+      let html = '';
+      
+      for (const [lugarKey, lugar] of Object.entries(inventarioToma)) {
+        html += `<div class="toma-lugar">
+          <div class="toma-lugar-header" onclick="toggleLugarToma('${lugarKey}')">
+            <span>${lugar.nombre}</span>
+            <span id="toggle-${lugarKey}">−</span>
+          </div>
+          <div class="toma-lugar-content" id="lugar-${lugarKey}">`;
+        
+        if (lugar.grupos) {
+          for (const [grupoKey, grupo] of Object.entries(lugar.grupos)) {
+            const numArticulos = grupo.articulos?.length || 0;
+            
+            html += `<div class="toma-grupo">
+              <div class="toma-grupo-header" onclick="toggleGrupoToma('${lugarKey}-${grupoKey}')">
+                <span>${grupo.nombre}</span>
+                <span>${numArticulos} art.</span>
+              </div>
+              <div class="toma-articulos" id="grupo-${lugarKey}-${grupoKey}">
+                <div class="item-list">`;
+            
+            if (grupo.articulos && grupo.articulos.length > 0) {
+              grupo.articulos.forEach((art, idx) => {
+                const dataKey = `${lugarKey}.${grupoKey}.${idx}`;
+                const valorActual = art.actual || 0;
+                const unidad = art.unidad || 'uds';
+                tomaData[dataKey] = valorActual;
+                
+                html += `<div class="item-row no-hover">
+                  <div class="item-content">
+                    <div class="item-title">${art.nombre}</div>
+                    <div class="item-subtitle">${art.formato || ''}</div>
+                  </div>
+                  <div class="toma-min">min ${art.minimo} ${unidad}</div>
+                  <input type="number" class="toma-cantidad" id="input-${dataKey}" value="${valorActual}" min="0" data-key="${dataKey}" data-min="${art.minimo}" onchange="actualizarCantidadToma(this)" oninput="colorearInputToma(this)">
+                </div>`;
+              });
+            } else {
+              html += '<div class="item-row no-hover" style="justify-content:center; color:var(--text-muted);">Sin artículos</div>';
+            }
+            
+            html += '</div></div></div>';
+          }
+        }
+        
+        html += '</div></div>';
+      }
+      
+      container.innerHTML = html;
+      document.querySelectorAll('.toma-cantidad').forEach(input => colorearInputToma(input));
+    }
+
+    function toggleLugarToma(lugarKey) {
+      const content = document.getElementById(`lugar-${lugarKey}`);
+      const toggle = document.getElementById(`toggle-${lugarKey}`);
+      if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        toggle.textContent = '−';
+      } else {
+        content.classList.add('collapsed');
+        toggle.textContent = '+';
+      }
+    }
+
+    function toggleGrupoToma(id) {
+      const content = document.getElementById(`grupo-${id}`);
+      content.classList.toggle('collapsed');
+    }
+
+    function actualizarCantidadToma(input) {
+      const key = input.dataset.key;
+      const valor = parseInt(input.value) || 0;
+      tomaData[key] = valor;
+      colorearInputToma(input);
+      calcularEstadisticasToma();
+    }
+
+    function colorearInputToma(input) {
+      const valor = parseInt(input.value) || 0;
+      const minimo = parseInt(input.dataset.min) || 0;
+      input.classList.remove('bajo', 'ok');
+      input.classList.add(valor < minimo ? 'bajo' : 'ok');
+    }
+
+    function calcularEstadisticasToma() {
+      let ok = 0, bajo = 0, agotado = 0;
+      document.querySelectorAll('.toma-cantidad').forEach(input => {
+        const valor = parseInt(input.value) || 0;
+        const minimo = parseInt(input.dataset.min) || 0;
+        if (valor === 0) agotado++;
+        else if (valor < minimo) bajo++;
+        else ok++;
+      });
+      document.getElementById('toma-stat-ok').textContent = ok;
+      document.getElementById('toma-stat-bajo').textContent = bajo;
+      document.getElementById('toma-stat-agotado').textContent = agotado;
+    }
+
+    async function guardarToma() {
+      try {
+        for (const [key, valor] of Object.entries(tomaData)) {
+          const [lugarKey, grupoKey, idx] = key.split('.');
+          inventarioToma[lugarKey].grupos[grupoKey].articulos[parseInt(idx)].actual = valor;
+        }
+        
+        await db.collection('bienes').doc(bienActual.bienId).update({
+          inventario: inventarioToma,
+          ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
+          tomaPor: currentUser.uid
+        });
+        
+        cerrarModalToma();
+        await cargarDatosModulos();
+        renderModulos();
+      } catch (error) {
+        console.error('Error guardando toma:', error);
+        alert('Error al guardar la toma');
+      }
+    }
+
+    function cerrarModalToma() {
+      document.getElementById('modal-toma').classList.remove('active');
+      tomaData = {};
     }
   </script>
 </body>
