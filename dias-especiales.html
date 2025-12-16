@@ -107,6 +107,14 @@
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
 
+    /* Capa selector */
+    .capa-selector { display: flex; gap: 8px; margin-bottom: 8px; }
+    .capa-option { flex: 1; padding: 10px 6px; text-align: center; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
+    .capa-option:hover { border-color: var(--sage-light); }
+    .capa-option.selected { border-color: var(--sage); background: var(--sage-muted); }
+    .capa-option-icon { font-size: 1.2rem; margin-bottom: 2px; }
+    .capa-option-label { font-size: 0.7rem; font-weight: 600; }
+
     .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -173,7 +181,25 @@
         <button class="modal-close" onclick="cerrarModal()">×</button>
       </div>
       <div class="modal-body">
-        <div class="form-group">
+        <!-- Capa de visibilidad -->
+        <div class="form-label">Visibilidad</div>
+        <div class="capa-selector">
+          <div class="capa-option selected" data-capa="nido" onclick="seleccionarCapa('nido', this)">
+            <div class="capa-option-icon">🪺</div>
+            <div class="capa-option-label">Nido</div>
+          </div>
+          <div class="capa-option" data-capa="estirpe" onclick="seleccionarCapa('estirpe', this)">
+            <div class="capa-option-icon">🌿</div>
+            <div class="capa-option-label">Estirpe</div>
+          </div>
+          <div class="capa-option" data-capa="rama" onclick="seleccionarCapa('rama', this)">
+            <div class="capa-option-icon">🌳</div>
+            <div class="capa-option-label">Rama</div>
+          </div>
+        </div>
+        <input type="hidden" id="dia-capa" value="nido">
+
+        <div class="form-group" style="margin-top:16px;">
           <label class="form-label">Tipo</label>
           <select class="form-select" id="dia-tipo">
             <option value="cumple">🎂 Cumpleaños</option>
@@ -428,9 +454,18 @@
       document.getElementById(`section-${tab}`).classList.add('active');
     }
 
+    function seleccionarCapa(capa, el) {
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('dia-capa').value = capa;
+    }
+
     function abrirModal() {
       editingId = null;
       document.getElementById('modal-titulo').textContent = '🎂 Nuevo día especial';
+      document.getElementById('dia-capa').value = 'nido';
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector('.capa-option[data-capa="nido"]').classList.add('selected');
       document.getElementById('dia-tipo').value = 'cumple';
       document.getElementById('dia-nombre').value = '';
       document.getElementById('dia-dia').value = '1';
@@ -447,6 +482,9 @@
 
       editingId = id;
       document.getElementById('modal-titulo').textContent = '✏️ Editar día especial';
+      document.getElementById('dia-capa').value = dia.capa || 'nido';
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector(`.capa-option[data-capa="${dia.capa || 'nido'}"]`)?.classList.add('selected');
       document.getElementById('dia-tipo').value = dia.tipo;
       document.getElementById('dia-nombre').value = dia.nombre;
       document.getElementById('dia-dia').value = dia.dia;
@@ -462,6 +500,7 @@
     }
 
     async function guardarDia() {
+      const capa = document.getElementById('dia-capa').value;
       const tipo = document.getElementById('dia-tipo').value;
       const nombre = document.getElementById('dia-nombre').value.trim();
       const dia = parseInt(document.getElementById('dia-dia').value);
@@ -475,6 +514,7 @@
       }
 
       const diaData = {
+        capa,
         tipo,
         nombre,
         dia,

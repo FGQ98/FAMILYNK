@@ -35,6 +35,12 @@
 
     .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
 
+    /* Selector de casa */
+    .casa-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 12px 16px; background: var(--white); border-radius: var(--radius-md); box-shadow: var(--shadow-soft); }
+    .casa-label { font-weight: 600; font-size: 0.9rem; }
+    .casa-select { padding: 8px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; min-width: 200px; cursor: pointer; }
+    .casa-select:focus { outline: none; border-color: var(--sage); }
+
     /* Controles */
     .controles { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
     .vista-toggle { display: flex; background: var(--white); border-radius: var(--radius-full); padding: 4px; box-shadow: var(--shadow-soft); }
@@ -153,6 +159,14 @@
     <div id="loading" class="loading"><div class="spinner"></div></div>
 
     <div id="content" class="hidden">
+      <!-- Selector de casa -->
+      <div class="casa-selector" id="casa-selector">
+        <span class="casa-label">🏠 Casa:</span>
+        <select class="casa-select" id="casa-select" onchange="cambiarCasa()">
+          <option value="">Cargando casas...</option>
+        </select>
+      </div>
+
       <!-- Controles -->
       <div class="controles">
         <div class="vista-toggle">
@@ -256,6 +270,9 @@
   <script>
     let currentUser = null;
     let userData = null;
+    let nidoData = null;
+    let casas = [];
+    let casaActual = null;
     let menusData = [];
     let fechaActual = new Date();
     let vistaActual = 'dia';
@@ -273,6 +290,17 @@
       try {
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         userData = userDoc.exists ? userDoc.data() : {};
+        
+        // Cargar casas del nido
+        if (userData.nidoId) {
+          const nidoDoc = await db.collection('nidos').doc(userData.nidoId).get();
+          if (nidoDoc.exists) {
+            nidoData = nidoDoc.data();
+            casas = nidoData.casas || [];
+            renderCasasSelect();
+          }
+        }
+        
         await cargarMenus();
       } catch (e) {
         console.error('Error:', e);
@@ -283,8 +311,31 @@
       actualizarVista();
     });
 
+    function renderCasasSelect() {
+      const select = document.getElementById('casa-select');
+      if (casas.length === 0) {
+        select.innerHTML = '<option value="">Sin casas registradas</option>';
+        return;
+      }
+      
+      select.innerHTML = casas.map((c, i) => {
+        const icon = c.tipo === 'principal' ? '🏠' : c.tipo === 'segunda' ? '🏖️' : '🏢';
+        return `<option value="${c.id}" ${i === 0 ? 'selected' : ''}>${icon} ${c.nombre}</option>`;
+      }).join('');
+      
+      casaActual = casas[0]?.id || null;
+    }
+
+    function cambiarCasa() {
+      casaActual = document.getElementById('casa-select').value;
+      cargarMenus().then(() => actualizarVista());
+    }
+
     async function cargarMenus() {
-      if (!userData.nidoId) return;
+      if (!userData.nidoId || !casaActual) {
+        menusData = [];
+        return;
+      }
 
       // Cargar menús del mes actual y adyacentes
       const inicioMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() - 1, 1);
@@ -292,6 +343,7 @@
 
       const snap = await db.collection('menus')
         .where('nidoId', '==', userData.nidoId)
+        .where('casaId', '==', casaActual)
         .where('fecha', '>=', formatFecha(inicioMes))
         .where('fecha', '<=', formatFecha(finMes))
         .get();
@@ -514,6 +566,7 @@
         notas,
         fecha: editingFecha,
         nidoId: userData.nidoId,
+        casaId: casaActual,
         creadoPor: currentUser.uid,
         fechaActualizacion: new Date().toISOString()
       };

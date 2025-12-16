@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Citas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      
+      --medico: #2196F3;
+      --trabajo: #FF9800;
+      --personal: #9C27B0;
+      --otro: #607D8B;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 16px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+    /* Filtros */
+    .filtros { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .filtro-btn { padding: 8px 16px; background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-full); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .filtro-btn:hover { border-color: var(--sage-light); }
+    .filtro-btn.active { background: var(--sage); color: white; border-color: var(--sage); }
+
+    /* Lista de citas */
+    .citas-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .cita-card { display: flex; gap: 16px; padding: 16px 20px; background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); transition: all 0.2s; cursor: pointer; }
+    .cita-card:hover { transform: translateX(4px); box-shadow: var(--shadow-medium); }
+    .cita-card.medico { border-left: 4px solid var(--medico); }
+    .cita-card.trabajo { border-left: 4px solid var(--trabajo); }
+    .cita-card.personal { border-left: 4px solid var(--personal); }
+    .cita-card.otro { border-left: 4px solid var(--otro); }
+
+    .cita-fecha { text-align: center; min-width: 50px; }
+    .cita-dia { font-size: 1.5rem; font-weight: 700; color: var(--sage-dark); }
+    .cita-mes { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); }
+
+    .cita-info { flex: 1; }
+    .cita-titulo { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+    .cita-detalles { font-size: 0.85rem; color: var(--text-light); display: flex; flex-wrap: wrap; gap: 12px; }
+    .cita-detalle { display: flex; align-items: center; gap: 4px; }
+
+    .cita-capa { text-align: right; }
+    .capa-badge { font-size: 0.7rem; padding: 4px 10px; border-radius: var(--radius-full); font-weight: 600; }
+    .capa-badge.nido { background: var(--sage-muted); color: var(--sage-dark); }
+    .capa-badge.estirpe { background: var(--terracotta-muted); color: var(--terracotta); }
+    .capa-badge.rama { background: rgba(33,150,243,0.15); color: #1976D2; }
+
+    /* Sección por tiempo */
+    .tiempo-section { margin-bottom: 24px; }
+    .tiempo-title { font-family: 'Quicksand', sans-serif; font-size: 0.9rem; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; opacity: 0.5; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; gap: 8px; justify-content: space-between; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Selector de capa */
+    .capa-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+    .capa-option { flex: 1; padding: 12px 8px; text-align: center; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
+    .capa-option:hover { border-color: var(--sage-light); }
+    .capa-option.selected { border-color: var(--sage); background: var(--sage-muted); }
+    .capa-option-icon { font-size: 1.3rem; margin-bottom: 4px; }
+    .capa-option-label { font-size: 0.75rem; font-weight: 600; }
+    .capa-option-hint { font-size: 0.65rem; color: var(--text-muted); }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="activacion.html" class="back-btn">← Activación</a>
+      <h1 class="header-title">📍 Citas</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="abrirModal()">+ Nueva cita</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <!-- Filtros -->
+      <div class="filtros">
+        <button class="filtro-btn active" onclick="filtrar('todos', this)">Todas</button>
+        <button class="filtro-btn" onclick="filtrar('medico', this)">🏥 Médico</button>
+        <button class="filtro-btn" onclick="filtrar('trabajo', this)">💼 Trabajo</button>
+        <button class="filtro-btn" onclick="filtrar('personal', this)">👤 Personal</button>
+        <button class="filtro-btn" onclick="filtrar('otro', this)">📌 Otro</button>
+      </div>
+
+      <!-- Lista -->
+      <div id="citas-container"></div>
+
+      <!-- Empty state -->
+      <div class="empty-state hidden" id="empty-state">
+        <div class="empty-icon">📍</div>
+        <p class="empty-text">No hay citas programadas.<br>¡Añade tu primera cita!</p>
+        <button class="btn btn-primary" onclick="abrirModal()">+ Nueva cita</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-cita">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">📍 Nueva cita</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Selector de capa -->
+        <div class="form-label">Visibilidad</div>
+        <div class="capa-selector">
+          <div class="capa-option selected" data-capa="nido" onclick="seleccionarCapa('nido', this)">
+            <div class="capa-option-icon">🪺</div>
+            <div class="capa-option-label">Nido</div>
+            <div class="capa-option-hint">Solo tu nido</div>
+          </div>
+          <div class="capa-option" data-capa="estirpe" onclick="seleccionarCapa('estirpe', this)">
+            <div class="capa-option-icon">🌿</div>
+            <div class="capa-option-label">Estirpe</div>
+            <div class="capa-option-hint">Nido + descendientes</div>
+          </div>
+          <div class="capa-option" data-capa="rama" onclick="seleccionarCapa('rama', this)">
+            <div class="capa-option-icon">🌳</div>
+            <div class="capa-option-label">Rama</div>
+            <div class="capa-option-hint">Toda la familia</div>
+          </div>
+        </div>
+        <input type="hidden" id="cita-capa" value="nido">
+
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="cita-tipo">
+            <option value="medico">🏥 Médico</option>
+            <option value="trabajo">💼 Trabajo</option>
+            <option value="personal">👤 Personal</option>
+            <option value="otro">📌 Otro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Título *</label>
+          <input type="text" class="form-input" id="cita-titulo" placeholder="Ej: Revisión dentista, Reunión cliente..." required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha *</label>
+            <input type="date" class="form-input" id="cita-fecha" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora</label>
+            <input type="time" class="form-input" id="cita-hora">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Lugar</label>
+          <input type="text" class="form-input" id="cita-lugar" placeholder="Ej: Hospital Central, Oficina...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <input type="text" class="form-input" id="cita-notas" placeholder="Detalles adicionales...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm hidden" id="btn-eliminar" onclick="eliminarCita()">🗑️</button>
+        <div>
+          <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarCita()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let citasData = [];
+    let filtroActual = 'todos';
+    let editingId = null;
+
+    const tipoIcons = { medico: '🏥', trabajo: '💼', personal: '👤', otro: '📌' };
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      try {
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        userData = userDoc.exists ? userDoc.data() : {};
+        await cargarCitas();
+      } catch (e) {
+        console.error('Error:', e);
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+    });
+
+    async function cargarCitas() {
+      if (!userData.familiaId) {
+        renderCitas();
+        return;
+      }
+
+      // Cargar citas según capas visibles
+      const snap = await db.collection('citas')
+        .where('familiaId', '==', userData.familiaId)
+        .orderBy('fecha', 'asc')
+        .get();
+
+      // Filtrar según capa y permisos
+      citasData = snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(cita => {
+          if (cita.capa === 'rama') return true;
+          if (cita.capa === 'nido' && cita.nidoId === userData.nidoId) return true;
+          if (cita.capa === 'estirpe') {
+            // TODO: Verificar si el usuario está en la estirpe del creador
+            return cita.nidoId === userData.nidoId || cita.creadoPor === currentUser.uid;
+          }
+          return false;
+        });
+
+      renderCitas();
+    }
+
+    function renderCitas() {
+      const container = document.getElementById('citas-container');
+      const empty = document.getElementById('empty-state');
+
+      let citas = filtroActual === 'todos' 
+        ? citasData 
+        : citasData.filter(c => c.tipo === filtroActual);
+
+      // Solo futuras y hoy
+      const hoy = new Date().toISOString().split('T')[0];
+      citas = citas.filter(c => c.fecha >= hoy);
+
+      if (citas.length === 0) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+
+      // Agrupar por proximidad
+      const hoyStr = hoy;
+      const mañana = new Date();
+      mañana.setDate(mañana.getDate() + 1);
+      const mañanaStr = mañana.toISOString().split('T')[0];
+      
+      const semana = new Date();
+      semana.setDate(semana.getDate() + 7);
+      const semanaStr = semana.toISOString().split('T')[0];
+
+      const grupos = {
+        hoy: citas.filter(c => c.fecha === hoyStr),
+        mañana: citas.filter(c => c.fecha === mañanaStr),
+        semana: citas.filter(c => c.fecha > mañanaStr && c.fecha <= semanaStr),
+        despues: citas.filter(c => c.fecha > semanaStr)
+      };
+
+      let html = '';
+
+      if (grupos.hoy.length > 0) {
+        html += renderGrupo('📍 Hoy', grupos.hoy);
+      }
+      if (grupos.mañana.length > 0) {
+        html += renderGrupo('📅 Mañana', grupos.mañana);
+      }
+      if (grupos.semana.length > 0) {
+        html += renderGrupo('🗓️ Esta semana', grupos.semana);
+      }
+      if (grupos.despues.length > 0) {
+        html += renderGrupo('📆 Próximamente', grupos.despues);
+      }
+
+      container.innerHTML = html;
+    }
+
+    function renderGrupo(titulo, citas) {
+      return `
+        <div class="tiempo-section">
+          <div class="tiempo-title">${titulo}</div>
+          <div class="citas-list">
+            ${citas.map(c => {
+              const fecha = new Date(c.fecha);
+              const capaLabels = { nido: 'Nido', estirpe: 'Estirpe', rama: 'Rama' };
+              
+              return `
+                <div class="cita-card ${c.tipo}" onclick="editarCita('${c.id}')">
+                  <div class="cita-fecha">
+                    <div class="cita-dia">${fecha.getDate()}</div>
+                    <div class="cita-mes">${meses[fecha.getMonth()]}</div>
+                  </div>
+                  <div class="cita-info">
+                    <div class="cita-titulo">${tipoIcons[c.tipo]} ${c.titulo}</div>
+                    <div class="cita-detalles">
+                      ${c.hora ? `<span class="cita-detalle">🕐 ${c.hora}</span>` : ''}
+                      ${c.lugar ? `<span class="cita-detalle">📍 ${c.lugar}</span>` : ''}
+                    </div>
+                  </div>
+                  <div class="cita-capa">
+                    <span class="capa-badge ${c.capa}">${capaLabels[c.capa]}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function filtrar(tipo, btn) {
+      filtroActual = tipo;
+      document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderCitas();
+    }
+
+    function seleccionarCapa(capa, el) {
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('cita-capa').value = capa;
+    }
+
+    function abrirModal() {
+      editingId = null;
+      document.getElementById('modal-titulo').textContent = '📍 Nueva cita';
+      document.getElementById('cita-capa').value = 'nido';
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector('.capa-option[data-capa="nido"]').classList.add('selected');
+      document.getElementById('cita-tipo').value = 'medico';
+      document.getElementById('cita-titulo').value = '';
+      document.getElementById('cita-fecha').value = '';
+      document.getElementById('cita-hora').value = '';
+      document.getElementById('cita-lugar').value = '';
+      document.getElementById('cita-notas').value = '';
+      document.getElementById('btn-eliminar').classList.add('hidden');
+      document.getElementById('modal-cita').classList.add('active');
+    }
+
+    function editarCita(id) {
+      const cita = citasData.find(c => c.id === id);
+      if (!cita) return;
+
+      // Solo puede editar el creador
+      if (cita.creadoPor !== currentUser.uid) {
+        alert('Solo el creador puede editar esta cita');
+        return;
+      }
+
+      editingId = id;
+      document.getElementById('modal-titulo').textContent = '✏️ Editar cita';
+      document.getElementById('cita-capa').value = cita.capa;
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector(`.capa-option[data-capa="${cita.capa}"]`).classList.add('selected');
+      document.getElementById('cita-tipo').value = cita.tipo;
+      document.getElementById('cita-titulo').value = cita.titulo;
+      document.getElementById('cita-fecha').value = cita.fecha;
+      document.getElementById('cita-hora').value = cita.hora || '';
+      document.getElementById('cita-lugar').value = cita.lugar || '';
+      document.getElementById('cita-notas').value = cita.notas || '';
+      document.getElementById('btn-eliminar').classList.remove('hidden');
+      document.getElementById('modal-cita').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-cita').classList.remove('active');
+    }
+
+    async function guardarCita() {
+      const capa = document.getElementById('cita-capa').value;
+      const tipo = document.getElementById('cita-tipo').value;
+      const titulo = document.getElementById('cita-titulo').value.trim();
+      const fecha = document.getElementById('cita-fecha').value;
+      const hora = document.getElementById('cita-hora').value;
+      const lugar = document.getElementById('cita-lugar').value.trim();
+      const notas = document.getElementById('cita-notas').value.trim();
+
+      if (!titulo || !fecha) {
+        alert('Título y fecha son obligatorios');
+        return;
+      }
+
+      const citaData = {
+        capa,
+        tipo,
+        titulo,
+        fecha,
+        hora,
+        lugar,
+        notas,
+        familiaId: userData.familiaId,
+        nidoId: userData.nidoId,
+        creadoPor: currentUser.uid,
+        fechaActualizacion: new Date().toISOString()
+      };
+
+      try {
+        if (editingId) {
+          await db.collection('citas').doc(editingId).update(citaData);
+        } else {
+          citaData.fechaCreacion = new Date().toISOString();
+          await db.collection('citas').add(citaData);
+        }
+
+        await cargarCitas();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function eliminarCita() {
+      if (!editingId) return;
+      if (!confirm('¿Eliminar esta cita?')) return;
+
+      try {
+        await db.collection('citas').doc(editingId).delete();
+        await cargarCitas();
+        cerrarModal();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    document.getElementById('modal-cita').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-cita') cerrarModal();
+    });
+  </script>
+</body>
+</html>

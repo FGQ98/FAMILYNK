@@ -104,6 +104,14 @@
     .tipo-option-icon { font-size: 1.5rem; margin-bottom: 4px; }
     .tipo-option-label { font-size: 0.75rem; font-weight: 600; }
 
+    /* Capa selector */
+    .capa-selector { display: flex; gap: 8px; margin-bottom: 8px; }
+    .capa-option { flex: 1; padding: 10px 6px; text-align: center; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
+    .capa-option:hover { border-color: var(--sage-light); }
+    .capa-option.selected { border-color: var(--sage); background: var(--sage-muted); }
+    .capa-option-icon { font-size: 1.2rem; margin-bottom: 2px; }
+    .capa-option-label { font-size: 0.7rem; font-weight: 600; }
+
     .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -164,8 +172,26 @@
         <button class="modal-close" onclick="cerrarModal()">×</button>
       </div>
       <div class="modal-body">
+        <!-- Capa de visibilidad -->
+        <div class="form-label">Visibilidad</div>
+        <div class="capa-selector">
+          <div class="capa-option selected" data-capa="nido" onclick="seleccionarCapa('nido', this)">
+            <div class="capa-option-icon">🪺</div>
+            <div class="capa-option-label">Nido</div>
+          </div>
+          <div class="capa-option" data-capa="estirpe" onclick="seleccionarCapa('estirpe', this)">
+            <div class="capa-option-icon">🌿</div>
+            <div class="capa-option-label">Estirpe</div>
+          </div>
+          <div class="capa-option" data-capa="rama" onclick="seleccionarCapa('rama', this)">
+            <div class="capa-option-icon">🌳</div>
+            <div class="capa-option-label">Rama</div>
+          </div>
+        </div>
+        <input type="hidden" id="evento-capa" value="nido">
+
         <!-- Tipo -->
-        <div class="form-label">Tipo de evento</div>
+        <div class="form-label" style="margin-top:16px;">Tipo de evento</div>
         <div class="tipo-selector">
           <div class="tipo-option selected" data-tipo="caceria" onclick="seleccionarTipo('caceria', this)">
             <div class="tipo-option-icon">🦌</div>
@@ -346,9 +372,18 @@
       document.getElementById('evento-tipo').value = tipo;
     }
 
+    function seleccionarCapa(capa, el) {
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      document.getElementById('evento-capa').value = capa;
+    }
+
     function abrirModal() {
       editingId = null;
       document.getElementById('modal-titulo').textContent = '🎉 Nuevo evento';
+      document.getElementById('evento-capa').value = 'nido';
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector('.capa-option[data-capa="nido"]').classList.add('selected');
       document.getElementById('evento-tipo').value = 'caceria';
       document.querySelectorAll('.tipo-option').forEach(o => o.classList.remove('selected'));
       document.querySelector('.tipo-option[data-tipo="caceria"]').classList.add('selected');
@@ -368,6 +403,9 @@
 
       editingId = id;
       document.getElementById('modal-titulo').textContent = '✏️ Editar evento';
+      document.getElementById('evento-capa').value = evento.capa || 'nido';
+      document.querySelectorAll('.capa-option').forEach(o => o.classList.remove('selected'));
+      document.querySelector(`.capa-option[data-capa="${evento.capa || 'nido'}"]`)?.classList.add('selected');
       document.getElementById('evento-tipo').value = evento.tipo;
       document.querySelectorAll('.tipo-option').forEach(o => o.classList.remove('selected'));
       document.querySelector(`.tipo-option[data-tipo="${evento.tipo}"]`)?.classList.add('selected');
@@ -386,6 +424,7 @@
     }
 
     async function guardarEvento() {
+      const capa = document.getElementById('evento-capa').value;
       const tipo = document.getElementById('evento-tipo').value;
       const nombre = document.getElementById('evento-nombre').value.trim();
       const fecha = document.getElementById('evento-fecha').value;
@@ -400,6 +439,7 @@
       }
 
       const eventoData = {
+        capa,
         tipo,
         nombre,
         fecha,
