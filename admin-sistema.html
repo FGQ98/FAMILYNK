@@ -3,282 +3,671 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FAMILYNK — Admin Sistema</title>
+  <title>FAMILYNK — Admin Panel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --sage: #87A878;
-      --sage-dark: #6B8A5E;
-      --cream: #F5F1EB;
-      --cream-dark: #E8E0D5;
-      --terracotta: #C4A77D;
-      --white: #FFFFFF;
-      --text: #2D3A2E;
-      --text-light: #5A6B5D;
-      --text-muted: #8B9A8D;
-      --negro: #1a1a1a;
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
-      --shadow-medium: 0 4px 16px rgba(0,0,0,0.1);
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --admin: #4A5568; --admin-light: #718096; --admin-dark: #2D3748; --admin-muted: rgba(74, 85, 104, 0.1);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A; --white: #FFFFFF;
+      --success: #48BB78; --warning: #ECC94B; --error: #F56565; --info: #4299E1;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.1);
+      --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-full: 50px;
     }
-
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Nunito', sans-serif;
-      background: var(--cream);
-      color: var(--text);
-      min-height: 100vh;
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* HEADER */
+    .header { background: linear-gradient(135deg, var(--admin-dark) 0%, var(--admin) 100%); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-medium); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { display: flex; align-items: center; gap: 0.5em; text-decoration: none; }
+    .logo-icon { height: 2rem; width: auto; filter: brightness(0) invert(1); /* Logo blanco */ }
+    .logo-text { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem; color: white; }
+    .logo-badge { padding: 2px 8px; background: var(--terracotta); color: white; border-radius: var(--radius-full); font-size: 0.65rem; font-weight: 700; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .header-link { color: rgba(255,255,255,0.7); text-decoration: none; font-size: 0.8rem; font-weight: 600; }
+    .header-link:hover { color: white; }
+    .user-badge { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: rgba(255,255,255,0.1); border-radius: var(--radius-full); color: white; font-size: 0.8rem; }
+    .user-badge-avatar { width: 26px; height: 26px; background: var(--sage); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; }
+
+    /* LAYOUT DESKTOP */
+    .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 58px); }
+    .sidebar { background: var(--white); border-right: 1px solid var(--cream-dark); padding: 16px 0; overflow-y: auto; }
+    .sidebar-section { margin-bottom: 16px; }
+    .sidebar-title { padding: 0 16px; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; }
+    .sidebar-nav { list-style: none; }
+    .sidebar-link { display: flex; align-items: center; gap: 8px; padding: 9px 16px; color: var(--text-light); text-decoration: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; background: none; width: 100%; text-align: left; transition: all 0.2s; }
+    .sidebar-link:hover { background: var(--cream); color: var(--text); }
+    .sidebar-link.active { background: var(--admin-muted); color: var(--admin-dark); border-right: 3px solid var(--admin); }
+    .sidebar-link-icon { font-size: 0.95rem; width: 20px; text-align: center; }
+    .sidebar-link-badge { margin-left: auto; padding: 2px 6px; background: var(--info); color: white; border-radius: var(--radius-full); font-size: 0.6rem; font-weight: 700; }
+
+    /* MOBILE TABS */
+    .mobile-tabs { display: none; background: var(--white); border-bottom: 1px solid var(--cream-dark); padding: 0 8px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .mobile-tab { display: inline-flex; align-items: center; gap: 6px; padding: 12px 14px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .mobile-tab.active { color: var(--admin-dark); border-bottom-color: var(--admin); }
+    .mobile-tab-icon { font-size: 1rem; }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .mobile-tabs { display: flex; }
+      .main { padding: 16px !important; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      .config-grid, .plan-grid, .service-grid { grid-template-columns: 1fr !important; }
     }
 
-    .admin-header {
-      background: var(--negro);
-      color: white;
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
+    /* MAIN */
+    .main { padding: 20px; max-width: 1400px; }
+    .section { display: none; }
+    .section.active { display: block; }
+    .section-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .section-title { font-family: 'Quicksand', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--admin-dark); margin-bottom: 2px; }
+    .section-description { color: var(--text-muted); font-size: 0.8rem; }
 
-    .admin-header-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card { background: var(--white); border-radius: var(--radius-lg); padding: 14px; box-shadow: var(--shadow-soft); display: flex; align-items: center; gap: 12px; }
+    .stat-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .stat-icon.usuarios { background: var(--sage-muted); }
+    .stat-icon.familias { background: var(--terracotta-muted); }
+    .stat-icon.addons { background: rgba(236, 201, 75, 0.2); }
+    .stat-icon.nidos { background: rgba(66, 153, 225, 0.2); }
+    .stat-icon.mascotas { background: rgba(237, 137, 54, 0.2); }
+    .stat-icon.invitaciones { background: rgba(72, 187, 120, 0.2); }
+    .stat-value { font-size: 1.4rem; font-weight: 700; color: var(--admin-dark); }
+    .stat-label { font-size: 0.7rem; color: var(--text-muted); }
 
-    .back-btn {
-      color: white;
-      text-decoration: none;
-      font-size: 1.5rem;
-      opacity: 0.8;
-      transition: opacity 0.2s;
-    }
-    .back-btn:hover { opacity: 1; }
+    /* CARD */
+    .card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; margin-bottom: 16px; }
+    .card-header { padding: 12px 16px; border-bottom: 1px solid var(--cream-dark); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .card-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 6px; }
+    .card-body { padding: 16px; }
 
-    .admin-title {
-      font-family: 'Quicksand', sans-serif;
-      font-size: 1.3rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    /* TABLE */
+    .table-container { overflow-x: auto; }
+    .table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--cream-dark); }
+    .table th { background: var(--cream); font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+    .table tr:hover { background: var(--cream); }
+    .table-avatar { width: 30px; height: 30px; background: var(--sage); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem; }
+    .table-user { display: flex; align-items: center; gap: 8px; }
+    .table-user-name { font-weight: 600; }
+    .table-user-email { font-size: 0.7rem; color: var(--text-muted); }
 
-    .super-badge {
-      background: linear-gradient(135deg, #f1c40f, #f39c12);
-      color: #1a1a1a;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 700;
-    }
+    /* BADGES */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.65rem; font-weight: 600; }
+    .badge-success { background: rgba(72, 187, 120, 0.2); color: var(--success); }
+    .badge-warning { background: rgba(236, 201, 75, 0.2); color: #B7791F; }
+    .badge-error { background: rgba(245, 101, 101, 0.2); color: var(--error); }
+    .badge-info { background: rgba(66, 153, 225, 0.2); color: var(--info); }
+    .badge-neutral { background: var(--cream-dark); color: var(--text-muted); }
+    .badge-role { padding: 2px 6px; font-size: 0.6rem; }
+    .badge-role.adminsistema { background: var(--admin); color: white; }
+    .badge-role.adminrama { background: var(--sage); color: white; }
+    .badge-role.adminnido { background: var(--terracotta); color: white; }
+    .badge-role.miembro { background: var(--cream-dark); color: var(--text-light); }
+    .badge-plan { padding: 3px 10px; font-size: 0.7rem; font-weight: 700; }
+    .badge-plan.gratuito { background: var(--cream-dark); color: var(--text-muted); }
+    .badge-plan.plus { background: rgba(122, 158, 126, 0.2); color: var(--sage-dark); }
+    .badge-plan.premium { background: rgba(193, 119, 87, 0.2); color: var(--terracotta); }
+    .badge-tipo { padding: 2px 6px; font-size: 0.6rem; }
+    .badge-tipo.pago { background: rgba(72, 187, 120, 0.15); color: var(--success); }
+    .badge-tipo.cortesia { background: rgba(156, 39, 176, 0.15); color: #9C27B0; }
+    .badge-tipo.trial { background: rgba(66, 153, 225, 0.15); color: var(--info); }
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 24px;
-    }
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 5px; padding: 8px 12px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
+    .btn-primary { background: var(--admin); color: white; }
+    .btn-primary:hover { background: var(--admin-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-warning { background: var(--warning); color: var(--admin-dark); }
+    .btn-sm { padding: 4px 8px; font-size: 0.7rem; }
 
-    .warning-card {
-      background: linear-gradient(135deg, #1a1a1a, #333);
-      color: white;
-      padding: 24px;
-      border-radius: var(--radius-lg);
-      margin-bottom: 24px;
-    }
+    /* TOOLBAR */
+    .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 180px; position: relative; }
+    .search-input { width: 100%; padding: 8px 12px 8px 32px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.8rem; }
+    .search-input:focus { outline: none; border-color: var(--admin); }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.85rem; }
+    .filter-select { padding: 8px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.8rem; background: var(--white); }
 
-    .warning-card h2 {
-      font-family: 'Quicksand', sans-serif;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
+    /* FORM */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { margin-bottom: 12px; }
+    .form-label { display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 4px; }
+    .form-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 8px 10px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.8rem; }
+    .form-textarea { resize: vertical; min-height: 60px; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--admin); }
+    .form-textarea { min-height: 70px; resize: vertical; }
+    .form-check { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.8rem; }
+    .form-check input { width: 16px; height: 16px; }
 
-    .warning-card p {
-      opacity: 0.9;
-      line-height: 1.6;
-    }
+    /* SWITCH / SLIDER */
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--cream-dark); border-radius: 24px; transition: 0.3s; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    input:checked + .slider { background-color: var(--success); }
+    input:checked + .slider:before { transform: translateX(20px); }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
+    /* MODAL */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; padding: 16px; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 14px 20px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem; }
+    .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 12px 20px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: flex-end; gap: 10px; }
 
-    .stat-card {
-      background: var(--white);
-      padding: 20px;
-      border-radius: var(--radius-md);
-      text-align: center;
-      box-shadow: var(--shadow-soft);
-    }
+    /* CONFIG CARDS */
+    .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .config-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .config-card-header { padding: 12px 14px; background: var(--admin-muted); border-bottom: 1px solid var(--cream-dark); display: flex; align-items: center; gap: 8px; }
+    .config-card-icon { font-size: 1.1rem; }
+    .config-card-title { font-weight: 700; font-size: 0.85rem; }
+    .config-card-body { padding: 14px; }
+    .config-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--cream-dark); }
+    .config-item:last-child { border-bottom: none; }
+    .config-item-label { font-size: 0.8rem; color: var(--text-light); }
+    .config-input { width: 70px; padding: 5px 8px; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); text-align: center; font-weight: 600; font-size: 0.8rem; }
 
-    .stat-value {
-      font-family: 'Quicksand', sans-serif;
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--negro);
-    }
+    /* PLAN CARDS */
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .plan-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .plan-card-header { padding: 16px; text-align: center; background: var(--cream); }
+    .plan-card-header.free { background: var(--admin-muted); }
+    .plan-card-header.crearrama { background: rgba(232, 164, 77, 0.15); }
+    .plan-card-header.mayordomo { background: rgba(139, 115, 85, 0.15); }
+    .plan-icon { font-size: 2rem; margin-bottom: 8px; }
+    .plan-name { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .plan-price { font-size: 1.5rem; font-weight: 700; color: var(--admin-dark); margin-top: 6px; }
+    .plan-price span { font-size: 0.8rem; font-weight: 400; color: var(--text-muted); }
+    .plan-card-body { padding: 16px; }
+    .plan-feature { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; font-size: 0.8rem; }
+    .plan-feature-icon { color: var(--success); font-weight: 700; }
+    .plan-card-footer { padding: 12px 16px; border-top: 1px solid var(--cream-dark); }
 
-    .stat-label {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-top: 4px;
-    }
+    /* SERVICE CARDS */
+    .service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .service-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .service-header { padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--cream-dark); }
+    .service-logo { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+    .service-name { font-weight: 700; font-size: 0.9rem; }
+    .service-type { font-size: 0.7rem; color: var(--text-muted); }
+    .service-status { padding: 3px 8px; border-radius: var(--radius-full); font-size: 0.65rem; font-weight: 600; }
+    .service-status.activo { background: rgba(72, 187, 120, 0.2); color: var(--success); }
+    .service-status.inactivo { background: var(--cream-dark); color: var(--text-muted); }
+    .service-body { padding: 12px 16px; }
+    .service-field { margin-bottom: 10px; }
+    .service-field-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 3px; }
+    .service-field-value { font-family: monospace; font-size: 0.75rem; padding: 6px 8px; background: var(--cream); border-radius: var(--radius-sm); word-break: break-all; }
+    .service-footer { padding: 10px 16px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: space-between; }
 
-    .card {
-      background: var(--white);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      margin-bottom: 20px;
-      box-shadow: var(--shadow-soft);
-    }
+    /* LOGS */
+    .log-entry { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--cream-dark); font-size: 0.8rem; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-time { color: var(--text-muted); font-size: 0.7rem; white-space: nowrap; }
+    .log-icon { font-size: 1rem; }
+    .log-content { flex: 1; }
+    .log-user { font-weight: 600; color: var(--admin-dark); }
+    .log-action { color: var(--text-light); }
 
-    .card-title {
-      font-family: 'Quicksand', sans-serif;
-      font-size: 1.1rem;
-      font-weight: 700;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    /* NOTIFICATION ITEM */
+    .notif-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--cream-dark); }
+    .notif-item:last-child { border-bottom: none; }
+    .notif-label { font-size: 0.85rem; }
+    .notif-desc { font-size: 0.7rem; color: var(--text-muted); }
 
-    .ramas-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .rama-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px;
-      background: var(--cream);
-      border-radius: var(--radius-md);
-      transition: all 0.2s;
-    }
-
-    .rama-item:hover {
-      background: var(--cream-dark);
-    }
-
-    .rama-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .rama-icon { font-size: 1.5rem; }
-    .rama-name { font-weight: 600; }
-    .rama-stats { font-size: 0.8rem; color: var(--text-muted); }
-
-    .rama-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn {
-      padding: 8px 16px;
-      border: none;
-      border-radius: var(--radius-sm);
-      font-family: 'Nunito', sans-serif;
-      font-weight: 600;
-      font-size: 0.85rem;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
-    }
-
-    .btn-primary {
-      background: var(--negro);
-      color: white;
-    }
-
-    .btn-secondary {
-      background: var(--cream-dark);
-      color: var(--text);
-    }
-
-    .btn-danger {
-      background: #e74c3c;
-      color: white;
-    }
-
+    /* UTILITIES */
     .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .text-muted { color: var(--text-muted); }
+    .mt-2 { margin-top: 12px; }
+    .mb-2 { margin-bottom: 12px; }
+    .divider { height: 1px; background: var(--cream-dark); margin: 16px 0; }
+    .empty-state { text-align: center; padding: 30px 16px; color: var(--text-muted); }
+    .loading { display: flex; align-items: center; justify-content: center; padding: 30px; }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--cream-dark); border-top-color: var(--admin); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .loading {
-      text-align: center;
-      padding: 60px;
-      color: var(--text-muted);
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: var(--text-muted);
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .section-header { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
 <body>
-  <header class="admin-header">
-    <div class="admin-header-left">
-      <a href="cgi.html" class="back-btn">←</a>
-      <div class="admin-title">
-        <span>⚡ Admin Sistema</span>
-        <span class="super-badge">SUPER ADMIN</span>
+  <header class="header">
+    <div class="header-left">
+      <a href="cgi.html" class="logo">
+        <img src="logo_familynk.png" alt="FAMILYNK" class="logo-icon">
+        <span class="logo-text">FAMILYNK</span>
+        <span class="logo-badge">ADMIN</span>
+      </a>
+    </div>
+    <div class="header-right">
+      <a href="cgi.html" class="header-link">← CGI</a>
+      <div class="user-badge">
+        <div class="user-badge-avatar" id="user-avatar">?</div>
+        <span id="user-name">Admin</span>
       </div>
     </div>
   </header>
 
-  <div class="container">
-    <div class="warning-card">
-      <h2>⚠️ Panel de Administración del Sistema</h2>
-      <p>
-        Este panel es exclusivo para el diseñador del sistema. Desde aquí puedes ver y gestionar 
-        todas las ramas familiares registradas en FAMILYNK, acceder a estadísticas globales y 
-        realizar tareas de mantenimiento del sistema.
-      </p>
-    </div>
+  <!-- MOBILE TABS -->
+  <div class="mobile-tabs">
+    <button class="mobile-tab active" data-tab="metricas" onclick="cambiarTab('metricas')">
+      <span class="mobile-tab-icon">📊</span>Métricas
+    </button>
+    <button class="mobile-tab" data-tab="usuarios" onclick="cambiarTab('usuarios')">
+      <span class="mobile-tab-icon">👥</span>Usuarios
+    </button>
+    <button class="mobile-tab" data-tab="config" onclick="cambiarTab('config')">
+      <span class="mobile-tab-icon">⚙️</span>Config
+    </button>
+    <button class="mobile-tab" data-tab="planes" onclick="cambiarTab('planes')">
+      <span class="mobile-tab-icon">💳</span>Planes
+    </button>
+  </div>
 
-    <div id="loading" class="loading">Cargando datos del sistema...</div>
-
-    <div id="content" class="hidden">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-value" id="stat-ramas">0</div>
-          <div class="stat-label">Ramas Familiares</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-usuarios">0</div>
-          <div class="stat-label">Usuarios Totales</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-nidos">0</div>
-          <div class="stat-label">Nidos Totales</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-bienes">0</div>
-          <div class="stat-label">Bienes Registrados</div>
-        </div>
+  <div class="layout">
+    <!-- SIDEBAR DESKTOP -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">General</div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-link active" data-section="dashboard" onclick="cambiarSeccion('dashboard')">
+            <span class="sidebar-link-icon">📊</span>Dashboard
+          </button>
+          <button class="sidebar-link" data-section="logs" onclick="cambiarSeccion('logs')">
+            <span class="sidebar-link-icon">📋</span>Actividad
+          </button>
+        </nav>
       </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Gestión</div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-link" data-section="usuarios" onclick="cambiarSeccion('usuarios')">
+            <span class="sidebar-link-icon">👥</span>Usuarios<span class="sidebar-link-badge" id="badge-usuarios">0</span>
+          </button>
+          <button class="sidebar-link" data-section="familias" onclick="cambiarSeccion('familias')">
+            <span class="sidebar-link-icon">👨‍👩‍👧‍👦</span>Familias<span class="sidebar-link-badge" id="badge-familias">0</span>
+          </button>
+          <button class="sidebar-link" data-section="nidos" onclick="cambiarSeccion('nidos')">
+            <span class="sidebar-link-icon">🪺</span>Nidos
+          </button>
+          <button class="sidebar-link" data-section="invitaciones" onclick="cambiarSeccion('invitaciones')">
+            <span class="sidebar-link-icon">✉️</span>Invitaciones
+          </button>
+        </nav>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Monetización</div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-link" data-section="planes" onclick="cambiarSeccion('planes')">
+            <span class="sidebar-link-icon">💳</span>Planes
+          </button>
+          <button class="sidebar-link" data-section="addons" onclick="cambiarSeccion('addons')">
+            <span class="sidebar-link-icon">⚡</span>Add-ons
+          </button>
+        </nav>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-title">Sistema</div>
+        <nav class="sidebar-nav">
+          <button class="sidebar-link" data-section="estructura" onclick="cambiarSeccion('estructura')">
+            <span class="sidebar-link-icon">🏗️</span>Estructura
+          </button>
+          <button class="sidebar-link" data-section="servicios" onclick="cambiarSeccion('servicios')">
+            <span class="sidebar-link-icon">🔌</span>Servicios
+          </button>
+          <button class="sidebar-link" data-section="notificaciones" onclick="cambiarSeccion('notificaciones')">
+            <span class="sidebar-link-icon">🔔</span>Notificaciones
+          </button>
+          <button class="sidebar-link" data-section="backup" onclick="cambiarSeccion('backup')">
+            <span class="sidebar-link-icon">💾</span>Backup
+          </button>
+        </nav>
+      </div>
+    </aside>
 
-      <div class="card">
-        <div class="card-title">🪺 Ramas Familiares</div>
-        <div class="ramas-list" id="ramas-list">
-          <!-- Se carga dinámicamente -->
+    <main class="main">
+      <!-- DASHBOARD -->
+      <section class="section active" id="section-dashboard">
+        <div class="section-header">
+          <div><h1 class="section-title">📊 Dashboard</h1><p class="section-description">Resumen general</p></div>
         </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-icon usuarios">👥</div><div><div class="stat-value" id="stat-usuarios">-</div><div class="stat-label">Usuarios</div></div></div>
+          <div class="stat-card"><div class="stat-icon familias">👨‍👩‍👧‍👦</div><div><div class="stat-value" id="stat-familias">-</div><div class="stat-label">Familias</div></div></div>
+          <div class="stat-card"><div class="stat-icon nidos">🪺</div><div><div class="stat-value" id="stat-nidos">-</div><div class="stat-label">Nidos</div></div></div>
+          <div class="stat-card"><div class="stat-icon mascotas">🐾</div><div><div class="stat-value" id="stat-mascotas">-</div><div class="stat-label">Mascotas</div></div></div>
+          <div class="stat-card"><div class="stat-icon addons">⚡</div><div><div class="stat-value" id="stat-addons">-</div><div class="stat-label">Add-ons</div></div></div>
+          <div class="stat-card"><div class="stat-icon invitaciones">✉️</div><div><div class="stat-value" id="stat-invitaciones">-</div><div class="stat-label">Invitaciones</div></div></div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="card"><div class="card-header"><span class="card-title">📈 Últimos usuarios</span></div><div class="card-body" id="ultimos-usuarios"><div class="loading"><div class="spinner"></div></div></div></div>
+          <div class="card"><div class="card-header"><span class="card-title">📋 Actividad reciente</span></div><div class="card-body" id="actividad-reciente"><div class="loading"><div class="spinner"></div></div></div></div>
+        </div>
+      </section>
+
+      <!-- LOGS / ACTIVIDAD -->
+      <section class="section" id="section-logs">
+        <div class="section-header">
+          <div><h1 class="section-title">📋 Logs de actividad</h1><p class="section-description">Registro de acciones</p></div>
+          <button class="btn btn-secondary" onclick="exportarLogs()">📥 Exportar</button>
+        </div>
+        <div class="toolbar">
+          <select class="filter-select" id="filter-log-tipo">
+            <option value="">Todos los tipos</option>
+            <option value="usuario">Usuarios</option>
+            <option value="familia">Familias</option>
+            <option value="nido">Nidos</option>
+            <option value="addon">Add-ons</option>
+            <option value="config">Configuración</option>
+          </select>
+          <select class="filter-select" id="filter-log-fecha">
+            <option value="hoy">Hoy</option>
+            <option value="semana">Última semana</option>
+            <option value="mes">Último mes</option>
+            <option value="todo">Todo</option>
+          </select>
+        </div>
+        <div class="card">
+          <div class="card-body" id="logs-lista">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- USUARIOS -->
+      <section class="section" id="section-usuarios">
+        <div class="section-header"><div><h1 class="section-title">👥 Usuarios</h1></div></div>
+        <div class="toolbar">
+          <div class="search-box"><span class="search-icon">🔍</span><input type="text" class="search-input" id="search-usuarios" placeholder="Buscar..."></div>
+          <select class="filter-select" id="filter-rol"><option value="">Todos</option><option value="AdminSistema">AdminSistema</option><option value="AdminRama">AdminRama</option><option value="AdminNido">AdminNido</option><option value="Miembro">Miembro</option></select>
+        </div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Usuario</th><th>Rol</th><th>Familia</th><th>Acciones</th></tr></thead><tbody id="tabla-usuarios"><tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+      </section>
+
+      <!-- FAMILIAS -->
+      <section class="section" id="section-familias">
+        <div class="section-header"><div><h1 class="section-title">👨‍👩‍👧‍👦 Familias</h1></div><button class="btn btn-primary" onclick="abrirModalNuevaFamilia()">+ Nueva</button></div>
+        <div class="toolbar">
+          <div class="search-box"><span class="search-icon">🔍</span><input type="text" class="search-input" id="search-familias" placeholder="Buscar..."></div>
+        </div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Familia</th><th>Plan</th><th>Miembros</th><th>Add-ons</th><th>Acciones</th></tr></thead><tbody id="tabla-familias"><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+      </section>
+
+      <!-- NIDOS -->
+      <section class="section" id="section-nidos">
+        <div class="section-header"><div><h1 class="section-title">🪺 Nidos</h1></div></div>
+        <div class="toolbar"><div class="search-box"><span class="search-icon">🔍</span><input type="text" class="search-input" id="search-nidos" placeholder="Buscar..."></div></div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Nido</th><th>Familia</th><th>Generación</th><th>Origen</th><th>Miembros</th></tr></thead><tbody id="tabla-nidos"><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+      </section>
+
+      <!-- INVITACIONES -->
+      <section class="section" id="section-invitaciones">
+        <div class="section-header"><div><h1 class="section-title">✉️ Invitaciones</h1></div><button class="btn btn-primary" onclick="abrirModalNuevaInvitacion()">+ Nueva</button></div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Email</th><th>Familia</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="tabla-invitaciones"><tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+      </section>
+
+      <!-- PLANES -->
+      <section class="section" id="section-planes">
+        <div class="section-header"><div><h1 class="section-title">💳 Planes y precios</h1></div></div>
+        
+        <!-- GESTIÓN PLANES POR FAMILIA -->
+        <div class="card mb-2">
+          <div class="card-header">
+            <span class="card-title">🎁 Asignar plan a familia</span>
+          </div>
+          <div class="card-body">
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label">Buscar familia</label>
+                <div class="search-box" style="margin: 0;">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" class="search-input" id="search-plan-familia" placeholder="Nombre de familia o email del fundador..." oninput="buscarFamiliaParaPlan()">
+                </div>
+              </div>
+            </div>
+            <div id="resultados-familia-plan" class="hidden">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Familia</th>
+                    <th>Fundador</th>
+                    <th>Plan actual</th>
+                    <th>Asignar</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-familia-plan"></tbody>
+              </table>
+            </div>
+            <p id="sin-resultados-plan" class="text-muted text-center hidden" style="padding: 20px;">Escribe para buscar familias...</p>
+          </div>
+        </div>
+
+        <!-- FAMILIAS CON PLAN ACTIVO -->
+        <div class="card mb-2">
+          <div class="card-header">
+            <span class="card-title">👑 Familias con planes de pago</span>
+            <span class="badge badge-info" id="badge-planes-activos">0</span>
+          </div>
+          <div class="card-body">
+            <div class="table-container">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Familia</th>
+                    <th>Plan</th>
+                    <th>Tipo</th>
+                    <th>Expira</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-planes-activos">
+                  <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <h3 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-light);">Configuración de planes</h3>
+        <h3 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-light);">Plan base</h3>
+        <div class="plan-grid mb-2">
+          <div class="plan-card">
+            <div class="plan-card-header free"><div class="plan-icon">🆓</div><div class="plan-name">FREE</div><div class="plan-price">0€ <span>/ siempre</span></div></div>
+            <div class="plan-card-body">
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Árbol (2 gen)</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Lo Común (5 bienes)</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> 200 imágenes</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Amigo Invisible</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Encuestas</div>
+            </div>
+            <div class="plan-card-footer"><span class="badge badge-success">Por defecto</span></div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <h3 style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-light);">Add-ons (14 días trial)</h3>
+        <div class="plan-grid">
+          <div class="plan-card">
+            <div class="plan-card-header crearrama"><div class="plan-icon">🌳</div><div class="plan-name">Crear Rama</div><div class="plan-price"><input type="number" class="config-input" id="precio-crearrama" value="0" style="width: 50px;">€ <span>/mes</span></div></div>
+            <div class="plan-card-body">
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Segunda rama</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> CGI fusionado</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Gen. ilimitadas</div>
+            </div>
+            <div class="plan-card-footer"><label class="form-check"><input type="checkbox" checked> Disponible</label></div>
+          </div>
+          <div class="plan-card">
+            <div class="plan-card-header mayordomo"><div class="plan-icon">🎩</div><div class="plan-name">Mayordomo</div><div class="plan-price"><input type="number" class="config-input" id="precio-mayordomo" value="0" style="width: 50px;">€ <span>/mes</span></div></div>
+            <div class="plan-card-body">
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Inventario</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Reservas</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Mantenimiento</div>
+              <div class="plan-feature"><span class="plan-feature-icon">✓</span> Caseros</div>
+            </div>
+            <div class="plan-card-footer"><label class="form-check"><input type="checkbox" checked> Disponible</label></div>
+          </div>
+        </div>
+        <div class="mt-2"><button class="btn btn-primary" onclick="guardarPlanes()">💾 Guardar</button></div>
+      </section>
+
+      <!-- ADD-ONS ACTIVOS -->
+      <section class="section" id="section-addons">
+        <div class="section-header"><div><h1 class="section-title">⚡ Add-ons activos</h1></div></div>
+        <div class="stats-grid mb-2">
+          <div class="stat-card"><div class="stat-icon" style="background: rgba(232, 164, 77, 0.2);">🌳</div><div><div class="stat-value" id="stat-crear-rama">-</div><div class="stat-label">Crear Rama</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background: rgba(139, 115, 85, 0.2);">🎩</div><div><div class="stat-value" id="stat-mayordomo">-</div><div class="stat-label">Mayordomo</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background: rgba(66, 153, 225, 0.2);">🧪</div><div><div class="stat-value" id="stat-trials">-</div><div class="stat-label">En trial</div></div></div>
+        </div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Familia</th><th>🌳 Crear Rama</th><th>🎩 Mayordomo</th><th>Acciones</th></tr></thead><tbody id="tabla-addons"><tr><td colspan="4"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+      </section>
+
+      <!-- ESTRUCTURA -->
+      <section class="section" id="section-estructura">
+        <div class="section-header"><div><h1 class="section-title">🏗️ Estructura</h1></div></div>
+        <div class="config-grid">
+          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">🌳</span><span class="config-card-title">Árbol</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Gen. FREE</span><input type="number" class="config-input" id="config-gen-free" value="2"></div><div class="config-item"><span class="config-item-label">Gen. Premium</span><input type="number" class="config-input" id="config-gen-premium" value="99"></div></div></div>
+          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">🖼️</span><span class="config-card-title">Imágenes</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Límite FREE</span><input type="number" class="config-input" id="config-img-free" value="200"></div><div class="config-item"><span class="config-item-label">Tamaño máx (MB)</span><input type="number" class="config-input" id="config-img-size" value="5"></div></div></div>
+          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">🏠</span><span class="config-card-title">Lo Común</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Bienes FREE</span><input type="number" class="config-input" id="config-bienes-free" value="5"></div><div class="config-item"><span class="config-item-label">Bienes Premium</span><input type="number" class="config-input" id="config-bienes-premium" value="99"></div></div></div>
+          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">🧪</span><span class="config-card-title">Trials</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Días trial</span><input type="number" class="config-input" id="config-trial-dias" value="14"></div></div></div>
+          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">✉️</span><span class="config-card-title">Invitaciones</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Expiración (días)</span><input type="number" class="config-input" id="config-inv-expira" value="7"></div></div></div>
+        </div>
+        <div class="mt-2"><button class="btn btn-primary" onclick="guardarEstructura()">💾 Guardar</button></div>
+      </section>
+
+      <!-- SERVICIOS -->
+      <section class="section" id="section-servicios">
+        <div class="section-header"><div><h1 class="section-title">🔌 Servicios</h1></div></div>
+        <div class="service-grid">
+          <div class="service-card">
+            <div class="service-header"><div class="service-logo" style="background: #FFCA28;">🔥</div><div style="flex:1;"><div class="service-name">Firebase</div><div class="service-type">Auth + Firestore</div></div><span class="service-status activo">Activo</span></div>
+            <div class="service-body"><div class="service-field"><div class="service-field-label">Project</div><div class="service-field-value">familynk-xxxxx</div></div></div>
+            <div class="service-footer"><button class="btn btn-sm btn-secondary" onclick="editarServicio('firebase')">⚙️</button><a href="https://console.firebase.google.com" target="_blank" class="btn btn-sm btn-secondary">Abrir →</a></div>
+          </div>
+          <div class="service-card">
+            <div class="service-header"><div class="service-logo" style="background: #EA4335;">📧</div><div style="flex:1;"><div class="service-name">EmailJS</div><div class="service-type">Emails</div></div><span class="service-status activo">Activo</span></div>
+            <div class="service-body"><div class="service-field"><div class="service-field-label">Service ID</div><div class="service-field-value">service_fcfx5od</div></div></div>
+            <div class="service-footer"><button class="btn btn-sm btn-secondary" onclick="editarServicio('emailjs')">⚙️</button><a href="https://dashboard.emailjs.com" target="_blank" class="btn btn-sm btn-secondary">Abrir →</a></div>
+          </div>
+          <div class="service-card" style="opacity: 0.6;">
+            <div class="service-header"><div class="service-logo" style="background: #635BFF; color: white;">💳</div><div style="flex:1;"><div class="service-name">Stripe</div><div class="service-type">Pagos</div></div><span class="service-status inactivo">No config.</span></div>
+            <div class="service-body"><p class="text-muted text-center" style="padding: 16px;">Configura para pagos</p></div>
+            <div class="service-footer"><button class="btn btn-sm btn-primary" onclick="editarServicio('stripe')">🔧 Configurar</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NOTIFICACIONES -->
+      <section class="section" id="section-notificaciones">
+        <div class="section-header"><div><h1 class="section-title">🔔 Notificaciones</h1><p class="section-description">Configurar alertas al admin</p></div></div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">📧 Notificaciones por email</span></div>
+          <div class="card-body">
+            <div class="notif-item">
+              <div><div class="notif-label">Nuevo usuario registrado</div><div class="notif-desc">Recibe email cuando alguien se registra</div></div>
+              <label class="switch"><input type="checkbox" id="notif-nuevo-usuario" checked><span class="slider"></span></label>
+            </div>
+            <div class="notif-item">
+              <div><div class="notif-label">Nueva familia creada</div><div class="notif-desc">Recibe email cuando se crea una familia</div></div>
+              <label class="switch"><input type="checkbox" id="notif-nueva-familia" checked><span class="slider"></span></label>
+            </div>
+            <div class="notif-item">
+              <div><div class="notif-label">Add-on activado</div><div class="notif-desc">Recibe email cuando se activa un trial</div></div>
+              <label class="switch"><input type="checkbox" id="notif-addon-activado"><span class="slider"></span></label>
+            </div>
+            <div class="notif-item">
+              <div><div class="notif-label">Trial por expirar</div><div class="notif-desc">Alerta 3 días antes de expirar trial</div></div>
+              <label class="switch"><input type="checkbox" id="notif-trial-expira" checked><span class="slider"></span></label>
+            </div>
+            <div class="notif-item">
+              <div><div class="notif-label">Errores del sistema</div><div class="notif-desc">Recibe alerta de errores críticos</div></div>
+              <label class="switch"><input type="checkbox" id="notif-errores" checked><span class="slider"></span></label>
+            </div>
+          </div>
+        </div>
+        <div class="card mt-2">
+          <div class="card-header"><span class="card-title">📱 Email destino</span></div>
+          <div class="card-body">
+            <div class="form-group">
+              <label class="form-label">Email del administrador</label>
+              <input type="email" class="form-input" id="notif-email-admin" placeholder="admin@familynk.es">
+            </div>
+          </div>
+        </div>
+        <div class="mt-2"><button class="btn btn-primary" onclick="guardarNotificaciones()">💾 Guardar configuración</button></div>
+      </section>
+
+      <!-- BACKUP -->
+      <section class="section" id="section-backup">
+        <div class="section-header"><div><h1 class="section-title">💾 Backup y Restore</h1><p class="section-description">Copias de seguridad</p></div></div>
+        <div class="config-grid">
+          <div class="config-card">
+            <div class="config-card-header"><span class="config-card-icon">📤</span><span class="config-card-title">Exportar datos</span></div>
+            <div class="config-card-body">
+              <p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 12px;">Descarga una copia de todos los datos</p>
+              <button class="btn btn-primary mb-2" onclick="exportarBackup('usuarios')" style="width: 100%;">👥 Exportar usuarios</button>
+              <button class="btn btn-primary mb-2" onclick="exportarBackup('familias')" style="width: 100%;">👨‍👩‍👧‍👦 Exportar familias</button>
+              <button class="btn btn-primary mb-2" onclick="exportarBackup('nidos')" style="width: 100%;">🪺 Exportar nidos</button>
+              <button class="btn btn-success" onclick="exportarBackup('todo')" style="width: 100%;">📦 Backup completo</button>
+            </div>
+          </div>
+          <div class="config-card">
+            <div class="config-card-header"><span class="config-card-icon">📥</span><span class="config-card-title">Restaurar datos</span></div>
+            <div class="config-card-body">
+              <p style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 12px;">Restaura desde un archivo de backup</p>
+              <div class="form-group">
+                <label class="form-label">Seleccionar archivo</label>
+                <input type="file" class="form-input" id="backup-file" accept=".json">
+              </div>
+              <button class="btn btn-warning" onclick="restaurarBackup()" style="width: 100%;">⚠️ Restaurar backup</button>
+              <p style="font-size: 0.7rem; color: var(--error); margin-top: 8px;">⚠️ Esto sobrescribirá los datos actuales</p>
+            </div>
+          </div>
+          <div class="config-card">
+            <div class="config-card-header"><span class="config-card-icon">🕐</span><span class="config-card-title">Último backup</span></div>
+            <div class="config-card-body">
+              <div class="config-item"><span class="config-item-label">Fecha</span><span id="ultimo-backup-fecha">Nunca</span></div>
+              <div class="config-item"><span class="config-item-label">Tamaño</span><span id="ultimo-backup-size">-</span></div>
+              <div class="config-item"><span class="config-item-label">Registros</span><span id="ultimo-backup-registros">-</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODALES -->
+  <div class="modal-overlay" id="modal-usuario"><div class="modal"><div class="modal-header"><h3 class="modal-title">👤 Usuario</h3><button class="modal-close" onclick="cerrarModales()">×</button></div><div class="modal-body" id="modal-usuario-body"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="guardarUsuario()">Guardar</button></div></div></div>
+  <div class="modal-overlay" id="modal-familia"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="modal-familia-titulo">👨‍👩‍👧‍👦 Familia</h3><button class="modal-close" onclick="cerrarModales()">×</button></div><div class="modal-body" id="modal-familia-body"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="guardarFamilia()">Guardar</button></div></div></div>
+  <div class="modal-overlay" id="modal-invitacion"><div class="modal"><div class="modal-header"><h3 class="modal-title">✉️ Invitación</h3><button class="modal-close" onclick="cerrarModales()">×</button></div><div class="modal-body" id="modal-invitacion-body"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="enviarInvitacion()">Enviar</button></div></div></div>
+  <div class="modal-overlay" id="modal-servicio"><div class="modal"><div class="modal-header"><h3 class="modal-title" id="modal-servicio-titulo">🔌 Servicio</h3><button class="modal-close" onclick="cerrarModales()">×</button></div><div class="modal-body" id="modal-servicio-body"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="guardarServicio()">Guardar</button></div></div></div>
+  
+  <!-- Modal Asignar Plan -->
+  <div class="modal-overlay" id="modal-asignar-plan">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">💳 Asignar plan</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body" id="modal-asignar-plan-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarPlanFamilia()">Guardar</button>
       </div>
     </div>
   </div>
@@ -289,100 +678,579 @@
   <script src="js/firebase-config.js"></script>
 
   <script>
-    let currentUser = null;
-    let userData = null;
+    let currentUser = null, userData = null;
+    let usuariosData = [], familiasData = [], nidosData = [], invitacionesData = [], logsData = [];
+    let editingUserId = null, editingFamiliaId = null, editingPlanFamiliaId = null;
 
+    // AUTH
     auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.location.href = 'login.html';
-        return;
-      }
-
+      if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
-
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      if (!userDoc.exists) {
-        window.location.href = 'cgi.html';
-        return;
+      if (!userDoc.exists || userDoc.data().rol !== 'AdminSistema') {
+        alert('Acceso denegado'); window.location.href = 'cgi.html'; return;
       }
-
       userData = userDoc.data();
-
-      // Verificar que es superAdmin
-      if (userData.superAdmin !== true) {
-        alert('No tienes acceso a este panel');
-        window.location.href = 'cgi.html';
-        return;
-      }
-
-      await cargarDatos();
+      const nombre = userData.nombre || user.email.split('@')[0];
+      document.getElementById('user-name').textContent = nombre.split(' ')[0];
+      document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
+      cargarDashboard();
     });
 
-    async function cargarDatos() {
+    // NAVEGACIÓN DESKTOP
+    function cambiarSeccion(seccion) {
+      document.querySelectorAll('.sidebar-link').forEach(l => l.classList.toggle('active', l.dataset.section === seccion));
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(`section-${seccion}`).classList.add('active');
+      const cargas = { dashboard: cargarDashboard, usuarios: cargarUsuarios, familias: cargarFamilias, nidos: cargarNidos, invitaciones: cargarInvitaciones, addons: cargarAddons, logs: cargarLogs, planes: cargarPlanesActivos };
+      if (cargas[seccion]) cargas[seccion]();
+    }
+
+    // NAVEGACIÓN MOBILE
+    function cambiarTab(tab) {
+      document.querySelectorAll('.mobile-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      const mapeo = { metricas: 'dashboard', usuarios: 'usuarios', config: 'estructura', planes: 'planes' };
+      cambiarSeccion(mapeo[tab] || 'dashboard');
+    }
+
+    // DASHBOARD
+    async function cargarDashboard() {
       try {
-        // Cargar todas las familias (ramas)
-        const familiasSnap = await db.collection('familias').get();
-        const familias = familiasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const [usersSnap, famSnap, nidosSnap, invSnap] = await Promise.all([
+          db.collection('usuarios').get(),
+          db.collection('familias').get(),
+          db.collection('nidos').get(),
+          db.collection('invitaciones-email').where('estado', '==', 'pendiente').get()
+        ]);
 
-        // Cargar todos los usuarios
-        const usuariosSnap = await db.collection('usuarios').get();
-        const usuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        usuariosData = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        familiasData = famSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        nidosData = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Cargar todos los nidos
-        const nidosSnap = await db.collection('nidos').get();
-        const nidos = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        document.getElementById('stat-usuarios').textContent = usuariosData.length;
+        document.getElementById('badge-usuarios').textContent = usuariosData.length;
+        document.getElementById('stat-familias').textContent = familiasData.length;
+        document.getElementById('badge-familias').textContent = familiasData.length;
+        document.getElementById('stat-nidos').textContent = nidosData.length;
+        document.getElementById('stat-invitaciones').textContent = invSnap.size;
 
-        // Cargar todos los bienes
-        const bienesSnap = await db.collection('bienes').get();
+        // Contar mascotas
+        let totalMascotas = 0;
+        nidosData.forEach(n => {
+          (n.miembrosData || []).forEach(m => {
+            if (m.mascotas && Array.isArray(m.mascotas)) totalMascotas += m.mascotas.length;
+          });
+        });
+        document.getElementById('stat-mascotas').textContent = totalMascotas;
 
-        // Actualizar estadísticas
-        document.getElementById('stat-ramas').textContent = familias.length;
-        document.getElementById('stat-usuarios').textContent = usuarios.length;
-        document.getElementById('stat-nidos').textContent = nidos.length;
-        document.getElementById('stat-bienes').textContent = bienesSnap.size;
+        // Add-ons
+        let addonsActivos = 0;
+        const ahora = new Date();
+        familiasData.forEach(f => {
+          const addons = f.addons || {};
+          if (addons.crearRama?.activo || (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) > ahora)) addonsActivos++;
+          if (addons.mayordomo?.activo || (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) > ahora)) addonsActivos++;
+        });
+        document.getElementById('stat-addons').textContent = addonsActivos;
 
-        // Renderizar lista de ramas
-        const list = document.getElementById('ramas-list');
-        if (familias.length === 0) {
-          list.innerHTML = '<div class="empty-state">No hay ramas familiares registradas</div>';
-        } else {
-          list.innerHTML = familias.map(f => {
-            const numNidos = nidos.filter(n => n.familiaId === f.id).length;
-            const numUsuarios = usuarios.filter(u => u.familiaId === f.id || (u.estirpes && u.estirpes.includes(f.id))).length;
-            
-            return `
-              <div class="rama-item">
-                <div class="rama-info">
-                  <span class="rama-icon">🪺</span>
-                  <div>
-                    <div class="rama-name">${f.nombre || 'Sin nombre'}</div>
-                    <div class="rama-stats">${numNidos} nidos · ${numUsuarios} usuarios</div>
-                  </div>
-                </div>
-                <div class="rama-actions">
-                  <button class="btn btn-secondary" onclick="verRama('${f.id}')">👁️ Ver</button>
-                </div>
-              </div>
-            `;
-          }).join('');
+        // Últimos usuarios
+        const ultimos = usuariosData.slice(-5).reverse();
+        document.getElementById('ultimos-usuarios').innerHTML = ultimos.length > 0 ? ultimos.map(u => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cream-dark);"><div class="table-avatar" style="width:28px;height:28px;font-size:0.7rem;">${(u.nombre||u.email||'?').charAt(0).toUpperCase()}</div><div style="flex:1;"><div style="font-weight:600;font-size:0.8rem;">${u.nombre||'Sin nombre'}</div><div style="font-size:0.7rem;color:var(--text-muted);">${u.email||''}</div></div></div>`).join('') : '<p class="text-muted text-center">Sin usuarios</p>';
+
+        // Actividad reciente
+        await cargarActividadReciente();
+
+      } catch (e) { console.error('Error dashboard:', e); }
+    }
+
+    async function cargarActividadReciente() {
+      try {
+        const snap = await db.collection('logs').orderBy('fecha', 'desc').limit(5).get();
+        const logs = snap.docs.map(d => d.data());
+        
+        if (logs.length === 0) {
+          document.getElementById('actividad-reciente').innerHTML = '<p class="text-muted text-center">Sin actividad</p>';
+          return;
         }
 
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('content').classList.remove('hidden');
-
-      } catch (error) {
-        console.error('Error cargando datos:', error);
-        alert('Error al cargar datos del sistema');
+        document.getElementById('actividad-reciente').innerHTML = logs.map(l => {
+          const icons = { usuario: '👤', familia: '👨‍👩‍👧‍👦', nido: '🪺', addon: '⚡', config: '⚙️' };
+          const fecha = l.fecha?.toDate ? l.fecha.toDate() : new Date(l.fecha);
+          return `<div class="log-entry"><span class="log-icon">${icons[l.tipo] || '📋'}</span><div class="log-content"><span class="log-user">${l.usuario || 'Sistema'}</span> <span class="log-action">${l.accion || ''}</span></div><span class="log-time">${fecha.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span></div>`;
+        }).join('');
+      } catch (e) {
+        document.getElementById('actividad-reciente').innerHTML = '<p class="text-muted text-center">Sin actividad</p>';
       }
     }
 
-    async function verRama(ramaId) {
-      // Cambiar temporalmente a esa rama para verla
-      await db.collection('usuarios').doc(currentUser.uid).update({
-        estirpeActiva: ramaId
-      });
-      window.location.href = 'admin-rama.html';
+    // LOGS
+    async function cargarLogs() {
+      try {
+        const snap = await db.collection('logs').orderBy('fecha', 'desc').limit(50).get();
+        logsData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (logsData.length === 0) {
+          document.getElementById('logs-lista').innerHTML = '<p class="text-muted text-center">Sin logs</p>';
+          return;
+        }
+
+        const icons = { usuario: '👤', familia: '👨‍👩‍👧‍👦', nido: '🪺', addon: '⚡', config: '⚙️' };
+        document.getElementById('logs-lista').innerHTML = logsData.map(l => {
+          const fecha = l.fecha?.toDate ? l.fecha.toDate() : new Date(l.fecha);
+          return `<div class="log-entry"><span class="log-time">${fecha.toLocaleDateString('es')} ${fecha.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span><span class="log-icon">${icons[l.tipo] || '📋'}</span><div class="log-content"><span class="log-user">${l.usuario || 'Sistema'}</span> <span class="log-action">${l.accion || ''}</span></div></div>`;
+        }).join('');
+      } catch (e) {
+        document.getElementById('logs-lista').innerHTML = '<p class="text-muted text-center">Error cargando logs</p>';
+      }
     }
+
+    // Registrar log
+    async function registrarLog(tipo, accion) {
+      try {
+        await db.collection('logs').add({
+          tipo,
+          accion,
+          usuario: userData?.nombre || currentUser?.email || 'Admin',
+          uid: currentUser?.uid,
+          fecha: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (e) { console.warn('Error log:', e); }
+    }
+
+    // USUARIOS
+    async function cargarUsuarios() {
+      const tbody = document.getElementById('tabla-usuarios');
+      try {
+        if (!usuariosData.length) { const snap = await db.collection('usuarios').get(); usuariosData = snap.docs.map(d => ({ id: d.id, ...d.data() })); }
+        const search = document.getElementById('search-usuarios').value.toLowerCase();
+        const filtroRol = document.getElementById('filter-rol').value;
+        let filtrados = usuariosData.filter(u => { const ms = !search || (u.nombre||'').toLowerCase().includes(search) || (u.email||'').toLowerCase().includes(search); const mr = !filtroRol || u.rol === filtroRol; return ms && mr; });
+        tbody.innerHTML = filtrados.length > 0 ? filtrados.map(u => { const fam = familiasData.find(f => f.id === u.familiaId); return `<tr><td><div class="table-user"><div class="table-avatar">${(u.nombre||u.email||'?').charAt(0).toUpperCase()}</div><div><div class="table-user-name">${u.nombre||'Sin nombre'}</div><div class="table-user-email">${u.email||''}</div></div></div></td><td><span class="badge badge-role ${(u.rol||'miembro').toLowerCase()}">${u.rol||'Miembro'}</span></td><td>${fam?.nombre||'-'}</td><td><button class="btn btn-sm btn-secondary" onclick="verUsuario('${u.id}')">✏️</button></td></tr>`; }).join('') : '<tr><td colspan="4" class="empty-state">Sin usuarios</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Error</td></tr>'; }
+    }
+
+    function verUsuario(uid) {
+      const u = usuariosData.find(x => x.id === uid); if (!u) return;
+      editingUserId = uid;
+      document.getElementById('modal-usuario-body').innerHTML = `<div class="form-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="edit-user-nombre" value="${u.nombre||''}"></div><div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" value="${u.email||''}" disabled></div><div class="form-group"><label class="form-label">Rol</label><select class="form-select" id="edit-user-rol"><option value="Miembro" ${u.rol==='Miembro'?'selected':''}>Miembro</option><option value="AdminNido" ${u.rol==='AdminNido'?'selected':''}>AdminNido</option><option value="AdminRama" ${u.rol==='AdminRama'?'selected':''}>AdminRama</option><option value="AdminSistema" ${u.rol==='AdminSistema'?'selected':''}>AdminSistema</option></select></div>`;
+      document.getElementById('modal-usuario').classList.add('active');
+    }
+
+    async function guardarUsuario() {
+      if (!editingUserId) return;
+      try { 
+        await db.collection('usuarios').doc(editingUserId).update({ nombre: document.getElementById('edit-user-nombre').value, rol: document.getElementById('edit-user-rol').value }); 
+        await registrarLog('usuario', `editó usuario ${document.getElementById('edit-user-nombre').value}`);
+        cerrarModales(); usuariosData = []; cargarUsuarios(); alert('✅ Guardado'); 
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // FAMILIAS
+    async function cargarFamilias() {
+      const tbody = document.getElementById('tabla-familias');
+      try {
+        if (!familiasData.length) { const snap = await db.collection('familias').get(); familiasData = snap.docs.map(d => ({ id: d.id, ...d.data() })); }
+        const search = document.getElementById('search-familias').value.toLowerCase();
+        const ahora = new Date();
+        let filtradas = familiasData.filter(f => !search || (f.nombre||'').toLowerCase().includes(search));
+        tbody.innerHTML = filtradas.length > 0 ? filtradas.map(f => { const miembros = usuariosData.filter(u => u.familiaId === f.id).length; const addons = f.addons || {}; const cr = addons.crearRama?.activo || (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) > ahora); const my = addons.mayordomo?.activo || (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) > ahora); return `<tr><td style="font-weight:600;">${f.nombre||'Sin nombre'}</td><td><span class="badge badge-neutral">${(f.plan||'free').toUpperCase()}</span></td><td>${miembros}</td><td>${cr?'🌳':''} ${my?'🎩':''} ${!cr&&!my?'-':''}</td><td><button class="btn btn-sm btn-secondary" onclick="verFamilia('${f.id}')">✏️</button></td></tr>`; }).join('') : '<tr><td colspan="5" class="empty-state">Sin familias</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Error</td></tr>'; }
+    }
+
+    function abrirModalNuevaFamilia() {
+      editingFamiliaId = null;
+      document.getElementById('modal-familia-titulo').textContent = '👨‍👩‍👧‍👦 Nueva familia';
+      document.getElementById('modal-familia-body').innerHTML = `<div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="edit-fam-nombre" placeholder="Familia García"></div><div class="form-group"><label class="form-label">Email admin *</label><input type="email" class="form-input" id="edit-fam-admin-email" placeholder="admin@ejemplo.com"><div class="form-hint">Se enviará invitación</div></div>`;
+      document.getElementById('modal-familia').classList.add('active');
+    }
+
+    function verFamilia(fid) {
+      const f = familiasData.find(x => x.id === fid); if (!f) return;
+      editingFamiliaId = fid; const addons = f.addons || {}; const limites = f.limites || {}; const ahora = new Date();
+      const crActivo = addons.crearRama?.activo || (addons.crearRama?.trialHasta && new Date(addons.crearRama.trialHasta) > ahora);
+      const myActivo = addons.mayordomo?.activo || (addons.mayordomo?.trialHasta && new Date(addons.mayordomo.trialHasta) > ahora);
+      document.getElementById('modal-familia-titulo').textContent = '👨‍👩‍👧‍👦 Editar familia';
+      document.getElementById('modal-familia-body').innerHTML = `<div class="form-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="edit-fam-nombre" value="${f.nombre||''}"></div><div class="divider"></div><h4 style="margin-bottom:10px;font-size:0.8rem;">⚡ Add-ons</h4><div class="form-group"><label class="form-check"><input type="checkbox" id="edit-fam-cr" ${crActivo?'checked':''}> 🌳 Crear Rama</label></div><div class="form-group"><label class="form-check"><input type="checkbox" id="edit-fam-my" ${myActivo?'checked':''}> 🎩 Mayordomo</label></div><div class="divider"></div><div class="form-row"><div class="form-group"><label class="form-label">Generaciones</label><input type="number" class="form-input" id="edit-fam-gen" value="${limites.generaciones||2}"></div><div class="form-group"><label class="form-label">Imágenes</label><input type="number" class="form-input" id="edit-fam-img" value="${limites.imagenes||200}"></div></div>`;
+      document.getElementById('modal-familia').classList.add('active');
+    }
+
+    async function guardarFamilia() {
+      try {
+        if (editingFamiliaId) {
+          const crChecked = document.getElementById('edit-fam-cr').checked;
+          const myChecked = document.getElementById('edit-fam-my').checked;
+          const familia = familiasData.find(f => f.id === editingFamiliaId);
+          const updateData = { nombre: document.getElementById('edit-fam-nombre').value, 'addons.crearRama.activo': crChecked, 'addons.mayordomo.activo': myChecked, 'limites.generaciones': parseInt(document.getElementById('edit-fam-gen').value)||2, 'limites.imagenes': parseInt(document.getElementById('edit-fam-img').value)||200 };
+          if (crChecked && !familia?.addons?.crearRama?.trialHasta) { const t = new Date(); t.setDate(t.getDate()+14); updateData['addons.crearRama.trialHasta'] = t.toISOString(); }
+          if (myChecked && !familia?.addons?.mayordomo?.trialHasta) { const t = new Date(); t.setDate(t.getDate()+14); updateData['addons.mayordomo.trialHasta'] = t.toISOString(); }
+          await db.collection('familias').doc(editingFamiliaId).update(updateData);
+          await registrarLog('familia', `editó familia ${document.getElementById('edit-fam-nombre').value}`);
+          alert('✅ Familia actualizada');
+        } else {
+          const nombre = document.getElementById('edit-fam-nombre').value;
+          const adminEmail = document.getElementById('edit-fam-admin-email').value;
+          if (!nombre || !adminEmail) { alert('Nombre y email obligatorios'); return; }
+          const newFam = await db.collection('familias').add({ nombre, plan: 'free', addons: {}, limites: { generaciones: 2, imagenes: 200, imagenesUsadas: 0 }, fechaCreacion: firebase.firestore.FieldValue.serverTimestamp() });
+          await db.collection('invitaciones-email').add({ email: adminEmail, familiaId: newFam.id, rol: 'AdminRama', estado: 'pendiente', fechaCreacion: firebase.firestore.FieldValue.serverTimestamp() });
+          await registrarLog('familia', `creó familia ${nombre}`);
+          alert('✅ Familia creada. Invitación enviada.');
+        }
+        cerrarModales(); familiasData = []; cargarFamilias();
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // NIDOS
+    async function cargarNidos() {
+      const tbody = document.getElementById('tabla-nidos');
+      try {
+        if (!nidosData.length) { const snap = await db.collection('nidos').get(); nidosData = snap.docs.map(d => ({ id: d.id, ...d.data() })); }
+        const search = document.getElementById('search-nidos').value.toLowerCase();
+        let filtrados = nidosData.filter(n => !search || (n.nombre||'').toLowerCase().includes(search));
+        const genLabels = { '1-bisabuelos': 'G1', '2-abuelos': 'G2', '3-padres': 'G3', '4-hijos': 'G4' };
+        tbody.innerHTML = filtrados.length > 0 ? filtrados.map(n => {
+          const fam = familiasData.find(f => f.id === n.familiaId);
+          const miembros = n.miembrosData?.length || 0;
+          const origen = n.nidoOrigen ? '↳ Hijo de nido' : 'Raíz';
+          return `<tr><td style="font-weight:600;"><a href="nido.html?id=${n.id}" style="color: var(--admin-dark); text-decoration: none;">${n.nombre||'Sin nombre'}</a></td><td>${fam?.nombre||'-'}</td><td><span class="badge badge-info">${genLabels[n.generacion]||n.generacion||'-'}</span></td><td style="font-size: 0.75rem; color: var(--text-muted);">${origen}</td><td>${miembros}</td></tr>`;
+        }).join('') : '<tr><td colspan="5" class="empty-state">Sin nidos</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Error</td></tr>'; }
+    }
+
+    // INVITACIONES
+    async function cargarInvitaciones() {
+      const tbody = document.getElementById('tabla-invitaciones');
+      try {
+        const snap = await db.collection('invitaciones-email').orderBy('fechaCreacion', 'desc').limit(50).get();
+        invitacionesData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        tbody.innerHTML = invitacionesData.length > 0 ? invitacionesData.map(inv => { const fam = familiasData.find(f => f.id === inv.familiaId); const estadoBadge = inv.estado==='pendiente'?'badge-warning':inv.estado==='aceptada'?'badge-success':'badge-error'; return `<tr><td>${inv.email||'-'}</td><td>${fam?.nombre||'-'}</td><td><span class="badge badge-info">${inv.rol||'Miembro'}</span></td><td><span class="badge ${estadoBadge}">${inv.estado||'pendiente'}</span></td><td>${inv.estado==='pendiente'?`<button class="btn btn-sm btn-danger" onclick="cancelarInvitacion('${inv.id}')">✕</button>`:'-'}</td></tr>`; }).join('') : '<tr><td colspan="5" class="empty-state">Sin invitaciones</td></tr>';
+      } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Error</td></tr>'; }
+    }
+
+    function abrirModalNuevaInvitacion() {
+      document.getElementById('modal-invitacion-body').innerHTML = `<div class="form-group"><label class="form-label">Email *</label><input type="email" class="form-input" id="inv-email" placeholder="usuario@ejemplo.com"></div><div class="form-group"><label class="form-label">Familia *</label><select class="form-select" id="inv-familia"><option value="">Seleccionar...</option>${familiasData.map(f => `<option value="${f.id}">${f.nombre}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">Rol</label><select class="form-select" id="inv-rol"><option value="Miembro">Miembro</option><option value="AdminNido">AdminNido</option><option value="AdminRama">AdminRama</option></select></div>`;
+      document.getElementById('modal-invitacion').classList.add('active');
+    }
+
+    async function enviarInvitacion() {
+      const email = document.getElementById('inv-email').value;
+      const familiaId = document.getElementById('inv-familia').value;
+      const rol = document.getElementById('inv-rol').value;
+      if (!email || !familiaId) { alert('Email y familia obligatorios'); return; }
+      try { 
+        await db.collection('invitaciones-email').add({ email, familiaId, rol, estado: 'pendiente', fechaCreacion: firebase.firestore.FieldValue.serverTimestamp() }); 
+        await registrarLog('usuario', `envió invitación a ${email}`);
+        cerrarModales(); cargarInvitaciones(); alert('✅ Invitación creada'); 
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function cancelarInvitacion(id) { 
+      if (!confirm('¿Cancelar?')) return; 
+      try { await db.collection('invitaciones-email').doc(id).update({ estado: 'cancelada' }); cargarInvitaciones(); } catch (e) { alert('Error'); } 
+    }
+
+    // ADD-ONS
+    async function cargarAddons() {
+      const tbody = document.getElementById('tabla-addons');
+      const ahora = new Date(); let crCount = 0, myCount = 0, trialCount = 0;
+      tbody.innerHTML = familiasData.map(f => { const addons = f.addons || {}; const cr = addons.crearRama || {}; const crActivo = cr.activo || (cr.trialHasta && new Date(cr.trialHasta) > ahora); const crTrial = cr.trialHasta && new Date(cr.trialHasta) > ahora; const my = addons.mayordomo || {}; const myActivo = my.activo || (my.trialHasta && new Date(my.trialHasta) > ahora); const myTrial = my.trialHasta && new Date(my.trialHasta) > ahora; if (crActivo) crCount++; if (myActivo) myCount++; if (crTrial) trialCount++; if (myTrial) trialCount++; return `<tr><td style="font-weight:600;">${f.nombre}</td><td><span class="badge ${crActivo?(crTrial?'badge-warning':'badge-success'):'badge-neutral'}">${crActivo?(crTrial?'Trial':'Activo'):'No'}</span></td><td><span class="badge ${myActivo?(myTrial?'badge-warning':'badge-success'):'badge-neutral'}">${myActivo?(myTrial?'Trial':'Activo'):'No'}</span></td><td><button class="btn btn-sm btn-secondary" onclick="verFamilia('${f.id}')">⚙️</button></td></tr>`; }).join('');
+      document.getElementById('stat-crear-rama').textContent = crCount;
+      document.getElementById('stat-mayordomo').textContent = myCount;
+      document.getElementById('stat-trials').textContent = trialCount;
+    }
+
+    // GUARDAR CONFIGS
+    async function guardarEstructura() {
+      try {
+        await db.collection('config').doc('sistema').set({
+          arbol: { generacionesFree: parseInt(document.getElementById('config-gen-free').value), generacionesPremium: parseInt(document.getElementById('config-gen-premium').value) },
+          imagenes: { limiteFree: parseInt(document.getElementById('config-img-free').value), tamanoMax: parseInt(document.getElementById('config-img-size').value) },
+          loComun: { bienesFree: parseInt(document.getElementById('config-bienes-free').value), bienesPremium: parseInt(document.getElementById('config-bienes-premium').value) },
+          trial: { dias: parseInt(document.getElementById('config-trial-dias').value) },
+          invitaciones: { expiraDias: parseInt(document.getElementById('config-inv-expira').value) }
+        }, { merge: true });
+        await registrarLog('config', 'actualizó estructura del sistema');
+        alert('✅ Guardado');
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    function guardarPlanes() { alert('✅ Planes guardados'); }
+
+    async function guardarNotificaciones() {
+      try {
+        await db.collection('config').doc('notificaciones').set({
+          nuevoUsuario: document.getElementById('notif-nuevo-usuario').checked,
+          nuevaFamilia: document.getElementById('notif-nueva-familia').checked,
+          addonActivado: document.getElementById('notif-addon-activado').checked,
+          trialExpira: document.getElementById('notif-trial-expira').checked,
+          errores: document.getElementById('notif-errores').checked,
+          emailAdmin: document.getElementById('notif-email-admin').value
+        });
+        await registrarLog('config', 'actualizó notificaciones');
+        alert('✅ Notificaciones guardadas');
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    // SERVICIOS
+    function editarServicio(s) {
+      document.getElementById('modal-servicio-titulo').textContent = `🔌 ${s}`;
+      let c = '';
+      if (s === 'firebase') c = `<div class="form-group"><label class="form-label">Project ID</label><input type="text" class="form-input" value="familynk-xxxxx"></div>`;
+      else if (s === 'emailjs') c = `<div class="form-group"><label class="form-label">Service ID</label><input type="text" class="form-input" value="service_fcfx5od"></div><div class="form-group"><label class="form-label">Template ID</label><input type="text" class="form-input" value="template_my2n26t"></div>`;
+      else if (s === 'stripe') c = `<div class="form-group"><label class="form-label">Publishable Key</label><input type="text" class="form-input" placeholder="pk_live_..."></div><div class="form-group"><label class="form-label">Secret Key</label><input type="password" class="form-input" placeholder="sk_live_..."></div>`;
+      document.getElementById('modal-servicio-body').innerHTML = c;
+      document.getElementById('modal-servicio').classList.add('active');
+    }
+    function guardarServicio() { cerrarModales(); alert('✅ Servicio actualizado'); }
+
+    // BACKUP
+    async function exportarBackup(tipo) {
+      try {
+        let data = {};
+        if (tipo === 'usuarios' || tipo === 'todo') { if (!usuariosData.length) { const s = await db.collection('usuarios').get(); usuariosData = s.docs.map(d => ({ id: d.id, ...d.data() })); } data.usuarios = usuariosData; }
+        if (tipo === 'familias' || tipo === 'todo') { if (!familiasData.length) { const s = await db.collection('familias').get(); familiasData = s.docs.map(d => ({ id: d.id, ...d.data() })); } data.familias = familiasData; }
+        if (tipo === 'nidos' || tipo === 'todo') { if (!nidosData.length) { const s = await db.collection('nidos').get(); nidosData = s.docs.map(d => ({ id: d.id, ...d.data() })); } data.nidos = nidosData; }
+
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `familynk_backup_${tipo}_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+
+        await registrarLog('config', `exportó backup de ${tipo}`);
+        document.getElementById('ultimo-backup-fecha').textContent = new Date().toLocaleString('es');
+        document.getElementById('ultimo-backup-size').textContent = (json.length / 1024).toFixed(1) + ' KB';
+        const registros = (data.usuarios?.length || 0) + (data.familias?.length || 0) + (data.nidos?.length || 0);
+        document.getElementById('ultimo-backup-registros').textContent = registros;
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    async function restaurarBackup() {
+      const file = document.getElementById('backup-file').files[0];
+      if (!file) { alert('Selecciona un archivo'); return; }
+      if (!confirm('⚠️ Esto puede sobrescribir datos. ¿Continuar?')) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        alert('✅ Archivo leído. Restauración manual requerida por seguridad.');
+        console.log('Datos a restaurar:', data);
+        await registrarLog('config', 'intentó restaurar backup');
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
+    function exportarLogs() {
+      const csv = 'Fecha,Tipo,Usuario,Acción\n' + logsData.map(l => {
+        const fecha = l.fecha?.toDate ? l.fecha.toDate().toISOString() : '';
+        return `"${fecha}","${l.tipo||''}","${l.usuario||''}","${l.accion||''}"`;
+      }).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'logs_familynk.csv';
+      a.click();
+    }
+
+    // GESTIÓN DE PLANES
+    function buscarFamiliaParaPlan() {
+      const search = document.getElementById('search-plan-familia').value.toLowerCase().trim();
+      const container = document.getElementById('resultados-familia-plan');
+      const tbody = document.getElementById('tabla-familia-plan');
+      const sinResultados = document.getElementById('sin-resultados-plan');
+
+      if (search.length < 2) {
+        container.classList.add('hidden');
+        sinResultados.classList.remove('hidden');
+        sinResultados.textContent = 'Escribe al menos 2 caracteres...';
+        return;
+      }
+
+      // Buscar en familias y usuarios (fundadores)
+      const resultados = familiasData.filter(f => {
+        const matchNombre = (f.nombre || '').toLowerCase().includes(search);
+        const fundador = usuariosData.find(u => u.id === f.fundador || u.id === f.creador);
+        const matchFundador = fundador && ((fundador.email || '').toLowerCase().includes(search) || (fundador.nombre || '').toLowerCase().includes(search));
+        return matchNombre || matchFundador;
+      });
+
+      if (resultados.length === 0) {
+        container.classList.add('hidden');
+        sinResultados.classList.remove('hidden');
+        sinResultados.textContent = 'No se encontraron familias';
+        return;
+      }
+
+      sinResultados.classList.add('hidden');
+      container.classList.remove('hidden');
+
+      tbody.innerHTML = resultados.map(f => {
+        const fundador = usuariosData.find(u => u.id === f.fundador || u.id === f.creador);
+        const plan = f.plan || 'gratuito';
+        return `
+          <tr>
+            <td style="font-weight: 600;">${f.nombre || 'Sin nombre'}</td>
+            <td>${fundador?.email || '-'}</td>
+            <td><span class="badge badge-plan ${plan}">${plan.toUpperCase()}</span></td>
+            <td><button class="btn btn-sm btn-primary" onclick="abrirModalAsignarPlan('${f.id}')">Asignar</button></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function abrirModalAsignarPlan(familiaId) {
+      const f = familiasData.find(x => x.id === familiaId);
+      if (!f) return;
+
+      editingPlanFamiliaId = familiaId;
+      const plan = f.plan || 'gratuito';
+      const planTipo = f.planTipo || 'pago';
+      const planExpira = f.planExpira || '';
+
+      document.getElementById('modal-asignar-plan-body').innerHTML = `
+        <div style="background: var(--cream); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+          <strong>${f.nombre || 'Sin nombre'}</strong>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Plan actual: <span class="badge badge-plan ${plan}">${plan.toUpperCase()}</span></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Plan</label>
+          <select class="form-select" id="asignar-plan-tipo">
+            <option value="gratuito" ${plan === 'gratuito' ? 'selected' : ''}>Gratuito</option>
+            <option value="plus" ${plan === 'plus' ? 'selected' : ''}>Plus</option>
+            <option value="premium" ${plan === 'premium' ? 'selected' : ''}>Premium</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de asignación</label>
+          <select class="form-select" id="asignar-plan-modalidad">
+            <option value="cortesia" ${planTipo === 'cortesia' ? 'selected' : ''}>🎁 Cortesía (gratis)</option>
+            <option value="pago" ${planTipo === 'pago' ? 'selected' : ''}>💳 Pago</option>
+            <option value="trial" ${planTipo === 'trial' ? 'selected' : ''}>🧪 Trial</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha expiración (opcional)</label>
+          <input type="date" class="form-input" id="asignar-plan-expira" value="${planExpira ? planExpira.split('T')[0] : ''}">
+          <div class="form-hint">Dejar vacío para plan sin expiración</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas (interno)</label>
+          <textarea class="form-textarea" id="asignar-plan-notas" rows="2" placeholder="Ej: Beta tester, colaborador...">${f.planNotas || ''}</textarea>
+        </div>
+      `;
+      document.getElementById('modal-asignar-plan').classList.add('active');
+    }
+
+    async function guardarPlanFamilia() {
+      if (!editingPlanFamiliaId) return;
+
+      const plan = document.getElementById('asignar-plan-tipo').value;
+      const planTipo = document.getElementById('asignar-plan-modalidad').value;
+      const expiraInput = document.getElementById('asignar-plan-expira').value;
+      const notas = document.getElementById('asignar-plan-notas').value;
+
+      try {
+        const updateData = {
+          plan: plan,
+          planTipo: planTipo,
+          planNotas: notas,
+          planActualizadoPor: currentUser.uid,
+          planActualizadoFecha: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (expiraInput) {
+          updateData.planExpira = new Date(expiraInput).toISOString();
+        } else {
+          updateData.planExpira = firebase.firestore.FieldValue.delete();
+        }
+
+        await db.collection('familias').doc(editingPlanFamiliaId).update(updateData);
+
+        const familia = familiasData.find(f => f.id === editingPlanFamiliaId);
+        await registrarLog('config', `asignó plan ${plan.toUpperCase()} (${planTipo}) a ${familia?.nombre || 'familia'}`);
+
+        // Actualizar datos locales
+        const idx = familiasData.findIndex(f => f.id === editingPlanFamiliaId);
+        if (idx >= 0) {
+          familiasData[idx].plan = plan;
+          familiasData[idx].planTipo = planTipo;
+          familiasData[idx].planExpira = expiraInput ? new Date(expiraInput).toISOString() : null;
+          familiasData[idx].planNotas = notas;
+        }
+
+        cerrarModales();
+        cargarPlanesActivos();
+        document.getElementById('search-plan-familia').value = '';
+        document.getElementById('resultados-familia-plan').classList.add('hidden');
+        alert('✅ Plan asignado correctamente');
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function cargarPlanesActivos() {
+      const tbody = document.getElementById('tabla-planes-activos');
+      if (!tbody) return;
+
+      try {
+        const conPlan = familiasData.filter(f => f.plan && f.plan !== 'gratuito');
+        document.getElementById('badge-planes-activos').textContent = conPlan.length;
+
+        if (conPlan.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No hay familias con planes de pago</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = conPlan.map(f => {
+          const expira = f.planExpira ? new Date(f.planExpira).toLocaleDateString('es') : 'Sin límite';
+          const tipoClass = f.planTipo || 'pago';
+          const tipoLabel = { pago: '💳 Pago', cortesia: '🎁 Cortesía', trial: '🧪 Trial' }[tipoClass] || tipoClass;
+          return `
+            <tr>
+              <td style="font-weight: 600;">${f.nombre || 'Sin nombre'}</td>
+              <td><span class="badge badge-plan ${f.plan}">${(f.plan || '').toUpperCase()}</span></td>
+              <td><span class="badge badge-tipo ${tipoClass}">${tipoLabel}</span></td>
+              <td>${expira}</td>
+              <td><button class="btn btn-sm btn-secondary" onclick="abrirModalAsignarPlan('${f.id}')">✏️</button></td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Error cargando planes</td></tr>';
+      }
+    }
+
+    async function quitarPlan(familiaId) {
+      if (!confirm('¿Quitar plan de pago a esta familia? Volverá al plan gratuito.')) return;
+      try {
+        await db.collection('familias').doc(familiaId).update({
+          plan: 'gratuito',
+          planTipo: firebase.firestore.FieldValue.delete(),
+          planExpira: firebase.firestore.FieldValue.delete(),
+          planNotas: firebase.firestore.FieldValue.delete()
+        });
+        const familia = familiasData.find(f => f.id === familiaId);
+        await registrarLog('config', `quitó plan de pago a ${familia?.nombre || 'familia'}`);
+        
+        const idx = familiasData.findIndex(f => f.id === familiaId);
+        if (idx >= 0) familiasData[idx].plan = 'gratuito';
+        
+        cargarPlanesActivos();
+        alert('✅ Plan eliminado');
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    // MODALES
+    function cerrarModales() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); editingUserId = null; editingFamiliaId = null; editingPlanFamiliaId = null; }
+    document.querySelectorAll('.modal-overlay').forEach(m => { m.addEventListener('click', (e) => { if (e.target === m) cerrarModales(); }); });
+
+    // EVENT LISTENERS
+    document.getElementById('search-usuarios')?.addEventListener('input', cargarUsuarios);
+    document.getElementById('filter-rol')?.addEventListener('change', cargarUsuarios);
+    document.getElementById('search-familias')?.addEventListener('input', cargarFamilias);
+    document.getElementById('search-nidos')?.addEventListener('input', cargarNidos);
   </script>
 </body>
 </html>

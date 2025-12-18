@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview - Reparto de Gastos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757;
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A; --warning: #E8B44D; --error: #D4695A;
+      --mayordomo: #8B7355;
+      --radius-sm: 8px; --radius-md: 12px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); padding: 20px; }
+    
+    .demo-container { max-width: 500px; margin: 0 auto; }
+    .demo-title { text-align: center; margin-bottom: 20px; font-size: 1.2rem; color: var(--mayordomo); }
+    
+    .modal { background: var(--white); border-radius: var(--radius-md); padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--cream-dark); }
+    .modal-title { font-weight: 700; font-size: 1.1rem; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-input { width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.9rem; }
+    .form-input:focus { outline: none; border-color: var(--sage); }
+    
+    .btn { padding: 8px 16px; border-radius: var(--radius-sm); font-family: inherit; font-weight: 600; cursor: pointer; border: none; font-size: 0.85rem; }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    
+    .reparto-section { margin-top: 16px; padding: 16px; background: var(--cream); border-radius: var(--radius-md); }
+    .reparto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .reparto-miembros { display: flex; flex-direction: column; gap: 8px; }
+    .reparto-miembro { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--white); border-radius: var(--radius-sm); transition: all 0.2s; }
+    .reparto-miembro.selected { background: var(--sage-muted); }
+    .reparto-miembro-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--sage); }
+    .reparto-miembro-info { flex: 1; }
+    .reparto-miembro-nombre { font-weight: 600; font-size: 0.85rem; }
+    .reparto-miembro-nido { font-size: 0.7rem; color: var(--text-muted); }
+    .reparto-miembro-pct { width: 70px; display: flex; align-items: center; gap: 2px; }
+    .reparto-miembro-pct input { width: 50px; padding: 4px 6px; border: 1px solid var(--cream-dark); border-radius: var(--radius-sm); text-align: right; font-size: 0.8rem; }
+    .reparto-miembro-importe { min-width: 70px; text-align: right; font-weight: 600; font-size: 0.85rem; color: var(--sage-dark); }
+    .reparto-total { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cream-dark); font-weight: 600; }
+    .reparto-total.error #reparto-pct-total { color: var(--error); }
+    .reparto-warning { margin-top: 8px; padding: 8px; background: rgba(232,180,77,0.15); border-radius: var(--radius-sm); color: var(--warning); font-size: 0.8rem; text-align: center; }
+    .hidden { display: none !important; }
+    
+    .preview-box { margin-top: 24px; background: var(--white); border-radius: var(--radius-md); padding: 20px; border: 2px dashed var(--sage-light); }
+    .preview-header { text-align: center; padding-bottom: 16px; border-bottom: 1px solid var(--cream-dark); margin-bottom: 16px; }
+    .preview-concepto { font-size: 0.85rem; color: var(--text-light); margin-bottom: 4px; }
+    .preview-total { font-size: 1.4rem; font-weight: 700; color: var(--sage-dark); }
+    .preview-lista { display: flex; flex-direction: column; gap: 8px; }
+    .preview-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--cream); border-radius: var(--radius-sm); }
+    .preview-nombre { font-weight: 600; font-size: 0.9rem; }
+    .preview-importe { font-weight: 700; color: var(--mayordomo); }
+    .preview-pct { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
+    
+    .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--cream-dark); }
+  </style>
+</head>
+<body>
+  <div class="demo-container">
+    <div class="demo-title">💶 Vista previa: Reparto de Gastos</div>
+    
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">💶 Nuevo gasto</span>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Importe (€)</label>
+          <input type="number" class="form-input" id="gasto-importe" value="150" step="0.01" oninput="renderReparto()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Concepto</label>
+          <input type="text" class="form-input" id="gasto-concepto" value="Factura luz diciembre">
+        </div>
+      </div>
+      
+      <div class="reparto-section">
+        <div class="reparto-header">
+          <label class="form-label" style="margin:0;">📊 Reparto entre miembros</label>
+          <button class="btn btn-sm btn-secondary" onclick="repartoLineal()">↔️ Lineal</button>
+        </div>
+        <div class="reparto-miembros" id="reparto-miembros"></div>
+        <div class="reparto-total" id="reparto-total">
+          <span>Total asignado:</span>
+          <span id="reparto-pct-total">100%</span>
+        </div>
+        <div class="reparto-warning hidden" id="reparto-warning">⚠️ Los porcentajes deben sumar 100%</div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary">Cancelar</button>
+        <button class="btn btn-primary" onclick="mostrarPreview()">👁️ Vista previa</button>
+      </div>
+    </div>
+    
+    <div class="preview-box hidden" id="preview-box">
+      <div class="preview-header">
+        <div class="preview-concepto" id="preview-concepto">Factura luz diciembre</div>
+        <div class="preview-total" id="preview-total">150,00 €</div>
+      </div>
+      <div class="preview-lista" id="preview-lista"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarPreview()">Volver</button>
+        <button class="btn btn-primary">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let miembros = [
+      { id: 1, nombre: 'Felipe', nido: 'Casa Principal', selected: true, porcentaje: 25 },
+      { id: 2, nombre: 'María', nido: 'Casa Principal', selected: true, porcentaje: 25 },
+      { id: 3, nombre: 'Carlos', nido: 'Nido Hijos', selected: true, porcentaje: 25 },
+      { id: 4, nombre: 'Ana', nido: 'Nido Hijos', selected: true, porcentaje: 25 }
+    ];
+
+    function renderReparto() {
+      const container = document.getElementById('reparto-miembros');
+      const importe = parseFloat(document.getElementById('gasto-importe').value) || 0;
+
+      container.innerHTML = miembros.map((m, i) => {
+        const importeMiembro = (importe * m.porcentaje / 100).toFixed(2);
+        return `
+          <div class="reparto-miembro ${m.selected ? 'selected' : ''}">
+            <input type="checkbox" class="reparto-miembro-check" ${m.selected ? 'checked' : ''} onchange="toggleMiembro(${i})">
+            <div class="reparto-miembro-info">
+              <div class="reparto-miembro-nombre">${m.nombre}</div>
+              <div class="reparto-miembro-nido">🪺 ${m.nido}</div>
+            </div>
+            <div class="reparto-miembro-pct">
+              <input type="number" value="${m.porcentaje}" min="0" max="100" 
+                     onchange="actualizarPct(${i}, this.value)" 
+                     ${!m.selected ? 'disabled' : ''}>%
+            </div>
+            <div class="reparto-miembro-importe">${importeMiembro} €</div>
+          </div>
+        `;
+      }).join('');
+
+      actualizarTotal();
+    }
+
+    function toggleMiembro(i) {
+      miembros[i].selected = !miembros[i].selected;
+      if (!miembros[i].selected) miembros[i].porcentaje = 0;
+      repartoLineal();
+    }
+
+    function actualizarPct(i, val) {
+      miembros[i].porcentaje = parseFloat(val) || 0;
+      renderReparto();
+    }
+
+    function repartoLineal() {
+      const sel = miembros.filter(m => m.selected);
+      if (sel.length === 0) { miembros.forEach(m => m.porcentaje = 0); renderReparto(); return; }
+      
+      const pct = Math.floor(100 / sel.length);
+      const resto = 100 - (pct * sel.length);
+      let idx = 0;
+      miembros.forEach(m => {
+        if (m.selected) { m.porcentaje = pct + (idx < resto ? 1 : 0); idx++; }
+        else m.porcentaje = 0;
+      });
+      renderReparto();
+    }
+
+    function actualizarTotal() {
+      const suma = miembros.reduce((a, m) => a + m.porcentaje, 0);
+      document.getElementById('reparto-pct-total').textContent = suma + '%';
+      const total = document.getElementById('reparto-total');
+      const warning = document.getElementById('reparto-warning');
+      if (suma !== 100) { total.classList.add('error'); warning.classList.remove('hidden'); }
+      else { total.classList.remove('error'); warning.classList.add('hidden'); }
+    }
+
+    function mostrarPreview() {
+      const suma = miembros.reduce((a, m) => a + m.porcentaje, 0);
+      if (suma !== 100) { alert('Los porcentajes deben sumar 100%'); return; }
+      
+      const importe = parseFloat(document.getElementById('gasto-importe').value) || 0;
+      const concepto = document.getElementById('gasto-concepto').value;
+      
+      document.getElementById('preview-concepto').textContent = concepto;
+      document.getElementById('preview-total').textContent = importe.toFixed(2) + ' €';
+      
+      document.getElementById('preview-lista').innerHTML = miembros
+        .filter(m => m.selected && m.porcentaje > 0)
+        .map(m => `
+          <div class="preview-item">
+            <span class="preview-nombre">${m.nombre}</span>
+            <div>
+              <span class="preview-importe">${(importe * m.porcentaje / 100).toFixed(2)} €</span>
+              <span class="preview-pct">(${m.porcentaje}%)</span>
+            </div>
+          </div>
+        `).join('');
+      
+      document.getElementById('preview-box').classList.remove('hidden');
+    }
+
+    function cerrarPreview() {
+      document.getElementById('preview-box').classList.add('hidden');
+    }
+
+    renderReparto();
+  </script>
+</body>
+</html>

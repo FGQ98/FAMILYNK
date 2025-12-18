@@ -385,10 +385,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       border-radius: var(--radius-sm);
       cursor: pointer;
       transition: all 0.15s;
+      min-height: 28px;
     }
 
     .calendario-dia:hover { background: var(--cream-dark); }
@@ -615,6 +616,35 @@
     .gasto-cat-chip-valor { font-weight: 700; color: var(--terracotta); }
 
     .gastos-list { display: flex; flex-direction: column; gap: 8px; }
+
+    /* Reparto de gastos */
+    .reparto-section { margin-top: 16px; padding: 16px; background: var(--cream); border-radius: var(--radius-md); }
+    .reparto-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .reparto-miembros { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
+    .reparto-miembro { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--white); border-radius: var(--radius-sm); transition: all 0.2s; }
+    .reparto-miembro.selected { background: var(--sage-muted); }
+    .reparto-miembro-check { width: 18px; height: 18px; cursor: pointer; accent-color: var(--sage); }
+    .reparto-miembro-info { flex: 1; }
+    .reparto-miembro-nombre { font-weight: 600; font-size: 0.85rem; }
+    .reparto-miembro-nido { font-size: 0.7rem; color: var(--text-muted); }
+    .reparto-miembro-pct { width: 70px; display: flex; align-items: center; gap: 2px; }
+    .reparto-miembro-pct input { width: 50px; padding: 4px 6px; border: 1px solid var(--cream-dark); border-radius: var(--radius-sm); text-align: right; font-size: 0.8rem; }
+    .reparto-miembro-pct input:focus { outline: none; border-color: var(--sage); }
+    .reparto-miembro-pct input:disabled { background: var(--cream-dark); color: var(--text-muted); }
+    .reparto-miembro-importe { min-width: 70px; text-align: right; font-weight: 600; font-size: 0.85rem; color: var(--sage-dark); }
+    .reparto-total { display: flex; justify-content: space-between; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cream-dark); font-weight: 600; }
+    .reparto-total.error #reparto-pct-total { color: var(--error); }
+    .reparto-warning { margin-top: 8px; padding: 8px; background: rgba(232,180,77,0.15); border-radius: var(--radius-sm); color: var(--warning); font-size: 0.8rem; text-align: center; }
+
+    /* Preview reparto */
+    .preview-header { text-align: center; padding-bottom: 16px; border-bottom: 1px solid var(--cream-dark); margin-bottom: 16px; }
+    .preview-concepto { font-size: 0.85rem; color: var(--text-light); margin-bottom: 4px; }
+    .preview-total { font-size: 1.4rem; font-weight: 700; color: var(--sage-dark); }
+    .preview-lista { display: flex; flex-direction: column; gap: 8px; }
+    .preview-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--cream); border-radius: var(--radius-sm); }
+    .preview-nombre { font-weight: 600; font-size: 0.9rem; }
+    .preview-importe { font-weight: 700; color: var(--mayordomo); }
+    .preview-pct { font-size: 0.75rem; color: var(--text-muted); margin-left: 6px; }
 
     .gasto-item {
       display: flex;
@@ -968,6 +998,12 @@
     .inventario-stat-valor.alerta { color: var(--error); }
     .inventario-stat-label { font-size: 0.65rem; color: var(--text-muted); }
 
+    /* Sidebar módulos */
+    .sidebar-modulo-item { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 4px 0; color: var(--text-muted); }
+    .sidebar-modulo-item.activo { color: var(--text); font-weight: 600; }
+    .smod-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cream-dark); }
+    .sidebar-modulo-item.activo .smod-dot { background: var(--success); }
+
     .sidebar { display: flex; flex-direction: column; gap: 16px; }
 
     .empty-mini {
@@ -1153,10 +1189,10 @@
                 </label>
               </div>
               
-              <!-- Acceso a Tienda -->
+              <!-- Acceso a Inventario -->
               <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--cream-dark);">
-                <a href="#" id="btn-tienda" class="btn btn-mayordomo" style="width: 100%; justify-content: center;" onclick="irATienda()">
-                  🏪 Tienda (Básicos y Especiales)
+                <a href="#" id="btn-tienda" class="btn btn-mayordomo" style="width: 100%; justify-content: center;" onclick="irAInventario()">
+                  📦 Inventario (Básico · Toma · Comparación)
                 </a>
               </div>
             </div>
@@ -1179,6 +1215,7 @@
         </div>
 
         <div class="sidebar">
+          <!-- Galería -->
           <div class="collapsible-section open" id="section-galeria">
             <div class="collapsible-header" onclick="toggleSection('galeria')">
               <div class="collapsible-title"><span>📷</span><span>Galería</span><span class="collapsible-count" id="count-galeria">0</span></div>
@@ -1187,12 +1224,36 @@
             <div class="collapsible-body"><div id="galeria-fotos" style="display:flex;gap:8px;overflow-x:auto;"><div class="empty-mini" style="padding:12px;">Sin fotos</div></div></div>
           </div>
 
-          <div class="collapsible-section" id="section-personal">
-            <div class="collapsible-header" onclick="toggleSection('personal')">
-              <div class="collapsible-title"><span>👷</span><span>Personal</span><span class="collapsible-count" id="count-personal">0</span></div>
+          <!-- Card Módulos Activos -->
+          <div class="collapsible-section open" id="section-modulos">
+            <div class="collapsible-header" onclick="toggleSection('modulos')">
+              <div class="collapsible-title"><span>⚙️</span><span>Módulos Activos</span></div>
               <span class="collapsible-toggle">▼</span>
             </div>
-            <div class="collapsible-body"><div class="info-list" id="lista-personal"><div class="empty-mini">Sin personal</div></div></div>
+            <div class="collapsible-body">
+              <div id="sidebar-modulos-lista" style="display:flex;flex-direction:column;gap:6px;">
+                <div class="sidebar-modulo-item" id="smod-reservas"><span class="smod-dot"></span> 📅 Reservas</div>
+                <div class="sidebar-modulo-item" id="smod-inventario"><span class="smod-dot"></span> 📦 Inventario</div>
+                <div class="sidebar-modulo-item" id="smod-gastos"><span class="smod-dot"></span> 💰 Gastos</div>
+                <div class="sidebar-modulo-item" id="smod-mantenimiento"><span class="smod-dot"></span> 🔧 Mantenimiento</div>
+                <div class="sidebar-modulo-item" id="smod-limpieza"><span class="smod-dot"></span> 🧹 Limpieza</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="collapsible-section" id="section-personal">
+            <div class="collapsible-header" onclick="toggleSection('personal')">
+              <div class="collapsible-title"><span>👷</span><span>Refuerzos</span><span class="collapsible-count" id="count-personal">0</span></div>
+              <span class="collapsible-toggle">▼</span>
+            </div>
+            <div class="collapsible-body">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:0.75rem;">
+                <span style="padding:3px 8px;background:var(--cream);border-radius:12px;">🧹 Limpieza</span>
+                <span style="padding:3px 8px;background:var(--cream);border-radius:12px;">🌿 Jardín</span>
+                <span style="padding:3px 8px;background:var(--cream);border-radius:12px;">🔧 Otros</span>
+              </div>
+              <div class="info-list" id="lista-personal"><div class="empty-mini">Sin refuerzos</div></div>
+            </div>
           </div>
 
           <div class="collapsible-section" id="section-mascotas">
@@ -1229,7 +1290,7 @@
 
           <div class="collapsible-section" id="section-caseros">
             <div class="collapsible-header" onclick="toggleSection('caseros')">
-              <div class="collapsible-title"><span>👤</span><span>Caseros</span><span class="collapsible-count" id="count-caseros">0</span></div>
+              <div class="collapsible-title"><span>👤</span><span>Caseros/Guarda</span><span class="collapsible-count" id="count-caseros">0</span></div>
               <span class="collapsible-toggle">▼</span>
             </div>
             <div class="collapsible-body">
@@ -1400,6 +1461,23 @@
               <option value="">Sin asignar</option>
             </select>
           </div>
+
+          <!-- Reparto de gastos -->
+          <div class="reparto-section">
+            <div class="reparto-header">
+              <label class="form-label">📊 Reparto entre miembros</label>
+              <button type="button" class="btn btn-sm btn-secondary" onclick="repartoLineal()">↔️ Lineal</button>
+            </div>
+            <div class="reparto-miembros" id="reparto-miembros">
+              <!-- Se carga dinámicamente -->
+            </div>
+            <div class="reparto-total" id="reparto-total">
+              <span>Total asignado:</span>
+              <span id="reparto-pct-total">0%</span>
+            </div>
+            <div class="reparto-warning hidden" id="reparto-warning">⚠️ Los porcentajes deben sumar 100%</div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Notas (opcional)</label>
             <input type="text" class="form-input" id="gasto-notas" placeholder="Ej: Nº factura, observaciones...">
@@ -1409,10 +1487,33 @@
           <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-gasto">🗑️ Eliminar</button>
           <div style="display:flex;gap:12px;">
             <button type="button" class="btn btn-secondary" id="modal-gasto-cancelar">Cancelar</button>
-            <button type="submit" class="btn btn-primary" id="modal-gasto-guardar">Guardar</button>
+            <button type="button" class="btn btn-primary" onclick="previsualizarReparto()">👁️ Vista previa</button>
           </div>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Vista Previa Reparto -->
+  <div class="modal-overlay" id="modal-reparto-preview">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📊 Vista previa del reparto</h3>
+        <button class="modal-close" onclick="cerrarPreviewReparto()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="preview-header">
+          <div class="preview-concepto" id="preview-concepto">-</div>
+          <div class="preview-total" id="preview-total">0,00 €</div>
+        </div>
+        <div class="preview-lista" id="preview-lista">
+          <!-- Se genera dinámicamente -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarPreviewReparto()">Volver</button>
+        <button type="button" class="btn btn-primary" onclick="guardarGastoConReparto()">💾 Guardar</button>
+      </div>
     </div>
   </div>
 
@@ -1911,6 +2012,15 @@
       document.getElementById('toggle-mantenimiento').checked = !!m.mantenimiento;
       document.getElementById('toggle-limpieza').checked = !!m.limpieza;
       
+      // Sincronizar indicadores sidebar
+      ['reservas', 'inventario', 'gastos', 'mantenimiento', 'limpieza'].forEach(mod => {
+        const el = document.getElementById(`smod-${mod}`);
+        if (el) {
+          if (m[mod]) el.classList.add('activo');
+          else el.classList.remove('activo');
+        }
+      });
+      
       let html = '';
 
       if (m.reservas) {
@@ -2060,8 +2170,8 @@
       }
     }
 
-    function irATienda() {
-      window.location.href = `tienda.html?bien=${bienId}`;
+    function irAInventario() {
+      window.location.href = `mayordomo.html?bien=${bienId}`;
     }
 
     // CALENDARIO
@@ -2993,6 +3103,9 @@
       
       document.getElementById('gasto-fecha').value = formatDateInput(new Date());
       
+      // Cargar miembros para reparto
+      cargarMiembrosReparto(gasto?.repartos || null);
+      
       if (gasto) {
         document.getElementById('modal-gasto-title').textContent = '✏️ Editar gasto';
         document.getElementById('gasto-fecha').value = gasto.fecha || '';
@@ -3008,9 +3121,232 @@
       modalGasto.classList.add('active');
     }
 
+    // ========== REPARTO DE GASTOS ==========
+    let miembrosReparto = [];
+
+    function cargarMiembrosReparto(repartosExistentes = null) {
+      const container = document.getElementById('reparto-miembros');
+      miembrosReparto = [];
+
+      // Obtener miembros de todos los nidos
+      nidosData.forEach(nido => {
+        (nido.miembrosData || []).forEach(m => {
+          const repartoExistente = repartosExistentes?.find(r => r.miembroId === m.visibleId);
+          miembrosReparto.push({
+            id: m.visibleId || m.id,
+            nombre: m.nombre,
+            nido: nido.nombre,
+            nidoId: nido.id,
+            selected: repartoExistente ? true : (repartosExistentes ? false : true),
+            porcentaje: repartoExistente?.porcentaje || 0
+          });
+        });
+      });
+
+      // Si no hay repartos existentes, aplicar reparto lineal
+      if (!repartosExistentes && miembrosReparto.length > 0) {
+        const pctEach = Math.floor(100 / miembrosReparto.length);
+        const resto = 100 - (pctEach * miembrosReparto.length);
+        miembrosReparto.forEach((m, i) => {
+          m.porcentaje = pctEach + (i < resto ? 1 : 0);
+        });
+      }
+
+      renderMiembrosReparto();
+    }
+
+    function renderMiembrosReparto() {
+      const container = document.getElementById('reparto-miembros');
+      const importe = parseFloat(document.getElementById('gasto-importe')?.value) || 0;
+
+      if (miembrosReparto.length === 0) {
+        container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:12px;">No hay miembros</div>';
+        return;
+      }
+
+      container.innerHTML = miembrosReparto.map((m, i) => {
+        const importeMiembro = (importe * m.porcentaje / 100).toFixed(2);
+        return `
+          <div class="reparto-miembro ${m.selected ? 'selected' : ''}">
+            <input type="checkbox" class="reparto-miembro-check" ${m.selected ? 'checked' : ''} onchange="toggleMiembroReparto(${i})">
+            <div class="reparto-miembro-info">
+              <div class="reparto-miembro-nombre">${m.nombre}</div>
+              <div class="reparto-miembro-nido">🪺 ${m.nido}</div>
+            </div>
+            <div class="reparto-miembro-pct">
+              <input type="number" value="${m.porcentaje}" min="0" max="100" 
+                     onchange="actualizarPorcentaje(${i}, this.value)" 
+                     ${!m.selected ? 'disabled' : ''}>%
+            </div>
+            <div class="reparto-miembro-importe">${importeMiembro} €</div>
+          </div>
+        `;
+      }).join('');
+
+      actualizarResumenReparto();
+    }
+
+    function toggleMiembroReparto(index) {
+      miembrosReparto[index].selected = !miembrosReparto[index].selected;
+      if (!miembrosReparto[index].selected) {
+        miembrosReparto[index].porcentaje = 0;
+      }
+      repartoLineal();
+    }
+
+    function actualizarPorcentaje(index, valor) {
+      miembrosReparto[index].porcentaje = parseFloat(valor) || 0;
+      renderMiembrosReparto();
+    }
+
+    function repartoLineal() {
+      const seleccionados = miembrosReparto.filter(m => m.selected);
+      if (seleccionados.length === 0) {
+        miembrosReparto.forEach(m => m.porcentaje = 0);
+        renderMiembrosReparto();
+        return;
+      }
+
+      const pctEach = Math.floor(100 / seleccionados.length);
+      const resto = 100 - (pctEach * seleccionados.length);
+      
+      let idx = 0;
+      miembrosReparto.forEach(m => {
+        if (m.selected) {
+          m.porcentaje = pctEach + (idx < resto ? 1 : 0);
+          idx++;
+        } else {
+          m.porcentaje = 0;
+        }
+      });
+
+      renderMiembrosReparto();
+    }
+
+    function actualizarResumenReparto() {
+      const totalEl = document.getElementById('reparto-total');
+      const pctEl = document.getElementById('reparto-pct-total');
+      const warningEl = document.getElementById('reparto-warning');
+
+      const suma = miembrosReparto.reduce((acc, m) => acc + m.porcentaje, 0);
+      pctEl.textContent = suma + '%';
+
+      if (suma !== 100) {
+        totalEl.classList.add('error');
+        warningEl.classList.remove('hidden');
+      } else {
+        totalEl.classList.remove('error');
+        warningEl.classList.add('hidden');
+      }
+    }
+
+    // Actualizar importes cuando cambia el importe total
+    document.getElementById('gasto-importe')?.addEventListener('input', renderMiembrosReparto);
+
+    function previsualizarReparto() {
+      const suma = miembrosReparto.reduce((acc, m) => acc + m.porcentaje, 0);
+      if (suma !== 100) {
+        alert('Los porcentajes deben sumar exactamente 100%');
+        return;
+      }
+
+      const importe = parseFloat(document.getElementById('gasto-importe')?.value) || 0;
+      const concepto = document.getElementById('gasto-concepto')?.value || 'Sin concepto';
+
+      if (importe <= 0) {
+        alert('Introduce un importe válido');
+        return;
+      }
+
+      document.getElementById('preview-concepto').textContent = concepto;
+      document.getElementById('preview-total').textContent = importe.toFixed(2) + ' €';
+
+      const lista = document.getElementById('preview-lista');
+      lista.innerHTML = miembrosReparto
+        .filter(m => m.selected && m.porcentaje > 0)
+        .map(m => {
+          const importeMiembro = (importe * m.porcentaje / 100).toFixed(2);
+          return `
+            <div class="preview-item">
+              <span class="preview-nombre">${m.nombre}</span>
+              <div>
+                <span class="preview-importe">${importeMiembro} €</span>
+                <span class="preview-pct">(${m.porcentaje}%)</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+      document.getElementById('modal-reparto-preview').classList.add('active');
+    }
+
+    function cerrarPreviewReparto() {
+      document.getElementById('modal-reparto-preview').classList.remove('active');
+    }
+
+    async function guardarGastoConReparto() {
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+
+      try {
+        const importe = parseFloat(document.getElementById('gasto-importe').value) || 0;
+        const generadorId = document.getElementById('gasto-generador').value;
+        const nido = generadorId ? nidosData.find(n => n.id === generadorId) : null;
+
+        const repartos = miembrosReparto
+          .filter(m => m.selected && m.porcentaje > 0)
+          .map(m => ({
+            miembroId: m.id,
+            nombre: m.nombre,
+            nidoId: m.nidoId,
+            porcentaje: m.porcentaje,
+            importe: parseFloat((importe * m.porcentaje / 100).toFixed(2))
+          }));
+
+        const data = {
+          fecha: document.getElementById('gasto-fecha').value,
+          importe: importe,
+          concepto: document.getElementById('gasto-concepto').value,
+          categoria: document.getElementById('gasto-categoria').value,
+          proveedor: document.getElementById('gasto-proveedor').value,
+          generadorId: generadorId || null,
+          generadorNombre: nido?.nombre || null,
+          notas: document.getElementById('gasto-notas').value,
+          repartos: repartos,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const ref = db.collection('bienes').doc(bienId).collection('gastos');
+        if (editingGastoId) {
+          await ref.doc(editingGastoId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarPreviewReparto();
+        modalGasto.classList.remove('active');
+        await loadGastos();
+        renderGastos();
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar';
+      }
+    }
+
     document.getElementById('modal-gasto-close').addEventListener('click', () => modalGasto.classList.remove('active'));
     document.getElementById('modal-gasto-cancelar').addEventListener('click', () => modalGasto.classList.remove('active'));
     modalGasto.addEventListener('click', (e) => { if (e.target === modalGasto) modalGasto.classList.remove('active'); });
+    
+    // Preview reparto modal
+    document.getElementById('modal-reparto-preview')?.addEventListener('click', (e) => {
+      if (e.target.id === 'modal-reparto-preview') cerrarPreviewReparto();
+    });
 
     formGasto.addEventListener('submit', async (e) => {
       e.preventDefault();
