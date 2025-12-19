@@ -550,10 +550,9 @@
     async function cargarMiembros() {
       try {
         miembrosData = [];
-        const miembrosYaIncluidos = new Map(); // Mapa para detectar duplicados
+        const miembrosYaIncluidos = new Map();
         
         // PASO 1: Primero, añadir TODOS los que son "cabezas" de nido (progenitor/consorte)
-        // Estos tienen prioridad - se cuentan en SU nido
         Object.entries(nidosData).forEach(([nidoId, nido]) => {
           const miembrosNido = nido.miembrosData || [];
           
@@ -570,8 +569,7 @@
           });
         });
 
-        // PASO 2: Añadir el resto (descendientes, ascendientes, etc.) 
-        // Solo si NO están ya incluidos
+        // PASO 2: Añadir el resto SOLO si NO tienen nido propio
         Object.entries(nidosData).forEach(([nidoId, nido]) => {
           const miembrosNido = nido.miembrosData || [];
           
@@ -581,9 +579,14 @@
               return;
             }
             
+            // *** CLAVE: Si tiene nido propio marcado, NO incluir aquí ***
+            if (m.tieneNidoPropio === true) {
+              return; // Ya se contará en su propio nido como progenitor
+            }
+            
             const clave = generarClaveUnica(m);
             
-            // Si ya está incluido (por ser cabeza de otro nido), saltar
+            // Verificar duplicado por clave
             if (miembrosYaIncluidos.has(clave)) {
               return;
             }

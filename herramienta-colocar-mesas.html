@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Colocar Mesas</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .header-actions { display: flex; gap: 8px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    .main { display: flex; gap: 24px; padding: 24px; max-width: 1600px; margin: 0 auto; }
+
+    /* Stats */
+    .stats-bar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card { background: var(--white); padding: 16px 24px; border-radius: var(--radius-md); box-shadow: var(--shadow-soft); display: flex; align-items: center; gap: 12px; }
+    .stat-icon { font-size: 1.5rem; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--sage-dark); }
+    .stat-label { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* Panel Invitados */
+    .invitados-panel { width: 320px; flex-shrink: 0; }
+    .panel-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .panel-header { padding: 16px 20px; background: var(--sage); color: white; font-family: 'Quicksand', sans-serif; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+    .panel-header-count { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.85rem; }
+    .panel-body { padding: 16px; max-height: calc(100vh - 280px); overflow-y: auto; }
+    .panel-search { width: 100%; padding: 10px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; margin-bottom: 12px; }
+    .panel-search:focus { outline: none; border-color: var(--sage); }
+
+    .invitado-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--cream); border-radius: var(--radius-md); margin-bottom: 8px; cursor: grab; transition: all 0.2s; border: 2px solid transparent; }
+    .invitado-item:hover { border-color: var(--sage); }
+    .invitado-item.dragging { opacity: 0.5; }
+    .invitado-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--sage-muted); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--sage-dark); font-size: 0.85rem; }
+    .invitado-info { flex: 1; }
+    .invitado-nombre { font-weight: 600; font-size: 0.95rem; }
+    .invitado-detalle { font-size: 0.8rem; color: var(--text-muted); }
+    .invitado-asignar { padding: 6px 12px; background: var(--sage); color: white; border: none; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+    .invitado-asignar:hover { background: var(--sage-dark); }
+
+    /* Panel Mesas */
+    .mesas-panel { flex: 1; }
+    .mesas-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .mesas-title { font-family: 'Quicksand', sans-serif; font-size: 1.3rem; font-weight: 700; }
+    .mesas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+    .mesa-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; transition: all 0.2s; border: 2px solid transparent; }
+    .mesa-card.drop-target { border-color: var(--sage); background: var(--sage-muted); }
+    .mesa-card.llena { opacity: 0.7; }
+    .mesa-header { padding: 14px 16px; background: linear-gradient(135deg, var(--sage) 0%, var(--sage-dark) 100%); color: white; display: flex; justify-content: space-between; align-items: center; }
+    .mesa-header-info { display: flex; align-items: center; gap: 10px; }
+    .mesa-numero { font-size: 1.3rem; font-weight: 700; }
+    .mesa-nombre { font-size: 0.9rem; opacity: 0.9; }
+    .mesa-capacidad { background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.8rem; }
+    .mesa-capacidad.llena { background: var(--terracotta); }
+    .mesa-body { padding: 16px; min-height: 100px; }
+    .mesa-tipo { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .mesa-comensales { display: flex; flex-wrap: wrap; gap: 6px; }
+    .comensal-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; background: var(--sage-muted); border-radius: var(--radius-full); font-size: 0.85rem; }
+    .comensal-remove { width: 18px; height: 18px; border-radius: 50%; background: var(--terracotta); color: white; border: none; cursor: pointer; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; }
+    .comensal-remove:hover { background: #a85f45; }
+    .mesa-vacia { color: var(--text-muted); font-style: italic; font-size: 0.9rem; text-align: center; padding: 20px; }
+    .mesa-actions { padding: 12px 16px; border-top: 1px solid var(--cream-dark); display: flex; gap: 8px; }
+
+    /* Modales */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); max-width: 500px; width: 90%; max-height: 90vh; overflow: auto; }
+    .modal-header { padding: 20px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-header h3 { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 20px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: flex-end; gap: 12px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-input, .form-select { width: 100%; padding: 12px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.95rem; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--sage); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state-icon { font-size: 4rem; margin-bottom: 16px; }
+    .empty-state-text { font-size: 1.1rem; margin-bottom: 20px; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .main { flex-direction: column; }
+      .invitados-panel { width: 100%; }
+      .panel-body { max-height: 300px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="activacion.html" class="back-btn">← Activación</a>
+      <h1 class="header-title">🪑 Colocar Mesas</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="exportarPDF()">📄 Exportar PDF</button>
+      <button class="btn btn-primary" onclick="guardarDistribucion()">💾 Guardar</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Panel Invitados -->
+    <div class="invitados-panel">
+      <div class="panel-card">
+        <div class="panel-header">
+          <span>👥 Invitados pendientes</span>
+          <span class="panel-header-count" id="count-pendientes">0</span>
+        </div>
+        <div class="panel-body">
+          <input type="text" class="panel-search" id="buscar-invitado" placeholder="🔍 Buscar invitado..." oninput="filtrarInvitados()">
+          <button class="btn btn-secondary btn-sm" style="width:100%; margin-bottom: 12px;" onclick="abrirModalInvitado()">+ Añadir invitado externo</button>
+          <div id="lista-invitados">
+            <!-- Se llena dinámicamente -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Mesas -->
+    <div class="mesas-panel">
+      <div class="stats-bar">
+        <div class="stat-card">
+          <span class="stat-icon">🪑</span>
+          <div>
+            <div class="stat-value" id="stat-mesas">0</div>
+            <div class="stat-label">Mesas</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">👥</span>
+          <div>
+            <div class="stat-value" id="stat-capacidad">0</div>
+            <div class="stat-label">Capacidad total</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">✅</span>
+          <div>
+            <div class="stat-value" id="stat-asignados">0</div>
+            <div class="stat-label">Asignados</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">⏳</span>
+          <div>
+            <div class="stat-value" id="stat-pendientes">0</div>
+            <div class="stat-label">Pendientes</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mesas-header">
+        <h2 class="mesas-title">Distribución de mesas</h2>
+        <button class="btn btn-primary" onclick="abrirModalMesa()">+ Nueva mesa</button>
+      </div>
+
+      <div class="mesas-grid" id="mesas-grid">
+        <div class="empty-state" id="empty-mesas">
+          <div class="empty-state-icon">🪑</div>
+          <p class="empty-state-text">No hay mesas creadas</p>
+          <button class="btn btn-primary" onclick="abrirModalMesa()">+ Crear primera mesa</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Nueva Mesa -->
+  <div class="modal-overlay" id="modal-mesa">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-mesa-titulo">🪑 Nueva Mesa</h3>
+        <button class="modal-close" onclick="cerrarModalMesa()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="mesa-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Número de mesa *</label>
+            <input type="number" class="form-input" id="mesa-numero" min="1" placeholder="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Comensales *</label>
+            <input type="number" class="form-input" id="mesa-comensales" min="1" max="20" placeholder="8">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre (opcional)</label>
+          <input type="text" class="form-input" id="mesa-nombre" placeholder="Ej: Mesa de los novios, Mesa familiar...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de mesa</label>
+          <select class="form-select" id="mesa-tipo">
+            <option value="redonda">⭕ Redonda</option>
+            <option value="rectangular">▭ Rectangular</option>
+            <option value="cuadrada">⬜ Cuadrada</option>
+            <option value="imperial">👑 Imperial</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalMesa()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarMesa()">Guardar mesa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Añadir Invitado -->
+  <div class="modal-overlay" id="modal-invitado">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>👤 Añadir invitado externo</h3>
+        <button class="modal-close" onclick="cerrarModalInvitado()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nombre completo *</label>
+          <input type="text" class="form-input" id="invitado-nombre" placeholder="Nombre y apellidos">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Relación / Grupo</label>
+          <input type="text" class="form-input" id="invitado-grupo" placeholder="Ej: Amigos trabajo, Familia novia...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalInvitado()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarInvitado()">Añadir invitado</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Asignar a Mesa -->
+  <div class="modal-overlay" id="modal-asignar">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🪑 Asignar a mesa</h3>
+        <button class="modal-close" onclick="cerrarModalAsignar()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 16px;">Asignar <strong id="asignar-invitado-nombre"></strong> a:</p>
+        <input type="hidden" id="asignar-invitado-id">
+        <div id="lista-mesas-asignar">
+          <!-- Se llena dinámicamente -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalAsignar()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let familiaId = null;
+    let eventoId = null; // Si viene de un evento específico
+
+    let mesas = []; // { id, numero, nombre, tipo, capacidad, comensales: [] }
+    let invitados = []; // { id, nombre, grupo, asignado: false, mesaId: null }
+    let invitadosPendientes = [];
+
+    // Obtener parámetros URL
+    const urlParams = new URLSearchParams(window.location.search);
+    eventoId = urlParams.get('evento');
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'registro.html'; return; }
+      currentUser = user;
+
+      const userDoc = await db.collection('usuarios').doc(user.uid).get();
+      if (!userDoc.exists) return;
+      
+      familiaId = userDoc.data().familiaId;
+      
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      // Cargar miembros de la familia como invitados potenciales
+      try {
+        const nidosSnap = await db.collection('nidos')
+          .where('familiaId', '==', familiaId)
+          .get();
+
+        const miembrosSet = new Map();
+        
+        nidosSnap.docs.forEach(doc => {
+          const nido = doc.data();
+          const miembrosNido = nido.miembrosData || [];
+          
+          miembrosNido.forEach((m, i) => {
+            // Evitar duplicados
+            const clave = (m.email || m.nombre || '').toLowerCase().trim();
+            if (m.tieneNidoPropio && m.relacion === 'descendiente') return;
+            if (miembrosSet.has(clave)) return;
+            
+            // Solo vivos
+            if (m.fechaDefuncion) return;
+            
+            miembrosSet.set(clave, {
+              id: m.uid || `${doc.id}_${i}`,
+              nombre: m.nombre || m.iniciales || 'Sin nombre',
+              grupo: nido.nombre || 'Familia',
+              asignado: false,
+              mesaId: null,
+              esFamilia: true
+            });
+          });
+        });
+
+        invitados = Array.from(miembrosSet.values());
+        invitadosPendientes = [...invitados];
+
+        // Cargar distribución guardada si existe
+        if (eventoId) {
+          await cargarDistribucionEvento();
+        } else {
+          await cargarDistribucionGeneral();
+        }
+
+        renderAll();
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+      }
+    }
+
+    async function cargarDistribucionGeneral() {
+      try {
+        const doc = await db.collection('familias').doc(familiaId)
+          .collection('distribuciones').doc('general').get();
+        
+        if (doc.exists) {
+          const data = doc.data();
+          mesas = data.mesas || [];
+          
+          // Restaurar asignaciones
+          if (data.asignaciones) {
+            data.asignaciones.forEach(a => {
+              const inv = invitados.find(i => i.id === a.invitadoId);
+              if (inv) {
+                inv.asignado = true;
+                inv.mesaId = a.mesaId;
+              }
+            });
+          }
+          
+          // Añadir invitados externos guardados
+          if (data.invitadosExternos) {
+            invitados.push(...data.invitadosExternos);
+          }
+          
+          actualizarInvitadosPendientes();
+        }
+      } catch (error) {
+        console.error('Error cargando distribución:', error);
+      }
+    }
+
+    async function cargarDistribucionEvento() {
+      // Similar pero desde el evento específico
+      // Por ahora usar general
+      await cargarDistribucionGeneral();
+    }
+
+    function actualizarInvitadosPendientes() {
+      invitadosPendientes = invitados.filter(i => !i.asignado);
+    }
+
+    function renderAll() {
+      renderMesas();
+      renderInvitados();
+      renderStats();
+    }
+
+    function renderStats() {
+      const totalMesas = mesas.length;
+      const capacidadTotal = mesas.reduce((sum, m) => sum + (m.capacidad || 0), 0);
+      const asignados = invitados.filter(i => i.asignado).length;
+      const pendientes = invitados.filter(i => !i.asignado).length;
+
+      document.getElementById('stat-mesas').textContent = totalMesas;
+      document.getElementById('stat-capacidad').textContent = capacidadTotal;
+      document.getElementById('stat-asignados').textContent = asignados;
+      document.getElementById('stat-pendientes').textContent = pendientes;
+      document.getElementById('count-pendientes').textContent = pendientes;
+    }
+
+    function renderMesas() {
+      const container = document.getElementById('mesas-grid');
+      const emptyState = document.getElementById('empty-mesas');
+
+      if (mesas.length === 0) {
+        emptyState.classList.remove('hidden');
+        container.innerHTML = '';
+        container.appendChild(emptyState);
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+
+      const tipoIcons = {
+        'redonda': '⭕',
+        'rectangular': '▭',
+        'cuadrada': '⬜',
+        'imperial': '👑'
+      };
+
+      container.innerHTML = mesas.map(mesa => {
+        const comensales = invitados.filter(i => i.mesaId === mesa.id);
+        const ocupados = comensales.length;
+        const llena = ocupados >= mesa.capacidad;
+
+        return `
+          <div class="mesa-card ${llena ? 'llena' : ''}" data-mesa-id="${mesa.id}" 
+               ondragover="allowDrop(event)" ondrop="drop(event, '${mesa.id}')">
+            <div class="mesa-header">
+              <div class="mesa-header-info">
+                <span class="mesa-numero">${mesa.numero}</span>
+                ${mesa.nombre ? `<span class="mesa-nombre">${mesa.nombre}</span>` : ''}
+              </div>
+              <span class="mesa-capacidad ${llena ? 'llena' : ''}">${ocupados}/${mesa.capacidad}</span>
+            </div>
+            <div class="mesa-body">
+              <div class="mesa-tipo">${tipoIcons[mesa.tipo] || '🪑'} ${mesa.tipo}</div>
+              ${comensales.length > 0 ? `
+                <div class="mesa-comensales">
+                  ${comensales.map(c => `
+                    <span class="comensal-chip">
+                      ${c.nombre.split(' ')[0]}
+                      <button class="comensal-remove" onclick="quitarDeMesa('${c.id}')" title="Quitar">×</button>
+                    </span>
+                  `).join('')}
+                </div>
+              ` : `
+                <div class="mesa-vacia">Arrastra invitados aquí</div>
+              `}
+            </div>
+            <div class="mesa-actions">
+              <button class="btn btn-secondary btn-sm" onclick="editarMesa('${mesa.id}')">✏️ Editar</button>
+              <button class="btn btn-secondary btn-sm" onclick="eliminarMesa('${mesa.id}')">🗑️ Eliminar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderInvitados() {
+      const container = document.getElementById('lista-invitados');
+      const busqueda = document.getElementById('buscar-invitado').value.toLowerCase();
+
+      const filtrados = invitadosPendientes.filter(i => 
+        i.nombre.toLowerCase().includes(busqueda) ||
+        (i.grupo && i.grupo.toLowerCase().includes(busqueda))
+      );
+
+      if (filtrados.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+            ${invitadosPendientes.length === 0 ? '✅ Todos asignados' : 'No hay resultados'}
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtrados.map(inv => `
+        <div class="invitado-item" draggable="true" ondragstart="drag(event, '${inv.id}')" data-id="${inv.id}">
+          <div class="invitado-avatar">${inv.nombre.charAt(0).toUpperCase()}</div>
+          <div class="invitado-info">
+            <div class="invitado-nombre">${inv.nombre}</div>
+            <div class="invitado-detalle">${inv.grupo || ''}</div>
+          </div>
+          <button class="invitado-asignar" onclick="abrirModalAsignar('${inv.id}')">Asignar</button>
+        </div>
+      `).join('');
+    }
+
+    function filtrarInvitados() {
+      renderInvitados();
+    }
+
+    // ========== DRAG & DROP ==========
+    function drag(ev, invitadoId) {
+      ev.dataTransfer.setData('invitadoId', invitadoId);
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+      ev.currentTarget.classList.add('drop-target');
+    }
+
+    function drop(ev, mesaId) {
+      ev.preventDefault();
+      ev.currentTarget.classList.remove('drop-target');
+      
+      const invitadoId = ev.dataTransfer.getData('invitadoId');
+      asignarAMesa(invitadoId, mesaId);
+    }
+
+    // ========== ASIGNACIÓN ==========
+    function asignarAMesa(invitadoId, mesaId) {
+      const mesa = mesas.find(m => m.id === mesaId);
+      const invitado = invitados.find(i => i.id === invitadoId);
+      
+      if (!mesa || !invitado) return;
+      
+      // Verificar capacidad
+      const ocupados = invitados.filter(i => i.mesaId === mesaId).length;
+      if (ocupados >= mesa.capacidad) {
+        alert(`La mesa ${mesa.numero} está llena (${mesa.capacidad} comensales)`);
+        return;
+      }
+      
+      invitado.asignado = true;
+      invitado.mesaId = mesaId;
+      
+      actualizarInvitadosPendientes();
+      renderAll();
+      cerrarModalAsignar();
+    }
+
+    function quitarDeMesa(invitadoId) {
+      const invitado = invitados.find(i => i.id === invitadoId);
+      if (!invitado) return;
+      
+      invitado.asignado = false;
+      invitado.mesaId = null;
+      
+      actualizarInvitadosPendientes();
+      renderAll();
+    }
+
+    // ========== MODALES ==========
+    function abrirModalMesa(mesaId = null) {
+      document.getElementById('mesa-id').value = mesaId || '';
+      document.getElementById('modal-mesa-titulo').textContent = mesaId ? '✏️ Editar Mesa' : '🪑 Nueva Mesa';
+      
+      if (mesaId) {
+        const mesa = mesas.find(m => m.id === mesaId);
+        if (mesa) {
+          document.getElementById('mesa-numero').value = mesa.numero;
+          document.getElementById('mesa-nombre').value = mesa.nombre || '';
+          document.getElementById('mesa-tipo').value = mesa.tipo;
+          document.getElementById('mesa-comensales').value = mesa.capacidad;
+        }
+      } else {
+        document.getElementById('mesa-numero').value = mesas.length + 1;
+        document.getElementById('mesa-nombre').value = '';
+        document.getElementById('mesa-tipo').value = 'redonda';
+        document.getElementById('mesa-comensales').value = 8;
+      }
+      
+      document.getElementById('modal-mesa').classList.add('active');
+    }
+
+    function cerrarModalMesa() {
+      document.getElementById('modal-mesa').classList.remove('active');
+    }
+
+    function guardarMesa() {
+      const id = document.getElementById('mesa-id').value;
+      const numero = parseInt(document.getElementById('mesa-numero').value);
+      const nombre = document.getElementById('mesa-nombre').value.trim();
+      const tipo = document.getElementById('mesa-tipo').value;
+      const capacidad = parseInt(document.getElementById('mesa-comensales').value);
+
+      if (!numero || !capacidad) {
+        alert('Completa el número y capacidad de la mesa');
+        return;
+      }
+
+      if (id) {
+        // Editar existente
+        const mesa = mesas.find(m => m.id === id);
+        if (mesa) {
+          mesa.numero = numero;
+          mesa.nombre = nombre;
+          mesa.tipo = tipo;
+          mesa.capacidad = capacidad;
+        }
+      } else {
+        // Nueva mesa
+        mesas.push({
+          id: 'mesa_' + Date.now(),
+          numero,
+          nombre,
+          tipo,
+          capacidad
+        });
+      }
+
+      // Ordenar por número
+      mesas.sort((a, b) => a.numero - b.numero);
+      
+      cerrarModalMesa();
+      renderAll();
+    }
+
+    function editarMesa(mesaId) {
+      abrirModalMesa(mesaId);
+    }
+
+    function eliminarMesa(mesaId) {
+      if (!confirm('¿Eliminar esta mesa? Los invitados asignados volverán a la lista de pendientes.')) return;
+      
+      // Desasignar invitados de esta mesa
+      invitados.forEach(i => {
+        if (i.mesaId === mesaId) {
+          i.asignado = false;
+          i.mesaId = null;
+        }
+      });
+      
+      mesas = mesas.filter(m => m.id !== mesaId);
+      actualizarInvitadosPendientes();
+      renderAll();
+    }
+
+    function abrirModalInvitado() {
+      document.getElementById('invitado-nombre').value = '';
+      document.getElementById('invitado-grupo').value = '';
+      document.getElementById('modal-invitado').classList.add('active');
+    }
+
+    function cerrarModalInvitado() {
+      document.getElementById('modal-invitado').classList.remove('active');
+    }
+
+    function guardarInvitado() {
+      const nombre = document.getElementById('invitado-nombre').value.trim();
+      const grupo = document.getElementById('invitado-grupo').value.trim();
+
+      if (!nombre) {
+        alert('Introduce el nombre del invitado');
+        return;
+      }
+
+      const nuevoInv = {
+        id: 'ext_' + Date.now(),
+        nombre,
+        grupo: grupo || 'Invitado externo',
+        asignado: false,
+        mesaId: null,
+        esFamilia: false
+      };
+
+      invitados.push(nuevoInv);
+      actualizarInvitadosPendientes();
+      cerrarModalInvitado();
+      renderAll();
+    }
+
+    function abrirModalAsignar(invitadoId) {
+      const invitado = invitados.find(i => i.id === invitadoId);
+      if (!invitado) return;
+
+      document.getElementById('asignar-invitado-id').value = invitadoId;
+      document.getElementById('asignar-invitado-nombre').textContent = invitado.nombre;
+
+      const lista = document.getElementById('lista-mesas-asignar');
+      lista.innerHTML = mesas.map(mesa => {
+        const ocupados = invitados.filter(i => i.mesaId === mesa.id).length;
+        const llena = ocupados >= mesa.capacidad;
+        
+        return `
+          <div style="padding: 12px; margin-bottom: 8px; background: ${llena ? 'var(--cream-dark)' : 'var(--sage-muted)'}; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; ${llena ? 'opacity: 0.5;' : ''}">
+            <div>
+              <strong>Mesa ${mesa.numero}</strong> ${mesa.nombre ? `- ${mesa.nombre}` : ''}
+              <div style="font-size: 0.85rem; color: var(--text-muted);">${ocupados}/${mesa.capacidad} comensales</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="asignarAMesa('${invitadoId}', '${mesa.id}')" ${llena ? 'disabled' : ''}>
+              ${llena ? 'Llena' : 'Asignar'}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      if (mesas.length === 0) {
+        lista.innerHTML = '<p style="text-align: center; color: var(--text-muted);">No hay mesas creadas</p>';
+      }
+
+      document.getElementById('modal-asignar').classList.add('active');
+    }
+
+    function cerrarModalAsignar() {
+      document.getElementById('modal-asignar').classList.remove('active');
+    }
+
+    // ========== GUARDAR ==========
+    async function guardarDistribucion() {
+      try {
+        const asignaciones = invitados
+          .filter(i => i.asignado)
+          .map(i => ({ invitadoId: i.id, mesaId: i.mesaId }));
+
+        const invitadosExternos = invitados.filter(i => !i.esFamilia);
+
+        await db.collection('familias').doc(familiaId)
+          .collection('distribuciones').doc('general').set({
+            mesas,
+            asignaciones,
+            invitadosExternos,
+            ultimaActualizacion: firebase.firestore.FieldValue.serverTimestamp(),
+            actualizadoPor: currentUser.uid
+          });
+
+        alert('✅ Distribución guardada');
+      } catch (error) {
+        console.error('Error guardando:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    // ========== EXPORTAR PDF ==========
+    function exportarPDF() {
+      const printWindow = window.open('', '_blank');
+      const fecha = new Date().toLocaleDateString('es-ES');
+
+      let mesasHTML = mesas.map(mesa => {
+        const comensales = invitados.filter(i => i.mesaId === mesa.id);
+        return `
+          <div style="break-inside: avoid; margin-bottom: 24px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+            <div style="background: #7A9E7E; color: white; padding: 12px 16px; display: flex; justify-content: space-between;">
+              <strong>Mesa ${mesa.numero}${mesa.nombre ? ' - ' + mesa.nombre : ''}</strong>
+              <span>${comensales.length}/${mesa.capacidad}</span>
+            </div>
+            <div style="padding: 16px;">
+              ${comensales.length > 0 ? `
+                <ul style="margin: 0; padding-left: 20px;">
+                  ${comensales.map(c => `<li>${c.nombre}</li>`).join('')}
+                </ul>
+              ` : '<em style="color: #999;">Sin asignar</em>'}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Distribución de Mesas - ${fecha}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #5C7D5F; }
+            .stats { display: flex; gap: 20px; margin-bottom: 24px; }
+            .stat { padding: 12px 20px; background: #f5f5f5; border-radius: 8px; }
+            .mesas-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+          </style>
+        </head>
+        <body>
+          <h1>🪑 Distribución de Mesas</h1>
+          <p>Generado el ${fecha}</p>
+          <div class="stats">
+            <div class="stat"><strong>${mesas.length}</strong> mesas</div>
+            <div class="stat"><strong>${invitados.filter(i => i.asignado).length}</strong> asignados</div>
+            <div class="stat"><strong>${invitados.filter(i => !i.asignado).length}</strong> pendientes</div>
+          </div>
+          <div class="mesas-grid">${mesasHTML}</div>
+        </body>
+        </html>
+      `);
+      
+      printWindow.document.close();
+      setTimeout(() => { printWindow.print(); }, 250);
+    }
+  </script>
+</body>
+</html>
