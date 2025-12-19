@@ -312,6 +312,28 @@
 
     .modulos-operativos { display: flex; flex-direction: column; gap: 16px; }
 
+    .btn-modulo-activo {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 16px;
+      background: var(--mayordomo);
+      color: white;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .btn-modulo-activo:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-float);
+      background: var(--mayordomo-light);
+    }
+
     .modulo-panel {
       background: var(--white);
       border-radius: var(--radius-lg);
@@ -1163,38 +1185,14 @@
               <p>Gestión activa de este bien</p>
             </div>
             
-            <!-- Toggles de submódulos -->
-            <div class="modulos-config" id="modulos-config" style="background: var(--cream); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-              <div style="font-weight: 600; margin-bottom: 12px; color: var(--text);">Submódulos activos:</div>
-              <div style="display: flex; flex-wrap: wrap; gap: 12px;">
-                <label class="toggle-modulo">
-                  <input type="checkbox" id="toggle-reservas" onchange="toggleModulo('reservas', this.checked)">
-                  <span>📅 Reservas</span>
-                </label>
-                <label class="toggle-modulo">
-                  <input type="checkbox" id="toggle-inventario" onchange="toggleModulo('inventario', this.checked)">
-                  <span>📦 Inventario</span>
-                </label>
-                <label class="toggle-modulo">
-                  <input type="checkbox" id="toggle-gastos" onchange="toggleModulo('gastos', this.checked)">
-                  <span>💰 Gastos</span>
-                </label>
-                <label class="toggle-modulo">
-                  <input type="checkbox" id="toggle-mantenimiento" onchange="toggleModulo('mantenimiento', this.checked)">
-                  <span>🔧 Mantenimiento</span>
-                </label>
-                <label class="toggle-modulo">
-                  <input type="checkbox" id="toggle-limpieza" onchange="toggleModulo('limpieza', this.checked)">
-                  <span>🧹 Limpieza</span>
-                </label>
-              </div>
-              
-              <!-- Acceso a Inventario -->
-              <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--cream-dark);">
-                <a href="#" id="btn-tienda" class="btn btn-mayordomo" style="width: 100%; justify-content: center;" onclick="irAInventario()">
-                  📦 Inventario (Básico · Toma · Comparación)
-                </a>
-              </div>
+            <!-- Botones de módulos activos -->
+            <div class="modulos-botones" id="modulos-botones" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;"></div>
+            
+            <!-- Botón configurar (solo AdminRama) -->
+            <div id="btn-config-mayordomo-wrapper" class="hidden" style="margin-top: 12px;">
+              <a href="#" id="btn-config-mayordomo" class="btn btn-secondary btn-sm" onclick="irAMayordomo()" style="width: 100%; justify-content: center;">
+                ⚙️ Configurar Mayordomo
+              </a>
             </div>
             
             <div class="modulos-operativos" id="modulos-operativos"></div>
@@ -1222,23 +1220,6 @@
               <span class="collapsible-toggle">▼</span>
             </div>
             <div class="collapsible-body"><div id="galeria-fotos" style="display:flex;gap:8px;overflow-x:auto;"><div class="empty-mini" style="padding:12px;">Sin fotos</div></div></div>
-          </div>
-
-          <!-- Card Módulos Activos -->
-          <div class="collapsible-section open" id="section-modulos">
-            <div class="collapsible-header" onclick="toggleSection('modulos')">
-              <div class="collapsible-title"><span>⚙️</span><span>Módulos Activos</span></div>
-              <span class="collapsible-toggle">▼</span>
-            </div>
-            <div class="collapsible-body">
-              <div id="sidebar-modulos-lista" style="display:flex;flex-direction:column;gap:6px;">
-                <div class="sidebar-modulo-item" id="smod-reservas"><span class="smod-dot"></span> 📅 Reservas</div>
-                <div class="sidebar-modulo-item" id="smod-inventario"><span class="smod-dot"></span> 📦 Inventario</div>
-                <div class="sidebar-modulo-item" id="smod-gastos"><span class="smod-dot"></span> 💰 Gastos</div>
-                <div class="sidebar-modulo-item" id="smod-mantenimiento"><span class="smod-dot"></span> 🔧 Mantenimiento</div>
-                <div class="sidebar-modulo-item" id="smod-limpieza"><span class="smod-dot"></span> 🧹 Limpieza</div>
-              </div>
-            </div>
           </div>
 
           <div class="collapsible-section" id="section-personal">
@@ -1767,6 +1748,7 @@
     let editingGastoId = null;
     let caserosData = [];
     let editingCaseroId = null;
+    let esAdminRama = false;
 
     const nidoColores = ['nido-1', 'nido-2', 'nido-3', 'nido-4'];
     const nidoColorMap = {};
@@ -1791,6 +1773,15 @@
 
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         familiaId = bienData.familiaId;
+        
+        // Verificar si el usuario es AdminRama
+        try {
+          const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            esAdminRama = userData.rol === 'adminRama' || userData.rol === 'adminSistema';
+          }
+        } catch (e) { console.error('Error verificando rol:', e); }
         
         await loadNidos();
         await loadTiposReserva();
@@ -2003,23 +1994,36 @@
 
     function renderMayordomoModulos() {
       const container = document.getElementById('modulos-operativos');
+      const botonesContainer = document.getElementById('modulos-botones');
       const m = bienData.mayordomoModulos || {};
       
-      // Sincronizar checkboxes
-      document.getElementById('toggle-reservas').checked = !!m.reservas;
-      document.getElementById('toggle-inventario').checked = !!m.inventario;
-      document.getElementById('toggle-gastos').checked = !!m.gastos;
-      document.getElementById('toggle-mantenimiento').checked = !!m.mantenimiento;
-      document.getElementById('toggle-limpieza').checked = !!m.limpieza;
+      // Renderizar botones de módulos activos
+      const modulosConfig = [
+        { key: 'reservas', icon: '📅', label: 'Reservas', url: `reservas.html?id=${bienId}&origen=bien` },
+        { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario-config.html?id=${bienId}&origen=bien` },
+        { key: 'gastos', icon: '💰', label: 'Gastos', url: `gastos-mayordomo.html?id=${bienId}&origen=bien` },
+        { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mant-programado.html?id=${bienId}&origen=bien` },
+        { key: 'limpieza', icon: '🧹', label: 'Limpieza', url: `limpieza.html?id=${bienId}&origen=bien` }
+      ];
       
-      // Sincronizar indicadores sidebar
-      ['reservas', 'inventario', 'gastos', 'mantenimiento', 'limpieza'].forEach(mod => {
-        const el = document.getElementById(`smod-${mod}`);
-        if (el) {
-          if (m[mod]) el.classList.add('activo');
-          else el.classList.remove('activo');
+      let botonesHtml = '';
+      modulosConfig.forEach(mod => {
+        if (m[mod.key]) {
+          botonesHtml += `<a href="${mod.url}" class="btn-modulo-activo">${mod.icon} ${mod.label}</a>`;
         }
       });
+      
+      if (!botonesHtml) {
+        botonesHtml = '<span style="color: var(--text-muted); font-size: 0.85rem;">Sin módulos activos</span>';
+      }
+      
+      botonesContainer.innerHTML = botonesHtml;
+      
+      // Mostrar botón configurar solo para AdminRama
+      const configWrapper = document.getElementById('btn-config-mayordomo-wrapper');
+      if (esAdminRama) {
+        configWrapper.classList.remove('hidden');
+      }
       
       let html = '';
 
@@ -2165,9 +2169,11 @@
       } catch (error) {
         console.error('Error al cambiar módulo:', error);
         alert('Error al actualizar');
-        // Revertir checkbox
-        document.getElementById(`toggle-${modulo}`).checked = !activo;
       }
+    }
+
+    function irAMayordomo() {
+      window.location.href = `mayordomo.html?bien=${bienId}`;
     }
 
     function irAInventario() {
