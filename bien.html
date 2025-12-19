@@ -1329,6 +1329,9 @@
               <a href="#" id="btn-config-mayordomo" class="btn btn-secondary btn-sm" onclick="irAMayordomo()">
                 ⚙️ Configurar Mayordomo
               </a>
+              <button class="btn btn-secondary btn-sm" style="margin-left: 8px;" onclick="desactivarMayordomo()">
+                ❌ Desactivar
+              </button>
             </div>
             
             <!-- Resto de módulos (paneles completos) -->
@@ -1344,6 +1347,21 @@
                 <div class="empty-mini-icon">🎩</div>
                 <p>El Mayordomo no está activado.</p>
                 <button class="btn btn-mayordomo btn-sm" style="margin-top: 12px;" onclick="activarMayordomo()">Activar Mayordomo</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sección Gerente -->
+          <div class="collapsible-section" id="gerente-section">
+            <div class="collapsible-header" style="cursor: default;">
+              <div class="collapsible-title"><span>💼</span><span>Gerente</span></div>
+            </div>
+            <div class="collapsible-body" style="display: block;">
+              <div class="empty-mini" id="gerente-content">
+                <div class="empty-mini-icon">💼</div>
+                <p>Gestión semi-profesional para bienes con ingresos.</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">Incluye: Contratos, facturación, inquilinos y contabilidad.</p>
+                <button class="btn btn-sm" style="margin-top: 12px; background: linear-gradient(135deg, #4A5568 0%, #2D3748 100%); color: white;" onclick="activarGerente()">Activar Gerente</button>
               </div>
             </div>
           </div>
@@ -2127,6 +2145,22 @@
         document.getElementById('no-mayordomo-section').classList.remove('hidden');
         btnMayordomo.classList.add('hidden');
       }
+
+      // Gerente - inicializar estado
+      if (bienData.gerenteActivo) {
+        document.getElementById('gerente-content').innerHTML = `
+          <div style="text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">💼</div>
+            <p style="font-weight: 600; color: var(--sage-dark);">Gerente activo</p>
+            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap;">
+              <a href="gerente.html?id=${bienId}" class="btn btn-sm" style="background: linear-gradient(135deg, #4A5568 0%, #2D3748 100%); color: white;">
+                📊 Abrir Gerente
+              </a>
+              <button class="btn btn-secondary btn-sm" onclick="desactivarGerente()">❌ Desactivar</button>
+            </div>
+          </div>
+        `;
+      }
     }
 
     function renderMayordomoModulos() {
@@ -2757,6 +2791,98 @@
       } catch (error) {
         console.error('Error activando Mayordomo:', error);
         alert('Error al activar Mayordomo');
+      }
+    }
+
+    // Desactivar Mayordomo
+    async function desactivarMayordomo() {
+      if (!confirm('¿Desactivar el módulo Mayordomo?\n\nLos datos se conservan, podrás reactivarlo cuando quieras.')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).update({
+          'mayordomo.activo': false,
+          mayordomoActivo: false
+        });
+
+        // Actualizar UI
+        bienData.mayordomoActivo = false;
+        if (bienData.mayordomo) bienData.mayordomo.activo = false;
+        
+        document.getElementById('mayordomo-section').classList.add('hidden');
+        document.getElementById('no-mayordomo-section').classList.remove('hidden');
+        
+        // Ocultar botón en header
+        document.getElementById('btn-abrir-mayordomo').classList.add('hidden');
+
+        alert('✅ Mayordomo desactivado');
+      } catch (error) {
+        console.error('Error desactivando Mayordomo:', error);
+        alert('Error al desactivar Mayordomo');
+      }
+    }
+
+    // Activar Gerente
+    async function activarGerente() {
+      if (!confirm('¿Activar el módulo Gerente?\n\nEste módulo está pensado para bienes con ingresos (alquileres, explotación).\n\nIncluye: Contratos, facturación, inquilinos y contabilidad.')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).update({
+          gerenteActivo: true,
+          gerenteModulos: {
+            contratos: true,
+            facturacion: true,
+            inquilinos: true,
+            contabilidad: true
+          }
+        });
+
+        // Actualizar UI
+        bienData.gerenteActivo = true;
+        bienData.gerenteModulos = { contratos: true, facturacion: true, inquilinos: true, contabilidad: true };
+        
+        // Actualizar sección Gerente
+        document.getElementById('gerente-content').innerHTML = `
+          <div style="text-align: center;">
+            <div style="font-size: 2rem; margin-bottom: 8px;">💼</div>
+            <p style="font-weight: 600; color: var(--sage-dark);">Gerente activo</p>
+            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap;">
+              <a href="gerente.html?id=${bienId}" class="btn btn-sm" style="background: linear-gradient(135deg, #4A5568 0%, #2D3748 100%); color: white;">
+                📊 Abrir Gerente
+              </a>
+              <button class="btn btn-secondary btn-sm" onclick="desactivarGerente()">❌ Desactivar</button>
+            </div>
+          </div>
+        `;
+
+        alert('✅ Gerente activado correctamente');
+      } catch (error) {
+        console.error('Error activando Gerente:', error);
+        alert('Error al activar Gerente');
+      }
+    }
+
+    // Desactivar Gerente
+    async function desactivarGerente() {
+      if (!confirm('¿Desactivar el módulo Gerente?\n\nLos datos se conservan.')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).update({
+          gerenteActivo: false
+        });
+
+        bienData.gerenteActivo = false;
+        
+        document.getElementById('gerente-content').innerHTML = `
+          <div class="empty-mini-icon">💼</div>
+          <p>Gestión semi-profesional para bienes con ingresos.</p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">Incluye: Contratos, facturación, inquilinos y contabilidad.</p>
+          <button class="btn btn-sm" style="margin-top: 12px; background: linear-gradient(135deg, #4A5568 0%, #2D3748 100%); color: white;" onclick="activarGerente()">Activar Gerente</button>
+        `;
+
+        alert('✅ Gerente desactivado');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al desactivar');
       }
     }
     document.getElementById('btn-editar').addEventListener('click', editarBien);
