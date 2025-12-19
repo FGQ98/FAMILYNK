@@ -334,6 +334,136 @@
       background: var(--mayordomo-light);
     }
 
+    /* Acceso rápido móvil */
+    .mayordomo-acceso-rapido {
+      margin-bottom: 20px;
+    }
+
+    .modulos-botones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .calendario-movil {
+      display: none;
+    }
+
+    .calendario-movil-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .calendario-movil-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .calendario-movil-lista {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .reserva-mini-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+    }
+
+    .reserva-mini-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .reserva-mini-info { flex: 1; }
+    .reserva-mini-titulo { font-weight: 600; margin-bottom: 2px; }
+    .reserva-mini-fecha { font-size: 0.75rem; color: var(--text-muted); }
+
+    #btn-config-mayordomo-wrapper {
+      margin-bottom: 16px;
+    }
+
+    #btn-config-mayordomo-wrapper .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    /* MÓVIL: Priorizar calendario y botones */
+    @media (max-width: 768px) {
+      .mayordomo-acceso-rapido {
+        background: var(--white);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+        box-shadow: var(--shadow-soft);
+        margin-bottom: 16px;
+      }
+
+      .modulos-botones {
+        justify-content: center;
+        margin-bottom: 20px;
+      }
+
+      .btn-modulo-activo {
+        flex: 1;
+        min-width: 100px;
+        justify-content: center;
+        padding: 12px 10px;
+        font-size: 0.8rem;
+      }
+
+      .calendario-movil {
+        display: block;
+        border-top: 1px solid var(--cream-dark);
+        padding-top: 16px;
+      }
+
+      /* Ocultar paneles expandidos en móvil, solo acceso por botones */
+      .modulos-operativos .modulo-panel {
+        display: none;
+      }
+
+      /* Mostrar solo resumen compacto si lo hay */
+      .modulos-operativos .modulo-resumen {
+        display: block;
+      }
+
+      .bien-hero-image {
+        height: 150px;
+      }
+
+      .bien-hero-body {
+        padding: 16px;
+      }
+
+      .bien-nombre {
+        font-size: 1.2rem;
+      }
+    }
+
+    /* TABLET: Vista intermedia */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .modulos-botones {
+        gap: 8px;
+      }
+
+      .btn-modulo-activo {
+        padding: 10px 14px;
+        font-size: 0.82rem;
+      }
+    }
+
     .modulo-panel {
       background: var(--white);
       border-radius: var(--radius-lg);
@@ -1185,16 +1315,23 @@
               <p>Gestión activa de este bien</p>
             </div>
             
-            <!-- Botones de módulos activos -->
-            <div class="modulos-botones" id="modulos-botones" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;"></div>
+            <!-- Zona prioritaria móvil: Botones + Calendario -->
+            <div class="mayordomo-acceso-rapido" id="mayordomo-acceso-rapido">
+              <!-- Botones de módulos activos -->
+              <div class="modulos-botones" id="modulos-botones"></div>
+              
+              <!-- Mini calendario (se renderiza aquí en móvil) -->
+              <div class="calendario-movil" id="calendario-movil"></div>
+            </div>
             
             <!-- Botón configurar (solo AdminRama) -->
-            <div id="btn-config-mayordomo-wrapper" class="hidden" style="margin-top: 12px;">
-              <a href="#" id="btn-config-mayordomo" class="btn btn-secondary btn-sm" onclick="irAMayordomo()" style="width: 100%; justify-content: center;">
+            <div id="btn-config-mayordomo-wrapper" class="hidden">
+              <a href="#" id="btn-config-mayordomo" class="btn btn-secondary btn-sm" onclick="irAMayordomo()">
                 ⚙️ Configurar Mayordomo
               </a>
             </div>
             
+            <!-- Resto de módulos (paneles completos) -->
             <div class="modulos-operativos" id="modulos-operativos"></div>
           </div>
 
@@ -2001,7 +2138,7 @@
       const modulosConfig = [
         { key: 'reservas', icon: '📅', label: 'Reservas', url: `reservas.html?id=${bienId}&origen=bien` },
         { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario-config.html?id=${bienId}&origen=bien` },
-        { key: 'gastos', icon: '💰', label: 'Gastos', url: `gastos-mayordomo.html?id=${bienId}&origen=bien` },
+        { key: 'gastos', icon: '💰', label: 'Gastos', url: `gastos.html?id=${bienId}&origen=bien` },
         { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mant-programado.html?id=${bienId}&origen=bien` },
         { key: 'limpieza', icon: '🧹', label: 'Limpieza', url: `limpieza.html?id=${bienId}&origen=bien` }
       ];
@@ -2018,6 +2155,20 @@
       }
       
       botonesContainer.innerHTML = botonesHtml;
+      
+      // Renderizar mini-calendario para móvil si hay reservas activas
+      const calendarioMovil = document.getElementById('calendario-movil');
+      if (m.reservas && calendarioMovil) {
+        calendarioMovil.innerHTML = `
+          <div class="calendario-movil-header">
+            <span class="calendario-movil-title">📅 Próximas reservas</span>
+          </div>
+          <div class="calendario-movil-mini" id="calendario-mini-grid"></div>
+          <div class="calendario-movil-lista" id="reservas-movil-lista"></div>
+        `;
+      } else if (calendarioMovil) {
+        calendarioMovil.innerHTML = '';
+      }
       
       // Mostrar botón configurar solo para AdminRama
       const configWrapper = document.getElementById('btn-config-mayordomo-wrapper');
@@ -2245,12 +2396,18 @@
 
     function renderReservasLista() {
       const container = document.getElementById('reservas-lista-items');
+      const containerMovil = document.getElementById('reservas-movil-lista');
       const hoy = new Date(); hoy.setHours(0,0,0,0);
       
       const proximas = reservasData.filter(r => r.fechaFin?.toDate() >= hoy).sort((a, b) => a.fechaInicio.toDate() - b.fechaInicio.toDate()).slice(0, 5);
       
-      if (proximas.length === 0) { container.innerHTML = '<div class="empty-mini" style="padding:16px;">No hay reservas próximas</div>'; return; }
+      if (proximas.length === 0) { 
+        container.innerHTML = '<div class="empty-mini" style="padding:16px;">No hay reservas próximas</div>'; 
+        if (containerMovil) containerMovil.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:0.85rem;padding:12px;">No hay reservas próximas</div>';
+        return; 
+      }
       
+      // Versión desktop
       container.innerHTML = proximas.map(r => {
         const inicio = r.fechaInicio.toDate();
         const fin = r.fechaFin.toDate();
@@ -2269,6 +2426,24 @@
           </div>
         `;
       }).join('');
+      
+      // Versión móvil compacta
+      if (containerMovil) {
+        containerMovil.innerHTML = proximas.slice(0, 3).map(r => {
+          const inicio = r.fechaInicio.toDate();
+          const fin = r.fechaFin.toDate();
+          const tipoInfo = tiposReserva[r.tipo] || { nombre: 'Otros', color: '#9A9A9A' };
+          return `
+            <div class="reserva-mini-item">
+              <div class="reserva-mini-dot" style="background:${tipoInfo.color}"></div>
+              <div class="reserva-mini-info">
+                <div class="reserva-mini-titulo">${tipoInfo.nombre}</div>
+                <div class="reserva-mini-fecha">${formatDateRange(inicio, fin)}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
     }
 
     function renderNidosLeyenda() {

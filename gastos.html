@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Gastos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --cream-medium: #FAF5EF;
+      --terracotta: #C17757;
+      --terracotta-light: #D4927A;
+      --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+      --mayordomo: #8B7355;
+      --mayordomo-light: #A69076;
+      --mayordomo-muted: rgba(139, 115, 85, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .header {
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 16px; }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--cream);
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover { background: var(--cream-dark); color: var(--text); }
+
+    .page-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      text-decoration: none;
+    }
+
+    .btn-primary { background: linear-gradient(135deg, var(--sage) 0%, var(--sage-dark) 100%); color: white; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-mayordomo { background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-light) 100%); color: white; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .btn-danger { background: var(--error); color: white; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; padding: 60px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* Tabs principales */
+    .main-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      background: var(--white);
+      padding: 8px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .main-tab {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      background: none;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all 0.2s;
+    }
+
+    .main-tab:hover { background: var(--cream); color: var(--text); }
+    .main-tab.active { background: var(--terracotta); color: white; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Panel Registro */
+    .periodo-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .periodo-btn {
+      padding: 8px 16px;
+      border: 2px solid var(--cream-dark);
+      background: var(--white);
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .periodo-btn:hover { border-color: var(--terracotta-light); color: var(--text); }
+    .periodo-btn.active { background: var(--terracotta); border-color: var(--terracotta); color: white; }
+
+    /* Resumen */
+    .resumen-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .resumen-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+      text-align: center;
+    }
+
+    .resumen-valor {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--terracotta);
+    }
+
+    .resumen-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Categorías */
+    .categorias-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .cat-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--white);
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .cat-chip-valor {
+      font-weight: 700;
+      color: var(--terracotta);
+    }
+
+    /* Lista de gastos */
+    .gastos-section {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .gastos-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .gastos-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .gastos-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .gasto-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--cream);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .gasto-item:hover { background: var(--cream-medium); }
+    .gasto-item:last-child { border-bottom: none; }
+
+    .gasto-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .gasto-info { flex: 1; }
+    .gasto-concepto { font-weight: 600; font-size: 0.9rem; }
+    .gasto-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+    .gasto-generador {
+      padding: 4px 10px;
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .gasto-importe {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--terracotta);
+    }
+
+    /* Panel Reparto */
+    .reparto-info {
+      background: var(--cream);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    .reparto-table {
+      width: 100%;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+      border-collapse: collapse;
+    }
+
+    .reparto-table th {
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      background: var(--cream);
+      border-bottom: 2px solid var(--cream-dark);
+    }
+
+    .reparto-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--cream);
+    }
+
+    .reparto-table tr:last-child td { border-bottom: none; }
+
+    .reparto-nido {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .reparto-nido-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .reparto-input {
+      width: 70px;
+      padding: 8px 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      text-align: right;
+      transition: border-color 0.2s;
+    }
+
+    .reparto-input:focus { outline: none; border-color: var(--terracotta); }
+
+    .reparto-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      margin-top: 16px;
+      box-shadow: var(--shadow-soft);
+      font-weight: 600;
+    }
+
+    .reparto-total-valor { font-size: 1.2rem; }
+    .reparto-total-valor.ok { color: var(--success); }
+    .reparto-total-valor.error { color: var(--error); }
+
+    .reparto-actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Desglose */
+    .desglose-section {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-top: 24px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .desglose-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+
+    .desglose-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--cream);
+    }
+
+    .desglose-item:last-child { border-bottom: none; }
+
+    .desglose-nido {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .desglose-importe {
+      font-weight: 700;
+      color: var(--terracotta);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      padding: 20px;
+    }
+
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow: hidden;
+      transform: translateY(20px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.active .modal { transform: translateY(0); }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-body { padding: 24px; max-height: 60vh; overflow-y: auto; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; gap: 12px; justify-content: flex-end; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--sage); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .main-tabs { flex-direction: column; }
+      .resumen-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Volver</a>
+      <h1 class="page-title">💶 Gastos</h1>
+    </div>
+    <button class="btn btn-mayordomo" onclick="abrirModalGasto()">+ Nuevo gasto</button>
+  </header>
+
+  <main class="main">
+    <div id="page-loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="page-content" class="hidden">
+      <!-- Tabs principales -->
+      <div class="main-tabs">
+        <button class="main-tab active" onclick="cambiarTab('registro')">📋 Registro</button>
+        <button class="main-tab" onclick="cambiarTab('reparto')">📊 Reparto</button>
+      </div>
+
+      <!-- Panel Registro -->
+      <div class="tab-panel active" id="panel-registro">
+        <div class="periodo-selector" id="periodo-selector"></div>
+        
+        <div class="resumen-grid" id="resumen-grid"></div>
+        
+        <div class="categorias-grid" id="categorias-grid"></div>
+        
+        <div class="gastos-section">
+          <div class="gastos-header">
+            <span class="gastos-title">Últimos gastos</span>
+          </div>
+          <div class="gastos-list" id="gastos-list"></div>
+        </div>
+      </div>
+
+      <!-- Panel Reparto -->
+      <div class="tab-panel" id="panel-reparto">
+        <div class="reparto-info">
+          💡 Define qué porcentaje del gasto asume cada nido. El total debe sumar exactamente 100%.
+        </div>
+        
+        <table class="reparto-table" id="reparto-table"></table>
+        
+        <div class="reparto-total" id="reparto-total"></div>
+        
+        <div class="reparto-actions">
+          <button class="btn btn-primary" onclick="guardarReparto()">💾 Guardar reparto</button>
+        </div>
+        
+        <div class="desglose-section" id="desglose-section"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Gasto -->
+  <div class="modal-overlay" id="modal-gasto">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-gasto-title">Nuevo gasto</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-gasto">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Fecha *</label>
+              <input type="date" class="form-input" id="gasto-fecha" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Importe (€) *</label>
+              <input type="number" class="form-input" id="gasto-importe" step="0.01" min="0" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Concepto *</label>
+            <input type="text" class="form-input" id="gasto-concepto" placeholder="Ej: Factura luz marzo" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Categoría</label>
+              <select class="form-select" id="gasto-categoria">
+                <option value="suministros">💡 Suministros</option>
+                <option value="comunidad">🏢 Comunidad</option>
+                <option value="seguro">🛡️ Seguro</option>
+                <option value="mantenimiento">🔧 Mantenimiento</option>
+                <option value="limpieza">🧹 Limpieza</option>
+                <option value="compras">🛒 Compras</option>
+                <option value="impuestos">📋 Impuestos</option>
+                <option value="otro">📦 Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Generado por</label>
+              <select class="form-select" id="gasto-generador">
+                <option value="">Sin asignar</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Proveedor</label>
+            <input type="text" class="form-input" id="gasto-proveedor" placeholder="Ej: Iberdrola">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-input" id="gasto-notas" rows="2" placeholder="Observaciones..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminarGasto()">Eliminar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let bienId = null;
+    let currentUser = null;
+    let bienData = {};
+    let gastosData = [];
+    let nidosData = [];
+    let repartoData = {};
+    let editingId = null;
+    let periodoActual = 'mes';
+
+    const catIcons = {
+      suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧',
+      limpieza: '🧹', compras: '🛒', impuestos: '📋', otro: '📦'
+    };
+
+    const catLabels = {
+      suministros: 'Suministros', comunidad: 'Comunidad', seguro: 'Seguro', mantenimiento: 'Mantenimiento',
+      limpieza: 'Limpieza', compras: 'Compras', impuestos: 'Impuestos', otro: 'Otro'
+    };
+
+    const coloresNido = ['#7A9E7E', '#C17757', '#6B8E9F', '#9B8EA6'];
+
+    // Obtener parámetros
+    const urlParams = new URLSearchParams(window.location.search);
+    bienId = urlParams.get('id');
+    const origen = urlParams.get('origen') || 'bien';
+
+    document.getElementById('btn-volver').href = origen === 'mayordomo' 
+      ? `mayordomo.html?bien=${bienId}` 
+      : `bien.html?id=${bienId}`;
+
+    if (!bienId) window.location.href = 'bienes.html';
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        // Cargar bien
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); window.location.href = 'bienes.html'; return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+
+        // Cargar nidos
+        if (bienData.familiaId) {
+          const nidosSnap = await db.collection('nidos').where('familiaId', '==', bienData.familiaId).get();
+          nidosData = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        // Cargar reparto
+        const repartoDoc = await db.collection('bienes').doc(bienId).collection('config').doc('reparto').get();
+        if (repartoDoc.exists) {
+          repartoData = repartoDoc.data().porcentajes || {};
+        }
+
+        // Cargar gastos
+        const gastosSnap = await db.collection('bienes').doc(bienId).collection('gastos').orderBy('fecha', 'desc').get();
+        gastosData = gastosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        render();
+        document.getElementById('page-loading').classList.add('hidden');
+        document.getElementById('page-content').classList.remove('hidden');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar datos');
+      }
+    }
+
+    function render() {
+      renderPeriodoSelector();
+      renderResumen();
+      renderCategorias();
+      renderGastosList();
+      renderRepartoTable();
+      renderDesglose();
+      popularSelectGenerador();
+    }
+
+    function cambiarTab(tab) {
+      document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      
+      document.querySelector(`.main-tab:nth-child(${tab === 'registro' ? 1 : 2})`).classList.add('active');
+      document.getElementById(`panel-${tab}`).classList.add('active');
+    }
+
+    function renderPeriodoSelector() {
+      const container = document.getElementById('periodo-selector');
+      const periodos = [
+        { key: 'mes', label: 'Este mes' },
+        { key: 'trimestre', label: 'Trimestre' },
+        { key: 'año', label: 'Este año' },
+        { key: 'todos', label: 'Todos' }
+      ];
+
+      container.innerHTML = periodos.map(p => `
+        <button class="periodo-btn ${periodoActual === p.key ? 'active' : ''}" onclick="cambiarPeriodo('${p.key}')">${p.label}</button>
+      `).join('');
+    }
+
+    function cambiarPeriodo(periodo) {
+      periodoActual = periodo;
+      render();
+    }
+
+    function getGastosFiltrados() {
+      const hoy = new Date();
+      const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      const inicioTrimestre = new Date(hoy.getFullYear(), Math.floor(hoy.getMonth() / 3) * 3, 1);
+      const inicioAño = new Date(hoy.getFullYear(), 0, 1);
+
+      return gastosData.filter(g => {
+        if (!g.fecha) return false;
+        const fecha = new Date(g.fecha);
+        
+        switch (periodoActual) {
+          case 'mes': return fecha >= inicioMes;
+          case 'trimestre': return fecha >= inicioTrimestre;
+          case 'año': return fecha >= inicioAño;
+          default: return true;
+        }
+      });
+    }
+
+    function renderResumen() {
+      const container = document.getElementById('resumen-grid');
+      const gastos = getGastosFiltrados();
+      const total = gastos.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+
+      const labels = { mes: 'Este mes', trimestre: 'Trimestre', año: 'Este año', todos: 'Total' };
+
+      container.innerHTML = `
+        <div class="resumen-card">
+          <div class="resumen-valor">€${total.toFixed(2)}</div>
+          <div class="resumen-label">${labels[periodoActual]}</div>
+        </div>
+        <div class="resumen-card">
+          <div class="resumen-valor" style="color: var(--text)">${gastos.length}</div>
+          <div class="resumen-label">Registros</div>
+        </div>
+      `;
+    }
+
+    function renderCategorias() {
+      const container = document.getElementById('categorias-grid');
+      const gastos = getGastosFiltrados();
+
+      const porCat = {};
+      gastos.forEach(g => {
+        const cat = g.categoria || 'otro';
+        porCat[cat] = (porCat[cat] || 0) + (parseFloat(g.importe) || 0);
+      });
+
+      const cats = Object.entries(porCat).sort((a, b) => b[1] - a[1]);
+
+      if (cats.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = cats.map(([cat, total]) => `
+        <div class="cat-chip">
+          <span>${catIcons[cat] || '📦'}</span>
+          <span>${catLabels[cat] || cat}</span>
+          <span class="cat-chip-valor">€${total.toFixed(0)}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderGastosList() {
+      const container = document.getElementById('gastos-list');
+      const gastos = getGastosFiltrados();
+
+      if (gastos.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💶</div><p>No hay gastos registrados</p></div>';
+        return;
+      }
+
+      container.innerHTML = gastos.slice(0, 30).map(g => {
+        const icon = catIcons[g.categoria] || '📦';
+        const fecha = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+        const generador = g.generadorId ? nidosData.find(n => n.id === g.generadorId) : null;
+
+        return `
+          <div class="gasto-item" onclick="abrirModalGasto(gastosData.find(x=>x.id==='${g.id}'))">
+            <div class="gasto-icon">${icon}</div>
+            <div class="gasto-info">
+              <div class="gasto-concepto">${g.concepto}</div>
+              <div class="gasto-meta">${fecha}${g.proveedor ? ' · ' + g.proveedor : ''}</div>
+            </div>
+            ${generador ? `<span class="gasto-generador">${generador.nombre}</span>` : ''}
+            <span class="gasto-importe">€${parseFloat(g.importe).toFixed(2)}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRepartoTable() {
+      const container = document.getElementById('reparto-table');
+
+      if (nidosData.length === 0) {
+        container.innerHTML = '<tr><td style="padding:20px;text-align:center;color:var(--text-muted)">No hay nidos configurados</td></tr>';
+        return;
+      }
+
+      let html = `
+        <thead><tr><th>Nido</th><th style="text-align:right">Porcentaje</th></tr></thead>
+        <tbody>
+      `;
+
+      nidosData.forEach((nido, i) => {
+        const color = coloresNido[i % coloresNido.length];
+        const pct = repartoData[nido.id] || 0;
+
+        html += `
+          <tr>
+            <td>
+              <div class="reparto-nido">
+                <div class="reparto-nido-color" style="background:${color}"></div>
+                <span>${nido.nombre}</span>
+              </div>
+            </td>
+            <td style="text-align:right">
+              <input type="number" class="reparto-input" id="reparto-${nido.id}" 
+                value="${pct}" min="0" max="100" 
+                onchange="actualizarReparto('${nido.id}', this.value)"> %
+            </td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody>';
+      container.innerHTML = html;
+      actualizarTotalReparto();
+    }
+
+    function actualizarReparto(nidoId, valor) {
+      repartoData[nidoId] = parseInt(valor) || 0;
+      actualizarTotalReparto();
+    }
+
+    function actualizarTotalReparto() {
+      const container = document.getElementById('reparto-total');
+      const total = Object.values(repartoData).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
+      const ok = total === 100;
+
+      container.innerHTML = `
+        <span>Total</span>
+        <span class="reparto-total-valor ${ok ? 'ok' : 'error'}">${total}%</span>
+      `;
+    }
+
+    async function guardarReparto() {
+      const total = Object.values(repartoData).reduce((sum, v) => sum + (parseInt(v) || 0), 0);
+      
+      if (total !== 100) {
+        alert('El total debe sumar exactamente 100%');
+        return;
+      }
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('config').doc('reparto').set({
+          porcentajes: repartoData,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        alert('✅ Reparto guardado');
+        renderDesglose();
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar');
+      }
+    }
+
+    function renderDesglose() {
+      const container = document.getElementById('desglose-section');
+      const gastos = getGastosFiltrados();
+      const total = gastos.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+
+      if (total === 0 || nidosData.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      const labels = { mes: 'este mes', trimestre: 'este trimestre', año: 'este año', todos: 'en total' };
+
+      let html = `<div class="desglose-title">Desglose ${labels[periodoActual]} (€${total.toFixed(2)})</div>`;
+
+      nidosData.forEach((nido, i) => {
+        const pct = repartoData[nido.id] || 0;
+        const importe = (total * pct / 100);
+        const color = coloresNido[i % coloresNido.length];
+
+        html += `
+          <div class="desglose-item">
+            <div class="desglose-nido">
+              <span style="width:10px;height:10px;border-radius:3px;background:${color}"></span>
+              <span>${nido.nombre} (${pct}%)</span>
+            </div>
+            <span class="desglose-importe">€${importe.toFixed(2)}</span>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function popularSelectGenerador() {
+      const select = document.getElementById('gasto-generador');
+      select.innerHTML = '<option value="">Sin asignar</option>' +
+        nidosData.map(n => `<option value="${n.id}">${n.nombre}</option>`).join('');
+    }
+
+    // Modal
+    function abrirModalGasto(gasto = null) {
+      editingId = gasto?.id || null;
+      document.getElementById('modal-gasto-title').textContent = gasto ? '✏️ Editar gasto' : '💶 Nuevo gasto';
+      document.getElementById('btn-eliminar').classList.toggle('hidden', !gasto);
+
+      if (gasto) {
+        document.getElementById('gasto-fecha').value = gasto.fecha || '';
+        document.getElementById('gasto-importe').value = gasto.importe || '';
+        document.getElementById('gasto-concepto').value = gasto.concepto || '';
+        document.getElementById('gasto-categoria').value = gasto.categoria || 'otro';
+        document.getElementById('gasto-generador').value = gasto.generadorId || '';
+        document.getElementById('gasto-proveedor').value = gasto.proveedor || '';
+        document.getElementById('gasto-notas').value = gasto.notas || '';
+      } else {
+        document.getElementById('form-gasto').reset();
+        document.getElementById('gasto-fecha').value = new Date().toISOString().split('T')[0];
+      }
+
+      document.getElementById('modal-gasto').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-gasto').classList.remove('active');
+      editingId = null;
+    }
+
+    document.getElementById('form-gasto').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const generadorId = document.getElementById('gasto-generador').value;
+      const nido = generadorId ? nidosData.find(n => n.id === generadorId) : null;
+
+      const data = {
+        fecha: document.getElementById('gasto-fecha').value,
+        importe: parseFloat(document.getElementById('gasto-importe').value) || 0,
+        concepto: document.getElementById('gasto-concepto').value,
+        categoria: document.getElementById('gasto-categoria').value,
+        generadorId: generadorId || null,
+        generadorNombre: nido?.nombre || null,
+        proveedor: document.getElementById('gasto-proveedor').value,
+        notas: document.getElementById('gasto-notas').value,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        const ref = db.collection('bienes').doc(bienId).collection('gastos');
+        
+        if (editingId) {
+          await ref.doc(editingId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          const docRef = await ref.add(data);
+          data.id = docRef.id;
+          gastosData.unshift(data);
+        }
+
+        cerrarModal();
+        
+        // Recargar gastos
+        const snap = await db.collection('bienes').doc(bienId).collection('gastos').orderBy('fecha', 'desc').get();
+        gastosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        render();
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar');
+      }
+    });
+
+    async function eliminarGasto() {
+      if (!editingId || !confirm('¿Eliminar este gasto?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('gastos').doc(editingId).delete();
+        cerrarModal();
+        
+        gastosData = gastosData.filter(g => g.id !== editingId);
+        render();
+      } catch (error) {
+        console.error(error);
+        alert('Error al eliminar');
+      }
+    }
+
+    // Cerrar modal con click fuera
+    document.getElementById('modal-gasto').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-gasto') cerrarModal();
+    });
+  </script>
+</body>
+</html>
