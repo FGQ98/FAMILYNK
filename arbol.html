@@ -269,13 +269,27 @@
 
         nidosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Contar miembros ÚNICOS (por uid o por nombre+iniciales)
+        // Contar miembros ÚNICOS
+        // Prioridad de clave: email > uid > nombre+iniciales (normalizado)
         const miembrosUnicos = new Map();
         nidosData.forEach(n => {
           if (n.miembrosData) {
             n.miembrosData.forEach(m => {
-              // Usar uid si existe, si no, usar nombre+iniciales como clave
-              const clave = m.uid || `${m.nombre}-${m.iniciales}`;
+              // Normalizar nombre e iniciales para evitar duplicados por variaciones
+              const nombreNorm = (m.nombre || '').trim().toLowerCase();
+              const inicialesNorm = (m.iniciales || '').trim().toUpperCase();
+              const emailNorm = (m.email || '').trim().toLowerCase();
+              
+              // Usar email como clave primaria (más fiable), luego uid, luego nombre+iniciales
+              let clave;
+              if (emailNorm) {
+                clave = `email:${emailNorm}`;
+              } else if (m.uid) {
+                clave = `uid:${m.uid}`;
+              } else {
+                clave = `nombre:${nombreNorm}-${inicialesNorm}`;
+              }
+              
               if (!miembrosUnicos.has(clave)) {
                 miembrosUnicos.set(clave, m);
               }
