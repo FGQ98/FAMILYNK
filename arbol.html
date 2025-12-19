@@ -96,27 +96,30 @@
 
     .nido-avatars {
       display: flex;
-      justify-content: center;
-      margin-top: 10px;
-    }
-
-    .mini-avatar {
-      width: 28px;
-      height: 28px;
-      background: var(--sage);
-      border-radius: 50%;
-      display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 0.65rem;
-      font-weight: 700;
-      margin-left: -8px;
-      border: 2px solid var(--cream);
+      margin-top: 10px;
+      gap: 2px;
     }
 
-    .mini-avatar:first-child { margin-left: 0; }
-    .mini-avatar.fallecido { background: var(--text-muted); opacity: 0.6; }
+    .nido-miembro-nombre {
+      font-size: 0.75rem;
+      color: var(--text-light);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px;
+    }
+
+    .nido-miembro-nombre.fallecido {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .nido-miembros-mas {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
 
     /* Conexiones entre generaciones - SVG */
     .arbol-wrapper {
@@ -443,16 +446,21 @@
 
     function renderNidoCard(nido) {
       const miembros = nido.miembrosData || [];
-      const avatars = miembros.slice(0, 4).map(m => `
-        <div class="mini-avatar ${m.fechaDefuncion ? 'fallecido' : ''}">${m.iniciales || '?'}</div>
+      const maxMostrar = 4;
+      const nombresHtml = miembros.slice(0, maxMostrar).map(m => `
+        <div class="nido-miembro-nombre ${m.fechaDefuncion ? 'fallecido' : ''}">${m.nombre || m.iniciales || '?'}</div>
       `).join('');
+      const restantes = miembros.length - maxMostrar;
 
       return `
         <a href="nido.html?id=${nido.id}" class="nido-card" data-nido-id="${nido.id}">
           <div class="nido-icon">🪺</div>
           <div class="nido-nombre">${nido.nombre}</div>
           <div class="nido-miembros">${miembros.length} miembro${miembros.length !== 1 ? 's' : ''}</div>
-          <div class="nido-avatars">${avatars}</div>
+          <div class="nido-avatars">
+            ${nombresHtml}
+            ${restantes > 0 ? `<div class="nido-miembros-mas">+${restantes} más</div>` : ''}
+          </div>
         </a>
       `;
     }
