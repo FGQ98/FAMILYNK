@@ -551,11 +551,36 @@
       try {
         miembrosData = [];
         
-        // Recorrer todos los nidos y extraer sus miembros
+        // PASO 1: Identificar quiénes son "cabezas" de su propio nido
+        // (progenitor o consorte en algún nido)
+        const cabezasDeNido = new Set();
+        
+        Object.entries(nidosData).forEach(([nidoId, nido]) => {
+          const miembrosNido = nido.miembrosData || [];
+          miembrosNido.forEach(m => {
+            if (m.relacion === 'progenitor' || m.relacion === 'consorte') {
+              // Usar email o nombre como identificador único
+              const identificador = m.email || m.uid || m.nombre;
+              if (identificador) {
+                cabezasDeNido.add(identificador.toLowerCase().trim());
+              }
+            }
+          });
+        });
+
+        // PASO 2: Recorrer nidos y añadir miembros SIN duplicar
         Object.entries(nidosData).forEach(([nidoId, nido]) => {
           const miembrosNido = nido.miembrosData || [];
           
           miembrosNido.forEach((m, index) => {
+            const identificador = (m.email || m.uid || m.nombre || '').toLowerCase().trim();
+            
+            // Si es descendiente Y ya tiene su propio nido (es cabeza en otro sitio)
+            // → NO lo incluimos aquí, ya se contará en su propio nido
+            if (m.relacion === 'descendiente' && cabezasDeNido.has(identificador)) {
+              return; // Saltar, este miembro se cuenta en su propio nido
+            }
+            
             // Calcular edad
             let edad = null;
             let fechaNacimiento = null;
