@@ -403,7 +403,6 @@
     origen = urlParams.get('origen') || 'bien';
 
     if (!bienId) {
-      alert('No se especificó el bien');
       window.location.href = 'lo-comun.html';
     }
 
@@ -421,7 +420,7 @@
         // Cargar datos del bien
         const bienDoc = await db.collection('bienes').doc(bienId).get();
         if (!bienDoc.exists) {
-          alert('Bien no encontrado');
+          console.error('Bien no encontrado:', bienId);
           window.location.href = 'lo-comun.html';
           return;
         }
@@ -446,20 +445,24 @@
         document.getElementById('card-programado').href = `mant-programado.html?${baseParams}`;
         document.getElementById('card-manual').href = `manual-mantenimiento.html?${baseParams}`;
 
-        // Cargar estadísticas
-        await cargarEstadisticas();
-
+        // Mostrar contenido primero, luego cargar estadísticas en background
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
+
+        // Cargar estadísticas (no bloqueante)
+        cargarEstadisticas();
+        
       } catch (error) {
         console.error('Error cargando datos:', error);
-        alert('Error al cargar');
+        document.getElementById('loading').innerHTML = '<p style="color: var(--error);">Error al cargar. <a href="lo-comun.html">Volver</a></p>';
       }
     }
 
     async function cargarEstadisticas() {
+      // Cargar estadísticas de forma silenciosa (si falla, mostrar 0)
+      
+      // Taller - herramientas y materiales
       try {
-        // Taller - herramientas y materiales
         const tallerSnap = await db.collection('bienes').doc(bienId).collection('taller').get();
         let herramientas = 0, materiales = 0;
         tallerSnap.docs.forEach(doc => {
@@ -469,8 +472,10 @@
         });
         document.getElementById('count-herramientas').textContent = herramientas;
         document.getElementById('count-materiales').textContent = materiales;
+      } catch (e) { console.log('Sin datos de taller'); }
 
-        // Reparaciones
+      // Reparaciones
+      try {
         const repsSnap = await db.collection('bienes').doc(bienId).collection('reparaciones').get();
         let pendientes = 0, completadas = 0;
         repsSnap.docs.forEach(doc => {
@@ -480,8 +485,10 @@
         });
         document.getElementById('count-pendientes').textContent = pendientes;
         document.getElementById('count-completadas').textContent = completadas;
+      } catch (e) { console.log('Sin datos de reparaciones'); }
 
-        // Mantenimiento programado
+      // Mantenimiento programado
+      try {
         const mantSnap = await db.collection('bienes').doc(bienId).collection('mantenimientoProgramado').get();
         let proximos = 0, vencidos = 0;
         const hoy = new Date();
@@ -497,14 +504,13 @@
         });
         document.getElementById('count-proximos').textContent = proximos;
         document.getElementById('count-vencidos').textContent = vencidos;
+      } catch (e) { console.log('Sin datos de mant programado'); }
 
-        // Manuales
+      // Manuales
+      try {
         const manualesSnap = await db.collection('bienes').doc(bienId).collection('manuales').get();
         document.getElementById('count-manuales').textContent = manualesSnap.size;
-
-      } catch (error) {
-        console.error('Error cargando estadísticas:', error);
-      }
+      } catch (e) { console.log('Sin datos de manuales'); }
     }
   </script>
 </body>
