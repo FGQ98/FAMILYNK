@@ -77,7 +77,8 @@
       background: var(--cream);
       border-radius: var(--radius-md);
       padding: 16px;
-      min-width: 180px;
+      min-width: 200px;
+      max-width: 280px;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s;
@@ -92,33 +93,50 @@
 
     .nido-icon { font-size: 1.5rem; margin-bottom: 8px; }
     .nido-nombre { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
-    .nido-miembros { font-size: 0.8rem; color: var(--text-muted); }
+    .nido-miembros { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 8px; }
 
-    .nido-avatars {
+    .nido-miembros-grid {
       display: flex;
       flex-direction: column;
+      gap: 6px;
+    }
+
+    .miembros-fila {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .miembros-fila.progenitores {
+      padding-bottom: 6px;
+      border-bottom: 1px dashed var(--cream-dark);
+    }
+
+    .miembro-chip {
+      display: flex;
       align-items: center;
-      margin-top: 10px;
-      gap: 2px;
+      gap: 4px;
+      padding: 3px 8px;
+      background: var(--white);
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text);
     }
 
-    .nido-miembro-nombre {
-      font-size: 0.75rem;
-      color: var(--text-light);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 160px;
-    }
-
-    .nido-miembro-nombre.fallecido {
-      color: var(--text-muted);
+    .miembro-chip.fallecido {
+      opacity: 0.5;
       font-style: italic;
     }
 
-    .nido-miembros-mas {
-      font-size: 0.7rem;
-      color: var(--text-muted);
+    .miembro-chip .chip-icon {
+      font-size: 0.65rem;
+    }
+
+    .miembros-fila.hijos .miembro-chip {
+      background: var(--sage-muted);
+      font-size: 0.65rem;
     }
 
     /* Conexiones entre generaciones - SVG */
@@ -272,27 +290,13 @@
 
         nidosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Contar miembros ÚNICOS
-        // Prioridad de clave: email > uid > nombre+iniciales (normalizado)
+        // Contar miembros ÚNICOS (por uid o por nombre+iniciales)
         const miembrosUnicos = new Map();
         nidosData.forEach(n => {
           if (n.miembrosData) {
             n.miembrosData.forEach(m => {
-              // Normalizar nombre e iniciales para evitar duplicados por variaciones
-              const nombreNorm = (m.nombre || '').trim().toLowerCase();
-              const inicialesNorm = (m.iniciales || '').trim().toUpperCase();
-              const emailNorm = (m.email || '').trim().toLowerCase();
-              
-              // Usar email como clave primaria (más fiable), luego uid, luego nombre+iniciales
-              let clave;
-              if (emailNorm) {
-                clave = `email:${emailNorm}`;
-              } else if (m.uid) {
-                clave = `uid:${m.uid}`;
-              } else {
-                clave = `nombre:${nombreNorm}-${inicialesNorm}`;
-              }
-              
+              // Usar uid si existe, si no, usar nombre+iniciales como clave
+              const clave = m.uid || `${m.nombre}-${m.iniciales}`;
               if (!miembrosUnicos.has(clave)) {
                 miembrosUnicos.set(clave, m);
               }
@@ -446,20 +450,41 @@
 
     function renderNidoCard(nido) {
       const miembros = nido.miembrosData || [];
-      const maxMostrar = 4;
-      const nombresHtml = miembros.slice(0, maxMostrar).map(m => `
-        <div class="nido-miembro-nombre ${m.fechaDefuncion ? 'fallecido' : ''}">${m.nombre || m.iniciales || '?'}</div>
-      `).join('');
-      const restantes = miembros.length - maxMostrar;
+      
+      // Separar progenitores/consortes de hijos
+      const progenitores = miembros.filter(m => 
+        m.relacion === 'progenitor' || m.relacion === 'consorte' || m.esAdmin
+      );
+      const hijos = miembros.filter(m => 
+        m.relacion === 'hijo' || m.relacion === 'descendiente'
+      );
+      
+      // Si no hay relación definida, poner todos como progenitores
+      const prog = progenitores.length > 0 ? progenitores : miembros.filter(m => !m.relacion || m.relacion === 'progenitor');
+      const hij = hijos.length > 0 ? hijos : miembros.filter(m => m.relacion === 'hijo');
+
+      const renderChip = (m) => `
+        <span class="miembro-chip ${m.fechaDefuncion ? 'fallecido' : ''}">
+          ${m.nombre || m.iniciales || '?'}
+        </span>
+      `;
+
+      const progenitoresHtml = prog.length > 0 
+        ? `<div class="miembros-fila progenitores">${prog.map(renderChip).join('')}</div>` 
+        : '';
+      
+      const hijosHtml = hij.length > 0 
+        ? `<div class="miembros-fila hijos">${hij.map(renderChip).join('')}</div>` 
+        : '';
 
       return `
         <a href="nido.html?id=${nido.id}" class="nido-card" data-nido-id="${nido.id}">
           <div class="nido-icon">🪺</div>
           <div class="nido-nombre">${nido.nombre}</div>
           <div class="nido-miembros">${miembros.length} miembro${miembros.length !== 1 ? 's' : ''}</div>
-          <div class="nido-avatars">
-            ${nombresHtml}
-            ${restantes > 0 ? `<div class="nido-miembros-mas">+${restantes} más</div>` : ''}
+          <div class="nido-miembros-grid">
+            ${progenitoresHtml}
+            ${hijosHtml}
           </div>
         </a>
       `;
