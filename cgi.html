@@ -603,6 +603,12 @@
     .cta-iniciativa { border-color: #FFD54F; }
     .cta-iniciativa:hover { background: #FFFDE7; border-color: #FFCA28; }
 
+    .cta-evento { border-color: #FF9800; }
+    .cta-evento:hover { background: #FFF3E0; border-color: #F57C00; }
+
+    .cta-reserva { border-color: #42A5F5; }
+    .cta-reserva:hover { background: #E3F2FD; border-color: #1E88E5; }
+
     .cta-encargo { border-color: var(--tienda); }
     .cta-encargo:hover { background: var(--tienda-muted); border-color: var(--tienda); }
 
@@ -2059,6 +2065,14 @@
           <span class="cta-icon">💡</span>
           <span class="cta-label">Proponer idea</span>
         </button>
+        <button class="cta-btn cta-evento" onclick="abrirModalSolicitarEvento()">
+          <span class="cta-icon">🎉</span>
+          <span class="cta-label">Solicitar evento</span>
+        </button>
+        <button class="cta-btn cta-reserva" onclick="abrirModalSolicitarReserva()">
+          <span class="cta-icon">📅</span>
+          <span class="cta-label">Solicitar reserva</span>
+        </button>
         <button class="cta-btn cta-encargo" onclick="abrirModalEncargo()">
           <span class="cta-icon">🛒</span>
           <span class="cta-label">Hacer encargo</span>
@@ -2296,6 +2310,78 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
           <button type="submit" class="btn btn-primary">Enviar encargo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Solicitar Evento -->
+  <div class="modal-overlay" id="modal-evento">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">🎉 Solicitar evento</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-evento">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nombre del evento *</label>
+            <input type="text" class="form-input" id="evento-nombre" placeholder="Ej: Cumpleaños de Juan, Barbacoa familiar..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">¿Dónde? *</label>
+            <select class="form-select" id="evento-bien" required>
+              <option value="">Selecciona un lugar...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha propuesta *</label>
+            <input type="date" class="form-input" id="evento-fecha" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descripción / Motivo</label>
+            <textarea class="form-input" id="evento-descripcion" rows="2" placeholder="Cuéntanos más sobre el evento..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #FF9800, #F57C00);">Enviar solicitud</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Solicitar Reserva -->
+  <div class="modal-overlay" id="modal-reserva">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">📅 Solicitar reserva</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-reserva">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">¿Qué quieres reservar? *</label>
+            <select class="form-select" id="reserva-bien" required>
+              <option value="">Selecciona un bien...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha inicio *</label>
+            <input type="date" class="form-input" id="reserva-inicio" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha fin *</label>
+            <input type="date" class="form-input" id="reserva-fin" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Motivo / Notas</label>
+            <textarea class="form-input" id="reserva-motivo" rows="2" placeholder="Ej: Fin de semana con amigos..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #42A5F5, #1E88E5);">Enviar solicitud</button>
         </div>
       </form>
     </div>
@@ -3597,6 +3683,7 @@
 
     // ============ CTAs (ACCIONES RÁPIDAS) ============
     let bienesUsuario = [];
+    let adminsEstirpe = [];
 
     async function cargarBienesUsuario() {
       if (bienesUsuario.length > 0) return;
@@ -3604,6 +3691,73 @@
         const snap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
         bienesUsuario = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       } catch (e) { console.error('Error cargando bienes:', e); }
+    }
+
+    async function cargarAdminsEstirpe() {
+      if (adminsEstirpe.length > 0) return adminsEstirpe;
+      try {
+        // Cargar admins de la familia (AdminRama y AdminNido)
+        const usuariosSnap = await db.collection('usuarios')
+          .where('familiaId', '==', currentFamilia.id)
+          .get();
+        
+        adminsEstirpe = usuariosSnap.docs
+          .map(d => ({ uid: d.id, ...d.data() }))
+          .filter(u => u.rol === 'AdminRama' || u.rol === 'AdminNido' || u.esAdmin);
+        
+        return adminsEstirpe;
+      } catch (e) { 
+        console.error('Error cargando admins:', e);
+        return [];
+      }
+    }
+
+    async function enviarNotificacionAdmins(tipo, datos) {
+      const admins = await cargarAdminsEstirpe();
+      const remitente = userData.nombre || userData.email;
+      
+      const solicitud = {
+        tipo, // 'iniciativa', 'evento', 'reserva'
+        ...datos,
+        estado: 'pendiente', // pendiente (amarillo) -> respondido (verde)
+        solicitadoPor: currentUser.uid,
+        solicitadoPorNombre: remitente,
+        solicitadoPorNido: miNidoPrincipal?.nombre || '',
+        familiaId: currentFamilia.id,
+        fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+        respuesta: null,
+        respondidoPor: null,
+        fechaRespuesta: null
+      };
+
+      // Guardar solicitud en colección central
+      const solicitudRef = await db.collection('solicitudes').add(solicitud);
+
+      // Crear notificación para cada admin
+      for (const admin of admins) {
+        if (admin.uid === currentUser.uid) continue; // No notificar al propio usuario
+        
+        await db.collection('usuarios').doc(admin.uid).collection('notificaciones').add({
+          tipo: 'solicitud',
+          subtipo: tipo,
+          solicitudId: solicitudRef.id,
+          titulo: getTituloNotificacion(tipo, datos),
+          mensaje: `${remitente} ha enviado una solicitud`,
+          leido: false,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
+      return solicitudRef.id;
+    }
+
+    function getTituloNotificacion(tipo, datos) {
+      switch(tipo) {
+        case 'iniciativa': return `💡 Nueva propuesta: ${datos.titulo}`;
+        case 'evento': return `🎉 Solicitud de evento: ${datos.nombre}`;
+        case 'reserva': return `📅 Solicitud de reserva`;
+        default: return 'Nueva solicitud';
+      }
     }
 
     function popularSelectBienes(selectId) {
@@ -3627,6 +3781,25 @@
     async function abrirModalIniciativa() {
       document.getElementById('form-iniciativa').reset();
       document.getElementById('modal-iniciativa').classList.add('active');
+    }
+
+    async function abrirModalSolicitarEvento() {
+      await cargarBienesUsuario();
+      popularSelectBienes('evento-bien');
+      document.getElementById('form-evento').reset();
+      // Establecer fecha mínima como hoy
+      document.getElementById('evento-fecha').min = new Date().toISOString().split('T')[0];
+      document.getElementById('modal-evento').classList.add('active');
+    }
+
+    async function abrirModalSolicitarReserva() {
+      await cargarBienesUsuario();
+      popularSelectBienes('reserva-bien');
+      document.getElementById('form-reserva').reset();
+      const hoy = new Date().toISOString().split('T')[0];
+      document.getElementById('reserva-inicio').min = hoy;
+      document.getElementById('reserva-fin').min = hoy;
+      document.getElementById('modal-reserva').classList.add('active');
     }
 
     async function abrirModalEncargo() {
@@ -3660,7 +3833,7 @@
       }
     });
 
-    // Enviar iniciativa
+    // Enviar iniciativa (con notificación a admins)
     document.getElementById('form-iniciativa').addEventListener('submit', async (e) => {
       e.preventDefault();
       const titulo = document.getElementById('iniciativa-titulo').value;
@@ -3668,6 +3841,14 @@
       const categoria = document.getElementById('iniciativa-categoria').value;
 
       try {
+        // Guardar iniciativa y notificar admins
+        await enviarNotificacionAdmins('iniciativa', {
+          titulo,
+          descripcion,
+          categoria
+        });
+
+        // También guardar en colección de iniciativas para votos
         await db.collection('familias').doc(currentFamilia.id).collection('iniciativas').add({
           titulo,
           descripcion,
@@ -3678,11 +3859,69 @@
           propuestoPorNombre: userData.nombre || userData.email,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
+
         cerrarModales();
-        alert('✅ Propuesta enviada. ¡Gracias por tu idea!');
+        alert('✅ Propuesta enviada a los administradores');
       } catch (error) {
         console.error('Error:', error);
         alert('Error al enviar la propuesta');
+      }
+    });
+
+    // Enviar solicitud de evento
+    document.getElementById('form-evento').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('evento-nombre').value;
+      const bienId = document.getElementById('evento-bien').value;
+      const bien = bienesUsuario.find(b => b.id === bienId);
+      const fecha = document.getElementById('evento-fecha').value;
+      const descripcion = document.getElementById('evento-descripcion').value;
+
+      try {
+        await enviarNotificacionAdmins('evento', {
+          nombre,
+          bienId,
+          bienNombre: bien?.nombre || '',
+          fecha,
+          descripcion
+        });
+
+        cerrarModales();
+        alert('✅ Solicitud de evento enviada a los administradores');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al enviar la solicitud');
+      }
+    });
+
+    // Enviar solicitud de reserva
+    document.getElementById('form-reserva').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const bienId = document.getElementById('reserva-bien').value;
+      const bien = bienesUsuario.find(b => b.id === bienId);
+      const fechaInicio = document.getElementById('reserva-inicio').value;
+      const fechaFin = document.getElementById('reserva-fin').value;
+      const motivo = document.getElementById('reserva-motivo').value;
+
+      if (fechaFin < fechaInicio) {
+        alert('La fecha de fin debe ser posterior a la de inicio');
+        return;
+      }
+
+      try {
+        await enviarNotificacionAdmins('reserva', {
+          bienId,
+          bienNombre: bien?.nombre || '',
+          fechaInicio,
+          fechaFin,
+          motivo
+        });
+
+        cerrarModales();
+        alert('✅ Solicitud de reserva enviada a los administradores');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al enviar la solicitud');
       }
     });
 
