@@ -289,7 +289,7 @@
 
     /* Print styles */
     @media print {
-      .header, .sidebar, .acciones-bar, .btn {
+      .header, .sidebar, .acciones-bar, .btn, .source-tabs {
         display: none !important;
       }
       
@@ -310,6 +310,20 @@
       }
     }
 
+    /* Source tabs */
+    .page-actions { display: flex; gap: 8px; }
+    .source-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .source-tab { padding: 10px 18px; border: 2px solid var(--cream-dark); background: var(--white); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+    .source-tab:hover { border-color: var(--sage); }
+    .source-tab.active { border-color: var(--sage); background: var(--sage-muted); color: var(--sage-dark); }
+    .tab-badge { background: var(--sage); color: white; padding: 2px 8px; border-radius: var(--radius-full); font-size: 0.75rem; }
+
+    /* Archivo info */
+    .archivo-info { background: var(--sage-muted); padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+    .archivo-info-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .archivo-info-close { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted); }
+    .archivo-info-close:hover { color: var(--error); }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -324,6 +338,22 @@
         <h1 class="page-title">📋 Listas</h1>
         <p class="page-subtitle">Genera listas personalizadas con los datos de la familia</p>
       </div>
+      <div class="page-actions">
+        <label class="btn btn-secondary" style="cursor:pointer">
+          📁 Subir archivo
+          <input type="file" id="file-upload" accept=".csv,.xlsx,.xls" style="display:none" onchange="procesarArchivoSubido(this)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Tabs: Familia / Archivo subido -->
+    <div class="source-tabs" id="source-tabs">
+      <button class="source-tab active" data-source="familia" onclick="cambiarFuente('familia')">
+        👨‍👩‍👧‍👦 Miembros familia
+      </button>
+      <button class="source-tab" data-source="archivo" onclick="cambiarFuente('archivo')" id="tab-archivo" style="display:none">
+        📁 Archivo subido <span class="tab-badge" id="archivo-count">0</span>
+      </button>
     </div>
 
     <div class="content-grid">
@@ -513,6 +543,11 @@
     let miembrosData = [];
     let nidosData = {};
     let filtroActual = 'todos';
+    
+    // Datos de archivo subido
+    let archivoData = [];
+    let fuenteActual = 'familia'; // 'familia' o 'archivo'
+    let nombreArchivoSubido = '';
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'registro.html'; return; }
@@ -527,6 +562,152 @@
       await cargarMiembros();
       generarLista();
     });
+
+    // ========== ARCHIVO SUBIDO ==========
+    function procesarArchivoSubido(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      nombreArchivoSubido = file.name;
+      const extension = file.name.split('.').pop().toLowerCase();
+
+      if (extension === 'csv') {
+        procesarCSV(file);
+      } else if (extension === 'xlsx' || extension === 'xls') {
+        procesarExcel(file);
+      } else {
+        alert('Formato no soportado. Usa CSV o Excel (.xlsx, .xls)');
+      }
+      
+      input.value = ''; // Reset para poder subir el mismo archivo
+    }
+
+    function procesarCSV(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(l => l.trim());
+        
+        if (lines.length < 2) {
+          alert('El archivo está vacío o solo tiene cabeceras');
+          return;
+        }
+
+        // Detectar separador (coma o punto y coma)
+        const separador = lines[0].includes(';') ? ';' : ',';
+        const cabeceras = lines[0].split(separador).map(h => h.trim().toLowerCase());
+        
+        archivoData = [];
+        for (let i = 1; i < lines.length; i++) {
+          const valores = lines[i].split(separador);
+          const obj = { id: 'archivo_' + i };
+          
+          cabeceras.forEach((cab, idx) => {
+            const valor = valores[idx] ? valores[idx].trim().replace(/^"|"$/g, '') : '';
+            obj[cab] = valor;
+          });
+          
+          // Normalizar campos comunes
+          obj.nombre = obj.nombre || obj.name || obj['nombre completo'] || 'Sin nombre';
+          obj.email = obj.email || obj.correo || obj.mail || '';
+          obj.telefono = obj.telefono || obj.phone || obj.tel || '';
+          
+          if (obj.nombre !== 'Sin nombre' || obj.email) {
+            archivoData.push(obj);
+          }
+        }
+
+        mostrarArchivoSubido();
+      };
+      reader.readAsText(file);
+    }
+
+    function procesarExcel(file) {
+      // Usar SheetJS (xlsx) si está disponible
+      if (typeof XLSX === 'undefined') {
+        // Cargar librería dinámicamente
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        script.onload = () => procesarExcelConLibreria(file);
+        document.head.appendChild(script);
+      } else {
+        procesarExcelConLibreria(file);
+      }
+    }
+
+    function procesarExcelConLibreria(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+          archivoData = jsonData.map((row, i) => {
+            const obj = { id: 'archivo_' + (i + 1) };
+            
+            // Copiar todos los campos normalizando las claves
+            Object.keys(row).forEach(key => {
+              obj[key.toLowerCase().trim()] = String(row[key] || '').trim();
+            });
+            
+            // Normalizar campos comunes
+            obj.nombre = obj.nombre || obj.name || obj['nombre completo'] || 'Sin nombre';
+            obj.email = obj.email || obj.correo || obj.mail || '';
+            obj.telefono = obj.telefono || obj.phone || obj.tel || '';
+            
+            return obj;
+          }).filter(obj => obj.nombre !== 'Sin nombre' || obj.email);
+
+          mostrarArchivoSubido();
+        } catch (error) {
+          console.error('Error procesando Excel:', error);
+          alert('Error al procesar el archivo Excel');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function mostrarArchivoSubido() {
+      if (archivoData.length === 0) {
+        alert('No se encontraron datos válidos en el archivo');
+        return;
+      }
+
+      // Mostrar tab de archivo
+      document.getElementById('tab-archivo').style.display = 'flex';
+      document.getElementById('archivo-count').textContent = archivoData.length;
+      
+      // Cambiar a fuente archivo
+      cambiarFuente('archivo');
+    }
+
+    function cambiarFuente(fuente) {
+      fuenteActual = fuente;
+      
+      // Actualizar tabs
+      document.querySelectorAll('.source-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.source === fuente);
+      });
+      
+      // Regenerar lista
+      generarLista();
+    }
+
+    function cerrarArchivoSubido() {
+      archivoData = [];
+      nombreArchivoSubido = '';
+      document.getElementById('tab-archivo').style.display = 'none';
+      cambiarFuente('familia');
+    }
+
+    function getDatosActuales() {
+      if (fuenteActual === 'archivo' && archivoData.length > 0) {
+        return archivoData;
+      }
+      return miembrosData;
+    }
 
     async function cargarNidos() {
       try {
@@ -708,25 +889,30 @@
       const campos = getCamposSeleccionados();
       const orden = document.getElementById('orden-select').value;
       
-      // Filtrar miembros
-      let miembrosFiltrados = [...miembrosData];
+      // Obtener datos según fuente activa
+      const datosBase = getDatosActuales();
       
-      switch (filtroActual) {
-        case 'vivos':
-          miembrosFiltrados = miembrosFiltrados.filter(m => !m.fallecido);
-          break;
-        case 'adultos':
-          miembrosFiltrados = miembrosFiltrados.filter(m => m.edad !== null && m.edad >= 18 && !m.fallecido);
-          break;
-        case 'menores':
-          miembrosFiltrados = miembrosFiltrados.filter(m => m.edad !== null && m.edad < 18 && !m.fallecido);
-          break;
-        case 'progenitores':
-          miembrosFiltrados = miembrosFiltrados.filter(m => m.relacion === 'progenitor' || m.relacion === 'consorte');
-          break;
-        case 'descendientes':
-          miembrosFiltrados = miembrosFiltrados.filter(m => m.relacion === 'descendiente');
-          break;
+      // Filtrar miembros (solo aplica a datos de familia)
+      let miembrosFiltrados = [...datosBase];
+      
+      if (fuenteActual === 'familia') {
+        switch (filtroActual) {
+          case 'vivos':
+            miembrosFiltrados = miembrosFiltrados.filter(m => !m.fallecido);
+            break;
+          case 'adultos':
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.edad !== null && m.edad >= 18 && !m.fallecido);
+            break;
+          case 'menores':
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.edad !== null && m.edad < 18 && !m.fallecido);
+            break;
+          case 'progenitores':
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.relacion === 'progenitor' || m.relacion === 'consorte');
+            break;
+          case 'descendientes':
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.relacion === 'descendiente');
+            break;
+        }
       }
 
       // Ordenar
@@ -786,9 +972,37 @@
       }
       listaActualId = null;
 
+      // Mostrar/ocultar controles de filtro según fuente
+      const filtrosSection = document.querySelector('.filtros-row');
+      if (filtrosSection) {
+        filtrosSection.style.display = fuenteActual === 'familia' ? 'flex' : 'none';
+      }
+
+      // Mostrar info de archivo si aplica
+      renderArchivoInfo();
+
       // Renderizar
       renderTabla(miembrosFiltrados, campos);
       renderStats(miembrosFiltrados);
+    }
+
+    function renderArchivoInfo() {
+      // Eliminar info anterior si existe
+      const existente = document.getElementById('archivo-info-bar');
+      if (existente) existente.remove();
+
+      if (fuenteActual === 'archivo' && nombreArchivoSubido) {
+        const resultadosDiv = document.querySelector('.resultados-col .card-body');
+        if (resultadosDiv) {
+          const infoHTML = `
+            <div class="archivo-info" id="archivo-info-bar">
+              <span class="archivo-info-name">📁 ${nombreArchivoSubido}</span>
+              <button class="archivo-info-close" onclick="cerrarArchivoSubido()" title="Cerrar archivo">×</button>
+            </div>
+          `;
+          resultadosDiv.insertAdjacentHTML('afterbegin', infoHTML);
+        }
+      }
     }
 
     function renderTabla(miembros, campos) {

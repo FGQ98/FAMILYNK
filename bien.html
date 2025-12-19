@@ -1072,6 +1072,108 @@
       justify-content: center;
     }
 
+    /* Catálogo de Ajuar */
+    .ajuar-grupos { display: flex; flex-direction: column; gap: 10px; }
+    
+    .ajuar-grupo {
+      background: var(--cream-medium);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    
+    .ajuar-grupo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .ajuar-grupo-header:hover { background: var(--cream-dark); }
+    
+    .ajuar-grupo-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .ajuar-grupo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--sage-muted);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+    
+    .ajuar-grupo-nombre { font-weight: 600; font-size: 0.9rem; }
+    .ajuar-grupo-count { font-size: 0.75rem; color: var(--text-muted); }
+    .ajuar-grupo-toggle { color: var(--text-muted); transition: transform 0.2s; }
+    .ajuar-grupo.open .ajuar-grupo-toggle { transform: rotate(180deg); }
+    
+    .ajuar-grupo-body {
+      display: none;
+      padding: 0 14px 14px;
+    }
+    
+    .ajuar-grupo.open .ajuar-grupo-body { display: block; }
+    
+    .ajuar-articulos { display: flex; flex-direction: column; gap: 8px; }
+    
+    .ajuar-articulo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: var(--white);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .ajuar-articulo:hover { background: var(--sage-muted); }
+    
+    .ajuar-articulo-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      background: var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    
+    .ajuar-articulo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .ajuar-articulo-info { flex: 1; min-width: 0; }
+    .ajuar-articulo-nombre { font-weight: 600; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ajuar-articulo-desc { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    .ajuar-btn-add {
+      margin-top: 8px;
+      padding: 8px;
+      background: var(--sage-muted);
+      border: 1px dashed var(--sage);
+      border-radius: var(--radius-sm);
+      color: var(--sage-dark);
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    
+    .ajuar-btn-add:hover { background: var(--sage); color: white; border-style: solid; }
+
     /* Inventario mejorado */
     .inventario-categorias {
       display: flex;
@@ -1431,6 +1533,21 @@
               <span class="collapsible-toggle">▼</span>
             </div>
             <div class="collapsible-body"><div class="info-list" id="lista-documentos"><div class="empty-mini">Sin documentos</div></div></div>
+          </div>
+
+          <!-- Catálogo de Ajuar (solo visible para tipo ajuar) -->
+          <div class="collapsible-section open hidden" id="section-catalogo-ajuar">
+            <div class="collapsible-header" onclick="toggleSection('catalogo-ajuar')">
+              <div class="collapsible-title"><span>🪑</span><span>Catálogo</span><span class="collapsible-count" id="count-articulos-ajuar">0</span></div>
+              <span class="collapsible-toggle">▼</span>
+            </div>
+            <div class="collapsible-body">
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">Grupos y artículos del ajuar familiar</p>
+              <div class="ajuar-grupos" id="lista-grupos-ajuar">
+                <div class="empty-mini">Sin grupos creados</div>
+              </div>
+              <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalGrupoAjuar()">+ Añadir grupo</button>
+            </div>
           </div>
 
           <div class="collapsible-section" id="section-normas">
@@ -1958,6 +2075,97 @@
     </div>
   </div>
 
+  <!-- Modal Grupo Ajuar -->
+  <div class="modal-overlay" id="modal-grupo-ajuar">
+    <div class="modal" style="max-width:450px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-grupo-ajuar-title">📦 Nuevo grupo</h3>
+        <button class="modal-close" onclick="cerrarModalGrupoAjuar()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="grupo-ajuar-id">
+        <div class="form-group">
+          <label class="form-label">Nombre del grupo *</label>
+          <input type="text" class="form-input" id="grupo-ajuar-nombre" placeholder="Ej: Muebles salón, Vajilla, Cuadros..." required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icono</label>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;" id="grupo-ajuar-iconos">
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🪑" checked><span>🪑</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🛋️"><span>🛋️</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🍽️"><span>🍽️</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🖼️"><span>🖼️</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="📚"><span>📚</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🏺"><span>🏺</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="💎"><span>💎</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🎨"><span>🎨</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🪞"><span>🪞</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🛏️"><span>🛏️</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="🧺"><span>🧺</span></label>
+            <label class="icon-option"><input type="radio" name="grupo-icono" value="📦"><span>📦</span></label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción (opcional)</label>
+          <input type="text" class="form-input" id="grupo-ajuar-desc" placeholder="Notas sobre este grupo...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-grupo-ajuar" onclick="eliminarGrupoAjuar()">🗑️</button>
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalGrupoAjuar()">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarGrupoAjuar()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Artículo Ajuar -->
+  <div class="modal-overlay" id="modal-articulo-ajuar">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-articulo-ajuar-title">🪑 Nuevo artículo</h3>
+        <button class="modal-close" onclick="cerrarModalArticuloAjuar()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="articulo-ajuar-id">
+        <input type="hidden" id="articulo-ajuar-grupo-id">
+        <div class="form-group">
+          <label class="form-label">Nombre del artículo *</label>
+          <input type="text" class="form-input" id="articulo-ajuar-nombre" placeholder="Ej: Mesa comedor roble, Sofá chester..." required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <textarea class="form-input" id="articulo-ajuar-desc" rows="2" placeholder="Características, estado, historia..."></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Valor estimado (€)</label>
+            <input type="number" class="form-input" id="articulo-ajuar-valor" placeholder="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ubicación</label>
+            <input type="text" class="form-input" id="articulo-ajuar-ubicacion" placeholder="Ej: Salón, Dormitorio 1...">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Foto (opcional)</label>
+          <div class="foto-upload-area" id="articulo-foto-area" onclick="document.getElementById('articulo-ajuar-foto').click()">
+            <span id="articulo-foto-preview">📷 Click para subir foto</span>
+          </div>
+          <input type="file" id="articulo-ajuar-foto" accept="image/*" style="display:none" onchange="previewArticuloFoto(this)">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-articulo-ajuar" onclick="eliminarArticuloAjuar()">🗑️</button>
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalArticuloAjuar()">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarArticuloAjuar()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <style>
     /* Modal tabs */
     .modal-tab {
@@ -2002,6 +2210,37 @@
       opacity: 0.5;
     }
     .btn-remove-item:hover { opacity: 1; }
+    
+    /* Icon options */
+    .icon-option { cursor: pointer; }
+    .icon-option input { display: none; }
+    .icon-option span { 
+      display: inline-flex; 
+      width: 40px; 
+      height: 40px; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 1.3rem; 
+      background: var(--cream); 
+      border: 2px solid var(--cream-dark); 
+      border-radius: var(--radius-sm); 
+      transition: all 0.2s;
+    }
+    .icon-option:hover span { border-color: var(--sage); }
+    .icon-option input:checked + span { background: var(--sage-muted); border-color: var(--sage); }
+    
+    /* Foto upload area */
+    .foto-upload-area {
+      border: 2px dashed var(--cream-dark);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--text-muted);
+    }
+    .foto-upload-area:hover { border-color: var(--sage); background: var(--sage-muted); }
+    .foto-upload-area img { max-width: 100%; max-height: 150px; border-radius: var(--radius-sm); }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -2070,6 +2309,9 @@
         await loadGastos();
         await loadCaseros();
         renderBien();
+        
+        // Cargar catálogo si es tipo ajuar
+        await cargarCatalogoAjuar();
 
         document.getElementById('page-loading').classList.add('hidden');
         document.getElementById('page-content').classList.remove('hidden');
@@ -4111,6 +4353,279 @@
         alert('Error');
       }
     });
+
+    // ============ CATÁLOGO AJUAR ============
+    let gruposAjuar = [];
+    let editingGrupoId = null;
+    let editingArticuloId = null;
+    let articuloFotoBase64 = null;
+
+    async function cargarCatalogoAjuar() {
+      if (bienData.tipo !== 'ajuar') {
+        document.getElementById('section-catalogo-ajuar').classList.add('hidden');
+        return;
+      }
+      
+      document.getElementById('section-catalogo-ajuar').classList.remove('hidden');
+      
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('gruposAjuar').get();
+        gruposAjuar = [];
+        
+        for (const doc of snap.docs) {
+          const grupo = { id: doc.id, ...doc.data(), articulos: [] };
+          
+          // Cargar artículos del grupo
+          const artSnap = await db.collection('bienes').doc(bienId)
+            .collection('gruposAjuar').doc(doc.id)
+            .collection('articulos').get();
+          
+          grupo.articulos = artSnap.docs.map(a => ({ id: a.id, ...a.data() }));
+          gruposAjuar.push(grupo);
+        }
+        
+        renderGruposAjuar();
+      } catch (error) {
+        console.error('Error cargando catálogo:', error);
+      }
+    }
+
+    function renderGruposAjuar() {
+      const container = document.getElementById('lista-grupos-ajuar');
+      const countEl = document.getElementById('count-articulos-ajuar');
+      
+      const totalArticulos = gruposAjuar.reduce((sum, g) => sum + (g.articulos?.length || 0), 0);
+      countEl.textContent = totalArticulos;
+      
+      if (gruposAjuar.length === 0) {
+        container.innerHTML = '<div class="empty-mini">Sin grupos creados</div>';
+        return;
+      }
+      
+      container.innerHTML = gruposAjuar.map(grupo => `
+        <div class="ajuar-grupo" id="grupo-${grupo.id}">
+          <div class="ajuar-grupo-header" onclick="toggleGrupoAjuar('${grupo.id}')">
+            <div class="ajuar-grupo-info">
+              <div class="ajuar-grupo-icon">${grupo.icono || '📦'}</div>
+              <div>
+                <div class="ajuar-grupo-nombre">${grupo.nombre}</div>
+                <div class="ajuar-grupo-count">${grupo.articulos?.length || 0} artículos</div>
+              </div>
+            </div>
+            <span class="ajuar-grupo-toggle">▼</span>
+          </div>
+          <div class="ajuar-grupo-body">
+            <div class="ajuar-articulos">
+              ${(grupo.articulos || []).map(art => `
+                <div class="ajuar-articulo" onclick="editarArticuloAjuar('${grupo.id}', '${art.id}')">
+                  <div class="ajuar-articulo-thumb">
+                    ${art.foto ? `<img src="${art.foto}">` : '🪑'}
+                  </div>
+                  <div class="ajuar-articulo-info">
+                    <div class="ajuar-articulo-nombre">${art.nombre}</div>
+                    <div class="ajuar-articulo-desc">${art.ubicacion || art.descripcion || ''}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="ajuar-btn-add" onclick="abrirModalArticuloAjuar('${grupo.id}')">+ Añadir artículo</div>
+            <button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="editarGrupoAjuar('${grupo.id}')">✏️ Editar grupo</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleGrupoAjuar(grupoId) {
+      const el = document.getElementById('grupo-' + grupoId);
+      if (el) el.classList.toggle('open');
+    }
+
+    // Modal Grupo
+    function abrirModalGrupoAjuar() {
+      editingGrupoId = null;
+      document.getElementById('grupo-ajuar-id').value = '';
+      document.getElementById('grupo-ajuar-nombre').value = '';
+      document.getElementById('grupo-ajuar-desc').value = '';
+      document.querySelector('input[name="grupo-icono"][value="🪑"]').checked = true;
+      document.getElementById('btn-eliminar-grupo-ajuar').classList.add('hidden');
+      document.getElementById('modal-grupo-ajuar-title').textContent = '📦 Nuevo grupo';
+      document.getElementById('modal-grupo-ajuar').classList.add('active');
+    }
+
+    function editarGrupoAjuar(grupoId) {
+      const grupo = gruposAjuar.find(g => g.id === grupoId);
+      if (!grupo) return;
+      
+      editingGrupoId = grupoId;
+      document.getElementById('grupo-ajuar-id').value = grupoId;
+      document.getElementById('grupo-ajuar-nombre').value = grupo.nombre || '';
+      document.getElementById('grupo-ajuar-desc').value = grupo.descripcion || '';
+      
+      const iconRadio = document.querySelector(`input[name="grupo-icono"][value="${grupo.icono || '📦'}"]`);
+      if (iconRadio) iconRadio.checked = true;
+      
+      document.getElementById('btn-eliminar-grupo-ajuar').classList.remove('hidden');
+      document.getElementById('modal-grupo-ajuar-title').textContent = '✏️ Editar grupo';
+      document.getElementById('modal-grupo-ajuar').classList.add('active');
+    }
+
+    function cerrarModalGrupoAjuar() {
+      document.getElementById('modal-grupo-ajuar').classList.remove('active');
+    }
+
+    async function guardarGrupoAjuar() {
+      const nombre = document.getElementById('grupo-ajuar-nombre').value.trim();
+      if (!nombre) { alert('Introduce un nombre'); return; }
+      
+      const icono = document.querySelector('input[name="grupo-icono"]:checked')?.value || '📦';
+      const descripcion = document.getElementById('grupo-ajuar-desc').value.trim();
+      
+      try {
+        const data = { nombre, icono, descripcion, actualizadoEn: firebase.firestore.FieldValue.serverTimestamp() };
+        
+        if (editingGrupoId) {
+          await db.collection('bienes').doc(bienId).collection('gruposAjuar').doc(editingGrupoId).update(data);
+        } else {
+          data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId).collection('gruposAjuar').add(data);
+        }
+        
+        cerrarModalGrupoAjuar();
+        await cargarCatalogoAjuar();
+      } catch (error) {
+        console.error('Error guardando grupo:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    async function eliminarGrupoAjuar() {
+      if (!editingGrupoId || !confirm('¿Eliminar este grupo y todos sus artículos?')) return;
+      
+      try {
+        // Eliminar artículos primero
+        const artSnap = await db.collection('bienes').doc(bienId)
+          .collection('gruposAjuar').doc(editingGrupoId)
+          .collection('articulos').get();
+        
+        const batch = db.batch();
+        artSnap.docs.forEach(doc => batch.delete(doc.ref));
+        batch.delete(db.collection('bienes').doc(bienId).collection('gruposAjuar').doc(editingGrupoId));
+        await batch.commit();
+        
+        cerrarModalGrupoAjuar();
+        await cargarCatalogoAjuar();
+      } catch (error) {
+        console.error('Error eliminando grupo:', error);
+        alert('Error al eliminar');
+      }
+    }
+
+    // Modal Artículo
+    function abrirModalArticuloAjuar(grupoId) {
+      editingArticuloId = null;
+      articuloFotoBase64 = null;
+      document.getElementById('articulo-ajuar-id').value = '';
+      document.getElementById('articulo-ajuar-grupo-id').value = grupoId;
+      document.getElementById('articulo-ajuar-nombre').value = '';
+      document.getElementById('articulo-ajuar-desc').value = '';
+      document.getElementById('articulo-ajuar-valor').value = '';
+      document.getElementById('articulo-ajuar-ubicacion').value = '';
+      document.getElementById('articulo-foto-preview').innerHTML = '📷 Click para subir foto';
+      document.getElementById('btn-eliminar-articulo-ajuar').classList.add('hidden');
+      document.getElementById('modal-articulo-ajuar-title').textContent = '🪑 Nuevo artículo';
+      document.getElementById('modal-articulo-ajuar').classList.add('active');
+    }
+
+    function editarArticuloAjuar(grupoId, articuloId) {
+      const grupo = gruposAjuar.find(g => g.id === grupoId);
+      const articulo = grupo?.articulos?.find(a => a.id === articuloId);
+      if (!articulo) return;
+      
+      editingArticuloId = articuloId;
+      articuloFotoBase64 = articulo.foto || null;
+      
+      document.getElementById('articulo-ajuar-id').value = articuloId;
+      document.getElementById('articulo-ajuar-grupo-id').value = grupoId;
+      document.getElementById('articulo-ajuar-nombre').value = articulo.nombre || '';
+      document.getElementById('articulo-ajuar-desc').value = articulo.descripcion || '';
+      document.getElementById('articulo-ajuar-valor').value = articulo.valor || '';
+      document.getElementById('articulo-ajuar-ubicacion').value = articulo.ubicacion || '';
+      
+      if (articulo.foto) {
+        document.getElementById('articulo-foto-preview').innerHTML = `<img src="${articulo.foto}">`;
+      } else {
+        document.getElementById('articulo-foto-preview').innerHTML = '📷 Click para subir foto';
+      }
+      
+      document.getElementById('btn-eliminar-articulo-ajuar').classList.remove('hidden');
+      document.getElementById('modal-articulo-ajuar-title').textContent = '✏️ Editar artículo';
+      document.getElementById('modal-articulo-ajuar').classList.add('active');
+    }
+
+    function cerrarModalArticuloAjuar() {
+      document.getElementById('modal-articulo-ajuar').classList.remove('active');
+    }
+
+    function previewArticuloFoto(input) {
+      const file = input.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        articuloFotoBase64 = e.target.result;
+        document.getElementById('articulo-foto-preview').innerHTML = `<img src="${articuloFotoBase64}">`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function guardarArticuloAjuar() {
+      const grupoId = document.getElementById('articulo-ajuar-grupo-id').value;
+      const nombre = document.getElementById('articulo-ajuar-nombre').value.trim();
+      if (!nombre) { alert('Introduce un nombre'); return; }
+      
+      try {
+        const data = {
+          nombre,
+          descripcion: document.getElementById('articulo-ajuar-desc').value.trim(),
+          valor: parseFloat(document.getElementById('articulo-ajuar-valor').value) || null,
+          ubicacion: document.getElementById('articulo-ajuar-ubicacion').value.trim(),
+          foto: articuloFotoBase64 || null,
+          actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        const ref = db.collection('bienes').doc(bienId).collection('gruposAjuar').doc(grupoId).collection('articulos');
+        
+        if (editingArticuloId) {
+          await ref.doc(editingArticuloId).update(data);
+        } else {
+          data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+        
+        cerrarModalArticuloAjuar();
+        await cargarCatalogoAjuar();
+      } catch (error) {
+        console.error('Error guardando artículo:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    async function eliminarArticuloAjuar() {
+      const grupoId = document.getElementById('articulo-ajuar-grupo-id').value;
+      if (!editingArticuloId || !confirm('¿Eliminar este artículo?')) return;
+      
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('gruposAjuar').doc(grupoId)
+          .collection('articulos').doc(editingArticuloId).delete();
+        
+        cerrarModalArticuloAjuar();
+        await cargarCatalogoAjuar();
+      } catch (error) {
+        console.error('Error eliminando artículo:', error);
+        alert('Error al eliminar');
+      }
+    }
   </script>
 </body>
 </html>
