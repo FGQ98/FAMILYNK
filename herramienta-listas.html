@@ -550,95 +550,52 @@
     async function cargarMiembros() {
       try {
         miembrosData = [];
+        const miembrosYaIncluidos = new Map(); // Mapa para detectar duplicados
         
-        // PASO 1: Identificar quiénes son "cabezas" de su propio nido
-        // (progenitor o consorte en algún nido)
-        const cabezasDeNido = new Set();
-        
+        // PASO 1: Primero, añadir TODOS los que son "cabezas" de nido (progenitor/consorte)
+        // Estos tienen prioridad - se cuentan en SU nido
         Object.entries(nidosData).forEach(([nidoId, nido]) => {
           const miembrosNido = nido.miembrosData || [];
-          miembrosNido.forEach(m => {
+          
+          miembrosNido.forEach((m, index) => {
             if (m.relacion === 'progenitor' || m.relacion === 'consorte') {
-              // Usar email o nombre como identificador único
-              const identificador = m.email || m.uid || m.nombre;
-              if (identificador) {
-                cabezasDeNido.add(identificador.toLowerCase().trim());
+              const miembroData = procesarMiembro(m, index, nidoId, nido);
+              const clave = generarClaveUnica(m);
+              
+              if (!miembrosYaIncluidos.has(clave)) {
+                miembrosYaIncluidos.set(clave, true);
+                miembrosData.push(miembroData);
               }
             }
           });
         });
 
-        // PASO 2: Recorrer nidos y añadir miembros SIN duplicar
+        // PASO 2: Añadir el resto (descendientes, ascendientes, etc.) 
+        // Solo si NO están ya incluidos
         Object.entries(nidosData).forEach(([nidoId, nido]) => {
           const miembrosNido = nido.miembrosData || [];
           
           miembrosNido.forEach((m, index) => {
-            const identificador = (m.email || m.uid || m.nombre || '').toLowerCase().trim();
-            
-            // Si es descendiente Y ya tiene su propio nido (es cabeza en otro sitio)
-            // → NO lo incluimos aquí, ya se contará en su propio nido
-            if (m.relacion === 'descendiente' && cabezasDeNido.has(identificador)) {
-              return; // Saltar, este miembro se cuenta en su propio nido
+            // Saltar progenitores/consortes (ya incluidos en PASO 1)
+            if (m.relacion === 'progenitor' || m.relacion === 'consorte') {
+              return;
             }
             
-            // Calcular edad
-            let edad = null;
-            let fechaNacimiento = null;
-            if (m.fechaNacimiento) {
-              fechaNacimiento = m.fechaNacimiento.toDate ? m.fechaNacimiento.toDate() : new Date(m.fechaNacimiento);
-              if (!isNaN(fechaNacimiento.getTime())) {
-                const hoy = new Date();
-                edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
-                const mes = hoy.getMonth() - fechaNacimiento.getMonth();
-                if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNacimiento.getDate())) {
-                  edad--;
-                }
-              }
+            const clave = generarClaveUnica(m);
+            
+            // Si ya está incluido (por ser cabeza de otro nido), saltar
+            if (miembrosYaIncluidos.has(clave)) {
+              return;
             }
-
-            // Determinar rol basado en relacion
-            const relacionLabels = {
-              'progenitor': 'Progenitor',
-              'consorte': 'Cónyuge',
-              'descendiente': 'Descendiente',
-              'ascendiente': 'Ascendiente',
-              'colateral': 'Colateral',
-              'otros': 'Otro'
-            };
-            const rol = relacionLabels[m.relacion] || m.rol || 'Miembro';
-
-            // Determinar generación del miembro basada en nido y relación
-            let generacion = nido.generacion || null;
-            if (m.relacion === 'descendiente') {
-              generacion = generacion ? generacion + 1 : 3;
-            } else if (m.relacion === 'ascendiente') {
-              generacion = generacion ? generacion - 1 : 1;
-            }
-
-            miembrosData.push({
-              id: m.uid || `${nidoId}_${index}`,
-              nombre: m.nombre || m.iniciales || 'Sin nombre',
-              email: m.email || '',
-              telefono: m.telefono || '',
-              edad: edad,
-              fechaNacimiento: fechaNacimiento,
-              rol: rol,
-              relacion: m.relacion || '',
-              nidoId: nidoId,
-              nidoNombre: nido.nombre,
-              fechaAlta: null,
-              generacion: generacion,
-              direccion: m.direccion || '',
-              activo: !m.fechaDefuncion,
-              fallecido: !!m.fechaDefuncion,
-              esAdmin: m.esAdmin || false
-            });
+            
+            const miembroData = procesarMiembro(m, index, nidoId, nido);
+            miembrosYaIncluidos.set(clave, true);
+            miembrosData.push(miembroData);
           });
         });
 
         document.getElementById('loading').classList.add('hidden');
         
-        // Mostrar mensaje si no hay miembros
         if (miembrosData.length === 0) {
           document.getElementById('empty-state').classList.remove('hidden');
         }
@@ -647,6 +604,80 @@
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('empty-state').classList.remove('hidden');
       }
+    }
+
+    // Genera una clave única para identificar a una persona
+    function generarClaveUnica(m) {
+      // Prioridad: email > uid > nombre normalizado
+      if (m.email) {
+        return 'email:' + m.email.toLowerCase().trim();
+      }
+      if (m.uid) {
+        return 'uid:' + m.uid;
+      }
+      // Normalizar nombre: quitar acentos, minúsculas, sin espacios extra
+      const nombreNorm = (m.nombre || m.iniciales || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar acentos
+        .replace(/\s+/g, ' ')
+        .trim();
+      return 'nombre:' + nombreNorm;
+    }
+
+    // Procesa un miembro y devuelve el objeto con todos los datos
+    function procesarMiembro(m, index, nidoId, nido) {
+      // Calcular edad
+      let edad = null;
+      let fechaNacimiento = null;
+      if (m.fechaNacimiento) {
+        fechaNacimiento = m.fechaNacimiento.toDate ? m.fechaNacimiento.toDate() : new Date(m.fechaNacimiento);
+        if (!isNaN(fechaNacimiento.getTime())) {
+          const hoy = new Date();
+          edad = hoy.getFullYear() - fechaNacimiento.getFullYear();
+          const mes = hoy.getMonth() - fechaNacimiento.getMonth();
+          if (mes < 0 || (mes === 0 && hoy.getDate() < fechaNacimiento.getDate())) {
+            edad--;
+          }
+        }
+      }
+
+      // Determinar rol basado en relacion
+      const relacionLabels = {
+        'progenitor': 'Progenitor',
+        'consorte': 'Cónyuge',
+        'descendiente': 'Descendiente',
+        'ascendiente': 'Ascendiente',
+        'colateral': 'Colateral',
+        'otros': 'Otro'
+      };
+      const rol = relacionLabels[m.relacion] || m.rol || 'Miembro';
+
+      // Determinar generación del miembro basada en nido y relación
+      let generacion = nido.generacion || null;
+      if (m.relacion === 'descendiente') {
+        generacion = generacion ? generacion + 1 : 3;
+      } else if (m.relacion === 'ascendiente') {
+        generacion = generacion ? generacion - 1 : 1;
+      }
+
+      return {
+        id: m.uid || `${nidoId}_${index}`,
+        nombre: m.nombre || m.iniciales || 'Sin nombre',
+        email: m.email || '',
+        telefono: m.telefono || '',
+        edad: edad,
+        fechaNacimiento: fechaNacimiento,
+        rol: rol,
+        relacion: m.relacion || '',
+        nidoId: nidoId,
+        nidoNombre: nido.nombre,
+        fechaAlta: null,
+        generacion: generacion,
+        direccion: m.direccion || '',
+        activo: !m.fechaDefuncion,
+        fallecido: !!m.fechaDefuncion,
+        esAdmin: m.esAdmin || false
+      };
     }
 
     function getCamposSeleccionados() {
