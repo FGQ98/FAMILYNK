@@ -43,6 +43,16 @@
       --reserva-huespedes-muted: rgba(139, 90, 43, 0.15);
       --reserva-nodisponible: #6B6B6B;
       --reserva-nodisponible-muted: rgba(107, 107, 107, 0.15);
+      
+      /* Colores de eventos */
+      --evento-fiesta: #E91E63;
+      --evento-celebracion: #E91E63;
+      --evento-caceria: #4CAF50;
+      --evento-torneo: #2196F3;
+      --evento-cumple: #FFEB3B;
+      --evento-familiar: #FF9800;
+      --evento-cita: #B0BEC5;
+      --evento-reunion: #9B8EA6;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -192,6 +202,16 @@
     .calendario-evento.familia { background: var(--reserva-familia); }
     .calendario-evento.huespedes { background: var(--reserva-huespedes); }
     .calendario-evento.nodisponible { background: var(--reserva-nodisponible); }
+    
+    /* Eventos en calendario */
+    .calendario-evento.fiesta { background: var(--evento-fiesta); }
+    .calendario-evento.celebracion { background: var(--evento-celebracion); }
+    .calendario-evento.caceria { background: var(--evento-caceria); }
+    .calendario-evento.torneo { background: var(--evento-torneo); }
+    .calendario-evento.cumple { background: var(--evento-cumple); color: #333; }
+    .calendario-evento.familiar { background: var(--evento-familiar); }
+    .calendario-evento.cita { background: var(--evento-cita); color: #333; }
+    .calendario-evento.reunion { background: var(--evento-reunion); }
 
     .sidebar { display: flex; flex-direction: column; gap: 16px; }
 
@@ -219,6 +239,16 @@
     .leyenda-color.familia { background: var(--reserva-familia); }
     .leyenda-color.huespedes { background: var(--reserva-huespedes); }
     .leyenda-color.nodisponible { background: var(--reserva-nodisponible); }
+    .leyenda-color.fiesta { background: var(--evento-fiesta); }
+    .leyenda-color.celebracion { background: var(--evento-celebracion); }
+    .leyenda-color.caceria { background: var(--evento-caceria); }
+    .leyenda-color.torneo { background: var(--evento-torneo); }
+    .leyenda-color.cumple { background: var(--evento-cumple); }
+    .leyenda-color.familiar { background: var(--evento-familiar); }
+    .leyenda-color.cita { background: var(--evento-cita); }
+    
+    .leyenda-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cream-dark); }
+    .leyenda-section-title { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
 
     .reserva-item {
       display: flex;
@@ -413,6 +443,16 @@
               <div class="leyenda-item"><div class="leyenda-color familia"></div><span>Familia</span></div>
               <div class="leyenda-item"><div class="leyenda-color huespedes"></div><span>Huéspedes</span></div>
               <div class="leyenda-item"><div class="leyenda-color nodisponible"></div><span>No disponible</span></div>
+              
+              <div class="leyenda-section">
+                <div class="leyenda-section-title">Eventos</div>
+                <div class="leyenda-item"><div class="leyenda-color fiesta"></div><span>🎊 Fiestas / 🎂 Celebraciones</span></div>
+                <div class="leyenda-item"><div class="leyenda-color caceria"></div><span>🦌 Cacerías</span></div>
+                <div class="leyenda-item"><div class="leyenda-color torneo"></div><span>🏆 Torneos</span></div>
+                <div class="leyenda-item"><div class="leyenda-color cumple"></div><span>🎈 Cumpleaños</span></div>
+                <div class="leyenda-item"><div class="leyenda-color familiar"></div><span>👨‍👩‍👧‍👦 Días Familiares</span></div>
+                <div class="leyenda-item"><div class="leyenda-color cita"></div><span>📌 Citas</span></div>
+              </div>
             </div>
           </div>
         </div>
@@ -491,11 +531,17 @@
     let bienId = null;
     let origen = 'mayordomo';
     let reservas = [];
+    let eventos = [];
     let mesActual = new Date();
 
     const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    const EVENTO_ICONS = {
+      fiesta: '🎊', celebracion: '🎂', caceria: '🦌', torneo: '🏆',
+      cumple: '🎈', familiar: '👨‍👩‍👧‍👦', cita: '📌', reunion: '👥', otro: '📋'
+    };
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -509,6 +555,7 @@
 
       await cargarBien();
       await cargarReservas();
+      await cargarEventos();
     });
 
     async function cargarBien() {
@@ -527,6 +574,14 @@
         renderCalendario();
         renderProximasReservas();
       } catch (error) { console.error('Error cargando reservas:', error); }
+    }
+
+    async function cargarEventos() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('eventos').orderBy('fecha', 'asc').get();
+        eventos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCalendario();
+      } catch (error) { console.error('Error cargando eventos:', error); }
     }
 
     function renderCalendario() {
@@ -559,17 +614,31 @@
         const fechaStr = fecha.toISOString().split('T')[0];
         const esHoy = fecha.getTime() === hoy.getTime();
         
+        // Reservas del día
         const reservasDia = reservas.filter(r => {
           const entrada = new Date(r.entrada);
           const salida = new Date(r.salida);
           return fecha >= entrada && fecha <= salida;
         });
+
+        // Eventos del día
+        const eventosDia = eventos.filter(e => {
+          if (!e.fecha) return false;
+          const fechaEvento = new Date(e.fecha);
+          return fechaEvento.toDateString() === fecha.toDateString();
+        });
+
+        // Combinar reservas y eventos
+        const itemsDia = [
+          ...reservasDia.map(r => ({ tipo: 'reserva', clase: r.tipo, label: r.quien })),
+          ...eventosDia.map(e => ({ tipo: 'evento', clase: e.tipo, label: `${EVENTO_ICONS[e.tipo] || '📌'} ${e.nombre}` }))
+        ];
         
         html += `<div class="calendario-dia ${esHoy ? 'hoy' : ''}" onclick="clickDia('${fechaStr}')">
           <span class="calendario-dia-numero">${dia}</span>
           <div class="calendario-dia-eventos">
-            ${reservasDia.slice(0, 2).map(r => `<div class="calendario-evento ${r.tipo}">${r.quien}</div>`).join('')}
-            ${reservasDia.length > 2 ? `<div class="calendario-evento" style="background:var(--text-muted)">+${reservasDia.length - 2}</div>` : ''}
+            ${itemsDia.slice(0, 2).map(item => `<div class="calendario-evento ${item.clase}">${item.label}</div>`).join('')}
+            ${itemsDia.length > 2 ? `<div class="calendario-evento" style="background:var(--text-muted)">+${itemsDia.length - 2}</div>` : ''}
           </div>
         </div>`;
       }
