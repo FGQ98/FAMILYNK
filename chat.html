@@ -603,35 +603,27 @@
       gap: 8px;
     }
 
-    /* Miembros seleccionables */
-    .member-select-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
     .member-select-item {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 10px 12px;
-      background: var(--cream);
+      padding: 12px;
       border-radius: var(--radius-md);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.2s;
     }
 
-    .member-select-item:hover { background: var(--cream-dark); }
+    .member-select-item:hover { background: var(--cream); }
     .member-select-item.selected { 
       background: var(--sage-muted); 
-      outline: 2px solid var(--sage);
+      border: 2px solid var(--sage);
     }
 
     .member-select-avatar {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      background: var(--sage-muted);
+      background: var(--cream-dark);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -639,26 +631,34 @@
       font-weight: 700;
     }
 
-    .member-select-info { flex: 1; }
-    .member-select-name { font-weight: 600; font-size: 0.9rem; }
-    .member-select-nido { font-size: 0.75rem; color: var(--text-muted); }
+    .member-select-info {
+      flex: 1;
+    }
+
+    .member-select-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .member-select-nido {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
 
     .member-select-check {
-      width: 22px;
-      height: 22px;
-      border: 2px solid var(--cream-dark);
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
+      background: var(--sage);
+      color: white;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 0.8rem;
-      color: white;
+      opacity: 0;
     }
 
-    .member-select-item.selected .member-select-check {
-      background: var(--sage);
-      border-color: var(--sage);
-    }
+    .member-select-item.selected .member-select-check { opacity: 1; }
 
     .form-group {
       margin-bottom: 16px;
@@ -668,17 +668,18 @@
       display: block;
       font-size: 0.8rem;
       font-weight: 600;
-      margin-bottom: 6px;
       color: var(--text-light);
+      margin-bottom: 6px;
     }
 
     .form-input {
       width: 100%;
-      padding: 10px 14px;
-      border: 1px solid var(--cream-dark);
+      padding: 12px 16px;
+      border: 2px solid var(--cream-dark);
       border-radius: var(--radius-md);
       font-family: 'Nunito', sans-serif;
       font-size: 0.9rem;
+      transition: border-color 0.2s;
     }
 
     .form-input:focus {
@@ -686,19 +687,22 @@
       border-color: var(--sage);
     }
 
+    .hidden { display: none !important; }
+
     /* ============ RESPONSIVE ============ */
     @media (max-width: 768px) {
       .sidebar {
         position: fixed;
-        left: 0;
+        left: -100%;
         top: 0;
         bottom: 0;
+        width: 85%;
+        max-width: 320px;
         z-index: 200;
-        transform: translateX(-100%);
-        transition: transform 0.3s;
+        transition: left 0.3s;
       }
 
-      .sidebar.active { transform: translateX(0); }
+      .sidebar.active { left: 0; }
 
       .sidebar-overlay {
         position: fixed;
@@ -720,55 +724,32 @@
 
       .mobile-menu-btn {
         display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: var(--cream);
+        border-radius: 50%;
+        font-size: 1.2rem;
+        cursor: pointer;
       }
 
-      .chat-area.no-chat .chat-header,
-      .chat-area.no-chat .chat-messages,
-      .chat-area.no-chat .chat-input-area {
-        display: none;
-      }
+      .header-actions .btn { display: none; }
     }
 
     @media (min-width: 769px) {
       .mobile-menu-btn { display: none; }
       .sidebar-overlay { display: none; }
     }
-
-    /* Loading */
-    .loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px;
-    }
-
-    .spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid var(--cream-dark);
-      border-top-color: var(--sage);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <!-- Header -->
   <header class="header">
-    <a href="cgi.html" class="back-btn">
-      <span>←</span>
-      <span>Volver</span>
-    </a>
-    <h1 class="header-title">
-      <span>💬</span>
-      <span>Mensajes</span>
-    </h1>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+    <a href="cgi.html" class="back-btn">← Volver</a>
+    <div class="header-title">💬 Mensajes</div>
     <div class="header-actions">
       <button class="btn btn-secondary" onclick="abrirModalNuevoGrupo()">+ Grupo</button>
       <button class="btn btn-primary" onclick="abrirModalNuevoChat()">+ Chat</button>
@@ -780,7 +761,7 @@
     <!-- Sidebar Overlay (mobile) -->
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar - Lista de conversaciones -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="search-box">
@@ -791,65 +772,58 @@
 
       <div class="sidebar-tabs">
         <button class="sidebar-tab active" onclick="cambiarTab('todos')">
-          Todos
-          <span class="badge hidden" id="badge-todos">0</span>
+          Todos <span class="badge hidden" id="badge-todos">0</span>
         </button>
         <button class="sidebar-tab" onclick="cambiarTab('grupos')">
-          Grupos
-          <span class="badge hidden" id="badge-grupos">0</span>
+          Grupos <span class="badge hidden" id="badge-grupos">0</span>
         </button>
         <button class="sidebar-tab" onclick="cambiarTab('privados')">
-          Privados
-          <span class="badge hidden" id="badge-privados">0</span>
+          Privados <span class="badge hidden" id="badge-privados">0</span>
         </button>
       </div>
 
       <div class="conversations-list" id="conversations-list">
-        <div class="loading">
-          <div class="spinner"></div>
+        <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 8px;">💬</div>
+          <div>Cargando conversaciones...</div>
         </div>
       </div>
     </aside>
 
     <!-- Chat Area -->
-    <main class="chat-area" id="chat-area">
+    <main class="chat-area">
       <!-- Empty State -->
       <div class="chat-empty" id="chat-empty">
         <div class="chat-empty-icon">💬</div>
         <div class="chat-empty-text">Selecciona una conversación</div>
-        <div class="chat-empty-hint">o crea una nueva para empezar a chatear</div>
+        <div class="chat-empty-hint">o crea un nuevo chat o grupo</div>
       </div>
 
       <!-- Chat Content (hidden by default) -->
-      <div class="chat-content hidden" id="chat-content">
+      <div id="chat-content" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
         <div class="chat-header">
-          <button class="chat-header-btn mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-          <div class="chat-header-avatar" id="chat-avatar">🪺</div>
+          <div class="chat-header-avatar" id="chat-avatar">👥</div>
           <div class="chat-header-info">
-            <div class="chat-header-name" id="chat-name">Conversación</div>
-            <div class="chat-header-status" id="chat-status">4 participantes</div>
+            <div class="chat-header-name" id="chat-name">Nombre</div>
+            <div class="chat-header-status" id="chat-status">0 participantes</div>
           </div>
           <div class="chat-header-actions">
             <button class="chat-header-btn" onclick="verInfoConversacion()" title="Info">ℹ️</button>
           </div>
         </div>
 
-        <div class="chat-messages" id="chat-messages">
-          <!-- Messages will be rendered here -->
-        </div>
+        <div class="chat-messages" id="chat-messages"></div>
 
         <div class="chat-input-area">
           <div class="chat-input-box">
             <textarea 
               class="chat-input" 
-              id="chat-input" 
+              id="chat-input"
               placeholder="Escribe un mensaje..."
               rows="1"
               onkeydown="handleInputKeydown(event)"
             ></textarea>
-            <button class="chat-send-btn" onclick="enviarMensaje()" id="send-btn">
-              ➤
-            </button>
+            <button class="chat-send-btn" id="send-btn" onclick="enviarMensaje()">➤</button>
           </div>
         </div>
       </div>
@@ -860,16 +834,14 @@
   <div class="modal-overlay" id="modal-nuevo-chat">
     <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title">💬 Nuevo chat privado</h3>
+        <div class="modal-title">💬 Nuevo chat privado</div>
         <button class="modal-close" onclick="cerrarModal('modal-nuevo-chat')">×</button>
       </div>
       <div class="modal-body">
         <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 16px;">
-          Selecciona un miembro de la estirpe:
+          Selecciona un miembro de tu estirpe para iniciar una conversación privada.
         </p>
-        <div class="member-select-list" id="members-chat-list">
-          <div class="loading"><div class="spinner"></div></div>
-        </div>
+        <div id="members-chat-list"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModal('modal-nuevo-chat')">Cancelar</button>
@@ -882,7 +854,7 @@
   <div class="modal-overlay" id="modal-nuevo-grupo">
     <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title">👥 Nuevo grupo</h3>
+        <div class="modal-title">👥 Nuevo grupo</div>
         <button class="modal-close" onclick="cerrarModal('modal-nuevo-grupo')">×</button>
       </div>
       <div class="modal-body">
@@ -890,12 +862,10 @@
           <label class="form-label">Nombre del grupo</label>
           <input type="text" class="form-input" id="grupo-nombre" placeholder="Ej: Hermanos, Primos..." maxlength="30">
         </div>
-        <div class="form-group">
-          <label class="form-label">Selecciona participantes:</label>
-          <div class="member-select-list" id="members-grupo-list">
-            <div class="loading"><div class="spinner"></div></div>
-          </div>
-        </div>
+        <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 16px;">
+          Selecciona los participantes:
+        </p>
+        <div id="members-grupo-list"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModal('modal-nuevo-grupo')">Cancelar</button>
@@ -919,6 +889,7 @@
     let selectedMemberChat = null;
     let selectedMembersGrupo = [];
     let unsubscribeMessages = null;
+    let unsubscribeConversaciones = null;
 
     // Auth
     auth.onAuthStateChanged(async (user) => {
@@ -973,6 +944,8 @@
           });
         });
 
+        console.log('Miembros estirpe cargados:', miembrosEstirpe.length);
+
       } catch (error) {
         console.error('Error cargando miembros:', error);
       }
@@ -980,24 +953,66 @@
 
     // ============ CARGAR CONVERSACIONES ============
     function cargarConversaciones() {
-      db.collection('conversaciones')
-        .where('participantes', 'array-contains', currentUser.uid)
-        .orderBy('ultimoMensaje.fecha', 'desc')
+      // Cancelar suscripción anterior si existe
+      if (unsubscribeConversaciones) {
+        unsubscribeConversaciones();
+      }
+
+      // CAMBIO CLAVE: Usar participantesEmail en lugar de participantes
+      // Esto permite encontrar conversaciones incluso antes de que el usuario tenga UID en la lista
+      // También usamos fechaActualizacion en lugar de ultimoMensaje.fecha
+      
+      console.log('Cargando conversaciones para:', currentUser.email);
+
+      // Primero intentamos con participantes (uid)
+      unsubscribeConversaciones = db.collection('conversaciones')
+        .where('familiaId', '==', userData.familiaId)
         .onSnapshot(snapshot => {
-          conversaciones = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          // Filtrar las que me incluyen (por uid O por email)
+          conversaciones = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(c => 
+              c.participantes?.includes(currentUser.uid) || 
+              c.participantesEmail?.includes(currentUser.email)
+            );
+
+          // Ordenar por fecha más reciente
+          conversaciones.sort((a, b) => {
+            const fechaA = a.fechaActualizacion?.toDate?.() || a.ultimoMensaje?.fecha?.toDate?.() || a.fechaCreacion?.toDate?.() || new Date(0);
+            const fechaB = b.fechaActualizacion?.toDate?.() || b.ultimoMensaje?.fecha?.toDate?.() || b.fechaCreacion?.toDate?.() || new Date(0);
+            return fechaB - fechaA;
+          });
+
+          console.log('Conversaciones encontradas:', conversaciones.length);
           renderConversaciones();
           actualizarBadges();
+
+          // Si tengo conversaciones donde estoy por email pero no por uid, añadir mi uid
+          conversaciones.forEach(async c => {
+            if (c.participantesEmail?.includes(currentUser.email) && !c.participantes?.includes(currentUser.uid)) {
+              console.log('Añadiendo mi UID a conversación:', c.id);
+              await db.collection('conversaciones').doc(c.id).update({
+                participantes: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+              });
+            }
+          });
+
         }, error => {
           console.error('Error cargando conversaciones:', error);
-          // Fallback sin ordenar si no hay índice
+          // Fallback: cargar sin listener
           db.collection('conversaciones')
-            .where('participantes', 'array-contains', currentUser.uid)
+            .where('familiaId', '==', userData.familiaId)
             .get()
             .then(snapshot => {
-              conversaciones = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              conversaciones = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() }))
+                .filter(c => 
+                  c.participantes?.includes(currentUser.uid) || 
+                  c.participantesEmail?.includes(currentUser.email)
+                );
               conversaciones.sort((a, b) => {
-                const fechaA = a.ultimoMensaje?.fecha?.toDate?.() || new Date(0);
-                const fechaB = b.ultimoMensaje?.fecha?.toDate?.() || new Date(0);
+                const fechaA = a.fechaActualizacion?.toDate?.() || new Date(0);
+                const fechaB = b.fechaActualizacion?.toDate?.() || new Date(0);
                 return fechaB - fechaA;
               });
               renderConversaciones();
@@ -1032,6 +1047,7 @@
           <div style="padding: 40px; text-align: center; color: var(--text-muted);">
             <div style="font-size: 2rem; margin-bottom: 8px;">💬</div>
             <div>No hay conversaciones</div>
+            <div style="font-size: 0.8rem; margin-top: 8px;">Crea un chat o grupo para empezar</div>
           </div>
         `;
         return;
@@ -1071,8 +1087,8 @@
       }
 
       const nombre = conv.nombre || 'Chat';
-      const tiempo = formatearTiempo(conv.ultimoMensaje?.fecha);
-      const preview = conv.ultimoMensaje?.texto || 'Sin mensajes';
+      const tiempo = formatearTiempo(conv.fechaActualizacion || conv.ultimoMensaje?.fecha || conv.fechaCreacion);
+      const preview = conv.ultimoMensaje?.texto || 'Sin mensajes aún';
       const deNombre = conv.ultimoMensaje?.deNombre || '';
 
       return `
@@ -1133,8 +1149,32 @@
 
     // ============ ABRIR CONVERSACIÓN ============
     async function abrirConversacion(convId) {
+      console.log('Abriendo conversación:', convId);
+
+      // Primero buscar en la lista local
       conversacionActiva = conversaciones.find(c => c.id === convId);
-      if (!conversacionActiva) return;
+      
+      // Si no está en la lista local, buscar directamente en Firebase
+      if (!conversacionActiva) {
+        console.log('No encontrada en local, buscando en Firebase...');
+        try {
+          const convDoc = await db.collection('conversaciones').doc(convId).get();
+          if (convDoc.exists) {
+            conversacionActiva = { id: convDoc.id, ...convDoc.data() };
+            // Añadir a la lista local
+            conversaciones.unshift(conversacionActiva);
+            console.log('Conversación encontrada en Firebase:', conversacionActiva.nombre);
+          } else {
+            console.error('Conversación no existe:', convId);
+            alert('No se pudo encontrar la conversación');
+            return;
+          }
+        } catch (error) {
+          console.error('Error buscando conversación:', error);
+          alert('Error al abrir la conversación');
+          return;
+        }
+      }
 
       // Actualizar UI
       document.getElementById('chat-empty').classList.add('hidden');
@@ -1147,7 +1187,7 @@
 
       document.getElementById('chat-avatar').textContent = avatar;
       document.getElementById('chat-name').textContent = conversacionActiva.nombre || 'Chat';
-      document.getElementById('chat-status').textContent = `${conversacionActiva.participantes?.length || 0} participantes`;
+      document.getElementById('chat-status').textContent = `${conversacionActiva.participantesNombres?.length || conversacionActiva.participantes?.length || 0} participantes`;
 
       // Marcar como activa en la lista
       renderConversaciones();
@@ -1272,7 +1312,7 @@
         });
 
         // Actualizar último mensaje y marcar no leído para otros
-        const otrosParticipantes = conversacionActiva.participantes.filter(p => p !== currentUser.uid);
+        const otrosParticipantes = (conversacionActiva.participantes || []).filter(p => p !== currentUser.uid);
 
         await db.collection('conversaciones').doc(conversacionActiva.id).update({
           ultimoMensaje: {
@@ -1281,6 +1321,7 @@
             deNombre: miNombre,
             fecha: firebase.firestore.FieldValue.serverTimestamp()
           },
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp(),
           noLeidosPor: otrosParticipantes
         });
 
@@ -1329,7 +1370,8 @@
       if (miembrosEstirpe.length === 0) {
         container.innerHTML = `
           <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-            No hay miembros con email en la estirpe
+            No hay miembros con email en la estirpe.<br>
+            <small>Añade emails a los miembros de los nidos primero.</small>
           </div>
         `;
         return;
@@ -1393,7 +1435,7 @@
 
         if (existente) {
           cerrarModal('modal-nuevo-chat');
-          abrirConversacion(existente.id);
+          await abrirConversacion(existente.id);
           btn.disabled = false;
           btn.textContent = 'Iniciar chat';
           return;
@@ -1401,25 +1443,30 @@
 
         const miNombre = userData.nombre || currentUser.email.split('@')[0];
 
-        // Crear nueva conversación
+        // Crear nueva conversación con fechaActualizacion
         const convRef = await db.collection('conversaciones').add({
           tipo: 'privada',
           nombre: selectedMemberChat.nombre || selectedMemberChat.iniciales,
-          participantes: [currentUser.uid], // El otro se añadirá cuando se registre
+          participantes: [currentUser.uid],
           participantesEmail: [currentUser.email, selectedMemberChat.email],
           participantesNombres: [miNombre, selectedMemberChat.nombre || selectedMemberChat.iniciales],
           familiaId: userData.familiaId,
           ultimoMensaje: null,
           noLeidosPor: [],
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        console.log('Chat privado creado:', convRef.id);
+
         cerrarModal('modal-nuevo-chat');
-        setTimeout(() => abrirConversacion(convRef.id), 500);
+        
+        // Esperar un momento y abrir
+        setTimeout(() => abrirConversacion(convRef.id), 300);
 
       } catch (error) {
         console.error('Error creando chat:', error);
-        alert('Error al crear el chat');
+        alert('Error al crear el chat: ' + error.message);
       }
 
       btn.disabled = false;
@@ -1443,6 +1490,7 @@
         const participantesEmail = [currentUser.email, ...selectedMembersGrupo.map(m => m.email)];
         const participantesNombres = [miNombre, ...selectedMembersGrupo.map(m => m.nombre || m.iniciales)];
 
+        // Crear grupo con fechaActualizacion
         const convRef = await db.collection('conversaciones').add({
           tipo: 'grupo',
           nombre: nombre,
@@ -1453,15 +1501,20 @@
           creador: currentUser.uid,
           ultimoMensaje: null,
           noLeidosPor: [],
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        console.log('Grupo creado:', convRef.id, nombre);
+
         cerrarModal('modal-nuevo-grupo');
-        setTimeout(() => abrirConversacion(convRef.id), 500);
+        
+        // Esperar un momento y abrir
+        setTimeout(() => abrirConversacion(convRef.id), 300);
 
       } catch (error) {
         console.error('Error creando grupo:', error);
-        alert('Error al crear el grupo');
+        alert('Error al crear el grupo: ' + error.message);
       }
 
       btn.disabled = false;
