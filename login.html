@@ -54,9 +54,9 @@
 
     .login-logo {
       width: auto;
-      height: 100px; /* Doble altura que el título (2rem ≈ 32px, así que 64px pero lo hago un poco más grande) */
+      height: 100px;
       margin: 0 auto 16px;
-      filter: hue-rotate(20deg) saturate(0.65) brightness(1.1); /* Ajustar al sage */
+      filter: hue-rotate(20deg) saturate(0.65) brightness(1.1);
     }
 
     .login-logo img {
@@ -159,6 +159,20 @@
       display: block;
     }
 
+    .success-message {
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      display: none;
+    }
+
+    .success-message.show {
+      display: block;
+    }
+
     .login-footer {
       text-align: center;
       margin-top: 24px;
@@ -244,7 +258,7 @@
 <body>
   <div class="loading-overlay" id="loading">
     <div class="spinner"></div>
-    <div class="loading-text">Verificando acceso...</div>
+    <div class="loading-text" id="loading-text">Verificando acceso...</div>
   </div>
 
   <div class="login-container">
@@ -258,6 +272,7 @@
 
     <div class="login-card">
       <div class="error-message" id="error-message"></div>
+      <div class="success-message" id="success-message"></div>
       
       <form id="login-form">
         <div class="form-group">
@@ -294,8 +309,8 @@
       </div>
 
       <div class="login-info">
-        <strong>¿No tienes cuenta?</strong>
-        Para acceder a FAMILYNK necesitas ser invitado por un administrador de tu familia.
+        <strong>¿Te han invitado?</strong>
+        Usa el email y contraseña que te enviaron. Tu cuenta se activará automáticamente.
       </div>
       <div style="text-align: center; margin-top: 16px;">
         <a href="planes.html" style="font-size: 0.85rem; color: var(--sage-dark); text-decoration: none;">Ver planes y precios →</a>
@@ -311,14 +326,16 @@
 
   <script>
     const loadingEl = document.getElementById('loading');
+    const loadingText = document.getElementById('loading-text');
     const errorEl = document.getElementById('error-message');
+    const successEl = document.getElementById('success-message');
     const form = document.getElementById('login-form');
     const btnLogin = document.getElementById('btn-login');
 
     // Verificar si ya hay sesión activa
     auth.onAuthStateChanged(async (user) => {
       if (user) {
-        showLoading(true);
+        showLoading(true, 'Verificando acceso...');
         await verificarTipoUsuario(user);
       }
     });
@@ -362,7 +379,6 @@
       } catch (error) {
         console.error('Error verificando usuario:', error);
         
-        // Si es error de índice, mostrar mensaje específico
         if (error.code === 'failed-precondition') {
           console.log('Necesitas crear un índice en Firestore. Mira la consola para el link.');
         }
@@ -387,38 +403,140 @@
       btnLogin.disabled = true;
       btnLogin.textContent = 'Entrando...';
       hideError();
+      hideSuccess();
       
       try {
+        // Intentar login normal
         await auth.signInWithEmailAndPassword(email, password);
         // onAuthStateChanged se encargará de la redirección
+        
       } catch (error) {
         console.error('Error login:', error);
         
-        let mensaje = 'Error al iniciar sesión.';
+        // Si el usuario no existe, buscar invitación
+        if (error.code === 'auth/user-not-found') {
+          await intentarActivarInvitacion(email, password);
+        } else {
+          // Otros errores
+          let mensaje = 'Error al iniciar sesión.';
+          
+          switch (error.code) {
+            case 'auth/wrong-password':
+              mensaje = 'Contraseña incorrecta.';
+              break;
+            case 'auth/invalid-email':
+              mensaje = 'El email no es válido.';
+              break;
+            case 'auth/too-many-requests':
+              mensaje = 'Demasiados intentos. Espera unos minutos.';
+              break;
+            case 'auth/user-disabled':
+              mensaje = 'Esta cuenta ha sido desactivada.';
+              break;
+            case 'auth/invalid-credential':
+              mensaje = 'Credenciales inválidas. Verifica tu email y contraseña.';
+              break;
+          }
+          
+          showError(mensaje);
+          btnLogin.disabled = false;
+          btnLogin.textContent = 'Entrar';
+        }
+      }
+    });
+
+    // Buscar invitación y crear usuario si coincide
+    async function intentarActivarInvitacion(email, password) {
+      try {
+        showLoading(true, 'Buscando tu invitación...');
         
-        switch (error.code) {
-          case 'auth/user-not-found':
-            mensaje = 'No existe una cuenta con este email.';
-            break;
-          case 'auth/wrong-password':
-            mensaje = 'Contraseña incorrecta.';
-            break;
-          case 'auth/invalid-email':
-            mensaje = 'El email no es válido.';
-            break;
-          case 'auth/too-many-requests':
-            mensaje = 'Demasiados intentos. Espera unos minutos.';
-            break;
-          case 'auth/user-disabled':
-            mensaje = 'Esta cuenta ha sido desactivada.';
-            break;
+        // Buscar invitación pendiente con este email y contraseña
+        const invitacionSnap = await db.collection('invitaciones-email')
+          .where('email', '==', email)
+          .where('passwordProvisional', '==', password)
+          .where('estado', '==', 'pendiente')
+          .limit(1)
+          .get();
+
+        if (invitacionSnap.empty) {
+          // No hay invitación válida
+          showLoading(false);
+          showError('No existe una cuenta con este email. Si te han invitado, verifica que los datos sean correctos.');
+          btnLogin.disabled = false;
+          btnLogin.textContent = 'Entrar';
+          return;
+        }
+
+        // ¡Encontrada! Verificar que no haya expirado
+        const invitacion = invitacionSnap.docs[0].data();
+        const invitacionId = invitacionSnap.docs[0].id;
+
+        if (invitacion.fechaExpiracion) {
+          const expira = invitacion.fechaExpiracion.toDate ? 
+                         invitacion.fechaExpiracion.toDate() : 
+                         new Date(invitacion.fechaExpiracion);
+          if (expira < new Date()) {
+            showLoading(false);
+            showError('Tu invitación ha expirado. Pide al administrador que te envíe una nueva.');
+            btnLogin.disabled = false;
+            btnLogin.textContent = 'Entrar';
+            return;
+          }
+        }
+
+        // Crear usuario en Firebase Auth
+        loadingText.textContent = 'Creando tu cuenta...';
+        
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+        const nuevoUsuario = userCredential.user;
+
+        // Crear documento en Firestore
+        loadingText.textContent = 'Configurando tu perfil...';
+        
+        await db.collection('usuarios').doc(nuevoUsuario.uid).set({
+          email: email,
+          nombre: invitacion.nombre || email.split('@')[0],
+          familiaId: invitacion.familiaId,
+          nidoId: invitacion.nidoId || null,
+          primerAcceso: true, // Para forzar cambio de contraseña
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          invitadoPor: invitacion.invitadoPor || null,
+          activo: true
+        });
+
+        // Marcar invitación como usada
+        await db.collection('invitaciones-email').doc(invitacionId).update({
+          estado: 'aceptada',
+          fechaAceptacion: firebase.firestore.FieldValue.serverTimestamp(),
+          usuarioCreado: nuevoUsuario.uid
+        });
+
+        // Mostrar éxito y redirigir
+        loadingText.textContent = '¡Bienvenido a FAMILYNK!';
+        
+        // Pequeña pausa para que vea el mensaje
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Redirigir a cambiar contraseña
+        window.location.href = 'cambiar-password.html';
+
+      } catch (error) {
+        console.error('Error activando invitación:', error);
+        showLoading(false);
+        
+        let mensaje = 'Error al activar tu cuenta.';
+        
+        if (error.code === 'auth/email-already-in-use') {
+          mensaje = 'Ya existe una cuenta con este email. Prueba a iniciar sesión normalmente.';
+        } else if (error.code === 'auth/weak-password') {
+          mensaje = 'La contraseña es demasiado débil. Contacta al administrador.';
         }
         
         showError(mensaje);
         btnLogin.disabled = false;
         btnLogin.textContent = 'Entrar';
       }
-    });
+    }
 
     // Recuperar contraseña
     document.getElementById('forgot-password').addEventListener('click', async (e) => {
@@ -435,7 +553,7 @@
       try {
         await auth.sendPasswordResetEmail(email);
         hideError();
-        alert('Te hemos enviado un email para restablecer tu contraseña. Revisa tu bandeja de entrada.');
+        showSuccess('Te hemos enviado un email para restablecer tu contraseña. Revisa tu bandeja de entrada.');
       } catch (error) {
         console.error('Error reset:', error);
         
@@ -451,13 +569,25 @@
     function showError(message) {
       errorEl.textContent = message;
       errorEl.classList.add('show');
+      successEl.classList.remove('show');
     }
 
     function hideError() {
       errorEl.classList.remove('show');
     }
 
-    function showLoading(show) {
+    function showSuccess(message) {
+      successEl.textContent = message;
+      successEl.classList.add('show');
+      errorEl.classList.remove('show');
+    }
+
+    function hideSuccess() {
+      successEl.classList.remove('show');
+    }
+
+    function showLoading(show, text = 'Verificando acceso...') {
+      loadingText.textContent = text;
       loadingEl.classList.toggle('show', show);
     }
   </script>
