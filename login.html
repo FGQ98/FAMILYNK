@@ -419,23 +419,21 @@
             error.code === 'auth/invalid-credential' ||
             error.code === 'auth/wrong-password') {
           await intentarActivarInvitacion(email, password);
+        } else if (error.code === 'auth/invalid-email') {
+          showError('El email no es válido.');
+          btnLogin.disabled = false;
+          btnLogin.textContent = 'Entrar / Registrarte';
+        } else if (error.code === 'auth/too-many-requests') {
+          showError('Demasiados intentos. Espera unos minutos.');
+          btnLogin.disabled = false;
+          btnLogin.textContent = 'Entrar / Registrarte';
+        } else if (error.code === 'auth/user-disabled') {
+          showError('Esta cuenta ha sido desactivada.');
+          btnLogin.disabled = false;
+          btnLogin.textContent = 'Entrar / Registrarte';
         } else {
-          // Otros errores
-          let mensaje = 'Error al iniciar sesión.';
-          
-          switch (error.code) {
-            case 'auth/invalid-email':
-              mensaje = 'El email no es válido.';
-              break;
-            case 'auth/too-many-requests':
-              mensaje = 'Demasiados intentos. Espera unos minutos.';
-              break;
-            case 'auth/user-disabled':
-              mensaje = 'Esta cuenta ha sido desactivada.';
-              break;
-          }
-          
-          showError(mensaje);
+          // Error no esperado - mostrar código para debug
+          showError('Error: ' + (error.code || error.message || 'Desconocido'));
           btnLogin.disabled = false;
           btnLogin.textContent = 'Entrar / Registrarte';
         }
@@ -543,12 +541,14 @@
         console.error('Error activando invitación:', error);
         showLoading(false);
         
-        let mensaje = 'Error al activar tu cuenta.';
+        let mensaje = 'Error al activar tu cuenta: ' + (error.code || error.message || 'Desconocido');
         
         if (error.code === 'auth/email-already-in-use') {
-          mensaje = 'Ya existe una cuenta con este email. Prueba a iniciar sesión normalmente.';
+          mensaje = 'Ya existe una cuenta con este email. Prueba a iniciar sesión normalmente o recupera tu contraseña.';
         } else if (error.code === 'auth/weak-password') {
           mensaje = 'La contraseña es demasiado débil. Contacta al administrador.';
+        } else if (error.message?.includes('index')) {
+          mensaje = 'Error de configuración. Contacta al administrador (índice Firestore).';
         }
         
         showError(mensaje);
