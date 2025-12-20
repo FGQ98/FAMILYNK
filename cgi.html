@@ -635,6 +635,9 @@
     .cta-encargo { border-color: var(--tienda); }
     .cta-encargo:hover { background: var(--tienda-muted); border-color: var(--tienda); }
 
+    .cta-asistencia { border-color: #9C27B0; }
+    .cta-asistencia:hover { background: rgba(156, 39, 176, 0.1); border-color: #7B1FA2; }
+
     /* ============ MODALES ============ */
     .modal-overlay {
       position: fixed;
@@ -868,13 +871,7 @@
     }
 
     .evento-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .evento-dot.cumple { background: #E91E63; }
-    .evento-dot.especial { background: #4CAF50; }
-    .evento-dot.evento { background: #FF9800; }
-    .evento-dot.cita { background: #2196F3; }
-    .evento-dot.reserva { background: #9C27B0; }
-
-    .cal-day .day-dots { display: flex; gap: 1px; margin-top: 1px; }
+    .evento-dot.cita { background: var(--sage); }
 
     /* ============ TABLÓN ============ */
     .tablon-card { border-left: 4px solid var(--sage); }
@@ -908,6 +905,77 @@
     .anuncio-fecha { font-size: 0.6rem; color: var(--text-muted); margin-left: auto; }
     .anuncio-titulo { font-weight: 600; font-size: 0.8rem; }
     .anuncio-texto { font-size: 0.7rem; color: var(--text-light); }
+
+    /* Notificaciones de herramientas */
+    .notif-item {
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .notif-item:hover { transform: translateX(2px); }
+    .notif-item:last-child { margin-bottom: 0; }
+
+    .notif-item.accion {
+      background: var(--terracotta-muted);
+      border-left: 3px solid var(--terracotta);
+    }
+    .notif-item.info-notif {
+      background: rgba(33, 150, 243, 0.1);
+      border-left: 3px solid #2196F3;
+    }
+
+    .notif-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .notif-badge {
+      font-size: 0.55rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .notif-badge.accion { background: var(--terracotta); color: white; }
+    .notif-badge.info-notif { background: #2196F3; color: white; }
+
+    .notif-tiempo { font-size: 0.6rem; color: var(--text-muted); margin-left: auto; }
+    .notif-titulo { font-weight: 600; font-size: 0.8rem; margin-bottom: 2px; }
+    .notif-texto { font-size: 0.7rem; color: var(--text-light); }
+    .notif-origen { font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
+    .notif-marcar {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid var(--text-muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.5;
+      transition: all 0.2s;
+    }
+    .notif-marcar:hover { opacity: 1; border-color: var(--sage); background: var(--sage); color: white; }
+
+    .tablon-separator {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      padding: 8px 0 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
 
     /* ============ TAREAS ============ */
     .tareas-card { border-left: 4px solid var(--terracotta); }
@@ -2115,6 +2183,10 @@
           <span class="cta-icon">🛒</span>
           <span class="cta-label">Hacer encargo</span>
         </button>
+        <button class="cta-btn cta-asistencia" onclick="abrirModalConvocatoria()">
+          <span class="cta-icon">✋</span>
+          <span class="cta-label">Convocar</span>
+        </button>
       </div>
 
       <div class="dashboard-grid">
@@ -2425,6 +2497,51 @@
     </div>
   </div>
 
+  <!-- Modal Convocatoria -->
+  <div class="modal-overlay" id="modal-convocatoria">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">✋ Convocar asistencia</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-convocatoria" onsubmit="enviarConvocatoria(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Evento o actividad *</label>
+            <input type="text" class="form-input" id="convocatoria-titulo" required placeholder="Ej: Comida de Navidad, Excursión al monte...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha *</label>
+            <input type="date" class="form-input" id="convocatoria-fecha" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora (opcional)</label>
+            <input type="time" class="form-input" id="convocatoria-hora">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lugar (opcional)</label>
+            <input type="text" class="form-input" id="convocatoria-lugar" placeholder="Ej: Casa de los abuelos">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-input" id="convocatoria-notas" rows="2" placeholder="Detalles adicionales..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">¿Quién debe confirmar?</label>
+            <select class="form-select" id="convocatoria-alcance">
+              <option value="todos">Toda la familia</option>
+              <option value="nido">Solo mi nido</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #9C27B0, #7B1FA2);">Enviar convocatoria</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <footer class="app-footer">
     <a href="planes.html">Planes</a>
     <a href="#">Privacidad</a>
@@ -2510,7 +2627,7 @@
       await loadNidos();
       await verificarTiendaDisponible();
       
-      await renderCalendario();
+      renderCalendario();
       renderTareas();
       renderMensajes();
       renderTablon();
@@ -2765,94 +2882,8 @@
       }
     }
 
-    // ============ CALENDARIO (ACTIVO) ============
-    let eventosCalendario = [];
-
-    async function cargarEventosCalendario() {
-      if (!currentFamilia) return;
-      
-      eventosCalendario = [];
-      const añoActual = new Date().getFullYear();
-      const familiaId = currentFamilia.id;
-
-      // 1. CUMPLEAÑOS desde miembros
-      try {
-        const nidosSnap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
-        nidosSnap.docs.forEach(doc => {
-          const nido = doc.data();
-          (nido.miembrosData || []).forEach(m => {
-            if (m.fechaNacimiento) {
-              const [,mes,dia] = m.fechaNacimiento.split('-');
-              [añoActual, añoActual+1].forEach(y => {
-                eventosCalendario.push({ tipo:'cumple', titulo:`🎂 ${m.nombre || m.iniciales}`, fecha:`${y}-${mes}-${dia}` });
-              });
-            }
-          });
-        });
-      } catch(e) {}
-
-      // 2. DÍAS ESPECIALES
-      try {
-        const snap = await db.collection('diasEspeciales').where('familiaId', '==', familiaId).get();
-        snap.docs.forEach(doc => {
-          const d = doc.data();
-          [añoActual, añoActual+1].forEach(y => {
-            eventosCalendario.push({ tipo: d.tipo==='cumple'?'cumple':'especial', titulo:d.nombre, fecha:`${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` });
-          });
-        });
-      } catch(e) {}
-
-      // 3. EVENTOS
-      try {
-        const snap = await db.collection('eventos').where('familiaId', '==', familiaId).get();
-        snap.docs.forEach(doc => {
-          const e = doc.data();
-          if (e.fecha) eventosCalendario.push({ tipo:'evento', titulo:e.nombre, fecha:e.fecha, hora:e.hora });
-        });
-      } catch(e) {}
-
-      // 4. CITAS (según visibilidad)
-      try {
-        const snap = await db.collection('citas').where('familiaId', '==', familiaId).get();
-        snap.docs.forEach(doc => {
-          const c = doc.data();
-          let visible = c.capa === 'estirpe' || c.capa === 'rama' || 
-                       (c.capa === 'nido' && c.nidoId === userData?.nidoId);
-          if (visible && c.fecha) {
-            eventosCalendario.push({ tipo:'cita', titulo:c.titulo, fecha:c.fecha, hora:c.hora });
-          }
-        });
-      } catch(e) {}
-
-      // 5. RESERVAS de bienes
-      try {
-        const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
-        for (const bienDoc of bienesSnap.docs) {
-          const bien = bienDoc.data();
-          try {
-            const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
-            reservasSnap.docs.forEach(resDoc => {
-              const r = resDoc.data();
-              if (r.entrada) {
-                eventosCalendario.push({ 
-                  tipo: 'reserva', 
-                  titulo: `🏠 ${bien.nombre || 'Reserva'}`,
-                  fecha: r.entrada,
-                  fechaFin: r.salida
-                });
-              }
-            });
-          } catch(e) {}
-        }
-      } catch(e) {}
-    }
-
-    async function renderCalendario() {
-      // Cargar eventos si no están cargados
-      if (eventosCalendario.length === 0 && currentFamilia) {
-        await cargarEventosCalendario();
-      }
-
+    // ============ CALENDARIO ============
+    function renderCalendario() {
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const hoy = new Date();
       
@@ -2875,61 +2906,19 @@
         html += `<div class="cal-day other-month">${diasMesAnterior - i}</div>`;
       }
 
-      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
-
       for (let d = 1; d <= ultimoDia.getDate(); d++) {
         const esHoy = d === hoy.getDate();
-        const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        
-        // Buscar eventos de este día
-        const eventosDelDia = eventosCalendario.filter(e => {
-          if (e.tipo === 'reserva' && e.fechaFin) {
-            return fechaStr >= e.fecha && fechaStr <= e.fechaFin;
-          }
-          return e.fecha === fechaStr;
-        });
-        
-        const tipos = [...new Set(eventosDelDia.map(e => e.tipo))];
-        const dots = tipos.length > 0 
-          ? `<div class="day-dots">${tipos.slice(0,3).map(t => `<span class="evento-dot ${t}"></span>`).join('')}</div>` 
-          : '';
-        
-        html += `<div class="cal-day ${esHoy ? 'today' : ''}" onclick="window.location.href='calendario.html'">${d}${dots}</div>`;
+        html += `<div class="cal-day ${esHoy ? 'today' : ''}">${d}</div>`;
       }
 
       container.innerHTML = html;
 
-      // Mostrar eventos de hoy
-      renderEventosHoy(hoyStr);
-    }
-
-    function renderEventosHoy(fechaStr) {
-      const eventosHoy = eventosCalendario.filter(e => {
-        if (e.tipo === 'reserva' && e.fechaFin) {
-          return fechaStr >= e.fecha && fechaStr <= e.fechaFin;
-        }
-        return e.fecha === fechaStr;
-      });
-
-      const container = document.getElementById('eventos-hoy');
-      
-      if (eventosHoy.length === 0) {
-        container.innerHTML = `
-          <div class="evento-mini">
-            <div class="evento-dot cita"></div>
-            <span style="color:var(--text-muted);">Sin eventos hoy</span>
-          </div>
-        `;
-        return;
-      }
-
-      // Mostrar hasta 3 eventos
-      container.innerHTML = eventosHoy.slice(0, 3).map(e => `
-        <div class="evento-mini" style="margin-bottom: 4px;">
-          <div class="evento-dot ${e.tipo}"></div>
-          <span style="font-size:0.7rem;">${e.titulo}</span>
+      document.getElementById('eventos-hoy').innerHTML = `
+        <div class="evento-mini">
+          <div class="evento-dot cita"></div>
+          <span style="color:var(--text-muted);">Sin eventos hoy</span>
         </div>
-      `).join('') + (eventosHoy.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted);text-align:right;">+${eventosHoy.length - 3} más</div>` : '');
+      `;
     }
 
     // ============ TAREAS (REAL) ============
@@ -3077,48 +3066,204 @@
 
     // ============ TABLÓN (REAL) ============
     let anunciosData = [];
+    let notificacionesData = [];
 
     async function renderTablon() {
       const container = document.getElementById('tablon-list');
       
       if (!currentFamilia) {
-        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin anuncios</div>';
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
         return;
       }
 
       try {
-        const snap = await db.collection('anuncios')
+        // 1. Cargar notificaciones de herramientas (para este usuario)
+        const ahora = new Date();
+        const notifSnap = await db.collection('notificaciones')
+          .where('familiaId', '==', currentFamilia.id)
+          .where('destinatarios', 'array-contains', currentUser.uid)
+          .where('estado', '==', 'activa')
+          .orderBy('fechaCreacion', 'desc')
+          .limit(5)
+          .get();
+
+        notificacionesData = notifSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(n => {
+            // Filtrar expiradas
+            if (n.fechaExpiracion) {
+              const expira = n.fechaExpiracion.toDate ? n.fechaExpiracion.toDate() : new Date(n.fechaExpiracion);
+              if (expira < ahora) return false;
+            }
+            // Filtrar ya completadas por este usuario
+            if (n.tipo === 'accion' && n.completadoPor?.includes(currentUser.uid)) return false;
+            return true;
+          });
+
+        // 2. Cargar anuncios generales
+        const anunciosSnap = await db.collection('anuncios')
           .where('familiaId', '==', currentFamilia.id)
           .where('activo', '==', true)
           .orderBy('fechaCreacion', 'desc')
           .limit(3)
           .get();
 
-        anunciosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        anunciosData = anunciosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        if (anunciosData.length === 0) {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin anuncios</div>';
+        // 3. Renderizar
+        let html = '';
+
+        // Notificaciones de acción primero (más urgentes)
+        const acciones = notificacionesData.filter(n => n.tipo === 'accion');
+        const infos = notificacionesData.filter(n => n.tipo === 'info');
+
+        if (acciones.length > 0) {
+          html += '<div class="tablon-separator">⚡ Requiere tu acción</div>';
+          html += acciones.map(n => renderNotificacion(n)).join('');
+        }
+
+        if (infos.length > 0) {
+          html += '<div class="tablon-separator">ℹ️ Información</div>';
+          html += infos.map(n => renderNotificacion(n)).join('');
+        }
+
+        if (anunciosData.length > 0) {
+          if (acciones.length > 0 || infos.length > 0) {
+            html += '<div class="tablon-separator">📢 Anuncios</div>';
+          }
+          html += anunciosData.map(a => {
+            const tiempo = formatearTiempo(a.fechaCreacion);
+            return `
+              <div class="anuncio-item">
+                <div class="anuncio-header">
+                  <span class="anuncio-tipo ${a.tipo}">${a.tipo === 'convocatoria' ? '📣' : a.tipo === 'urgente' ? '🚨' : 'ℹ️'} ${a.tipo}</span>
+                  <span class="anuncio-fecha">${tiempo}</span>
+                </div>
+                <div class="anuncio-titulo">${a.titulo}</div>
+                <div class="anuncio-texto">${a.contenido?.substring(0, 60) || ''}${a.contenido?.length > 60 ? '...' : ''}</div>
+              </div>
+            `;
+          }).join('');
+        }
+
+        if (html === '') {
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
           return;
         }
 
-        container.innerHTML = anunciosData.map(a => {
-          const tiempo = formatearTiempo(a.fechaCreacion);
-          return `
-            <div class="anuncio-item">
-              <div class="anuncio-header">
-                <span class="anuncio-tipo ${a.tipo}">${a.tipo === 'convocatoria' ? '📣' : a.tipo === 'urgente' ? '🚨' : 'ℹ️'} ${a.tipo}</span>
-                <span class="anuncio-fecha">${tiempo}</span>
-              </div>
-              <div class="anuncio-titulo">${a.titulo}</div>
-              <div class="anuncio-texto">${a.contenido?.substring(0, 60) || ''}${a.contenido?.length > 60 ? '...' : ''}</div>
-            </div>
-          `;
-        }).join('');
+        container.innerHTML = html;
 
       } catch (error) {
-        console.error('Error cargando anuncios:', error);
-        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin anuncios</div>';
+        console.error('Error cargando tablón:', error);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
       }
+    }
+
+    function renderNotificacion(n) {
+      const tiempo = formatearTiempo(n.fechaCreacion);
+      const iconos = {
+        mercadillo: '🏪',
+        votacion: '🗳️',
+        encuesta: '📊',
+        'amigo-invisible': '🎁',
+        'elegir-fecha': '📆',
+        turnos: '🔄',
+        porra: '🎯',
+        convocatoria: '✋',
+        general: '📌'
+      };
+      const icono = iconos[n.categoria] || '📌';
+      const tipoClass = n.tipo === 'accion' ? 'accion' : 'info-notif';
+
+      return `
+        <div class="notif-item ${tipoClass}" onclick="abrirNotificacion('${n.id}', '${n.enlace || ''}')">
+          <button class="notif-marcar" onclick="event.stopPropagation(); marcarNotificacion('${n.id}', '${n.tipo}')" title="${n.tipo === 'accion' ? 'Marcar como hecho' : 'Descartar'}">✓</button>
+          <div class="notif-header">
+            <span class="notif-badge ${tipoClass}">${n.tipo === 'accion' ? '⚡ Acción' : 'ℹ️ Info'}</span>
+            <span class="notif-tiempo">${tiempo}</span>
+          </div>
+          <div class="notif-titulo">${n.titulo}</div>
+          ${n.mensaje ? `<div class="notif-texto">${n.mensaje.substring(0, 80)}${n.mensaje.length > 80 ? '...' : ''}</div>` : ''}
+          <div class="notif-origen">${icono} ${n.categoria || 'General'}</div>
+        </div>
+      `;
+    }
+
+    async function abrirNotificacion(notifId, enlace) {
+      // Marcar como leída
+      try {
+        await db.collection('notificaciones').doc(notifId).update({
+          leidoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+        });
+      } catch(e) {}
+
+      // Navegar si hay enlace
+      if (enlace) {
+        window.location.href = enlace;
+      }
+    }
+
+    async function marcarNotificacion(notifId, tipo) {
+      try {
+        if (tipo === 'accion') {
+          // Marcar como completada
+          await db.collection('notificaciones').doc(notifId).update({
+            completadoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+          });
+        } else {
+          // Para info, marcar como leída (la ocultará)
+          await db.collection('notificaciones').doc(notifId).update({
+            leidoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+            // Si todos los destinatarios la han leído, marcar como completada
+          });
+        }
+        
+        // Refrescar tablón
+        await renderTablon();
+      } catch (error) {
+        console.error('Error marcando notificación:', error);
+      }
+    }
+
+    // Función auxiliar para crear notificaciones (usada por herramientas)
+    async function crearNotificacion(datos) {
+      /*
+        datos = {
+          tipo: 'accion' | 'info',
+          categoria: 'mercadillo' | 'votacion' | etc,
+          titulo: string,
+          mensaje: string (opcional),
+          destinatarios: [uid, uid...],
+          enlace: string (opcional),
+          origen: { tipo: string, id: string } (opcional)
+        }
+      */
+      const ahora = new Date();
+      const expiracion = new Date(ahora);
+      
+      if (datos.tipo === 'info') {
+        expiracion.setDate(expiracion.getDate() + 7); // Info expira en 7 días
+      } else {
+        expiracion.setFullYear(expiracion.getFullYear() + 1); // Acción no expira (1 año)
+      }
+
+      const notif = {
+        tipo: datos.tipo,
+        categoria: datos.categoria,
+        titulo: datos.titulo,
+        mensaje: datos.mensaje || null,
+        familiaId: currentFamilia?.id || userData?.familiaId,
+        destinatarios: datos.destinatarios,
+        leidoPor: [],
+        completadoPor: [],
+        fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+        fechaExpiracion: expiracion,
+        enlace: datos.enlace || null,
+        origen: datos.origen || null,
+        estado: 'activa',
+        recordatorioEnviado: false
+      };
+
+      return await db.collection('notificaciones').add(notif);
     }
 
     // ============ MENÚS (REAL) ============
@@ -3974,6 +4119,105 @@
       popularSelectBienes('encargo-bien');
       document.getElementById('form-encargo').reset();
       document.getElementById('modal-encargo').classList.add('active');
+    }
+
+    function abrirModalConvocatoria() {
+      document.getElementById('form-convocatoria').reset();
+      // Establecer fecha mínima como hoy
+      document.getElementById('convocatoria-fecha').min = new Date().toISOString().split('T')[0];
+      document.getElementById('modal-convocatoria').classList.add('active');
+    }
+
+    async function enviarConvocatoria(e) {
+      e.preventDefault();
+      
+      const titulo = document.getElementById('convocatoria-titulo').value.trim();
+      const fecha = document.getElementById('convocatoria-fecha').value;
+      const hora = document.getElementById('convocatoria-hora').value || null;
+      const lugar = document.getElementById('convocatoria-lugar').value.trim() || null;
+      const notas = document.getElementById('convocatoria-notas').value.trim() || null;
+      const alcance = document.getElementById('convocatoria-alcance').value;
+
+      try {
+        // 1. Determinar destinatarios
+        let destinatarios = [];
+        
+        if (alcance === 'todos') {
+          // Todos los usuarios de la familia
+          const usuariosSnap = await db.collection('usuarios')
+            .where('familiaId', '==', currentFamilia.id)
+            .get();
+          destinatarios = usuariosSnap.docs.map(doc => doc.id).filter(uid => uid !== currentUser.uid);
+        } else {
+          // Solo miembros de mi nido
+          if (miNidoPrincipal) {
+            const miembros = miNidoPrincipal.miembrosData || [];
+            for (const m of miembros) {
+              if (m.email) {
+                const userSnap = await db.collection('usuarios')
+                  .where('email', '==', m.email.toLowerCase())
+                  .get();
+                if (!userSnap.empty && userSnap.docs[0].id !== currentUser.uid) {
+                  destinatarios.push(userSnap.docs[0].id);
+                }
+              }
+            }
+          }
+        }
+
+        // 2. Crear la convocatoria
+        const convocatoriaRef = await db.collection('convocatorias').add({
+          titulo: titulo,
+          fecha: fecha,
+          hora: hora,
+          lugar: lugar,
+          notas: notas,
+          alcance: alcance,
+          familiaId: currentFamilia.id,
+          nidoId: miNidoPrincipal?.id || null,
+          creadoPor: currentUser.uid,
+          creadoPorNombre: userData?.nombre || currentUser.email.split('@')[0],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          estado: 'activa',
+          confirmados: [],
+          rechazados: [],
+          pendientes: destinatarios
+        });
+
+        // 3. Crear notificación de ACCIÓN para cada destinatario
+        const miNombre = userData?.nombre || currentUser.email.split('@')[0];
+        const fechaEvento = new Date(fecha + 'T23:59:59');
+
+        if (destinatarios.length > 0) {
+          await db.collection('notificaciones').add({
+            tipo: 'accion',
+            categoria: 'convocatoria',
+            titulo: `✋ ${miNombre} te convoca: "${titulo}"`,
+            mensaje: `${fecha}${hora ? ' a las ' + hora : ''}${lugar ? ' en ' + lugar : ''}`,
+            familiaId: currentFamilia.id,
+            destinatarios: destinatarios,
+            leidoPor: [],
+            completadoPor: [],
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+            fechaExpiracion: fechaEvento, // Caduca pasada la fecha del evento
+            enlace: `herramienta-asistencia.html?id=${convocatoriaRef.id}`,
+            origen: { tipo: 'convocatoria', id: convocatoriaRef.id },
+            estado: 'activa',
+            recordatorioEnviado: false,
+            fechaRecordatorio: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)
+          });
+        }
+
+        cerrarModales();
+        alert(`✅ Convocatoria enviada a ${destinatarios.length} persona${destinatarios.length !== 1 ? 's' : ''}`);
+        
+        // Refrescar tablón
+        await renderTablon();
+
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al enviar la convocatoria');
+      }
     }
 
     // Enviar avería

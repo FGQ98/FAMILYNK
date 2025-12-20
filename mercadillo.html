@@ -911,6 +911,7 @@
 
       const id = document.getElementById('articulo-id').value;
       const tipo = document.getElementById('articulo-tipo').value;
+      const esNuevo = !id;
 
       const data = {
         tipo: tipo,
@@ -936,12 +937,49 @@
       btn.textContent = 'Guardando...';
 
       try {
+        let articuloId;
         if (id) {
           await db.collection('mercadillo').doc(id).update(data);
+          articuloId = id;
         } else {
           data.fechaPublicacion = firebase.firestore.FieldValue.serverTimestamp();
           data.interesados = [];
-          await db.collection('mercadillo').add(data);
+          const docRef = await db.collection('mercadillo').add(data);
+          articuloId = docRef.id;
+        }
+
+        // Si es nuevo, crear notificación INFO para la familia
+        if (esNuevo) {
+          // Obtener todos los usuarios de la familia (excepto yo)
+          const usuariosSnap = await db.collection('usuarios')
+            .where('familiaId', '==', userData.familiaId)
+            .get();
+          
+          const destinatarios = usuariosSnap.docs
+            .map(doc => doc.id)
+            .filter(uid => uid !== currentUser.uid);
+
+          if (destinatarios.length > 0) {
+            const tipoLabel = { vender: 'vende', regalar: 'regala', cambiar: 'cambia' };
+            const miNombre = userData?.nombre || currentUser.email.split('@')[0];
+            
+            await db.collection('notificaciones').add({
+              tipo: 'info',
+              categoria: 'mercadillo',
+              titulo: `${miNombre} ${tipoLabel[tipo]} "${data.titulo}"`,
+              mensaje: data.precio ? `${data.precio}€` : (data.cambiarPor || null),
+              familiaId: userData.familiaId,
+              destinatarios: destinatarios,
+              leidoPor: [],
+              completadoPor: [],
+              fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+              fechaExpiracion: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
+              enlace: 'mercadillo.html',
+              origen: { tipo: 'mercadillo', id: articuloId },
+              estado: 'activa',
+              recordatorioEnviado: false
+            });
+          }
         }
 
         cerrarModal('publicar');
@@ -1038,16 +1076,41 @@
     }
 
     async function mostrarInteres(articuloId) {
+      const a = articulos.find(x => x.id === articuloId);
+      if (!a) return;
+
       const mensaje = prompt('¿Quieres dejar un mensaje? (opcional)');
+      const miNombre = userData?.nombre || currentUser.email.split('@')[0];
       
       try {
+        // 1. Registrar interés en el artículo
         await db.collection('mercadillo').doc(articuloId).update({
           interesados: firebase.firestore.FieldValue.arrayUnion({
             uid: currentUser.uid,
-            nombre: userData?.nombre || currentUser.email.split('@')[0],
+            nombre: miNombre,
             mensaje: mensaje || null,
             fecha: new Date().toISOString()
           })
+        });
+
+        // 2. Crear notificación de ACCIÓN para el vendedor
+        const tipoLabel = { vender: 'comprar', regalar: 'recibir', cambiar: 'intercambiar' };
+        await db.collection('notificaciones').add({
+          tipo: 'accion',
+          categoria: 'mercadillo',
+          titulo: `${miNombre} quiere ${tipoLabel[a.tipo] || 'ver'} "${a.titulo}"`,
+          mensaje: mensaje || null,
+          familiaId: userData.familiaId,
+          destinatarios: [a.publicadoPor], // Solo el vendedor
+          leidoPor: [],
+          completadoPor: [],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaExpiracion: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 año
+          enlace: 'mercadillo.html',
+          origen: { tipo: 'mercadillo', id: articuloId },
+          estado: 'activa',
+          recordatorioEnviado: false,
+          fechaRecordatorio: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 días para recordatorio
         });
 
         alert('✅ ¡Listo! El vendedor verá tu interés.');
