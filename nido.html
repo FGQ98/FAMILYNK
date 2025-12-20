@@ -1239,8 +1239,18 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <script>
+    // Configuración EmailJS
+    const EMAILJS_PUBLIC_KEY = 'eWMtiJpUqrLsA5Nel';
+    const EMAILJS_SERVICE = 'service_fcfx5od';
+    const EMAILJS_TEMPLATE = 'template_my2n26t';
+    
+    // Inicializar EmailJS
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+
     let currentUser = null;
     let userData = null;
     let nidoId = null;
@@ -1530,40 +1540,66 @@
 
       try {
         // Generar contraseña provisional
-        const passwordProvisional = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        let passwordProvisional = '';
+        for (let i = 0; i < 8; i++) {
+          passwordProvisional += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        // Obtener nombre de la familia
+        let familiaNombre = 'Tu familia';
+        if (nidoData?.familiaId) {
+          try {
+            const familiaDoc = await db.collection('familias').doc(nidoData.familiaId).get();
+            if (familiaDoc.exists) {
+              familiaNombre = familiaDoc.data().nombre || familiaNombre;
+            }
+          } catch(e) {}
+        }
+
+        // Preparar parámetros para EmailJS
+        const templateParams = {
+          email: email.toLowerCase(),
+          passcode: passwordProvisional,
+          familia_nombre: familiaNombre,
+          admin_nombre: userData?.nombre || currentUser.email.split('@')[0]
+        };
+
+        console.log('Enviando email con params:', templateParams);
+
+        // Enviar email con EmailJS
+        const emailResult = await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, templateParams);
+        console.log('EmailJS response:', emailResult);
+
+        // Guardar invitación en Firestore
         const fechaExpiracion = new Date();
         fechaExpiracion.setDate(fechaExpiracion.getDate() + 7);
 
-        // Crear invitación en Firestore
-        await db.collection('invitaciones').add({
+        await db.collection('invitaciones-email').add({
           email: email.toLowerCase(),
           nombre: nombre,
           familiaId: nidoData.familiaId,
           nidoId: nidoId,
           passwordProvisional: passwordProvisional,
           estado: 'pendiente',
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaEnvio: firebase.firestore.FieldValue.serverTimestamp(),
           fechaExpiracion: fechaExpiracion,
-          creadoPor: currentUser.uid
+          invitadoPor: currentUser.uid,
+          invitadoPorNombre: userData?.nombre || currentUser.email
         });
 
-        // Mostrar datos para envío manual (hasta que tengamos SendGrid)
-        alert(`✅ Invitación creada para ${email}\n\n` +
-              `📧 Envía estos datos al invitado:\n\n` +
-              `URL: ${window.location.origin}/login.html\n` +
-              `Email: ${email}\n` +
-              `Contraseña: ${passwordProvisional}\n\n` +
-              `⚠️ Válida por 7 días`);
+        // Éxito
+        alert(`✅ Invitación enviada a ${email}\n\nEl invitado recibirá un email con sus credenciales de acceso.`);
 
         // Cambiar botón a "Enviada"
-        btn.textContent = '✓ Invitación creada';
+        btn.textContent = '✓ Invitación enviada';
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-secondary');
         btn.disabled = true;
 
       } catch (error) {
-        console.error('Error creando invitación:', error);
-        alert('Error al crear la invitación');
+        console.error('Error enviando invitación:', error);
+        alert('Error al enviar la invitación: ' + (error.text || error.message || 'Inténtalo de nuevo'));
         btn.disabled = false;
         btn.textContent = 'Enviar invitación';
       }
