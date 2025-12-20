@@ -394,6 +394,25 @@
     }
     .invitacion-estado.pendiente { background: #FFF3E0; color: #E65100; }
     .invitacion-estado.aceptada { background: #E8F5E9; color: #2E7D32; }
+    .invitacion-estado.anulada { background: #FFEBEE; color: #C62828; }
+    
+    .invitacion-acciones { display: flex; gap: 4px; }
+    .btn-mini {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-reenviar { background: #E3F2FD; }
+    .btn-reenviar:hover { background: #BBDEFB; }
+    .btn-anular { background: #FFEBEE; }
+    .btn-anular:hover { background: #FFCDD2; }
 
     /* Loading */
     .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
@@ -758,7 +777,7 @@
         const snap = await db.collection('invitaciones-email')
           .where('familiaId', '==', userData.familiaId)
           .orderBy('fechaEnvio', 'desc')
-          .limit(5)
+          .limit(10)
           .get();
 
         if (snap.empty) {
@@ -769,16 +788,28 @@
         const lista = document.getElementById('lista-invitaciones');
         lista.innerHTML = snap.docs.map(doc => {
           const inv = doc.data();
+          const id = doc.id;
           const fecha = inv.fechaEnvio?.toDate?.();
           const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+          
+          const esPendiente = inv.estado === 'pendiente';
+          const botonesHTML = esPendiente ? `
+            <div class="invitacion-acciones">
+              <button class="btn-mini btn-reenviar" onclick="reenviarInvitacion('${id}')" title="Reenviar">📧</button>
+              <button class="btn-mini btn-anular" onclick="anularInvitacion('${id}')" title="Anular">🗑️</button>
+            </div>
+          ` : '';
           
           return `
             <div class="invitacion-item">
               <div>
                 <div class="invitacion-email">${inv.email}</div>
-                <div class="invitacion-fecha">${fechaStr}</div>
+                <div class="invitacion-fecha">${fechaStr} · ${inv.passwordProvisional ? 'Pass: ' + inv.passwordProvisional : ''}</div>
               </div>
-              <span class="invitacion-estado ${inv.estado}">${inv.estado === 'aceptada' ? '✓ Aceptada' : '⏳ Pendiente'}</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="invitacion-estado ${inv.estado}">${inv.estado === 'aceptada' ? '✓ Aceptada' : inv.estado === 'anulada' ? '✗ Anulada' : '⏳ Pendiente'}</span>
+                ${botonesHTML}
+              </div>
             </div>
           `;
         }).join('');
@@ -787,6 +818,55 @@
 
       } catch (error) {
         console.error('Error cargando invitaciones:', error);
+      }
+    }
+
+    async function reenviarInvitacion(invitacionId) {
+      try {
+        const doc = await db.collection('invitaciones-email').doc(invitacionId).get();
+        if (!doc.exists) return;
+        
+        const inv = doc.data();
+        
+        // Reenviar email
+        const templateParams = {
+          email: inv.email,
+          passcode: inv.passwordProvisional,
+          familia_nombre: familiaData?.nombre || 'Tu familia',
+          admin_nombre: userData?.nombre || currentUser.email.split('@')[0]
+        };
+
+        await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, templateParams);
+        
+        // Actualizar fecha de envío
+        await db.collection('invitaciones-email').doc(invitacionId).update({
+          fechaEnvio: firebase.firestore.FieldValue.serverTimestamp(),
+          reenvios: firebase.firestore.FieldValue.increment(1)
+        });
+
+        mostrarAlerta('success', `✅ Invitación reenviada a ${inv.email}`);
+        cargarInvitacionesRecientes();
+
+      } catch (error) {
+        console.error('Error reenviando:', error);
+        mostrarAlerta('error', 'Error al reenviar la invitación');
+      }
+    }
+
+    async function anularInvitacion(invitacionId) {
+      if (!confirm('¿Seguro que quieres anular esta invitación?')) return;
+      
+      try {
+        await db.collection('invitaciones-email').doc(invitacionId).update({
+          estado: 'anulada'
+        });
+
+        mostrarAlerta('success', '✅ Invitación anulada');
+        cargarInvitacionesRecientes();
+
+      } catch (error) {
+        console.error('Error anulando:', error);
+        mostrarAlerta('error', 'Error al anular la invitación');
       }
     }
 
