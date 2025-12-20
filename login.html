@@ -300,7 +300,7 @@
         </div>
 
         <button type="submit" class="btn btn-primary" id="btn-login">
-          Entrar
+          Entrar / Registrarte
         </button>
       </form>
 
@@ -309,7 +309,7 @@
       </div>
 
       <div class="login-info">
-        <strong>¿Te han invitado?</strong>
+        <strong>¿Primera vez?</strong>
         Usa el email y contraseña que te enviaron. Tu cuenta se activará automáticamente.
       </div>
       <div style="text-align: center; margin-top: 16px;">
@@ -401,7 +401,7 @@
       }
       
       btnLogin.disabled = true;
-      btnLogin.textContent = 'Entrando...';
+      btnLogin.textContent = 'Verificando...';
       hideError();
       hideSuccess();
       
@@ -411,19 +411,19 @@
         // onAuthStateChanged se encargará de la redirección
         
       } catch (error) {
-        console.error('Error login:', error);
+        console.error('Error login:', error.code, error.message);
         
-        // Si el usuario no existe, buscar invitación
-        if (error.code === 'auth/user-not-found') {
+        // Si el usuario no existe O credenciales inválidas, buscar invitación
+        // Firebase v9+ usa 'invalid-credential' para usuario inexistente
+        if (error.code === 'auth/user-not-found' || 
+            error.code === 'auth/invalid-credential' ||
+            error.code === 'auth/wrong-password') {
           await intentarActivarInvitacion(email, password);
         } else {
           // Otros errores
           let mensaje = 'Error al iniciar sesión.';
           
           switch (error.code) {
-            case 'auth/wrong-password':
-              mensaje = 'Contraseña incorrecta.';
-              break;
             case 'auth/invalid-email':
               mensaje = 'El email no es válido.';
               break;
@@ -433,14 +433,11 @@
             case 'auth/user-disabled':
               mensaje = 'Esta cuenta ha sido desactivada.';
               break;
-            case 'auth/invalid-credential':
-              mensaje = 'Credenciales inválidas. Verifica tu email y contraseña.';
-              break;
           }
           
           showError(mensaje);
           btnLogin.disabled = false;
-          btnLogin.textContent = 'Entrar';
+          btnLogin.textContent = 'Entrar / Registrarte';
         }
       }
     });
@@ -450,6 +447,11 @@
       try {
         showLoading(true, 'Buscando tu invitación...');
         
+        console.log('Buscando invitación para:', email);
+        
+        // Primero verificar si existe usuario en Auth (por si es contraseña incorrecta)
+        // Lo hacemos buscando invitación primero
+        
         // Buscar invitación pendiente con este email y contraseña
         const invitacionSnap = await db.collection('invitaciones-email')
           .where('email', '==', email)
@@ -458,12 +460,29 @@
           .limit(1)
           .get();
 
+        console.log('Invitaciones encontradas:', invitacionSnap.size);
+
         if (invitacionSnap.empty) {
-          // No hay invitación válida
+          // No hay invitación con esa contraseña exacta
+          // Buscar si hay alguna invitación para ese email (para dar mejor mensaje)
+          const invitacionEmailSnap = await db.collection('invitaciones-email')
+            .where('email', '==', email)
+            .where('estado', '==', 'pendiente')
+            .limit(1)
+            .get();
+
           showLoading(false);
-          showError('No existe una cuenta con este email. Si te han invitado, verifica que los datos sean correctos.');
+          
+          if (!invitacionEmailSnap.empty) {
+            // Hay invitación pero la contraseña no coincide
+            showError('La contraseña no coincide con la de tu invitación. Revisa el email que te enviaron.');
+          } else {
+            // No hay invitación para este email
+            showError('No existe una cuenta con este email. Si te han invitado, verifica que el email sea correcto.');
+          }
+          
           btnLogin.disabled = false;
-          btnLogin.textContent = 'Entrar';
+          btnLogin.textContent = 'Entrar / Registrarte';
           return;
         }
 
@@ -479,7 +498,7 @@
             showLoading(false);
             showError('Tu invitación ha expirado. Pide al administrador que te envíe una nueva.');
             btnLogin.disabled = false;
-            btnLogin.textContent = 'Entrar';
+            btnLogin.textContent = 'Entrar / Registrarte';
             return;
           }
         }
@@ -534,7 +553,7 @@
         
         showError(mensaje);
         btnLogin.disabled = false;
-        btnLogin.textContent = 'Entrar';
+        btnLogin.textContent = 'Entrar / Registrarte';
       }
     }
 
