@@ -868,7 +868,13 @@
     }
 
     .evento-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .evento-dot.cita { background: var(--sage); }
+    .evento-dot.cumple { background: #E91E63; }
+    .evento-dot.especial { background: #4CAF50; }
+    .evento-dot.evento { background: #FF9800; }
+    .evento-dot.cita { background: #2196F3; }
+    .evento-dot.reserva { background: #9C27B0; }
+
+    .cal-day .day-dots { display: flex; gap: 1px; margin-top: 1px; }
 
     /* ============ TABLÓN ============ */
     .tablon-card { border-left: 4px solid var(--sage); }
@@ -2504,7 +2510,7 @@
       await loadNidos();
       await verificarTiendaDisponible();
       
-      renderCalendario();
+      await renderCalendario();
       renderTareas();
       renderMensajes();
       renderTablon();
@@ -2759,8 +2765,94 @@
       }
     }
 
-    // ============ CALENDARIO ============
-    function renderCalendario() {
+    // ============ CALENDARIO (ACTIVO) ============
+    let eventosCalendario = [];
+
+    async function cargarEventosCalendario() {
+      if (!currentFamilia) return;
+      
+      eventosCalendario = [];
+      const añoActual = new Date().getFullYear();
+      const familiaId = currentFamilia.id;
+
+      // 1. CUMPLEAÑOS desde miembros
+      try {
+        const nidosSnap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
+        nidosSnap.docs.forEach(doc => {
+          const nido = doc.data();
+          (nido.miembrosData || []).forEach(m => {
+            if (m.fechaNacimiento) {
+              const [,mes,dia] = m.fechaNacimiento.split('-');
+              [añoActual, añoActual+1].forEach(y => {
+                eventosCalendario.push({ tipo:'cumple', titulo:`🎂 ${m.nombre || m.iniciales}`, fecha:`${y}-${mes}-${dia}` });
+              });
+            }
+          });
+        });
+      } catch(e) {}
+
+      // 2. DÍAS ESPECIALES
+      try {
+        const snap = await db.collection('diasEspeciales').where('familiaId', '==', familiaId).get();
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          [añoActual, añoActual+1].forEach(y => {
+            eventosCalendario.push({ tipo: d.tipo==='cumple'?'cumple':'especial', titulo:d.nombre, fecha:`${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` });
+          });
+        });
+      } catch(e) {}
+
+      // 3. EVENTOS
+      try {
+        const snap = await db.collection('eventos').where('familiaId', '==', familiaId).get();
+        snap.docs.forEach(doc => {
+          const e = doc.data();
+          if (e.fecha) eventosCalendario.push({ tipo:'evento', titulo:e.nombre, fecha:e.fecha, hora:e.hora });
+        });
+      } catch(e) {}
+
+      // 4. CITAS (según visibilidad)
+      try {
+        const snap = await db.collection('citas').where('familiaId', '==', familiaId).get();
+        snap.docs.forEach(doc => {
+          const c = doc.data();
+          let visible = c.capa === 'estirpe' || c.capa === 'rama' || 
+                       (c.capa === 'nido' && c.nidoId === userData?.nidoId);
+          if (visible && c.fecha) {
+            eventosCalendario.push({ tipo:'cita', titulo:c.titulo, fecha:c.fecha, hora:c.hora });
+          }
+        });
+      } catch(e) {}
+
+      // 5. RESERVAS de bienes
+      try {
+        const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
+        for (const bienDoc of bienesSnap.docs) {
+          const bien = bienDoc.data();
+          try {
+            const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+            reservasSnap.docs.forEach(resDoc => {
+              const r = resDoc.data();
+              if (r.entrada) {
+                eventosCalendario.push({ 
+                  tipo: 'reserva', 
+                  titulo: `🏠 ${bien.nombre || 'Reserva'}`,
+                  fecha: r.entrada,
+                  fechaFin: r.salida
+                });
+              }
+            });
+          } catch(e) {}
+        }
+      } catch(e) {}
+    }
+
+    async function renderCalendario() {
+      // Cargar eventos si no están cargados
+      if (eventosCalendario.length === 0 && currentFamilia) {
+        await cargarEventosCalendario();
+      }
+
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const hoy = new Date();
       
@@ -2783,19 +2875,61 @@
         html += `<div class="cal-day other-month">${diasMesAnterior - i}</div>`;
       }
 
+      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
+
       for (let d = 1; d <= ultimoDia.getDate(); d++) {
         const esHoy = d === hoy.getDate();
-        html += `<div class="cal-day ${esHoy ? 'today' : ''}">${d}</div>`;
+        const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        
+        // Buscar eventos de este día
+        const eventosDelDia = eventosCalendario.filter(e => {
+          if (e.tipo === 'reserva' && e.fechaFin) {
+            return fechaStr >= e.fecha && fechaStr <= e.fechaFin;
+          }
+          return e.fecha === fechaStr;
+        });
+        
+        const tipos = [...new Set(eventosDelDia.map(e => e.tipo))];
+        const dots = tipos.length > 0 
+          ? `<div class="day-dots">${tipos.slice(0,3).map(t => `<span class="evento-dot ${t}"></span>`).join('')}</div>` 
+          : '';
+        
+        html += `<div class="cal-day ${esHoy ? 'today' : ''}" onclick="window.location.href='calendario.html'">${d}${dots}</div>`;
       }
 
       container.innerHTML = html;
 
-      document.getElementById('eventos-hoy').innerHTML = `
-        <div class="evento-mini">
-          <div class="evento-dot cita"></div>
-          <span style="color:var(--text-muted);">Sin eventos hoy</span>
+      // Mostrar eventos de hoy
+      renderEventosHoy(hoyStr);
+    }
+
+    function renderEventosHoy(fechaStr) {
+      const eventosHoy = eventosCalendario.filter(e => {
+        if (e.tipo === 'reserva' && e.fechaFin) {
+          return fechaStr >= e.fecha && fechaStr <= e.fechaFin;
+        }
+        return e.fecha === fechaStr;
+      });
+
+      const container = document.getElementById('eventos-hoy');
+      
+      if (eventosHoy.length === 0) {
+        container.innerHTML = `
+          <div class="evento-mini">
+            <div class="evento-dot cita"></div>
+            <span style="color:var(--text-muted);">Sin eventos hoy</span>
+          </div>
+        `;
+        return;
+      }
+
+      // Mostrar hasta 3 eventos
+      container.innerHTML = eventosHoy.slice(0, 3).map(e => `
+        <div class="evento-mini" style="margin-bottom: 4px;">
+          <div class="evento-dot ${e.tipo}"></div>
+          <span style="font-size:0.7rem;">${e.titulo}</span>
         </div>
-      `;
+      `).join('') + (eventosHoy.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted);text-align:right;">+${eventosHoy.length - 3} más</div>` : '');
     }
 
     // ============ TAREAS (REAL) ============

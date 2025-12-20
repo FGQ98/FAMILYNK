@@ -93,14 +93,14 @@
 <body>
   <header class="header">
     <div class="header-left">
-      <a href="activacion.html" class="back-btn">← Activación</a>
+      <a href="cgi.html" class="back-btn">← Mi Espacio</a>
       <h1 class="header-title">📅 Calendario Familiar</h1>
     </div>
   </header>
 
   <main class="main">
     <div class="info-banner">
-      ℹ️ Agrega automáticamente: cumpleaños de miembros, <a href="citas.html">citas</a>, <a href="eventos.html">eventos</a>, <a href="dias-especiales.html">días especiales</a> y reservas de <a href="lo-comun.html">Lo Común</a>.
+      ℹ️ Vista unificada de: cumpleaños, <a href="dias-especiales.html">días especiales</a>, <a href="eventos.html">eventos</a>, <a href="citas.html">citas</a> y reservas de <a href="lo-comun.html">Lo Común</a>.
     </div>
 
     <div id="loading" class="loading"><div class="spinner"></div></div>
@@ -174,7 +174,7 @@
       todosEventos = [];
       const añoActual = new Date().getFullYear();
 
-      // 1. CUMPLEAÑOS desde miembros
+      // 1. CUMPLEAÑOS desde miembros de nidos
       try {
         const nidosSnap = await db.collection('nidos').where('familiaId', '==', userData.familiaId).get();
         nidosSnap.docs.forEach(doc => {
@@ -183,12 +183,12 @@
             if (m.fechaNacimiento) {
               const [,mes,dia] = m.fechaNacimiento.split('-');
               [añoActual, añoActual+1].forEach(y => {
-                todosEventos.push({ tipo:'cumple', titulo:`🎂 ${m.nombre}`, fecha:`${y}-${mes}-${dia}`, origen:'Miembro', link:null });
+                todosEventos.push({ tipo:'cumple', titulo:`🎂 ${m.nombre || m.iniciales}`, fecha:`${y}-${mes}-${dia}`, origen:'Miembro', link:null });
               });
             }
           });
         });
-      } catch(e) {}
+      } catch(e) { console.error('Error cumpleaños:', e); }
 
       // 2. DÍAS ESPECIALES
       try {
@@ -199,7 +199,7 @@
             todosEventos.push({ tipo: d.tipo==='cumple'?'cumple':'especial', titulo:d.nombre, fecha:`${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}`, origen:'Días especiales', link:'dias-especiales.html' });
           });
         });
-      } catch(e) {}
+      } catch(e) { console.error('Error días especiales:', e); }
 
       // 3. EVENTOS
       try {
@@ -208,26 +208,72 @@
           const e = doc.data();
           todosEventos.push({ tipo:'evento', titulo:e.nombre, fecha:e.fecha, hora:e.hora, origen:'Eventos', link:'eventos.html' });
         });
-      } catch(e) {}
+      } catch(e) { console.error('Error eventos:', e); }
 
-      // 4. CITAS (filtrar por capa)
+      // 4. CITAS (filtrar por capa de visibilidad)
       try {
         const snap = await db.collection('citas').where('familiaId', '==', userData.familiaId).get();
         snap.docs.forEach(doc => {
           const c = doc.data();
-          let visible = c.capa==='rama' || (c.capa==='nido' && c.nidoId===userData.nidoId) || c.capa==='estirpe';
-          if (visible) todosEventos.push({ tipo:'cita', titulo:c.titulo, fecha:c.fecha, hora:c.hora, origen:'Citas', link:'citas.html' });
+          // Visibilidad según capa
+          let visible = c.capa === 'estirpe' || c.capa === 'rama' || 
+                       (c.capa === 'nido' && c.nidoId === userData.nidoId);
+          if (visible) {
+            todosEventos.push({ tipo:'cita', titulo:c.titulo, fecha:c.fecha, hora:c.hora, origen:'Citas', link:'citas.html' });
+          }
         });
-      } catch(e) {}
+      } catch(e) { console.error('Error citas:', e); }
 
-      // 5. RESERVAS
+      // 5. RESERVAS - Buscar en TODOS los bienes de la familia
       try {
-        const snap = await db.collection('reservas').where('familiaId', '==', userData.familiaId).get();
-        snap.docs.forEach(doc => {
-          const r = doc.data();
-          todosEventos.push({ tipo:'reserva', titulo:`🏠 ${r.activo||'Reserva'}`, fecha:r.fechaInicio, origen:'Lo Común', link:'lo-comun.html' });
-        });
-      } catch(e) {}
+        // Primero obtener todos los bienes de la familia
+        const bienesSnap = await db.collection('bienes').where('familiaId', '==', userData.familiaId).get();
+        
+        // Para cada bien, cargar sus reservas
+        for (const bienDoc of bienesSnap.docs) {
+          const bien = bienDoc.data();
+          const bienNombre = bien.nombre || 'Propiedad';
+          
+          try {
+            const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+            
+            reservasSnap.docs.forEach(resDoc => {
+              const r = resDoc.data();
+              if (r.entrada && r.salida) {
+                // Crear evento para cada día del rango de la reserva
+                const fechaInicio = new Date(r.entrada);
+                const fechaFin = new Date(r.salida);
+                
+                // Solo mostrar como punto en el calendario (fecha de inicio)
+                // Para reservas largas, se podría iterar, pero para simplificar solo inicio
+                const fechaStr = r.entrada;
+                
+                // Determinar el texto según tipo de reserva
+                let textoReserva = bienNombre;
+                if (r.tipo === 'familia') {
+                  textoReserva = `🏠 ${bienNombre} — ${r.quien || 'Familia'}`;
+                } else if (r.tipo === 'huespedes') {
+                  textoReserva = `🏠 ${bienNombre} — Huéspedes`;
+                } else if (r.tipo === 'nodisponible') {
+                  textoReserva = `🏠 ${bienNombre} — No disponible`;
+                }
+                
+                todosEventos.push({ 
+                  tipo: 'reserva', 
+                  titulo: textoReserva,
+                  fecha: fechaStr,
+                  fechaFin: r.salida,
+                  origen: 'Lo Común', 
+                  link: `reservas.html?id=${bienDoc.id}&origen=bien`,
+                  tipoReserva: r.tipo
+                });
+              }
+            });
+          } catch(e) { console.error('Error reservas bien:', bienDoc.id, e); }
+        }
+      } catch(e) { console.error('Error bienes:', e); }
+
+      console.log('Eventos cargados:', todosEventos.length);
     }
 
     function actualizarContadores() {
@@ -259,11 +305,24 @@
 
       for (let dia=1; dia<=ultimoDia.getDate(); dia++) {
         const fecha = `${fechaActual.getFullYear()}-${String(fechaActual.getMonth()+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-        const eventosDelDia = todosEventos.filter(e => e.fecha===fecha && filtrosActivos.includes(e.tipo));
+        
+        // Buscar eventos de este día (incluyendo reservas que abarcan este día)
+        const eventosDelDia = todosEventos.filter(e => {
+          if (!filtrosActivos.includes(e.tipo)) return false;
+          
+          // Para reservas, comprobar si el día está dentro del rango
+          if (e.tipo === 'reserva' && e.fechaFin) {
+            return fecha >= e.fecha && fecha <= e.fechaFin;
+          }
+          
+          return e.fecha === fecha;
+        });
+        
         const div = document.createElement('div');
         div.className = 'calendar-day';
         if (fecha===hoyStr) div.classList.add('today');
         if (fecha===formatFecha(fechaSeleccionada)) div.classList.add('selected');
+        
         const tipos = [...new Set(eventosDelDia.map(e=>e.tipo))];
         const dots = tipos.length ? `<div class="day-dots">${tipos.slice(0,4).map(t=>`<span class="day-dot ${t}"></span>`).join('')}</div>` : '';
         div.innerHTML = `<span class="day-number">${dia}</span>${dots}`;
@@ -288,10 +347,26 @@
 
     function mostrarEventosDia(fecha) {
       const fechaStr = formatFecha(fecha);
-      const eventos = todosEventos.filter(e => e.fecha===fechaStr && filtrosActivos.includes(e.tipo));
+      
+      // Filtrar eventos del día (incluyendo reservas en rango)
+      const eventos = todosEventos.filter(e => {
+        if (!filtrosActivos.includes(e.tipo)) return false;
+        
+        if (e.tipo === 'reserva' && e.fechaFin) {
+          return fechaStr >= e.fecha && fechaStr <= e.fechaFin;
+        }
+        
+        return e.fecha === fechaStr;
+      });
+      
       document.getElementById('eventos-dia-titulo').textContent = `📋 ${fecha.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'})}`;
       const container = document.getElementById('eventos-dia');
-      if (!eventos.length) { container.innerHTML = '<div class="evento-empty">Sin eventos</div>'; return; }
+      
+      if (!eventos.length) { 
+        container.innerHTML = '<div class="evento-empty">Sin eventos</div>'; 
+        return; 
+      }
+      
       container.innerHTML = eventos.map(e => `
         <div class="evento-item" ${e.link?`onclick="location.href='${e.link}'"`:''}> 
           <div class="evento-color ${e.tipo}"></div>
