@@ -2731,6 +2731,14 @@
         return;
       }
 
+      // ========================================
+      // SINCRONIZACIÓN DE MIEMBRO INVITADO
+      // Si el usuario no tiene nidoId, buscar si está en miembrosData de algún nido
+      // ========================================
+      if (!userData.nidoId) {
+        await sincronizarMiembroInvitado();
+      }
+
       // Cargar estirpes del usuario
       const estirpesIds = userData.estirpes || [userData.familiaId];
       const estirpeActiva = userData.estirpeActiva || userData.familiaId;
@@ -2756,6 +2764,94 @@
 
       await initApp();
     });
+
+    // ============ SINCRONIZACIÓN DE MIEMBRO INVITADO ============
+    async function sincronizarMiembroInvitado() {
+      try {
+        console.log('🔄 Buscando datos pre-registrados para:', currentUser.email);
+        
+        // Buscar en todos los nidos de la familia del usuario
+        const nidosSnapshot = await db.collection('nidos')
+          .where('familiaId', '==', userData.familiaId)
+          .get();
+        
+        let nidoEncontrado = null;
+        let miembroEncontrado = null;
+        let miembroIndex = -1;
+        
+        // Buscar el miembro por email en miembrosData de cada nido
+        for (const doc of nidosSnapshot.docs) {
+          const nido = { id: doc.id, ...doc.data() };
+          const miembrosData = nido.miembrosData || [];
+          
+          const idx = miembrosData.findIndex(m => 
+            m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()
+          );
+          
+          if (idx !== -1) {
+            nidoEncontrado = nido;
+            miembroEncontrado = miembrosData[idx];
+            miembroIndex = idx;
+            console.log('✅ Encontrado en nido:', nido.nombre, 'como:', miembroEncontrado.nombre);
+            break;
+          }
+        }
+        
+        if (!nidoEncontrado || !miembroEncontrado) {
+          console.log('ℹ️ No se encontraron datos pre-registrados');
+          return;
+        }
+        
+        // Preparar actualizaciones
+        const batch = db.batch();
+        
+        // 1. Actualizar documento del usuario con datos del nido
+        const userRef = db.collection('usuarios').doc(currentUser.uid);
+        const userUpdates = {
+          nidoId: nidoEncontrado.id,
+          nidoNombre: nidoEncontrado.nombre
+        };
+        
+        // Si el usuario no tiene nombre, usar el pre-registrado
+        if (!userData.nombre && miembroEncontrado.nombre) {
+          userUpdates.nombre = miembroEncontrado.nombre;
+        }
+        
+        // Copiar otros datos pre-registrados si existen
+        if (miembroEncontrado.tipo) userUpdates.tipoMiembro = miembroEncontrado.tipo;
+        if (miembroEncontrado.telefono && !userData.telefono) userUpdates.telefono = miembroEncontrado.telefono;
+        if (miembroEncontrado.fechaNacimiento && !userData.fechaNacimiento) userUpdates.fechaNacimiento = miembroEncontrado.fechaNacimiento;
+        
+        batch.update(userRef, userUpdates);
+        console.log('📝 Actualizando usuario con:', userUpdates);
+        
+        // 2. Actualizar miembrosData del nido con el uid del usuario
+        const nidoRef = db.collection('nidos').doc(nidoEncontrado.id);
+        const miembrosActualizados = [...(nidoEncontrado.miembrosData || [])];
+        miembrosActualizados[miembroIndex] = {
+          ...miembroEncontrado,
+          uid: currentUser.uid,
+          registrado: true,
+          fechaRegistro: new Date().toISOString()
+        };
+        
+        batch.update(nidoRef, { 
+          miembrosData: miembrosActualizados,
+          miembros: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+        });
+        console.log('📝 Actualizando nido con uid del usuario');
+        
+        // Ejecutar batch
+        await batch.commit();
+        console.log('✅ Sincronización completada');
+        
+        // Actualizar userData local con los nuevos datos
+        Object.assign(userData, userUpdates);
+        
+      } catch (error) {
+        console.error('❌ Error en sincronización:', error);
+      }
+    }
 
     // ============ INIT ============
     async function initApp() {
