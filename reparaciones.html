@@ -212,49 +212,66 @@
     .btn-danger { background: var(--error); color: white; }
     .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
 
-    /* ========== GRID ========== */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 16px;
+    /* ========== LISTA ========== */
+    .lista {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    /* ========== REPARACIÓN CARD ========== */
-    .reparacion-card {
+    /* ========== REPARACIÓN BLOQUE ========== */
+    .reparacion-bloque {
       background: var(--white);
-      border-radius: var(--radius-lg);
-      padding: 20px;
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
       box-shadow: var(--shadow-soft);
       cursor: pointer;
       transition: all 0.2s;
       border-left: 4px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
 
-    .reparacion-card:hover {
-      box-shadow: var(--shadow-medium);
+    .reparacion-bloque:hover {
+      background: var(--cream);
     }
 
-    .reparacion-card.pendiente { border-left-color: var(--warning); }
-    .reparacion-card.en-curso { border-left-color: var(--terracotta); }
-    .reparacion-card.completada { border-left-color: var(--success); }
-    .reparacion-card.urgente { 
+    .reparacion-bloque.pendiente { border-left-color: var(--warning); }
+    .reparacion-bloque.en-curso { border-left-color: var(--terracotta); }
+    .reparacion-bloque.completada { border-left-color: var(--success); }
+    .reparacion-bloque.urgente { 
       border-left-color: var(--error); 
       background: var(--error-muted);
     }
 
-    .reparacion-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 10px;
-      gap: 12px;
+    .reparacion-info {
+      flex: 1;
+      min-width: 0;
     }
 
     .reparacion-titulo {
       font-family: 'Quicksand', sans-serif;
       font-weight: 700;
-      font-size: 1rem;
-      flex: 1;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .reparacion-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .reparacion-meta span {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .reparacion-estado {
@@ -264,6 +281,7 @@
       font-weight: 700;
       text-transform: uppercase;
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .reparacion-estado.pendiente {
@@ -281,38 +299,29 @@
       color: var(--success);
     }
 
-    .reparacion-descripcion {
-      font-size: 0.85rem;
-      color: var(--text-light);
-      margin-bottom: 12px;
-      line-height: 1.4;
-    }
-
-    .reparacion-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .reparacion-meta span {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
     .prioridad-badge {
       padding: 2px 8px;
       border-radius: var(--radius-sm);
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       font-weight: 700;
+      flex-shrink: 0;
     }
 
     .prioridad-badge.baja { background: var(--sage-muted); color: var(--sage-dark); }
     .prioridad-badge.media { background: var(--warning-muted); color: var(--warning); }
     .prioridad-badge.alta { background: var(--terracotta-muted); color: var(--terracotta); }
     .prioridad-badge.urgente { background: var(--error); color: white; }
+
+    @media (max-width: 600px) {
+      .reparacion-bloque {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .reparacion-estado {
+        align-self: flex-start;
+      }
+    }
 
     /* ========== EMPTY STATE ========== */
     .empty-state {
@@ -476,7 +485,7 @@
     </div>
 
     <!-- Grid -->
-    <div class="grid" id="grid">
+    <div class="lista" id="lista">
       <!-- Cargando... -->
     </div>
   </main>
@@ -627,13 +636,13 @@
 
     // ========== RENDER ==========
     function render() {
-      const grid = document.getElementById('grid');
+      const lista = document.getElementById('lista');
       const items = filtroActual === 'todas' 
         ? reparaciones 
         : reparaciones.filter(r => r.estado === filtroActual);
       
       if (items.length === 0) {
-        grid.innerHTML = `
+        lista.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">🔧</div>
             <div class="empty-state-title">Sin reparaciones</div>
@@ -643,8 +652,8 @@
         return;
       }
       
-      grid.innerHTML = items.map(r => {
-        const cardClass = r.prioridad === 'urgente' ? 'urgente' : (r.estado || 'pendiente');
+      lista.innerHTML = items.map(r => {
+        const bloqueClass = r.prioridad === 'urgente' ? 'urgente' : (r.estado || 'pendiente');
         const estadoTexto = {
           'pendiente': 'Pendiente',
           'en-curso': 'En curso',
@@ -654,20 +663,20 @@
         const fechaStr = r.fecha ? new Date(r.fecha).toLocaleDateString('es-ES') : '';
         
         return `
-          <div class="reparacion-card ${cardClass}" onclick="editar('${r.id}')">
-            <div class="reparacion-header">
+          <div class="reparacion-bloque ${bloqueClass}" onclick="editar('${r.id}')">
+            <div class="reparacion-info">
               <div class="reparacion-titulo">${r.titulo}</div>
-              <span class="reparacion-estado ${r.estado || 'pendiente'}">${estadoTexto}</span>
+              <div class="reparacion-meta">
+                ${fechaStr ? `<span>📅 ${fechaStr}</span>` : ''}
+                ${r.coste ? `<span>💰 ${r.coste}€</span>` : ''}
+                ${r.responsable ? `<span>👷 ${r.responsable}</span>` : ''}
+              </div>
             </div>
-            ${r.descripcion ? `<div class="reparacion-descripcion">${r.descripcion}</div>` : ''}
-            <div class="reparacion-meta">
-              ${fechaStr ? `<span>📅 ${fechaStr}</span>` : ''}
-              ${r.coste ? `<span>💰 ${r.coste}€</span>` : ''}
-              ${r.responsable ? `<span>👷 ${r.responsable}</span>` : ''}
-              ${r.prioridad ? `<span class="prioridad-badge ${r.prioridad}">${r.prioridad}</span>` : ''}
-            </div>
+            ${r.prioridad && r.prioridad !== 'media' ? `<span class="prioridad-badge ${r.prioridad}">${r.prioridad}</span>` : ''}
+            <span class="reparacion-estado ${r.estado || 'pendiente'}">${estadoTexto}</span>
           </div>
         `;
+      }).join('');
       }).join('');
     }
 
