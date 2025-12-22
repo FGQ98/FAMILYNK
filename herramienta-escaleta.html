@@ -825,8 +825,21 @@
     async function cargarItems() {
       if (!escaletaActual) return;
       try {
-        const snap = await db.collection('familias').doc(familiaId).collection('escaletas').doc(escaletaActual).collection('items').orderBy('hora').get();
+        const snap = await db.collection('familias').doc(familiaId).collection('escaletas').doc(escaletaActual).collection('items').get();
         items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Ordenar cronológicamente: por fecha y luego por hora
+        items.sort((a, b) => {
+          // Prioridad 1: fecha (YYYY-MM-DD)
+          const fechaA = a.fecha || '9999-12-31';
+          const fechaB = b.fecha || '9999-12-31';
+          const fechaCmp = fechaA.localeCompare(fechaB);
+          if (fechaCmp !== 0) return fechaCmp;
+          
+          // Prioridad 2: hora (HH:MM)
+          const horaA = a.hora || '99:99';
+          const horaB = b.hora || '99:99';
+          return horaA.localeCompare(horaB);
+        });
         renderItems();
         if (vistaActual === 'cronogramas') renderCronogramas();
       } catch (error) { console.error('Error:', error); }
