@@ -677,14 +677,61 @@
     });
 
     async function cargarMiembros() {
-      const snap = await db.collection('usuarios')
+      const participantes = new Map(); // Usar email como clave para evitar duplicados
+
+      // 1. Cargar usuarios con cuenta real
+      const usuariosSnap = await db.collection('usuarios')
         .where('familiaId', '==', familiaId)
         .get();
 
-      miembrosData = snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })); // Todos los miembros pueden participar
+      usuariosSnap.docs.forEach(doc => {
+        const u = doc.data();
+        if (!u.fechaDefuncion) { // Excluir fallecidos
+          const key = (u.email || doc.id).toLowerCase();
+          participantes.set(key, {
+            id: doc.id,
+            nombre: u.nombre || u.email?.split('@')[0] || 'Sin nombre',
+            email: u.email,
+            generacion: u.generacion || 'Sin asignar',
+            nidoId: u.nidoId,
+            tieneCuenta: true
+          });
+        }
+      });
+
+      // 2. Cargar miembrosData de todos los nidos
+      const nidosSnap = await db.collection('nidos')
+        .where('familiaId', '==', familiaId)
+        .get();
+
+      nidosSnap.docs.forEach(nidoDoc => {
+        const nido = nidoDoc.data();
+        const miembrosDelNido = nido.miembrosData || [];
+        
+        miembrosDelNido.forEach((m, index) => {
+          if (!m.fechaDefuncion) { // Excluir fallecidos
+            const key = (m.email || `nido_${nidoDoc.id}_${index}`).toLowerCase();
+            
+            // Solo añadir si no existe ya (usuarios con cuenta tienen prioridad)
+            if (!participantes.has(key)) {
+              participantes.set(key, {
+                id: `nido_${nidoDoc.id}_${index}`,
+                nombre: m.nombre || 'Sin nombre',
+                email: m.email || null,
+                generacion: nido.generacion || 'Sin asignar',
+                nidoId: nidoDoc.id,
+                nidoNombre: nido.nombre,
+                tieneCuenta: false,
+                relacion: m.relacion
+              });
+            }
+          }
+        });
+      });
+
+      // Convertir Map a array
+      miembrosData = Array.from(participantes.values());
+      console.log('Participantes cargados:', miembrosData.length, miembrosData);
     }
 
     async function cargarNidos() {
@@ -785,14 +832,15 @@
           </div>
         `;
         miembrosData.forEach(m => {
-          const inicial = (m.nombre || m.email).charAt(0).toUpperCase();
+          const inicial = (m.nombre || m.email || '?').charAt(0).toUpperCase();
+          const detalle = m.email || (m.nidoNombre ? `📍 ${m.nidoNombre}` : '👤 Sin cuenta');
           html += `
             <div class="seleccion-item" onclick="togglePersona('${m.id}')">
               <input type="checkbox" id="persona-${m.id}" onchange="togglePersona('${m.id}')">
-              <div class="seleccion-item-avatar">${inicial}</div>
+              <div class="seleccion-item-avatar" style="${!m.tieneCuenta ? 'opacity:0.6;' : ''}">${inicial}</div>
               <div class="seleccion-item-info">
-                <div class="seleccion-item-nombre">${m.nombre || 'Sin nombre'}</div>
-                <div class="seleccion-item-detalle">${m.email}</div>
+                <div class="seleccion-item-nombre">${m.nombre || 'Sin nombre'}${!m.tieneCuenta ? ' <small style="color:#9A9A9A;">👤</small>' : ''}</div>
+                <div class="seleccion-item-detalle">${detalle}</div>
               </div>
             </div>
           `;
