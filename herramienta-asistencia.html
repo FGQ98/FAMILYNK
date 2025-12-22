@@ -402,9 +402,9 @@
         </div>
       </div>
     </div>
-    <a href="cgi.html" class="btn-nueva">
+    <button class="btn-nueva" onclick="abrirModalConvocatoria()">
       + Nueva convocatoria
-    </a>
+    </button>
   </header>
 
   <main class="main">
@@ -436,6 +436,190 @@
       </div>
     </div>
   </main>
+
+  <!-- Modal Nueva Convocatoria -->
+  <div class="modal-overlay" id="modal-convocatoria">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">✋ Nueva Convocatoria</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-convocatoria" onsubmit="guardarConvocatoria(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Título del evento *</label>
+            <input type="text" class="form-input" id="conv-titulo" required placeholder="Ej: Cena de Navidad">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Fecha *</label>
+              <input type="date" class="form-input" id="conv-fecha" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hora</label>
+              <input type="time" class="form-input" id="conv-hora">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lugar</label>
+            <input type="text" class="form-input" id="conv-lugar" placeholder="Ej: Casa de los abuelos">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas adicionales</label>
+            <textarea class="form-input" id="conv-notas" rows="2" placeholder="Información extra..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Enviar a *</label>
+            <div class="destinatarios-opciones">
+              <label class="destinatario-option">
+                <input type="radio" name="destino" value="todos" checked onchange="toggleDestinatarios()">
+                <span>👨‍👩‍👧‍👦 Toda la familia</span>
+              </label>
+              <label class="destinatario-option">
+                <input type="radio" name="destino" value="seleccionar" onchange="toggleDestinatarios()">
+                <span>✋ Seleccionar miembros</span>
+              </label>
+            </div>
+            <div id="lista-miembros" class="lista-miembros hidden"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-crear">Crear convocatoria</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    /* Modal styles */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      padding: 20px;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow: hidden;
+      transform: translateY(20px);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--asistencia);
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .modal-body { padding: 20px; overflow-y: auto; max-height: 60vh; }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { outline: none; border-color: var(--asistencia); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn {
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--asistencia); color: white; }
+    .btn-primary:hover { background: #7B1FA2; }
+    .btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .destinatarios-opciones { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .destinatario-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .destinatario-option:has(input:checked) { background: var(--asistencia-muted); border: 2px solid var(--asistencia); }
+    .destinatario-option input { margin: 0; }
+    .lista-miembros {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      padding: 8px;
+    }
+    .miembro-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .miembro-check:hover { background: var(--cream); }
+    .miembro-check input { margin: 0; width: 18px; height: 18px; }
+    .miembro-avatar {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--asistencia), #7B1FA2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+  </style>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -473,6 +657,7 @@
           await cargarDetalle();
         } else {
           // Vista de lista
+          await cargarMiembros();
           await cargarConvocatorias();
           document.getElementById('lista-view').classList.remove('hidden');
         }
@@ -814,6 +999,133 @@
       const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
       return fecha.toLocaleDateString('es-ES', opciones);
     }
+
+    // ============ CREAR CONVOCATORIA ============
+    let miembrosData = [];
+
+    async function cargarMiembros() {
+      if (!userData?.familiaId) return;
+      try {
+        const snap = await db.collection('usuarios')
+          .where('familiaId', '==', userData.familiaId)
+          .get();
+        miembrosData = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(m => m.id !== currentUser.uid); // Excluir al creador
+      } catch (e) {
+        console.error('Error cargando miembros:', e);
+      }
+    }
+
+    function abrirModalConvocatoria() {
+      document.getElementById('form-convocatoria').reset();
+      document.getElementById('conv-fecha').value = new Date().toISOString().split('T')[0];
+      renderMiembros();
+      toggleDestinatarios();
+      document.getElementById('modal-convocatoria').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-convocatoria').classList.remove('active');
+    }
+
+    function renderMiembros() {
+      const lista = document.getElementById('lista-miembros');
+      if (miembrosData.length === 0) {
+        lista.innerHTML = '<p style="color: var(--text-muted); padding: 12px; text-align: center;">No hay otros miembros en la familia</p>';
+        return;
+      }
+      lista.innerHTML = miembrosData.map(m => {
+        const inicial = (m.nombre || m.email || '?').charAt(0).toUpperCase();
+        const nombre = m.nombre || m.email?.split('@')[0] || 'Sin nombre';
+        return `
+          <label class="miembro-check">
+            <input type="checkbox" value="${m.id}" data-nombre="${nombre}">
+            <div class="miembro-avatar">${inicial}</div>
+            <span>${nombre}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function toggleDestinatarios() {
+      const seleccionar = document.querySelector('input[name="destino"][value="seleccionar"]').checked;
+      document.getElementById('lista-miembros').classList.toggle('hidden', !seleccionar);
+    }
+
+    async function guardarConvocatoria(e) {
+      e.preventDefault();
+      
+      const titulo = document.getElementById('conv-titulo').value.trim();
+      const fecha = document.getElementById('conv-fecha').value;
+      const hora = document.getElementById('conv-hora').value;
+      const lugar = document.getElementById('conv-lugar').value.trim();
+      const notas = document.getElementById('conv-notas').value.trim();
+      const enviarATodos = document.querySelector('input[name="destino"][value="todos"]').checked;
+
+      // Obtener destinatarios
+      let pendientes = [];
+      let pendientesNombres = [];
+
+      if (enviarATodos) {
+        pendientes = miembrosData.map(m => m.id);
+        pendientesNombres = miembrosData.map(m => m.nombre || m.email?.split('@')[0]);
+      } else {
+        const checkboxes = document.querySelectorAll('#lista-miembros input:checked');
+        checkboxes.forEach(cb => {
+          pendientes.push(cb.value);
+          pendientesNombres.push(cb.dataset.nombre);
+        });
+      }
+
+      if (pendientes.length === 0) {
+        alert('Selecciona al menos un destinatario');
+        return;
+      }
+
+      const btn = document.getElementById('btn-crear');
+      btn.disabled = true;
+      btn.textContent = 'Creando...';
+
+      try {
+        const miNombre = userData?.nombre || currentUser.email.split('@')[0];
+
+        await db.collection('convocatorias').add({
+          titulo,
+          fecha,
+          hora: hora || null,
+          lugar: lugar || null,
+          notas: notas || null,
+          familiaId: userData.familiaId,
+          creadoPor: currentUser.uid,
+          creadoPorNombre: miNombre,
+          pendientes,
+          pendientesNombres,
+          confirmados: [],
+          confirmadosNombres: [],
+          rechazados: [],
+          rechazadosNombres: [],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        cerrarModal();
+        await cargarConvocatorias();
+        cambiarTab('mis');
+        alert('✅ Convocatoria creada');
+
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al crear la convocatoria');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Crear convocatoria';
+    }
+
+    // Cerrar modal con click fuera
+    document.getElementById('modal-convocatoria').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) cerrarModal();
+    });
   </script>
 </body>
 </html>
