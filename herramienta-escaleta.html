@@ -248,7 +248,7 @@
       transition: all 0.2s;
       border-left: 4px solid var(--sage);
       display: grid;
-      grid-template-columns: 32px 70px 1fr auto;
+      grid-template-columns: 32px 85px 1fr auto;
       gap: 12px;
       align-items: center;
     }
@@ -475,14 +475,44 @@
     .tipo-option.catering.selected { border-color: var(--catering); background: var(--catering-muted); color: var(--catering); }
     .tipo-option-icon { font-size: 1.3rem; display: block; margin-bottom: 4px; }
 
+    /* Selector de día */
+    .dia-hora-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .dia-selector { display: flex; gap: 4px; flex-wrap: wrap; }
+    .dia-btn {
+      padding: 8px 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      background: var(--white);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dia-btn:hover { border-color: var(--sage); }
+    .dia-btn.selected { 
+      border-color: var(--sage); 
+      background: var(--sage); 
+      color: white; 
+    }
+    .dia-btn[data-dia="6"], .dia-btn[data-dia="0"] { color: var(--terracotta); }
+    .dia-btn[data-dia="6"].selected, .dia-btn[data-dia="0"].selected { 
+      background: var(--terracotta); 
+      border-color: var(--terracotta);
+      color: white;
+    }
+
     .hidden { display: none !important; }
 
     @media (max-width: 600px) {
-      .escaleta-item { grid-template-columns: 28px 55px 1fr; gap: 10px; padding: 12px; }
+      .escaleta-item { grid-template-columns: 28px 75px 1fr; gap: 10px; padding: 12px; }
       .escaleta-tipo-badge { display: none; }
       .form-row { grid-template-columns: 1fr; }
       .toolbar { flex-direction: column; align-items: stretch; }
       .toolbar-actions { justify-content: flex-end; }
+      .dia-selector { gap: 3px; }
+      .dia-btn { padding: 6px 8px; font-size: 0.7rem; }
     }
 
     @media print {
@@ -637,15 +667,26 @@
               </div>
             </div>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Hora</label>
-              <input type="time" class="form-input" id="item-hora" required>
+          <div class="form-group">
+            <label class="form-label">📅 Día y hora</label>
+            <div class="dia-hora-row">
+              <div class="dia-selector" id="dia-selector">
+                <button type="button" class="dia-btn" data-dia="1" onclick="seleccionarDia(1)">Lun</button>
+                <button type="button" class="dia-btn" data-dia="2" onclick="seleccionarDia(2)">Mar</button>
+                <button type="button" class="dia-btn" data-dia="3" onclick="seleccionarDia(3)">Mié</button>
+                <button type="button" class="dia-btn" data-dia="4" onclick="seleccionarDia(4)">Jue</button>
+                <button type="button" class="dia-btn" data-dia="5" onclick="seleccionarDia(5)">Vie</button>
+                <button type="button" class="dia-btn" data-dia="6" onclick="seleccionarDia(6)">Sáb</button>
+                <button type="button" class="dia-btn" data-dia="0" onclick="seleccionarDia(0)">Dom</button>
+              </div>
+              <input type="time" class="form-input" id="item-hora" required style="width:100px;">
             </div>
-            <div class="form-group">
-              <label class="form-label">Duración (min)</label>
-              <input type="number" class="form-input" id="item-duracion" placeholder="30" min="1">
-            </div>
+            <input type="hidden" id="item-dia" value="">
+            <input type="hidden" id="item-fecha" value="">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Duración (min) <small style="color:var(--text-muted);">opcional</small></label>
+            <input type="number" class="form-input" id="item-duracion" placeholder="30" min="1" style="width:100px;">
           </div>
           <div class="form-group">
             <label class="form-label">Descripción</label>
@@ -797,12 +838,15 @@
         lista.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">Escaleta vacía</div><div class="empty-state-text">Añade hitos al programa</div><button class="btn btn-sage" onclick="abrirModalItem()">+ Añadir hito</button></div>`;
         return;
       }
+      const diasNombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       lista.innerHTML = items.map(item => {
         const tipo = item.tipo || 'acto';
         const esActo = tipo === 'acto';
+        const diaNombre = item.diaSemana !== null && item.diaSemana !== undefined ? diasNombres[item.diaSemana] : '';
+        const horaDisplay = diaNombre ? `${diaNombre} ${item.hora || '--:--'}` : (item.hora || '--:--');
         return `<div class="escaleta-item tipo-${tipo} ${item.completado ? 'completado' : ''}" onclick="editarItem('${item.id}')">
           <div class="escaleta-check ${item.completado ? 'checked' : ''}" onclick="event.stopPropagation(); toggleCompletado('${item.id}')">${item.completado ? '✓' : ''}</div>
-          <div class="escaleta-hora">${item.hora || '--:--'}</div>
+          <div class="escaleta-hora">${horaDisplay}</div>
           <div class="escaleta-contenido">
             <div class="escaleta-descripcion ${esActo ? 'es-acto' : ''}">${item.descripcion || ''}</div>
             ${item.tarea ? `<div class="escaleta-tarea">${item.tarea}</div>` : ''}
@@ -823,6 +867,7 @@
         { key: 'montaje', nombre: 'Montaje', icono: '🔧' },
         { key: 'catering', nombre: 'Catering', icono: '🍽️' }
       ];
+      const diasNombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       let html = '';
       tipos.forEach(tipo => {
         const itemsTipo = items.filter(i => (i.tipo || 'acto') === tipo.key);
@@ -833,11 +878,15 @@
             <span class="cronograma-count">${itemsTipo.length} elementos</span>
           </div>
           <div class="cronograma-lista">
-            ${itemsTipo.map(item => `<div class="cronograma-item">
-              <span class="cronograma-item-hora">${item.hora || '--:--'}</span>
+            ${itemsTipo.map(item => {
+              const diaNombre = item.diaSemana !== null && item.diaSemana !== undefined ? diasNombres[item.diaSemana] : '';
+              const horaDisplay = diaNombre ? `${diaNombre} ${item.hora || '--:--'}` : (item.hora || '--:--');
+              return `<div class="cronograma-item">
+              <span class="cronograma-item-hora">${horaDisplay}</span>
               <span class="cronograma-item-desc">${item.descripcion || ''}</span>
               ${item.completado ? '<span class="cronograma-item-check">✓</span>' : ''}
-            </div>`).join('')}
+            </div>`;
+            }).join('')}
           </div>
         </div>`;
       });
@@ -930,7 +979,10 @@
     function abrirModalItem() {
       document.getElementById('form-item').reset();
       document.getElementById('item-id').value = '';
+      document.getElementById('item-dia').value = '';
+      document.getElementById('item-fecha').value = '';
       seleccionarTipo('acto');
+      inicializarDias();
       document.getElementById('modal-item-titulo').textContent = 'Nuevo hito';
       document.getElementById('btn-eliminar-item').classList.add('hidden');
       document.getElementById('modal-item').classList.add('active');
@@ -947,6 +999,13 @@
       document.getElementById('item-tarea').value = item.tarea || '';
       document.getElementById('item-coordina').value = item.coordina || '';
       document.getElementById('item-ejecuta').value = item.ejecuta || '';
+      document.getElementById('item-dia').value = item.diaSemana ?? '';
+      document.getElementById('item-fecha').value = item.fecha || '';
+      inicializarDias();
+      // Si tiene día guardado, seleccionarlo
+      if (item.diaSemana !== undefined && item.diaSemana !== null) {
+        seleccionarDia(item.diaSemana);
+      }
       document.getElementById('modal-item-titulo').textContent = 'Editar hito';
       document.getElementById('btn-eliminar-item').classList.remove('hidden');
       document.getElementById('modal-item').classList.add('active');
@@ -955,9 +1014,12 @@
     async function guardarItem(e) {
       e.preventDefault();
       const id = document.getElementById('item-id').value;
+      const diaSemana = document.getElementById('item-dia').value;
       const data = {
         tipo: document.getElementById('item-tipo-value').value,
         hora: document.getElementById('item-hora').value,
+        diaSemana: diaSemana !== '' ? parseInt(diaSemana) : null,
+        fecha: document.getElementById('item-fecha').value || null,
         duracion: parseInt(document.getElementById('item-duracion').value) || null,
         descripcion: document.getElementById('item-descripcion').value.trim(),
         tarea: document.getElementById('item-tarea').value.trim(),
@@ -972,6 +1034,72 @@
         cerrarModales();
         await cargarItems();
       } catch (error) { console.error('Error:', error); alert('Error al guardar'); }
+    }
+
+    function inicializarDias() {
+      const escaleta = escaletas.find(e => e.id === escaletaActual);
+      if (!escaleta) return;
+      
+      const fechaInicio = escaleta.fechaInicio || escaleta.fecha;
+      const fechaFin = escaleta.fechaFin || fechaInicio;
+      
+      if (!fechaInicio) return;
+      
+      // Calcular días disponibles entre inicio y fin
+      const inicio = new Date(fechaInicio);
+      const fin = new Date(fechaFin);
+      const diasDisponibles = new Set();
+      
+      let current = new Date(inicio);
+      while (current <= fin) {
+        diasDisponibles.add(current.getDay());
+        current.setDate(current.getDate() + 1);
+      }
+      
+      // Habilitar/deshabilitar botones según días disponibles
+      document.querySelectorAll('.dia-btn').forEach(btn => {
+        const dia = parseInt(btn.dataset.dia);
+        if (diasDisponibles.has(dia)) {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        } else {
+          btn.disabled = true;
+          btn.style.opacity = '0.3';
+        }
+        btn.classList.remove('selected');
+      });
+      
+      // Si solo hay un día, seleccionarlo automáticamente
+      if (diasDisponibles.size === 1) {
+        const unicoDia = diasDisponibles.values().next().value;
+        seleccionarDia(unicoDia);
+      }
+    }
+
+    function seleccionarDia(dia) {
+      document.querySelectorAll('.dia-btn').forEach(btn => btn.classList.remove('selected'));
+      const btn = document.querySelector(`.dia-btn[data-dia="${dia}"]`);
+      if (btn && !btn.disabled) {
+        btn.classList.add('selected');
+        document.getElementById('item-dia').value = dia;
+        
+        // Calcular la fecha real basada en el día seleccionado
+        const escaleta = escaletas.find(e => e.id === escaletaActual);
+        if (escaleta) {
+          const fechaInicio = escaleta.fechaInicio || escaleta.fecha;
+          const inicio = new Date(fechaInicio);
+          const fin = new Date(escaleta.fechaFin || fechaInicio);
+          
+          let current = new Date(inicio);
+          while (current <= fin) {
+            if (current.getDay() === dia) {
+              document.getElementById('item-fecha').value = current.toISOString().split('T')[0];
+              break;
+            }
+            current.setDate(current.getDate() + 1);
+          }
+        }
+      }
     }
 
     async function eliminarItem() {
@@ -993,25 +1121,30 @@
         { key: 'montaje', nombre: 'Montaje', icono: '🔧', color: '#F59E0B' },
         { key: 'catering', nombre: 'Catering', icono: '🍽️', color: '#EC4899' }
       ];
+      const diasNombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       let cronogramasHTML = '';
       tipos.forEach(tipo => {
         const itemsTipo = items.filter(i => (i.tipo || 'acto') === tipo.key);
         if (itemsTipo.length === 0) return;
         cronogramasHTML += `<div style="margin-bottom:24px;"><h3 style="color:${tipo.color};border-bottom:2px solid ${tipo.color};padding-bottom:8px;margin-bottom:12px;">${tipo.icono} ${tipo.nombre}</h3>
           <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:#f5f5f5;">
-            <th style="padding:8px;text-align:left;border:1px solid #ddd;width:60px;">Hora</th>
+            <th style="padding:8px;text-align:left;border:1px solid #ddd;width:80px;">Día/Hora</th>
             <th style="padding:8px;text-align:left;border:1px solid #ddd;">Descripción</th>
             <th style="padding:8px;text-align:left;border:1px solid #ddd;width:100px;">Coordina</th>
             <th style="padding:8px;text-align:left;border:1px solid #ddd;width:100px;">Ejecuta</th>
             <th style="padding:8px;text-align:center;border:1px solid #ddd;width:40px;">✓</th>
           </tr></thead><tbody>
-          ${itemsTipo.map(item => `<tr>
-            <td style="padding:8px;border:1px solid #ddd;font-weight:bold;">${item.hora || '--:--'}</td>
+          ${itemsTipo.map(item => {
+            const diaNombre = item.diaSemana !== null && item.diaSemana !== undefined ? diasNombres[item.diaSemana] : '';
+            const horaDisplay = diaNombre ? `${diaNombre} ${item.hora || '--:--'}` : (item.hora || '--:--');
+            return `<tr>
+            <td style="padding:8px;border:1px solid #ddd;font-weight:bold;">${horaDisplay}</td>
             <td style="padding:8px;border:1px solid #ddd;">${item.descripcion || ''}${item.tarea ? '<br><small style="color:#666;">' + item.tarea + '</small>' : ''}</td>
             <td style="padding:8px;border:1px solid #ddd;">${item.coordina || ''}</td>
             <td style="padding:8px;border:1px solid #ddd;">${item.ejecuta || ''}</td>
             <td style="padding:8px;border:1px solid #ddd;text-align:center;">${item.completado ? '✓' : '☐'}</td>
-          </tr>`).join('')}
+          </tr>`;
+          }).join('')}
           </tbody></table></div>`;
       });
       const fechaStr = formatearRangoFechas(escaleta);
