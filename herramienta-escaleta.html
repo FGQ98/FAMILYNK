@@ -583,8 +583,18 @@
             <input type="text" class="form-input" id="escaleta-nombre-input" placeholder="Ej: Boda Ana y Carlos" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Fecha</label>
-            <input type="date" class="form-input" id="escaleta-fecha-input" required>
+            <label class="form-label">📅 Inicio</label>
+            <div class="form-row">
+              <input type="date" class="form-input" id="escaleta-fecha-inicio" required>
+              <input type="time" class="form-input" id="escaleta-hora-inicio" placeholder="HH:MM">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🏁 Fin <small style="color:var(--text-muted);">(opcional para eventos de un día)</small></label>
+            <div class="form-row">
+              <input type="date" class="form-input" id="escaleta-fecha-fin">
+              <input type="time" class="form-input" id="escaleta-hora-fin" placeholder="HH:MM">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Descripción (opcional)</label>
@@ -703,7 +713,13 @@
     function renderEscaletaTabs() {
       const container = document.getElementById('escaleta-tabs');
       let html = escaletas.map(e => {
-        const fechaStr = e.fecha ? new Date(e.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : '';
+        const fechaInicio = e.fechaInicio || e.fecha;
+        let fechaStr = fechaInicio ? new Date(fechaInicio).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : '';
+        // Si es multiday, mostrar rango
+        if (e.fechaFin && e.fechaFin !== fechaInicio) {
+          const finStr = new Date(e.fechaFin).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
+          fechaStr += ` → ${finStr}`;
+        }
         return `<button class="escaleta-tab ${escaletaActual === e.id ? 'active' : ''}" onclick="seleccionarEscaleta('${e.id}')">
           <span class="escaleta-tab-nombre">${e.nombre}</span>
           <span class="escaleta-tab-fecha">${fechaStr}</span>
@@ -720,12 +736,40 @@
       const escaleta = escaletas.find(e => e.id === id);
       if (!escaleta) return;
       document.getElementById('escaleta-nombre').textContent = escaleta.nombre;
-      document.getElementById('escaleta-fecha').textContent = escaleta.fecha ? 
-        new Date(escaleta.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      document.getElementById('escaleta-fecha').textContent = formatearRangoFechas(escaleta);
       renderEscaletaTabs();
       await cargarItems();
       document.getElementById('escaleta-contenido').classList.remove('hidden');
       document.getElementById('empty-inicial').classList.add('hidden');
+    }
+
+    function formatearRangoFechas(escaleta) {
+      const fechaInicio = escaleta.fechaInicio || escaleta.fecha;
+      if (!fechaInicio) return '';
+      
+      const opcionesCortas = { day: 'numeric', month: 'short' };
+      const opcionesLargas = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+      
+      const inicio = new Date(fechaInicio);
+      let texto = inicio.toLocaleDateString('es-ES', opcionesLargas);
+      
+      if (escaleta.horaInicio) {
+        texto += ` ${escaleta.horaInicio}`;
+      }
+      
+      // Si hay fecha fin diferente
+      if (escaleta.fechaFin && escaleta.fechaFin !== fechaInicio) {
+        const fin = new Date(escaleta.fechaFin);
+        texto += ` → ${fin.toLocaleDateString('es-ES', opcionesCortas)}`;
+        if (escaleta.horaFin) {
+          texto += ` ${escaleta.horaFin}`;
+        }
+      } else if (escaleta.horaFin && !escaleta.fechaFin) {
+        // Solo hora fin, mismo día
+        texto += ` - ${escaleta.horaFin}`;
+      }
+      
+      return texto;
     }
 
     function cambiarVista(vista) {
@@ -820,7 +864,10 @@
     function abrirModalEscaleta() {
       document.getElementById('form-escaleta').reset();
       document.getElementById('escaleta-id').value = '';
-      document.getElementById('escaleta-fecha-input').value = new Date().toISOString().split('T')[0];
+      document.getElementById('escaleta-fecha-inicio').value = new Date().toISOString().split('T')[0];
+      document.getElementById('escaleta-hora-inicio').value = '';
+      document.getElementById('escaleta-fecha-fin').value = '';
+      document.getElementById('escaleta-hora-fin').value = '';
       document.getElementById('modal-escaleta-titulo').textContent = 'Nueva escaleta';
       document.getElementById('btn-eliminar-escaleta').classList.add('hidden');
       document.getElementById('modal-escaleta').classList.add('active');
@@ -831,7 +878,11 @@
       if (!escaleta) return;
       document.getElementById('escaleta-id').value = escaleta.id;
       document.getElementById('escaleta-nombre-input').value = escaleta.nombre || '';
-      document.getElementById('escaleta-fecha-input').value = escaleta.fecha || '';
+      // Compatibilidad: si solo tiene 'fecha' antigua, usarla como fechaInicio
+      document.getElementById('escaleta-fecha-inicio').value = escaleta.fechaInicio || escaleta.fecha || '';
+      document.getElementById('escaleta-hora-inicio').value = escaleta.horaInicio || '';
+      document.getElementById('escaleta-fecha-fin').value = escaleta.fechaFin || '';
+      document.getElementById('escaleta-hora-fin').value = escaleta.horaFin || '';
       document.getElementById('escaleta-desc-input').value = escaleta.descripcion || '';
       document.getElementById('modal-escaleta-titulo').textContent = 'Editar escaleta';
       document.getElementById('btn-eliminar-escaleta').classList.remove('hidden');
@@ -843,7 +894,12 @@
       const id = document.getElementById('escaleta-id').value;
       const data = {
         nombre: document.getElementById('escaleta-nombre-input').value.trim(),
-        fecha: document.getElementById('escaleta-fecha-input').value,
+        fechaInicio: document.getElementById('escaleta-fecha-inicio').value,
+        horaInicio: document.getElementById('escaleta-hora-inicio').value || null,
+        fechaFin: document.getElementById('escaleta-fecha-fin').value || null,
+        horaFin: document.getElementById('escaleta-hora-fin').value || null,
+        // Mantener 'fecha' para compatibilidad con ordenamiento
+        fecha: document.getElementById('escaleta-fecha-inicio').value,
         descripcion: document.getElementById('escaleta-desc-input').value.trim(),
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
       };
@@ -958,7 +1014,7 @@
           </tr>`).join('')}
           </tbody></table></div>`;
       });
-      const fechaStr = escaleta.fecha ? new Date(escaleta.fecha).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      const fechaStr = formatearRangoFechas(escaleta);
       printWindow.document.write(`<!DOCTYPE html><html><head><title>Cronograma - ${escaleta.nombre}</title>
         <style>body{font-family:Arial,sans-serif;padding:20px;color:#333;}h1{font-size:24px;margin-bottom:4px;}h2{font-size:14px;color:#666;font-weight:normal;margin-bottom:24px;}@media print{body{padding:0;}}</style>
         </head><body><h1>📋 ${escaleta.nombre}</h1><h2>${fechaStr}</h2>${cronogramasHTML}<script>window.onload=function(){window.print();}</scr" + "ipt></body></html>`);
