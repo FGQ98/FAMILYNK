@@ -113,6 +113,47 @@
       border-bottom: 1px dashed var(--cream-dark);
     }
 
+    /* Nidos siameses (segundas nupcias) */
+    .nido-siames-container {
+      display: flex;
+      position: relative;
+    }
+
+    .nido-siames-container .nido-card {
+      border-radius: 0;
+    }
+
+    .nido-siames-container .nido-card:first-child {
+      border-radius: var(--radius-md) 0 0 var(--radius-md);
+      border-right: 2px dashed var(--terracotta);
+    }
+
+    .nido-siames-container .nido-card:last-child {
+      border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    }
+
+    .nido-siames-container .nido-card.ex-pareja {
+      opacity: 0.7;
+      background: linear-gradient(135deg, var(--cream) 0%, #F5E6D3 100%);
+    }
+
+    .siames-link {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--terracotta);
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      z-index: 10;
+    }
+
     .miembro-chip {
       display: flex;
       align-items: center;
@@ -133,6 +174,21 @@
     .miembro-chip.invitado {
       color: #9A9A9A;
       background: #F0F0F0;
+    }
+
+    .miembro-chip.separado {
+      background: #DAA520;
+      color: white;
+    }
+
+    .miembro-chip.divorciado {
+      background: #800020;
+      color: white;
+    }
+
+    .miembro-chip.comprometido {
+      background: #2E8B57;
+      color: white;
     }
 
     .miembro-chip .chip-icon {
@@ -471,7 +527,17 @@
       const renderChip = (m) => {
         const esFallecido = m.fechaDefuncion ? true : false;
         const esInvitado = m.email && m.estadoCuenta === 'invitado';
-        const estadoClase = esFallecido ? 'fallecido' : (esInvitado ? 'invitado' : '');
+        const esComprometido = m.estadoVincular === 'comprometido';
+        const esSeparado = m.estadoVincular === 'separado';
+        const esDivorciado = m.estadoVincular === 'divorciado';
+        
+        let estadoClase = '';
+        if (esFallecido) estadoClase = 'fallecido';
+        else if (esDivorciado) estadoClase = 'divorciado';
+        else if (esSeparado) estadoClase = 'separado';
+        else if (esComprometido) estadoClase = 'comprometido';
+        else if (esInvitado) estadoClase = 'invitado';
+        
         return `
           <span class="miembro-chip ${estadoClase}">
             ${m.nombre || m.iniciales || '?'}
@@ -479,6 +545,53 @@
         `;
       };
 
+      // Detectar si hay segundas nupcias (ex-consorte + consorte activo)
+      const exConsortes = prog.filter(m => m.estadoVincular === 'separado' || m.estadoVincular === 'divorciado');
+      const consortesActivos = prog.filter(m => !m.estadoVincular || m.estadoVincular === 'comprometido');
+      const deSangre = prog.filter(m => m.esAdmin || m.uid === nido.creador);
+      
+      // Tiene segundas nupcias si hay ex-consorte Y más de un consorte
+      const tieneSegundasNupcias = exConsortes.length > 0 && consortesActivos.length > 1;
+
+      if (tieneSegundasNupcias) {
+        // Renderizar como nidos siameses
+        const hijosHtml = hij.length > 0 
+          ? `<div class="miembros-fila hijos">${hij.map(renderChip).join('')}</div>` 
+          : '';
+
+        // Card 1: De sangre + ex-consortes
+        const prog1 = [...deSangre, ...exConsortes];
+        const progenitoresHtml1 = `<div class="miembros-fila progenitores">${prog1.map(renderChip).join('')}</div>`;
+
+        // Card 2: De sangre + consortes activos (sin el de sangre duplicado)
+        const consortesNoSangre = consortesActivos.filter(m => !m.esAdmin && m.uid !== nido.creador);
+        const prog2 = [...deSangre, ...consortesNoSangre];
+        const progenitoresHtml2 = `<div class="miembros-fila progenitores">${prog2.map(renderChip).join('')}</div>`;
+
+        return `
+          <div class="nido-siames-container">
+            <a href="nido.html?id=${nido.id}" class="nido-card ex-pareja" data-nido-id="${nido.id}">
+              <div class="nido-icon">🪺</div>
+              <div class="nido-nombre">${nido.nombre}</div>
+              <div class="nido-miembros-grid">
+                ${progenitoresHtml1}
+              </div>
+            </a>
+            <span class="siames-link">↔</span>
+            <a href="nido.html?id=${nido.id}" class="nido-card" data-nido-id="${nido.id}">
+              <div class="nido-icon">🪺</div>
+              <div class="nido-nombre">${nido.nombre}</div>
+              <div class="nido-miembros">${miembros.length} miembro${miembros.length !== 1 ? 's' : ''}</div>
+              <div class="nido-miembros-grid">
+                ${progenitoresHtml2}
+                ${hijosHtml}
+              </div>
+            </a>
+          </div>
+        `;
+      }
+
+      // Renderizado normal
       const progenitoresHtml = prog.length > 0 
         ? `<div class="miembros-fila progenitores">${prog.map(renderChip).join('')}</div>` 
         : '';

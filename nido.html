@@ -26,6 +26,9 @@
       --success: #7DB59A;
       --warning: #E8B44D;
       --error: #D4695A;
+      --separado: #DAA520;
+      --divorciado: #800020;
+      --comprometido: #2E8B57;
       --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
       --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
       --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
@@ -233,6 +236,44 @@
       padding: 2px 8px;
       background: #FFF3E0;
       color: #E65100;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+
+    /* Estados vinculares */
+    .member-avatar.separado {
+      background: linear-gradient(135deg, var(--separado) 0%, #F4C430 100%);
+      box-shadow: 0 0 0 3px rgba(218, 165, 32, 0.3);
+    }
+    .member-avatar.divorciado {
+      background: linear-gradient(135deg, var(--divorciado) 0%, #A52A2A 100%);
+      box-shadow: 0 0 0 3px rgba(128, 0, 32, 0.3);
+    }
+    .member-avatar.comprometido {
+      background: linear-gradient(135deg, var(--comprometido) 0%, #3CB371 100%);
+      box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.3);
+    }
+    .member-separado-badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      background: var(--separado);
+      color: white;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+    .member-divorciado-badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      background: var(--divorciado);
+      color: white;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+    .member-comprometido-badge {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      background: var(--comprometido);
+      color: white;
       border-radius: var(--radius-sm);
       font-weight: 600;
     }
@@ -1124,6 +1165,32 @@
             </div>
           </div>
 
+          <!-- Estado vincular (solo para progenitores/consortes) -->
+          <div class="estado-vincular-section hidden" id="estado-vincular-section">
+            <div class="form-divider" style="margin:16px 0;border-top:1px dashed var(--cream-dark);"></div>
+            <div class="form-group">
+              <label class="form-label">💍 Estado vincular</label>
+              <div class="form-hint" style="margin-bottom:8px;">Solo aplicable a consortes</div>
+              <select class="form-input" id="miembro-estado-vincular" onchange="toggleFechaVincular()">
+                <option value="">— Activo (en pareja) —</option>
+                <option value="comprometido">💚 Comprometido (provisional)</option>
+                <option value="separado">⚠️ Separado</option>
+                <option value="divorciado">📜 Divorciado</option>
+              </select>
+            </div>
+            <div class="form-group hidden" id="fecha-vincular-group">
+              <label class="form-label" id="fecha-vincular-label">Fecha</label>
+              <input type="date" class="form-input" id="miembro-fecha-vincular">
+              <div class="form-hint">Opcional.</div>
+            </div>
+            <div class="form-group hidden" id="revertir-vincular-group">
+              <button type="button" class="btn btn-outline btn-sm" onclick="revertirEstadoVincular()" style="color:var(--success);border-color:var(--success);">
+                ↩️ Revertir a estado activo
+              </button>
+              <div class="form-hint">El consorte vuelve a estado activo en este nido</div>
+            </div>
+          </div>
+
           <div class="form-group">
             <div class="checkbox-group">
               <input type="checkbox" id="miembro-admin">
@@ -1449,14 +1516,28 @@
       const index = miembro.originalIndex;
       const fallecido = miembro.fechaDefuncion ? true : false;
       const esInvitado = miembro.email && miembro.estadoCuenta === 'invitado';
+      const esComprometido = miembro.estadoVincular === 'comprometido';
+      const esSeparado = miembro.estadoVincular === 'separado';
+      const esDivorciado = miembro.estadoVincular === 'divorciado';
       const fechaNac = miembro.fechaNacimiento ? new Date(miembro.fechaNacimiento).toLocaleDateString('es-ES') : '?';
       const fechaDef = miembro.fechaDefuncion ? new Date(miembro.fechaDefuncion).toLocaleDateString('es-ES') : null;
       const tieneNidoPropio = miembro.nidoPropio ? true : false;
       const tieneMascotas = miembro.mascotas && miembro.mascotas.length > 0;
       const numMascotas = tieneMascotas ? miembro.mascotas.length : 0;
       
-      // Clase de estado
-      const estadoClase = fallecido ? 'fallecido' : (esInvitado ? 'invitado' : '');
+      // Clase de estado (prioridad: fallecido > vincular > invitado)
+      let estadoClase = '';
+      if (fallecido) estadoClase = 'fallecido';
+      else if (esDivorciado) estadoClase = 'divorciado';
+      else if (esSeparado) estadoClase = 'separado';
+      else if (esComprometido) estadoClase = 'comprometido';
+      else if (esInvitado) estadoClase = 'invitado';
+
+      // Badge vincular
+      let badgeVincular = '';
+      if (esComprometido) badgeVincular = '<span class="member-comprometido-badge">Comprometido</span>';
+      else if (esSeparado) badgeVincular = '<span class="member-separado-badge">Separado</span>';
+      else if (esDivorciado) badgeVincular = '<span class="member-divorciado-badge">Divorciado</span>';
 
       return `
         <div class="member-card ${estadoClase}" data-index="${index}">
@@ -1466,6 +1547,7 @@
               ${miembro.nombre || miembro.iniciales}
               ${miembro.esAdmin ? '<span class="member-admin-badge">Admin</span>' : ''}
               ${esInvitado ? '<span class="member-pendiente-badge">Pendiente</span>' : ''}
+              ${badgeVincular}
               ${tieneNidoPropio ? '<span class="member-nido-badge">🪺 Tiene nido</span>' : ''}
               ${tieneMascotas ? `<span class="member-nido-badge">🐾 ${numMascotas}</span>` : ''}
             </div>
@@ -1490,15 +1572,84 @@
     // Toggle sección hijo cuando cambia la relación
     document.querySelectorAll('input[name="miembro-relacion"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
+        const estadoVincularSection = document.getElementById('estado-vincular-section');
+        
         if (e.target.value === 'descendiente') {
           hijoNidoSection.classList.remove('hidden');
+          estadoVincularSection.classList.add('hidden');
+        } else if (e.target.value === 'progenitor') {
+          hijoNidoSection.classList.add('hidden');
+          document.getElementById('hijo-forma-nido').checked = false;
+          nuevoNidoFields.classList.add('hidden');
+          // NO mostrar sección vincular aquí - solo se muestra en edición de consortes
+          estadoVincularSection.classList.add('hidden');
         } else {
           hijoNidoSection.classList.add('hidden');
           document.getElementById('hijo-forma-nido').checked = false;
           nuevoNidoFields.classList.add('hidden');
+          estadoVincularSection.classList.add('hidden');
         }
       });
     });
+
+    // Toggle fecha vincular cuando cambia estado
+    function toggleFechaVincular() {
+      const estado = document.getElementById('miembro-estado-vincular').value;
+      const fechaGroup = document.getElementById('fecha-vincular-group');
+      const revertirGroup = document.getElementById('revertir-vincular-group');
+      const label = document.getElementById('fecha-vincular-label');
+      
+      if (estado === 'comprometido') {
+        fechaGroup.classList.remove('hidden');
+        revertirGroup.classList.remove('hidden');
+        label.textContent = 'Fecha de compromiso';
+      } else if (estado === 'separado') {
+        fechaGroup.classList.remove('hidden');
+        revertirGroup.classList.remove('hidden');
+        label.textContent = 'Fecha de separación';
+      } else if (estado === 'divorciado') {
+        fechaGroup.classList.remove('hidden');
+        revertirGroup.classList.remove('hidden');
+        label.textContent = 'Fecha de divorcio';
+      } else {
+        fechaGroup.classList.add('hidden');
+        revertirGroup.classList.add('hidden');
+      }
+    }
+
+    // Identificar si un miembro es "de sangre" (el creador del nido)
+    function esDeSangre(index) {
+      const miembros = nidoData.miembrosData || [];
+      const miembro = miembros[index];
+      if (!miembro) return false;
+      
+      // El creador del nido es el de sangre - comparar por email o uid
+      const creadorUid = nidoData.creador;
+      
+      // Si el miembro tiene uid y coincide con el creador
+      if (miembro.uid && miembro.uid === creadorUid) return true;
+      
+      // Alternativa: buscar en usuarios por email para ver si es el creador
+      // Por simplicidad, asumimos que el primer progenitor admin es el creador si no hay uid
+      if (!miembro.uid && miembro.esAdmin && miembro.relacion === 'progenitor') {
+        // Verificar si es el primer admin progenitor
+        for (let i = 0; i < miembros.length; i++) {
+          const m = miembros[i];
+          if (m.esAdmin && (m.relacion === 'progenitor' || !m.relacion)) {
+            return i === index;
+          }
+        }
+      }
+      
+      return false;
+    }
+
+    // Revertir estado vincular
+    function revertirEstadoVincular() {
+      document.getElementById('miembro-estado-vincular').value = '';
+      document.getElementById('miembro-fecha-vincular').value = '';
+      toggleFechaVincular();
+    }
 
     // Toggle campos nuevo nido cuando marca "Forma un nido"
     document.getElementById('hijo-forma-nido').addEventListener('change', (e) => {
@@ -1531,6 +1682,12 @@
       document.getElementById('modal-añadir').textContent = 'Añadir miembro';
       // Limpiar mascotas
       document.getElementById('mascotas-list').innerHTML = '';
+      // Ocultar estado vincular (solo se muestra en edición de consortes)
+      document.getElementById('estado-vincular-section').classList.add('hidden');
+      document.getElementById('miembro-estado-vincular').value = '';
+      document.getElementById('miembro-fecha-vincular').value = '';
+      document.getElementById('fecha-vincular-group').classList.add('hidden');
+      document.getElementById('revertir-vincular-group').classList.add('hidden');
     }
 
     // === EMAIL E INVITACIÓN ===
@@ -1754,6 +1911,10 @@
       const fechaNacimiento = document.getElementById('miembro-nacimiento').value;
       const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
       const esAdmin = document.getElementById('miembro-admin').checked;
+      
+      // Estado vincular (solo para progenitores)
+      const estadoVincular = relacion === 'progenitor' ? (document.getElementById('miembro-estado-vincular').value || null) : null;
+      const fechaVincular = estadoVincular ? (document.getElementById('miembro-fecha-vincular').value || null) : null;
 
       // Datos del nuevo nido si aplica
       const formaNido = relacion === 'descendiente' && document.getElementById('hijo-forma-nido').checked;
@@ -1856,6 +2017,8 @@
           relacion,  // 'descendiente' en el nido padre
           mascotas: getMascotasFromForm(),
           nidoPropio: nuevoNidoId || null,  // Enlace a su nuevo nido
+          estadoVincular: estadoVincular,
+          fechaVincular: fechaVincular,
           fechaCreacion: new Date().toISOString()
         };
         
@@ -1902,6 +2065,10 @@
       const fechaDefuncion = document.getElementById('miembro-defuncion').value || null;
       const esAdmin = document.getElementById('miembro-admin').checked;
       const relacion = document.querySelector('input[name="miembro-relacion"]:checked').value;
+      
+      // Estado vincular (solo para progenitores)
+      const estadoVincular = relacion === 'progenitor' ? (document.getElementById('miembro-estado-vincular').value || null) : null;
+      const fechaVincular = estadoVincular ? (document.getElementById('miembro-fecha-vincular').value || null) : null;
 
       const btn = document.getElementById('modal-añadir');
       btn.disabled = true;
@@ -1918,7 +2085,9 @@
           fechaDefuncion,
           esAdmin,
           relacion,
-          mascotas: getMascotasFromForm()
+          mascotas: getMascotasFromForm(),
+          estadoVincular,
+          fechaVincular
         };
 
         await db.collection('nidos').doc(nidoId).update({
@@ -2028,17 +2197,35 @@
       const radioEl = document.querySelector(`input[name="miembro-relacion"][value="${relacion}"]`);
       if (radioEl) radioEl.checked = true;
       
-      // Mostrar/ocultar sección hijo
+      // Mostrar/ocultar sección hijo y estado vincular
+      const estadoVincularSection = document.getElementById('estado-vincular-section');
+      
       if (relacion === 'descendiente') {
         hijoNidoSection.classList.remove('hidden');
+        estadoVincularSection.classList.add('hidden');
         // No permitir cambiar "forma nido" en edición si ya tiene uno
         if (miembro.nidoPropio) {
           document.getElementById('hijo-forma-nido').checked = true;
           document.getElementById('hijo-forma-nido').disabled = true;
           nuevoNidoFields.classList.add('hidden');
         }
+      } else if (relacion === 'progenitor') {
+        hijoNidoSection.classList.add('hidden');
+        
+        // Estado vincular SOLO para consortes (no para el de sangre)
+        const esConsorte = !esDeSangre(index);
+        if (esConsorte) {
+          estadoVincularSection.classList.remove('hidden');
+          // Cargar estado vincular
+          document.getElementById('miembro-estado-vincular').value = miembro.estadoVincular || '';
+          document.getElementById('miembro-fecha-vincular').value = miembro.fechaVincular || '';
+          toggleFechaVincular();
+        } else {
+          estadoVincularSection.classList.add('hidden');
+        }
       } else {
         hijoNidoSection.classList.add('hidden');
+        estadoVincularSection.classList.add('hidden');
       }
 
       // Change form to edit mode
