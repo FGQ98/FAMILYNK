@@ -561,9 +561,8 @@
         // Enviar email de verificación
         await user.sendEmailVerification();
         
-        // Mostrar éxito
-        form.classList.add('hidden');
-        successMsg.classList.add('show');
+        // Redirigir al wizard para crear primer nido
+        window.location.href = 'wizard-nido.html';
         
       } catch (error) {
         console.error('Error:', error);
@@ -627,8 +626,14 @@
           });
         }
         
-        // Redirigir
-        window.location.href = 'app.html';
+        // Redirigir según si es nuevo o existente
+        if (!userDoc.exists) {
+          // Usuario nuevo - ir al wizard para crear nido
+          window.location.href = 'wizard-nido.html';
+        } else {
+          // Usuario existente - ir a mi nido
+          window.location.href = 'mi-nido.html';
+        }
         
       } catch (error) {
         console.error('Error Google:', error);
@@ -643,10 +648,16 @@
       errorMsg.classList.add('show');
     }
 
-    // Si ya está logueado, redirigir
-    auth.onAuthStateChanged((user) => {
+    // Si ya está logueado, redirigir según estado
+    auth.onAuthStateChanged(async (user) => {
       if (user && user.emailVerified) {
-        window.location.href = 'app.html';
+        // Verificar si tiene nido
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        if (userDoc.exists && userDoc.data().nidoId) {
+          window.location.href = 'mi-nido.html';
+        } else {
+          window.location.href = 'wizard-nido.html';
+        }
       }
     });
   </script>
