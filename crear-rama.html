@@ -579,17 +579,17 @@
       </div>
 
       <div class="form-card">
-        <h2 class="form-card-title">🏠 El primer nido</h2>
-        <p class="form-card-subtitle">Tu nido se vinculará a ambas ramas. ¿Quieres crear otro nido para la cabeza de la nueva rama?</p>
+        <h2 class="form-card-title">🏠 Tu nido en la nueva rama</h2>
+        <p class="form-card-subtitle">Tu nido se replicará automáticamente en la nueva rama. ¿Quieres crear también un nido cabecera (ej: padres del consorte)?</p>
 
         <div class="form-group">
-          <label class="form-label">¿Crear nido inicial para la nueva rama?</label>
+          <label class="form-label">¿Crear nido cabecera adicional?</label>
           <div style="display: flex; gap: 12px; margin-top: 8px;">
             <label style="flex: 1; cursor: pointer;">
               <input type="radio" name="crear-nido" value="no" checked style="display: none;">
               <div class="nido-option" onclick="toggleNidoForm(false)" style="padding: 16px; background: var(--sage-muted); border: 2px solid var(--sage); border-radius: var(--radius-md); text-align: center;">
-                <div style="font-size: 1.5rem; margin-bottom: 8px;">🔗</div>
-                <div style="font-weight: 600;">Solo vincular mi nido</div>
+                <div style="font-size: 1.5rem; margin-bottom: 8px;">✅</div>
+                <div style="font-weight: 600;">Solo replicar mi nido</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">Ya añadiré más nidos después</div>
               </div>
             </label>
@@ -597,7 +597,7 @@
               <input type="radio" name="crear-nido" value="si" style="display: none;">
               <div class="nido-option" onclick="toggleNidoForm(true)" style="padding: 16px; background: var(--cream); border: 2px solid var(--cream-dark); border-radius: var(--radius-md); text-align: center;">
                 <div style="font-size: 1.5rem; margin-bottom: 8px;">🏠</div>
-                <div style="font-weight: 600;">Crear nido cabecera</div>
+                <div style="font-weight: 600;">+ Crear nido cabecera</div>
                 <div style="font-size: 0.8rem; color: var(--text-muted);">Ej: padres del consorte</div>
               </div>
             </label>
@@ -665,7 +665,7 @@
             <span style="font-weight: 600;">Tu rol en la nueva rama</span>
           </div>
           <p style="font-size: 0.9rem; color: var(--text-light);">
-            Serás <strong>AdminRama</strong> con control total. Tu nido actual quedará vinculado a ambas familias.
+            Serás <strong>AdminRama</strong> con control total. Tu nido actual se replicará en la nueva rama con todos sus miembros.
           </p>
         </div>
 
@@ -900,7 +900,7 @@
           creadoDesdeNido: userData.nidoId,
           familiaVinculada: userData.familiaId, // Referencia a la familia original
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
-          plan: 'familia', // Plan premium por defecto
+          plan: 'familia',
           activa: true
         });
 
@@ -919,36 +919,97 @@
           ramasAdicionales: ramasAdicionales
         });
 
-        // 3. Si hay nido inicial, crearlo
+        // 3. REPLICAR el nido actual del usuario en la nueva familia
+        const nidoOriginalDoc = await db.collection('nidos').doc(userData.nidoId).get();
+        
+        if (nidoOriginalDoc.exists) {
+          const nidoOriginal = nidoOriginalDoc.data();
+          
+          // Crear copia del nido para la nueva familia
+          const nidoReplicaRef = await db.collection('nidos').add({
+            nombre: nidoOriginal.nombre,
+            generacion: nidoOriginal.generacion || '3-padres',
+            familiaId: nuevaFamiliaId,
+            creador: currentUser.uid,
+            admins: nidoOriginal.admins || [currentUser.uid],
+            miembrosData: nidoOriginal.miembrosData || [],
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+            replicadoDesde: userData.nidoId, // Referencia al nido original
+            seccionesActivas: nidoOriginal.seccionesActivas || {
+              calendario: true,
+              tareas: true,
+              mensajes: true,
+              tablon: true,
+              menus: true,
+              tienda: true
+            },
+            casas: nidoOriginal.casas || [],
+            descripcion: nidoOriginal.descripcion || ''
+          });
+
+          // Vincular nido original con la réplica
+          await db.collection('nidos').doc(userData.nidoId).update({
+            nidosVinculados: firebase.firestore.FieldValue.arrayUnion({
+              nidoId: nidoReplicaRef.id,
+              familiaId: nuevaFamiliaId,
+              tipo: 'replica'
+            })
+          });
+        }
+
+        // 4. Si además quiere crear nido cabecera adicional, crearlo
         if (crearNidoInicial && formData.nidoNombre) {
+          // Determinar generación anterior (abuelos si el usuario es padres)
+          const genAnterior = {
+            '4-hijos': '3-padres',
+            '3-padres': '2-abuelos',
+            '2-abuelos': '1-bisabuelos',
+            '1-bisabuelos': '1-bisabuelos'
+          };
+          const nidoOriginalDoc = await db.collection('nidos').doc(userData.nidoId).get();
+          const genActual = nidoOriginalDoc.exists ? (nidoOriginalDoc.data().generacion || '3-padres') : '3-padres';
+          
           const nidoRef = await db.collection('nidos').add({
             nombre: formData.nidoNombre,
+            generacion: genAnterior[genActual] || '2-abuelos',
             familiaId: nuevaFamiliaId,
-            cabezas: [formData.nidoCabeza1, formData.nidoCabeza2].filter(Boolean),
-            emailInvitacion: formData.nidoEmail || null,
-            creadoPor: currentUser.uid,
-            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
-            miembros: []
+            creador: currentUser.uid,
+            admins: [],
+            miembrosData: [
+              formData.nidoCabeza1 ? {
+                nombre: formData.nidoCabeza1,
+                iniciales: formData.nidoCabeza1.split(' ').map(p => p[0]).join('').toUpperCase().slice(0,2),
+                relacion: 'progenitor',
+                esAdmin: true,
+                email: formData.nidoEmail || null,
+                estadoCuenta: formData.nidoEmail ? 'invitado' : 'validado',
+                fechaInvitacion: formData.nidoEmail ? new Date().toISOString() : null
+              } : null,
+              formData.nidoCabeza2 ? {
+                nombre: formData.nidoCabeza2,
+                iniciales: formData.nidoCabeza2.split(' ').map(p => p[0]).join('').toUpperCase().slice(0,2),
+                relacion: 'progenitor',
+                esAdmin: false,
+                estadoCuenta: 'validado'
+              } : null
+            ].filter(Boolean),
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
           });
 
           // Si hay email, crear invitación pendiente
           if (formData.nidoEmail) {
-            await db.collection('invitaciones-email').add({
+            await db.collection('invitaciones').add({
               email: formData.nidoEmail,
+              nombre: formData.nidoCabeza1,
               familiaId: nuevaFamiliaId,
               nidoId: nidoRef.id,
-              tipo: 'AdminNido',
+              rol: 'AdminNido',
               invitadoPor: currentUser.uid,
               fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
               estado: 'pendiente'
             });
           }
         }
-
-        // 4. Vincular nido actual a la nueva familia también
-        await db.collection('nidos').doc(userData.nidoId).update({
-          familiasVinculadas: firebase.firestore.FieldValue.arrayUnion(nuevaFamiliaId)
-        });
 
         // Mostrar éxito
         document.getElementById('success-rama-nombre').textContent = formData.ramaNombre;
