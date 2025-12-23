@@ -2068,9 +2068,9 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
               <div class="form-group">
                 <label class="form-label">Tipo</label>
-                <select class="form-input" id="edit-tipo">
+                <select class="form-input" id="edit-tipo" onchange="toggleCamposRustico()">
                   <option value="inmueble">🏠 Inmueble</option>
-                  <option value="terreno">🌳 Terreno</option>
+                  <option value="terreno">🌳 Terreno / Finca rústica</option>
                   <option value="vehiculo">🚗 Vehículo</option>
                   <option value="ajuar">🪑 Ajuar</option>
                 </select>
@@ -2080,6 +2080,56 @@
                 <input type="text" class="form-input" id="edit-subtipo" placeholder="Ej: Segunda residencia">
               </div>
             </div>
+
+            <!-- CAMPOS RÚSTICOS (solo visibles para tipo=terreno) -->
+            <div id="campos-rustico" class="hidden">
+              <div class="form-group" style="margin-top:16px;padding:16px;background:var(--capataz-muted);border-radius:var(--radius-md);border-left:4px solid var(--capataz);">
+                <label class="form-label" style="color:var(--capataz);margin-bottom:12px;">🌾 Aprovechamiento general</label>
+                <div style="display:flex;gap:20px;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="aprov-agricola" style="width:18px;height:18px;accent-color:var(--capataz);">
+                    <span>🌾 Agrícola</span>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="aprov-forestal" style="width:18px;height:18px;accent-color:var(--capataz);">
+                    <span>🌲 Forestal</span>
+                  </label>
+                  <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="aprov-cinegetico" style="width:18px;height:18px;accent-color:var(--capataz);">
+                    <span>🦌 Cinegético</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-top:16px;">
+                <label class="form-label" style="display:flex;align-items:center;justify-content:space-between;">
+                  <span>📋 Fincas registrales</span>
+                  <button type="button" class="btn btn-sm" style="background:var(--capataz);color:white;" onclick="addFincaRow()">+ Añadir finca</button>
+                </label>
+                <div style="overflow-x:auto;margin-top:8px;">
+                  <table id="tabla-fincas" style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+                    <thead>
+                      <tr style="background:var(--cream-dark);">
+                        <th style="padding:10px;text-align:left;font-weight:600;">Registro</th>
+                        <th style="padding:10px;text-align:left;font-weight:600;">Nombre</th>
+                        <th style="padding:10px;text-align:right;font-weight:600;">Superficie (ha)</th>
+                        <th style="padding:10px;text-align:left;font-weight:600;">Uso</th>
+                        <th style="padding:10px;width:40px;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="tbody-fincas"></tbody>
+                    <tfoot>
+                      <tr style="background:var(--capataz-muted);font-weight:700;">
+                        <td style="padding:10px;" colspan="2">TOTAL</td>
+                        <td style="padding:10px;text-align:right;" id="total-superficie">0.00 ha</td>
+                        <td style="padding:10px;" colspan="2"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <!-- FIN CAMPOS RÚSTICOS -->
             <div class="form-group">
               <label class="form-label">Ubicación</label>
               <input type="text" class="form-input" id="edit-ubicacion" placeholder="Dirección o localización">
@@ -2707,6 +2757,7 @@
         const c = bienData.capatazModulos || {};
         const modulosConfig = [
           { key: 'parcelas', icon: '🗺️', label: 'Parcelas', url: `parcelas.html?bien=${bienId}` },
+          { key: 'instalaciones', icon: '🏭', label: 'Instalaciones', url: `instalaciones.html?bien=${bienId}` },
           { key: 'maquinaria', icon: '🚜', label: 'Maquinaria', url: `maquinaria.html?bien=${bienId}` },
           { key: 'personal', icon: '👷', label: 'Personal', url: `personal-finca.html?bien=${bienId}` },
           { key: 'labores', icon: '📋', label: 'Labores', url: `labores.html?bien=${bienId}` },
@@ -2870,6 +2921,7 @@
         if (!bienData.capatazModulos) {
           updateData.capatazModulos = {
             parcelas: true,
+            instalaciones: true,
             maquinaria: true,
             personal: true,
             labores: true,
@@ -3144,6 +3196,22 @@
       document.getElementById('edit-notas').value = bienData.notas || '';
       document.getElementById('edit-normas').value = bienData.normasConvivencia || '';
       
+      // Cargar campos rústicos si es terreno
+      toggleCamposRustico();
+      if (bienData.tipo === 'terreno') {
+        // Aprovechamiento
+        document.getElementById('aprov-agricola').checked = bienData.aprovechamiento?.agricola || false;
+        document.getElementById('aprov-forestal').checked = bienData.aprovechamiento?.forestal || false;
+        document.getElementById('aprov-cinegetico').checked = bienData.aprovechamiento?.cinegetico || false;
+        
+        // Fincas
+        document.getElementById('tbody-fincas').innerHTML = '';
+        if (bienData.fincas && bienData.fincas.length > 0) {
+          bienData.fincas.forEach(f => addFincaRow(f));
+        }
+        actualizarTotalSuperficie();
+      }
+      
       // Cargar personal
       document.getElementById('personal-list').innerHTML = '';
       if (bienData.personal && bienData.personal.length > 0) {
@@ -3174,6 +3242,82 @@
         document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
       });
     });
+
+    // ========== CAMPOS RÚSTICOS ==========
+    function toggleCamposRustico() {
+      const tipo = document.getElementById('edit-tipo').value;
+      const camposRustico = document.getElementById('campos-rustico');
+      
+      if (tipo === 'terreno') {
+        camposRustico.classList.remove('hidden');
+      } else {
+        camposRustico.classList.add('hidden');
+      }
+    }
+
+    function addFincaRow(data = null) {
+      const tbody = document.getElementById('tbody-fincas');
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td style="padding:8px;">
+          <input type="text" class="form-input finca-registro" style="padding:8px;font-size:0.85rem;" placeholder="Nº registro" value="${data?.registro || ''}">
+        </td>
+        <td style="padding:8px;">
+          <input type="text" class="form-input finca-nombre" style="padding:8px;font-size:0.85rem;" placeholder="Nombre" value="${data?.nombre || ''}">
+        </td>
+        <td style="padding:8px;">
+          <input type="number" step="0.01" class="form-input finca-superficie" style="padding:8px;font-size:0.85rem;text-align:right;" placeholder="0.00" value="${data?.superficie || ''}" onchange="actualizarTotalSuperficie()">
+        </td>
+        <td style="padding:8px;">
+          <select class="form-input finca-uso" style="padding:8px;font-size:0.85rem;">
+            <option value="">— Uso —</option>
+            <option value="secano" ${data?.uso === 'secano' ? 'selected' : ''}>🌾 Secano</option>
+            <option value="regadio" ${data?.uso === 'regadio' ? 'selected' : ''}>💧 Regadío</option>
+            <option value="olivar" ${data?.uso === 'olivar' ? 'selected' : ''}>🫒 Olivar</option>
+            <option value="vinedo" ${data?.uso === 'vinedo' ? 'selected' : ''}>🍇 Viñedo</option>
+            <option value="monte" ${data?.uso === 'monte' ? 'selected' : ''}>🌲 Monte</option>
+            <option value="pastos" ${data?.uso === 'pastos' ? 'selected' : ''}>🐄 Pastos</option>
+            <option value="erial" ${data?.uso === 'erial' ? 'selected' : ''}>🏜️ Erial</option>
+            <option value="otro" ${data?.uso === 'otro' ? 'selected' : ''}>📦 Otro</option>
+          </select>
+        </td>
+        <td style="padding:8px;text-align:center;">
+          <button type="button" onclick="this.closest('tr').remove(); actualizarTotalSuperficie();" style="background:none;border:none;cursor:pointer;font-size:1rem;">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    }
+
+    function actualizarTotalSuperficie() {
+      const total = calcularTotalSuperficie();
+      document.getElementById('total-superficie').textContent = total.toFixed(2) + ' ha';
+    }
+
+    function calcularTotalSuperficie() {
+      const inputs = document.querySelectorAll('.finca-superficie');
+      let total = 0;
+      inputs.forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) total += val;
+      });
+      return total;
+    }
+
+    function getFincasFromForm() {
+      const rows = document.querySelectorAll('#tbody-fincas tr');
+      const fincas = [];
+      rows.forEach(row => {
+        const registro = row.querySelector('.finca-registro')?.value?.trim();
+        const nombre = row.querySelector('.finca-nombre')?.value?.trim();
+        const superficie = parseFloat(row.querySelector('.finca-superficie')?.value) || 0;
+        const uso = row.querySelector('.finca-uso')?.value;
+        
+        if (registro || nombre || superficie > 0) {
+          fincas.push({ registro, nombre, superficie, uso });
+        }
+      });
+      return fincas;
+    }
 
     // Personal dinámico
     function addPersonalItem(data = null) {
@@ -3281,9 +3425,11 @@
       btn.textContent = 'Guardando...';
 
       try {
+        const tipo = document.getElementById('edit-tipo').value;
+        
         const updateData = {
           nombre: document.getElementById('edit-nombre').value,
-          tipo: document.getElementById('edit-tipo').value,
+          tipo: tipo,
           subtipo: document.getElementById('edit-subtipo').value,
           ubicacion: document.getElementById('edit-ubicacion').value,
           titularidad: document.getElementById('edit-titularidad').value,
@@ -3294,6 +3440,17 @@
           contactos: getContactosFromForm(),
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
+
+        // Si es terreno/rústico, añadir campos específicos
+        if (tipo === 'terreno') {
+          updateData.aprovechamiento = {
+            agricola: document.getElementById('aprov-agricola').checked,
+            forestal: document.getElementById('aprov-forestal').checked,
+            cinegetico: document.getElementById('aprov-cinegetico').checked
+          };
+          updateData.fincas = getFincasFromForm();
+          updateData.superficieTotal = calcularTotalSuperficie();
+        }
 
         await db.collection('bienes').doc(bienId).update(updateData);
         
