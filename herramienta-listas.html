@@ -448,6 +448,18 @@
               </div>
             </div>
 
+            <!-- Filtrar por estado de cuenta -->
+            <div class="config-section">
+              <div class="config-title">📧 Estado de cuenta</div>
+              <div class="filtro-grupo" id="filtro-estado">
+                <button class="filtro-btn active" onclick="filtrarEstado('todos-estado')">Todos</button>
+                <button class="filtro-btn" onclick="filtrarEstado('invitados')">Invitados</button>
+                <button class="filtro-btn" onclick="filtrarEstado('validados')">Validados</button>
+                <button class="filtro-btn" onclick="filtrarEstado('con-email')">Con email</button>
+                <button class="filtro-btn" onclick="filtrarEstado('sin-email')">Sin email</button>
+              </div>
+            </div>
+
             <!-- Botón generar -->
             <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="generarLista()">
               🔄 Actualizar lista
@@ -543,6 +555,7 @@
     let miembrosData = [];
     let nidosData = {};
     let filtroActual = 'todos';
+    let filtroEstadoActual = 'todos-estado';
     
     // Datos de archivo subido
     let archivoData = [];
@@ -853,6 +866,7 @@
         fechaNacimiento: fechaNacimiento,
         rol: rol,
         relacion: m.relacion || '',
+        estadoCuenta: m.estadoCuenta || (m.email ? 'invitado' : 'validado'),
         nidoId: nidoId,
         nidoNombre: nido.nombre,
         fechaAlta: null,
@@ -877,7 +891,18 @@
     function filtrarGrupo(grupo) {
       filtroActual = grupo;
       
-      document.querySelectorAll('.filtro-btn').forEach(btn => {
+      document.querySelectorAll('#filtro-grupo .filtro-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      generarLista();
+    }
+
+    function filtrarEstado(estado) {
+      filtroEstadoActual = estado;
+      
+      document.querySelectorAll('#filtro-estado .filtro-btn').forEach(btn => {
         btn.classList.remove('active');
       });
       event.target.classList.add('active');
@@ -911,6 +936,22 @@
             break;
           case 'descendientes':
             miembrosFiltrados = miembrosFiltrados.filter(m => m.relacion === 'descendiente');
+            break;
+        }
+
+        // Filtro por estado de cuenta
+        switch (filtroEstadoActual) {
+          case 'invitados':
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.email && m.estadoCuenta === 'invitado');
+            break;
+          case 'validados':
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.estadoCuenta === 'validado' || !m.email);
+            break;
+          case 'con-email':
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.email);
+            break;
+          case 'sin-email':
+            miembrosFiltrados = miembrosFiltrados.filter(m => !m.email);
             break;
         }
       }
@@ -1043,19 +1084,22 @@
       const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
       
       tbody.innerHTML = miembros.map(m => {
-        const rowStyle = m.fallecido ? 'style="opacity: 0.5; font-style: italic;"' : '';
+        const esInvitado = m.email && m.estadoCuenta === 'invitado';
+        const rowStyle = m.fallecido ? 'style="opacity: 0.5; font-style: italic;"' : (esInvitado ? 'style="color: #9A9A9A;"' : '');
         const fallecidoTag = m.fallecido ? ' <span style="font-size:0.7rem;color:var(--text-muted);">✝</span>' : '';
+        const invitadoTag = esInvitado ? ' <span style="font-size:0.65rem;background:#FFF3E0;color:#E65100;padding:2px 6px;border-radius:4px;">Pendiente</span>' : '';
         
         const celdas = campos.map(campo => {
           switch (campo) {
             case 'nombre':
               const inicial = m.nombre.charAt(0).toUpperCase();
+              const avatarStyle = m.fallecido ? 'style="opacity:0.5;"' : (esInvitado ? 'style="background:linear-gradient(135deg, #9A9A9A 0%, #B8B8B8 100%);"' : '');
               return `
                 <td>
                   <div class="tabla-nombre-cell">
-                    <div class="tabla-avatar" ${m.fallecido ? 'style="opacity:0.5;"' : ''}>${inicial}</div>
+                    <div class="tabla-avatar" ${avatarStyle}>${inicial}</div>
                     <div>
-                      <div class="tabla-nombre">${m.nombre}${fallecidoTag}</div>
+                      <div class="tabla-nombre">${m.nombre}${fallecidoTag}${invitadoTag}</div>
                       ${m.rol ? `<div class="tabla-rol">${m.rol}</div>` : ''}
                     </div>
                   </div>
@@ -1111,6 +1155,9 @@
       const adultos = miembros.filter(m => m.edad !== null && m.edad >= 18 && !m.fallecido).length;
       const menores = miembros.filter(m => m.edad !== null && m.edad < 18 && !m.fallecido).length;
       const conEmail = miembros.filter(m => m.email && !m.fallecido).length;
+      const sinEmail = miembros.filter(m => !m.email && !m.fallecido).length;
+      const invitados = miembros.filter(m => m.email && m.estadoCuenta === 'invitado' && !m.fallecido).length;
+      const validados = miembros.filter(m => (m.estadoCuenta === 'validado' || !m.email) && !m.fallecido).length;
 
       statsEl.innerHTML = `
         <div class="stat-item">
@@ -1144,6 +1191,20 @@
         <div class="stat-item">
           <div class="stat-value">${conEmail}</div>
           <div class="stat-label">Con email</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">${sinEmail}</div>
+          <div class="stat-label">Sin email</div>
+        </div>
+        ${invitados > 0 ? `
+          <div class="stat-item">
+            <div class="stat-value" style="color: #E65100;">${invitados}</div>
+            <div class="stat-label">Pendientes</div>
+          </div>
+        ` : ''}
+        <div class="stat-item">
+          <div class="stat-value" style="color: var(--sage-dark);">${validados}</div>
+          <div class="stat-label">Validados</div>
         </div>
       `;
 
