@@ -961,6 +961,14 @@
     .cal-day:hover { background: var(--cream); }
     .cal-day.today { background: var(--sage); color: white; font-weight: 700; }
     .cal-day.other-month { color: var(--text-muted); opacity: 0.4; }
+    .cal-day.has-events { position: relative; }
+    .cal-day-dots { display: flex; gap: 2px; justify-content: center; margin-top: 2px; }
+    .cal-dot { width: 4px; height: 4px; border-radius: 50%; }
+    .cal-dot.cumple { background: #E91E63; }
+    .cal-dot.especial { background: #4CAF50; }
+    .cal-dot.evento { background: #FF9800; }
+    .cal-dot.cita { background: #2196F3; }
+    .cal-dot.reserva { background: #9C27B0; }
 
     .eventos-hoy {
       margin-top: 8px;
@@ -979,7 +987,11 @@
     }
 
     .evento-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .evento-dot.cita { background: var(--sage); }
+    .evento-dot.cumple { background: #E91E63; }
+    .evento-dot.especial { background: #4CAF50; }
+    .evento-dot.evento { background: #FF9800; }
+    .evento-dot.cita { background: #2196F3; }
+    .evento-dot.reserva { background: #9C27B0; }
 
     /* ============ TABLÓN ============ */
     .tablon-card { border-left: 4px solid var(--sage); }
@@ -2872,6 +2884,7 @@
       await loadNidos();
       await verificarTiendaDisponible();
       
+      await cargarEventosCalendario();
       renderCalendario();
       renderTareas();
       renderMensajes();
@@ -3173,6 +3186,80 @@
     }
 
     // ============ CALENDARIO ============
+    let eventosCalendario = [];
+
+    async function cargarEventosCalendario() {
+      if (!currentFamilia) return;
+      eventosCalendario = [];
+      const añoActual = new Date().getFullYear();
+
+      try {
+        // 1. CUMPLEAÑOS desde miembros de nidos
+        const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
+        nidosSnap.docs.forEach(doc => {
+          const nido = doc.data();
+          (nido.miembrosData || []).forEach(m => {
+            if (m.fechaNacimiento) {
+              const partes = m.fechaNacimiento.split('-');
+              if (partes.length >= 3) {
+                const mes = partes[1], dia = partes[2];
+                [añoActual, añoActual+1].forEach(y => {
+                  eventosCalendario.push({ tipo:'cumple', titulo:`🎂 ${m.nombre || 'Cumpleaños'}`, fecha:`${y}-${mes}-${dia}` });
+                });
+              }
+            }
+          });
+        });
+
+        // 2. DÍAS ESPECIALES
+        const diasSnap = await db.collection('diasEspeciales').where('familiaId', '==', currentFamilia.id).get();
+        diasSnap.docs.forEach(doc => {
+          const d = doc.data();
+          [añoActual, añoActual+1].forEach(y => {
+            eventosCalendario.push({ 
+              tipo: d.tipo === 'cumple' ? 'cumple' : 'especial', 
+              titulo: d.nombre, 
+              fecha: `${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` 
+            });
+          });
+        });
+
+        // 3. EVENTOS
+        const eventosSnap = await db.collection('eventos').where('familiaId', '==', currentFamilia.id).get();
+        eventosSnap.docs.forEach(doc => {
+          const e = doc.data();
+          if (e.fecha) eventosCalendario.push({ tipo:'evento', titulo: e.nombre, fecha: e.fecha, hora: e.hora });
+        });
+
+        // 4. CITAS
+        const citasSnap = await db.collection('citas').where('familiaId', '==', currentFamilia.id).get();
+        citasSnap.docs.forEach(doc => {
+          const c = doc.data();
+          if (c.fecha) eventosCalendario.push({ tipo:'cita', titulo: c.titulo, fecha: c.fecha, hora: c.hora });
+        });
+
+        // 5. RESERVAS de todos los bienes
+        const bienesSnap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
+        for (const bienDoc of bienesSnap.docs) {
+          const bien = bienDoc.data();
+          const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+          reservasSnap.docs.forEach(resDoc => {
+            const r = resDoc.data();
+            if (r.entrada) {
+              eventosCalendario.push({ 
+                tipo: 'reserva', 
+                titulo: `🏠 ${bien.nombre || 'Reserva'}`, 
+                fecha: r.entrada,
+                fechaFin: r.salida
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error cargando eventos calendario:', error);
+      }
+    }
+
     function renderCalendario() {
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const hoy = new Date();
@@ -3191,6 +3278,13 @@
       if (diaInicio === 0) diaInicio = 7;
       diaInicio--;
 
+      // Agrupar eventos por fecha
+      const eventosPorFecha = {};
+      eventosCalendario.forEach(e => {
+        if (!eventosPorFecha[e.fecha]) eventosPorFecha[e.fecha] = [];
+        eventosPorFecha[e.fecha].push(e);
+      });
+
       const diasMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).getDate();
       for (let i = diaInicio - 1; i >= 0; i--) {
         html += `<div class="cal-day other-month">${diasMesAnterior - i}</div>`;
@@ -3198,17 +3292,41 @@
 
       for (let d = 1; d <= ultimoDia.getDate(); d++) {
         const esHoy = d === hoy.getDate();
-        html += `<div class="cal-day ${esHoy ? 'today' : ''}">${d}</div>`;
+        const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const eventosDelDia = eventosPorFecha[fechaStr] || [];
+        
+        // Generar dots únicos por tipo
+        const tiposUnicos = [...new Set(eventosDelDia.map(e => e.tipo))];
+        const dotsHtml = tiposUnicos.length > 0 
+          ? `<div class="cal-day-dots">${tiposUnicos.slice(0,3).map(t => `<div class="cal-dot ${t}"></div>`).join('')}</div>` 
+          : '';
+        
+        html += `<div class="cal-day ${esHoy ? 'today' : ''} ${eventosDelDia.length > 0 ? 'has-events' : ''}">${d}${dotsHtml}</div>`;
       }
 
       container.innerHTML = html;
 
-      document.getElementById('eventos-hoy').innerHTML = `
-        <div class="evento-mini">
-          <div class="evento-dot cita"></div>
-          <span style="color:var(--text-muted);">Sin eventos hoy</span>
+      // Mostrar eventos de hoy
+      renderEventosHoy(hoy);
+    }
+
+    function renderEventosHoy(fecha) {
+      const container = document.getElementById('eventos-hoy');
+      const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`;
+      
+      const eventosHoy = eventosCalendario.filter(e => e.fecha === fechaStr);
+      
+      if (eventosHoy.length === 0) {
+        container.innerHTML = `<div class="evento-mini"><div class="evento-dot cita"></div><span style="color:var(--text-muted);">Sin eventos hoy</span></div>`;
+        return;
+      }
+
+      container.innerHTML = eventosHoy.slice(0, 3).map(e => `
+        <div class="evento-mini" style="margin-bottom:4px;">
+          <div class="evento-dot ${e.tipo}"></div>
+          <span>${e.titulo}${e.hora ? ` · ${e.hora}` : ''}</span>
         </div>
-      `;
+      `).join('') + (eventosHoy.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted);text-align:center;">+${eventosHoy.length - 3} más</div>` : '');
     }
 
     // ============ TAREAS (REAL) ============
