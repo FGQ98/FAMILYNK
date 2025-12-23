@@ -191,6 +191,14 @@
     .miembro-relacion.ascendiente { background: #E8E4F0; color: #6B5B95; }
     .miembro-relacion.colateral { background: #FFF3E0; color: #E65100; }
 
+    /* Estados de cuenta */
+    .miembro-invitado .miembro-nombre { color: #9A9A9A; }
+    .miembro-invitado .miembro-avatar { 
+      background: linear-gradient(135deg, #9A9A9A 0%, #B8B8B8 100%); 
+    }
+    .miembro-fallecido { opacity: 0.5; }
+    .miembro-badge.pendiente { background: #FFF3E0; color: #E65100; }
+
     /* Botones */
     .btn {
       display: inline-flex;
@@ -624,15 +632,21 @@
         let relacion = m.relacion || m.rol || 'otros';
         if (relacion === 'hijo') relacion = 'descendiente';
         const edad = m.fechaNacimiento ? calcularEdad(m.fechaNacimiento) : '';
+        
+        // Determinar estado visual
+        const esFallecido = m.fechaDefuncion ? true : false;
+        const esInvitado = m.email && m.estadoCuenta === 'invitado';
+        const estadoClase = esFallecido ? 'miembro-fallecido' : (esInvitado ? 'miembro-invitado' : '');
 
         return `
-          <div class="miembro-row ${esYo ? 'es-yo' : ''}" onclick="${esYo ? 'editarMiPerfil()' : ''}">
+          <div class="miembro-row ${esYo ? 'es-yo' : ''} ${estadoClase}" onclick="${esYo ? 'editarMiPerfil()' : ''}">
             <div class="miembro-avatar">${m.iniciales || '?'}</div>
             <div class="miembro-info">
               <div class="miembro-nombre">
                 ${m.nombre || 'Sin nombre'}
                 ${esYo ? '<span class="miembro-badge yo">Tú</span>' : ''}
                 ${m.esAdmin ? '<span class="miembro-badge admin">Admin</span>' : ''}
+                ${esInvitado ? '<span class="miembro-badge pendiente">Pendiente</span>' : ''}
               </div>
               <div class="miembro-meta">${edad}</div>
             </div>
