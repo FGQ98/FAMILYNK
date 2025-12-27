@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Contratos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #FDF8F3; --cream-dark: #F5EDE4; --gerente: #2D4A5C; --gerente-dark: #1D3544;
+      --gerente-muted: rgba(45, 74, 92, 0.15); --text: #3D3D3D; --text-light: #6B6B6B;
+      --text-muted: #9A9A9A; --white: #FFFFFF; --success: #7DB59A; --success-muted: rgba(125,181,154,0.15);
+      --warning: #E8B44D; --warning-muted: rgba(232,180,77,0.15); --error: #D4695A; --error-muted: rgba(212,105,90,0.15);
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+    .header { background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn { padding: 8px 12px; background: rgba(255,255,255,0.15); border: none; border-radius: var(--radius-md); font-size: 0.85rem; color: white; cursor: pointer; text-decoration: none; }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; color: white; }
+    .btn-add { padding: 8px 16px; background: white; border: none; border-radius: var(--radius-full); font-size: 0.85rem; font-weight: 600; color: var(--gerente); cursor: pointer; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .stat-card { background: var(--white); padding: 16px; border-radius: var(--radius-md); text-align: center; box-shadow: var(--shadow-soft); }
+    .stat-value { font-family: 'Quicksand', sans-serif; font-size: 1.8rem; font-weight: 700; color: var(--gerente); }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    .filtros { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filtro-btn { padding: 8px 16px; background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-full); font-size: 0.85rem; cursor: pointer; }
+    .filtro-btn.active { background: var(--gerente); color: white; border-color: var(--gerente); }
+
+    .contratos-list { display: flex; flex-direction: column; gap: 12px; }
+    .contrato-card { background: var(--white); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-soft); }
+    .contrato-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--cream-dark); }
+    .contrato-titulo { font-weight: 700; font-size: 1rem; }
+    .contrato-estado { padding: 4px 12px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; }
+    .estado-activo { background: var(--success-muted); color: #4A7C59; }
+    .estado-pendiente { background: var(--warning-muted); color: #8B6914; }
+    .estado-vencido { background: var(--error-muted); color: #A04539; }
+    .estado-finalizado { background: var(--gerente-muted); color: var(--gerente); }
+    .contrato-body { padding: 16px 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+    .contrato-campo { }
+    .campo-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; }
+    .campo-valor { font-weight: 600; }
+    .contrato-actions { padding: 12px 20px; background: var(--cream); display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-action { padding: 8px 16px; border: none; border-radius: var(--radius-sm); background: var(--white); cursor: pointer; font-size: 0.8rem; }
+    .btn-action:hover { background: var(--gerente-muted); }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; background: var(--gerente); color: white; display: flex; justify-content: space-between; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    .modal-close { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+    .modal-body { padding: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-light); margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { padding: 16px 20px; background: var(--cream); display: flex; gap: 12px; justify-content: flex-end; }
+    .btn-cancel { padding: 10px 20px; background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-weight: 600; cursor: pointer; }
+    .btn-save { padding: 10px 24px; background: var(--gerente); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; color: var(--text-muted); }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" onclick="volver()" class="back-btn">← Volver</a>
+      <h1 class="header-title">📝 Contratos</h1>
+    </div>
+    <button class="btn-add" onclick="abrirModal()">+ Nuevo</button>
+  </header>
+  <div class="container">
+    <div id="loading" class="loading">Cargando...</div>
+    <div id="content" style="display: none;">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-value" id="stat-activos">0</div><div class="stat-label">Activos</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-pendientes">0</div><div class="stat-label">Pendientes</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-vencidos">0</div><div class="stat-label">Por vencer</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total</div></div>
+      </div>
+
+      <div class="filtros">
+        <button class="filtro-btn active" data-estado="todos">Todos</button>
+        <button class="filtro-btn" data-estado="activo">Activos</button>
+        <button class="filtro-btn" data-estado="pendiente">Pendientes</button>
+        <button class="filtro-btn" data-estado="vencido">Vencidos</button>
+        <button class="filtro-btn" data-estado="finalizado">Finalizados</button>
+      </div>
+
+      <div id="contratos-list" class="contratos-list"></div>
+      <div id="empty-state" class="empty-state" style="display:none;">
+        <div style="font-size:3rem;margin-bottom:16px;opacity:0.5">📝</div>
+        <div style="margin-bottom:20px">No hay contratos registrados</div>
+        <button class="btn-add" onclick="abrirModal()">+ Añadir primer contrato</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-contrato">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Nuevo Contrato</span>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Título / Referencia</label><input type="text" class="form-input" id="contrato-titulo" placeholder="Ej: Alquiler temporada 2025"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Tipo</label>
+            <select class="form-select" id="contrato-tipo">
+              <option value="alquiler">Alquiler</option>
+              <option value="reserva">Reserva</option>
+              <option value="servicio">Servicio</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Estado</label>
+            <select class="form-select" id="contrato-estado">
+              <option value="pendiente">Pendiente</option>
+              <option value="activo">Activo</option>
+              <option value="finalizado">Finalizado</option>
+              <option value="vencido">Vencido</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Parte contratante</label><input type="text" class="form-input" id="contrato-parte" placeholder="Nombre o empresa"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Fecha inicio</label><input type="date" class="form-input" id="contrato-inicio"></div>
+          <div class="form-group"><label class="form-label">Fecha fin</label><input type="date" class="form-input" id="contrato-fin"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Importe (€)</label><input type="number" class="form-input" id="contrato-importe" step="0.01"></div>
+          <div class="form-group"><label class="form-label">Periodicidad</label>
+            <select class="form-select" id="contrato-periodicidad">
+              <option value="unico">Pago único</option>
+              <option value="mensual">Mensual</option>
+              <option value="trimestral">Trimestral</option>
+              <option value="anual">Anual</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Condiciones / Notas</label><textarea class="form-textarea" id="contrato-notas" placeholder="Cláusulas especiales, condiciones..."></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-save" onclick="guardarContrato()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    firebase.initializeApp({apiKey:"AIzaSyCpdWHcOQdHe1aXzXt4WeKpsMrut-KTNxY",authDomain:"familink-def94.firebaseapp.com",projectId:"familink-def94",storageBucket:"familink-def94.appspot.com",messagingSenderId:"489497766824",appId:"1:489497766824:web:38c5c0463a2d04b5fb4d90"});
+    const auth = firebase.auth(), db = firebase.firestore();
+    const bienId = new URLSearchParams(window.location.search).get('id');
+    let contratos = [], filtroActivo = 'todos', editandoId = null;
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      if (!bienId) { alert('Falta ID'); window.location.href = 'bienes.html'; return; }
+      await cargarDatos();
+      document.querySelectorAll('.filtro-btn').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active'); filtroActivo = btn.dataset.estado; renderContratos();
+      }));
+    });
+
+    async function cargarDatos() {
+      const snap = await db.collection('bienes').doc(bienId).collection('contratos').orderBy('inicio', 'desc').get();
+      contratos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderContratos();
+      actualizarStats();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+    }
+
+    function actualizarStats() {
+      const hoy = new Date().toISOString().split('T')[0];
+      const activos = contratos.filter(c => c.estado === 'activo').length;
+      const pendientes = contratos.filter(c => c.estado === 'pendiente').length;
+      const vencidos = contratos.filter(c => c.estado === 'activo' && c.fin && c.fin < hoy).length;
+      document.getElementById('stat-activos').textContent = activos;
+      document.getElementById('stat-pendientes').textContent = pendientes;
+      document.getElementById('stat-vencidos').textContent = vencidos;
+      document.getElementById('stat-total').textContent = contratos.length;
+    }
+
+    function renderContratos() {
+      const list = document.getElementById('contratos-list'), empty = document.getElementById('empty-state');
+      let f = contratos;
+      if (filtroActivo !== 'todos') f = f.filter(c => c.estado === filtroActivo);
+      if (!f.length) { list.style.display = 'none'; empty.style.display = 'block'; return; }
+      list.style.display = 'flex'; empty.style.display = 'none';
+      const estadoClasses = { activo: 'estado-activo', pendiente: 'estado-pendiente', vencido: 'estado-vencido', finalizado: 'estado-finalizado' };
+      const estadoLabels = { activo: 'Activo', pendiente: 'Pendiente', vencido: 'Vencido', finalizado: 'Finalizado' };
+      const tipoLabels = { alquiler: 'Alquiler', reserva: 'Reserva', servicio: 'Servicio', mantenimiento: 'Mantenimiento', otro: 'Otro' };
+      const periodoLabels = { unico: 'Pago único', mensual: 'Mensual', trimestral: 'Trimestral', anual: 'Anual' };
+      list.innerHTML = f.map(c => `<div class="contrato-card"><div class="contrato-header"><span class="contrato-titulo">${c.titulo||'Sin título'}</span><span class="contrato-estado ${estadoClasses[c.estado]||''}">${estadoLabels[c.estado]||c.estado}</span></div><div class="contrato-body"><div class="contrato-campo"><div class="campo-label">Tipo</div><div class="campo-valor">${tipoLabels[c.tipo]||c.tipo}</div></div><div class="contrato-campo"><div class="campo-label">Parte</div><div class="campo-valor">${c.parte||'—'}</div></div><div class="contrato-campo"><div class="campo-label">Período</div><div class="campo-valor">${c.inicio||'?'} → ${c.fin||'?'}</div></div><div class="contrato-campo"><div class="campo-label">Importe</div><div class="campo-valor">${c.importe?c.importe.toLocaleString('es-ES')+' €':'—'} ${c.periodicidad?'('+periodoLabels[c.periodicidad]+')':''}</div></div></div><div class="contrato-actions"><button class="btn-action" onclick="editarContrato('${c.id}')">✏️ Editar</button><button class="btn-action" onclick="eliminarContrato('${c.id}')">🗑️ Eliminar</button></div></div>`).join('');
+    }
+
+    function abrirModal() { editandoId = null; document.getElementById('modal-title').textContent = 'Nuevo Contrato'; ['titulo','parte','inicio','fin','importe','notas'].forEach(f => document.getElementById('contrato-'+f).value = ''); document.getElementById('contrato-tipo').value = 'alquiler'; document.getElementById('contrato-estado').value = 'pendiente'; document.getElementById('contrato-periodicidad').value = 'mensual'; document.getElementById('modal-contrato').classList.add('active'); }
+    function editarContrato(id) { const c = contratos.find(x => x.id === id); if (!c) return; editandoId = id; document.getElementById('modal-title').textContent = 'Editar Contrato'; document.getElementById('contrato-titulo').value = c.titulo||''; document.getElementById('contrato-tipo').value = c.tipo||'alquiler'; document.getElementById('contrato-estado').value = c.estado||'pendiente'; document.getElementById('contrato-parte').value = c.parte||''; document.getElementById('contrato-inicio').value = c.inicio||''; document.getElementById('contrato-fin').value = c.fin||''; document.getElementById('contrato-importe').value = c.importe||''; document.getElementById('contrato-periodicidad').value = c.periodicidad||'mensual'; document.getElementById('contrato-notas').value = c.notas||''; document.getElementById('modal-contrato').classList.add('active'); }
+    function cerrarModal() { document.getElementById('modal-contrato').classList.remove('active'); }
+
+    async function guardarContrato() {
+      const titulo = document.getElementById('contrato-titulo').value.trim();
+      if (!titulo) { alert('Título obligatorio'); return; }
+      const data = { titulo, tipo: document.getElementById('contrato-tipo').value, estado: document.getElementById('contrato-estado').value, parte: document.getElementById('contrato-parte').value.trim(), inicio: document.getElementById('contrato-inicio').value||null, fin: document.getElementById('contrato-fin').value||null, importe: parseFloat(document.getElementById('contrato-importe').value)||null, periodicidad: document.getElementById('contrato-periodicidad').value, notas: document.getElementById('contrato-notas').value.trim(), actualizado: firebase.firestore.FieldValue.serverTimestamp() };
+      if (editandoId) await db.collection('bienes').doc(bienId).collection('contratos').doc(editandoId).update(data);
+      else { data.creado = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('bienes').doc(bienId).collection('contratos').add(data); }
+      cerrarModal(); await cargarDatos();
+    }
+
+    async function eliminarContrato(id) { if (!confirm('¿Eliminar contrato?')) return; await db.collection('bienes').doc(bienId).collection('contratos').doc(id).delete(); await cargarDatos(); }
+    function volver() { window.location.href = `bien.html?id=${bienId}`; }
+    document.getElementById('modal-contrato').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) cerrarModal(); });
+  </script>
+</body>
+</html>

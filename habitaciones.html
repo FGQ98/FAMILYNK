@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Habitaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --gerente: #2D4A5C;
+      --gerente-light: #4A6B7C;
+      --gerente-dark: #1D3544;
+      --gerente-muted: rgba(45, 74, 92, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-medium);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      color: white;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    .btn-add {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: white;
+      border: none;
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gerente);
+      cursor: pointer;
+    }
+
+    .btn-add:hover { background: var(--cream); }
+
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--white);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .stat-value {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--gerente);
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .habitaciones-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .habitacion-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .habitacion-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-medium);
+    }
+
+    .habitacion-header {
+      background: var(--gerente-muted);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .habitacion-num {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--gerente);
+    }
+
+    .habitacion-tipo {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      background: var(--gerente);
+      color: white;
+      border-radius: var(--radius-full);
+    }
+
+    .habitacion-body { padding: 16px; }
+
+    .habitacion-nombre {
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 8px;
+    }
+
+    .habitacion-capacidad {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-bottom: 12px;
+    }
+
+    .habitacion-servicios {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .servicio-tag {
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      color: var(--text-light);
+    }
+
+    .habitacion-precio {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    .precio-label { font-size: 0.75rem; color: var(--text-muted); }
+    .precio-valor { font-weight: 700; color: var(--gerente); }
+
+    .habitacion-actions {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--cream);
+    }
+
+    .btn-action {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      background: var(--white);
+      color: var(--text-light);
+    }
+
+    .btn-action:hover { background: var(--gerente-muted); color: var(--gerente); }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.5; }
+    .empty-state-text { font-size: 1rem; margin-bottom: 20px; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 20px;
+      background: var(--gerente);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .modal-close:hover { opacity: 1; }
+
+    .modal-body { padding: 20px; }
+
+    .form-group { margin-bottom: 16px; }
+
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      margin-bottom: 6px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--gerente);
+    }
+
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .servicios-checks {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .check-item:hover { background: var(--cream-dark); }
+
+    .check-item input { width: 16px; height: 16px; accent-color: var(--gerente); }
+
+    .modal-footer {
+      padding: 16px 20px;
+      background: var(--cream);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .btn-cancel {
+      padding: 10px 20px;
+      background: var(--white);
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save {
+      padding: 10px 24px;
+      background: var(--gerente);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save:hover { background: var(--gerente-dark); }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .servicios-checks { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" onclick="volver()" class="back-btn">← Volver</a>
+      <h1 class="header-title">🛏️ Habitaciones</h1>
+    </div>
+    <button class="btn-add" onclick="abrirModal()">+ Nueva</button>
+  </header>
+
+  <div class="container">
+    <div id="loading" class="loading">Cargando...</div>
+
+    <div id="content" style="display: none;">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Habitaciones</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-capacidad">0</div>
+          <div class="stat-label">Capacidad total</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-dobles">0</div>
+          <div class="stat-label">Dobles</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-individuales">0</div>
+          <div class="stat-label">Individuales</div>
+        </div>
+      </div>
+
+      <div id="habitaciones-grid" class="habitaciones-grid"></div>
+
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">🛏️</div>
+        <div class="empty-state-text">No hay habitaciones configuradas</div>
+        <button class="btn-add" onclick="abrirModal()">+ Añadir primera habitación</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-habitacion">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Nueva Habitación</span>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="habitacion-id">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Número / Código</label>
+            <input type="text" class="form-input" id="habitacion-numero" placeholder="Ej: 101, A1...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="habitacion-tipo">
+              <option value="doble">Doble</option>
+              <option value="individual">Individual</option>
+              <option value="suite">Suite</option>
+              <option value="familiar">Familiar</option>
+              <option value="estudio">Estudio</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nombre (opcional)</label>
+          <input type="text" class="form-input" id="habitacion-nombre" placeholder="Ej: Habitación del Olivo">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Capacidad (personas)</label>
+            <input type="number" class="form-input" id="habitacion-capacidad" value="2" min="1" max="10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Superficie (m²)</label>
+            <input type="number" class="form-input" id="habitacion-superficie" placeholder="Opcional">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Precio base (€/noche)</label>
+            <input type="number" class="form-input" id="habitacion-precio" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Planta / Ubicación</label>
+            <input type="text" class="form-input" id="habitacion-planta" placeholder="Ej: Planta 1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Servicios incluidos</label>
+          <div class="servicios-checks">
+            <label class="check-item"><input type="checkbox" value="wifi"> 📶 WiFi</label>
+            <label class="check-item"><input type="checkbox" value="ac"> ❄️ Aire acond.</label>
+            <label class="check-item"><input type="checkbox" value="tv"> 📺 TV</label>
+            <label class="check-item"><input type="checkbox" value="bano"> 🛁 Baño privado</label>
+            <label class="check-item"><input type="checkbox" value="terraza"> 🌿 Terraza</label>
+            <label class="check-item"><input type="checkbox" value="minibar"> 🍷 Minibar</label>
+            <label class="check-item"><input type="checkbox" value="caja"> 🔐 Caja fuerte</label>
+            <label class="check-item"><input type="checkbox" value="vistas"> 🏞️ Vistas</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-textarea" id="habitacion-notas" placeholder="Detalles adicionales..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-save" onclick="guardarHabitacion()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCpdWHcOQdHe1aXzXt4WeKpsMrut-KTNxY",
+      authDomain: "familink-def94.firebaseapp.com",
+      projectId: "familink-def94",
+      storageBucket: "familink-def94.appspot.com",
+      messagingSenderId: "489497766824",
+      appId: "1:489497766824:web:38c5c0463a2d04b5fb4d90"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const params = new URLSearchParams(window.location.search);
+    const bienId = params.get('id');
+
+    let habitaciones = [];
+    let bienData = null;
+    let editandoId = null;
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      if (!bienId) { alert('Falta ID del bien'); window.location.href = 'bienes.html'; return; }
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('habitaciones').orderBy('numero', 'asc').get();
+        
+        habitaciones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        renderHabitaciones();
+        actualizarStats();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.display = 'block';
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar datos');
+      }
+    }
+
+    function renderHabitaciones() {
+      const grid = document.getElementById('habitaciones-grid');
+      const empty = document.getElementById('empty-state');
+
+      if (habitaciones.length === 0) {
+        grid.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+
+      grid.style.display = 'grid';
+      empty.style.display = 'none';
+
+      const serviciosIcons = {
+        wifi: '📶', ac: '❄️', tv: '📺', bano: '🛁',
+        terraza: '🌿', minibar: '🍷', caja: '🔐', vistas: '🏞️'
+      };
+
+      const tipoLabels = {
+        doble: 'Doble', individual: 'Individual', suite: 'Suite',
+        familiar: 'Familiar', estudio: 'Estudio'
+      };
+
+      grid.innerHTML = habitaciones.map(h => `
+        <div class="habitacion-card">
+          <div class="habitacion-header">
+            <span class="habitacion-num">${h.numero || '—'}</span>
+            <span class="habitacion-tipo">${tipoLabels[h.tipo] || h.tipo}</span>
+          </div>
+          <div class="habitacion-body">
+            <div class="habitacion-nombre">${h.nombre || tipoLabels[h.tipo] || 'Habitación'}</div>
+            <div class="habitacion-capacidad">
+              👥 ${h.capacidad || 2} personas
+              ${h.superficie ? `· ${h.superficie} m²` : ''}
+              ${h.planta ? `· ${h.planta}` : ''}
+            </div>
+            <div class="habitacion-servicios">
+              ${(h.servicios || []).map(s => 
+                `<span class="servicio-tag">${serviciosIcons[s] || ''} ${s}</span>`
+              ).join('')}
+            </div>
+            <div class="habitacion-precio">
+              <span class="precio-label">Precio base</span>
+              <span class="precio-valor">${h.precio ? h.precio + ' €' : '—'}</span>
+            </div>
+          </div>
+          <div class="habitacion-actions">
+            <button class="btn-action" onclick="editarHabitacion('${h.id}')">✏️ Editar</button>
+            <button class="btn-action" onclick="eliminarHabitacion('${h.id}')">🗑️ Eliminar</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function actualizarStats() {
+      const total = habitaciones.length;
+      const capacidad = habitaciones.reduce((sum, h) => sum + (h.capacidad || 2), 0);
+      const dobles = habitaciones.filter(h => h.tipo === 'doble' || h.tipo === 'suite' || h.tipo === 'familiar').length;
+      const individuales = habitaciones.filter(h => h.tipo === 'individual').length;
+
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-capacidad').textContent = capacidad;
+      document.getElementById('stat-dobles').textContent = dobles;
+      document.getElementById('stat-individuales').textContent = individuales;
+    }
+
+    function abrirModal() {
+      editandoId = null;
+      document.getElementById('modal-title').textContent = 'Nueva Habitación';
+      document.getElementById('habitacion-id').value = '';
+      document.getElementById('habitacion-numero').value = '';
+      document.getElementById('habitacion-tipo').value = 'doble';
+      document.getElementById('habitacion-nombre').value = '';
+      document.getElementById('habitacion-capacidad').value = '2';
+      document.getElementById('habitacion-superficie').value = '';
+      document.getElementById('habitacion-precio').value = '';
+      document.getElementById('habitacion-planta').value = '';
+      document.getElementById('habitacion-notas').value = '';
+      document.querySelectorAll('.servicios-checks input').forEach(cb => cb.checked = false);
+      document.getElementById('modal-habitacion').classList.add('active');
+    }
+
+    function editarHabitacion(id) {
+      const h = habitaciones.find(x => x.id === id);
+      if (!h) return;
+
+      editandoId = id;
+      document.getElementById('modal-title').textContent = 'Editar Habitación';
+      document.getElementById('habitacion-numero').value = h.numero || '';
+      document.getElementById('habitacion-tipo').value = h.tipo || 'doble';
+      document.getElementById('habitacion-nombre').value = h.nombre || '';
+      document.getElementById('habitacion-capacidad').value = h.capacidad || 2;
+      document.getElementById('habitacion-superficie').value = h.superficie || '';
+      document.getElementById('habitacion-precio').value = h.precio || '';
+      document.getElementById('habitacion-planta').value = h.planta || '';
+      document.getElementById('habitacion-notas').value = h.notas || '';
+      
+      document.querySelectorAll('.servicios-checks input').forEach(cb => {
+        cb.checked = (h.servicios || []).includes(cb.value);
+      });
+
+      document.getElementById('modal-habitacion').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-habitacion').classList.remove('active');
+      editandoId = null;
+    }
+
+    async function guardarHabitacion() {
+      const numero = document.getElementById('habitacion-numero').value.trim();
+      const tipo = document.getElementById('habitacion-tipo').value;
+      const nombre = document.getElementById('habitacion-nombre').value.trim();
+      const capacidad = parseInt(document.getElementById('habitacion-capacidad').value) || 2;
+      const superficie = document.getElementById('habitacion-superficie').value.trim();
+      const precio = parseFloat(document.getElementById('habitacion-precio').value) || null;
+      const planta = document.getElementById('habitacion-planta').value.trim();
+      const notas = document.getElementById('habitacion-notas').value.trim();
+
+      const servicios = [];
+      document.querySelectorAll('.servicios-checks input:checked').forEach(cb => {
+        servicios.push(cb.value);
+      });
+
+      if (!numero) {
+        alert('El número/código es obligatorio');
+        return;
+      }
+
+      const data = {
+        numero,
+        tipo,
+        nombre,
+        capacidad,
+        superficie: superficie ? parseFloat(superficie) : null,
+        precio,
+        planta,
+        servicios,
+        notas,
+        actualizado: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        if (editandoId) {
+          await db.collection('bienes').doc(bienId)
+            .collection('habitaciones').doc(editandoId).update(data);
+        } else {
+          data.creado = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId)
+            .collection('habitaciones').add(data);
+        }
+
+        cerrarModal();
+        await cargarDatos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    async function eliminarHabitacion(id) {
+      if (!confirm('¿Eliminar esta habitación?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('habitaciones').doc(id).delete();
+        await cargarDatos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar');
+      }
+    }
+
+    function volver() {
+      window.location.href = `bien.html?id=${bienId}`;
+    }
+
+    // Cerrar modal con click fuera
+    document.getElementById('modal-habitacion').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) cerrarModal();
+    });
+  </script>
+</body>
+</html>

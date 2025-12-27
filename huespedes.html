@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Huéspedes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #FDF8F3; --cream-dark: #F5EDE4; --gerente: #2D4A5C; --gerente-dark: #1D3544;
+      --gerente-muted: rgba(45, 74, 92, 0.15); --text: #3D3D3D; --text-light: #6B6B6B;
+      --text-muted: #9A9A9A; --white: #FFFFFF; --success-muted: rgba(125, 181, 154, 0.15);
+      --warning-muted: rgba(232, 180, 77, 0.15); --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08); --radius-sm: 8px; --radius-md: 12px;
+      --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+    .header { background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%); padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-medium); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .back-btn { padding: 8px 12px; background: rgba(255,255,255,0.15); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: white; cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; color: white; }
+    .btn-add { padding: 8px 16px; background: white; border: none; border-radius: var(--radius-full); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; color: var(--gerente); cursor: pointer; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .filtros { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filtro-btn { padding: 8px 16px; background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-full); font-family: 'Nunito', sans-serif; font-size: 0.85rem; cursor: pointer; }
+    .filtro-btn.active { background: var(--gerente); color: white; border-color: var(--gerente); }
+    .search-box { flex: 1; min-width: 200px; padding: 10px 16px; border: 2px solid var(--cream-dark); border-radius: var(--radius-full); font-family: 'Nunito', sans-serif; }
+    .huespedes-list { display: flex; flex-direction: column; gap: 12px; }
+    .huesped-card { background: var(--white); border-radius: var(--radius-lg); padding: 16px 20px; display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-soft); }
+    .huesped-avatar { width: 50px; height: 50px; border-radius: 50%; background: var(--gerente-muted); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+    .huesped-info { flex: 1; }
+    .huesped-nombre { font-weight: 700; margin-bottom: 4px; }
+    .huesped-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: var(--text-light); }
+    .huesped-tipo { padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.7rem; font-weight: 600; }
+    .tipo-titular { background: var(--gerente); color: white; }
+    .tipo-acompanante { background: var(--gerente-muted); color: var(--gerente); }
+    .tipo-invitado { background: var(--warning-muted); color: #8B6914; }
+    .tipo-nido { background: var(--success-muted); color: #4A7C59; }
+    .huesped-estancias { text-align: right; }
+    .estancias-num { font-family: 'Quicksand', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--gerente); }
+    .estancias-label { font-size: 0.7rem; color: var(--text-muted); }
+    .btn-icon { width: 36px; height: 36px; border: none; border-radius: var(--radius-sm); background: var(--cream); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px; background: var(--gerente); color: white; display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    .modal-close { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+    .modal-body { padding: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-light); margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea { width: 100%; padding: 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--gerente); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { padding: 16px 20px; background: var(--cream); display: flex; gap: 12px; justify-content: flex-end; }
+    .btn-cancel { padding: 10px 20px; background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-weight: 600; cursor: pointer; }
+    .btn-save { padding: 10px 24px; background: var(--gerente); color: white; border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-weight: 600; cursor: pointer; }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; color: var(--text-muted); }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .huesped-card { flex-wrap: wrap; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" onclick="volver()" class="back-btn">← Volver</a>
+      <h1 class="header-title">👥 Huéspedes</h1>
+    </div>
+    <button class="btn-add" onclick="abrirModal()">+ Nuevo</button>
+  </header>
+  <div class="container">
+    <div id="loading" class="loading">Cargando...</div>
+    <div id="content" style="display: none;">
+      <div class="filtros">
+        <button class="filtro-btn active" data-tipo="todos">Todos</button>
+        <button class="filtro-btn" data-tipo="titular">Titulares</button>
+        <button class="filtro-btn" data-tipo="acompanante">Acompañantes</button>
+        <button class="filtro-btn" data-tipo="invitado">Invitados</button>
+        <button class="filtro-btn" data-tipo="nido">Familia</button>
+        <input type="text" class="search-box" id="search-input" placeholder="🔍 Buscar...">
+      </div>
+      <div id="huespedes-list" class="huespedes-list"></div>
+      <div id="empty-state" class="empty-state" style="display: none;">
+        <div style="font-size:3rem;margin-bottom:16px;opacity:0.5">👥</div>
+        <div style="margin-bottom:20px">No hay huéspedes registrados</div>
+        <button class="btn-add" onclick="abrirModal()">+ Añadir primer huésped</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="modal-huesped">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Nuevo Huésped</span>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="huesped-nombre"></div>
+          <div class="form-group"><label class="form-label">Tipo</label>
+            <select class="form-select" id="huesped-tipo">
+              <option value="titular">Titular</option><option value="acompanante">Acompañante</option>
+              <option value="invitado">Invitado</option><option value="nido">Familia (Nido)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="huesped-email"></div>
+          <div class="form-group"><label class="form-label">Teléfono</label><input type="tel" class="form-input" id="huesped-telefono"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">DNI / Pasaporte</label><input type="text" class="form-input" id="huesped-documento"></div>
+          <div class="form-group"><label class="form-label">País</label><input type="text" class="form-input" id="huesped-pais" value="España"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="huesped-notas" rows="3"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-save" onclick="guardarHuesped()">Guardar</button>
+      </div>
+    </div>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    firebase.initializeApp({apiKey:"AIzaSyCpdWHcOQdHe1aXzXt4WeKpsMrut-KTNxY",authDomain:"familink-def94.firebaseapp.com",projectId:"familink-def94",storageBucket:"familink-def94.appspot.com",messagingSenderId:"489497766824",appId:"1:489497766824:web:38c5c0463a2d04b5fb4d90"});
+    const auth = firebase.auth(), db = firebase.firestore();
+    const bienId = new URLSearchParams(window.location.search).get('id');
+    let huespedes = [], filtroActivo = 'todos', editandoId = null;
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      if (!bienId) { alert('Falta ID'); window.location.href = 'bienes.html'; return; }
+      await cargarDatos();
+      document.querySelectorAll('.filtro-btn').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active'); filtroActivo = btn.dataset.tipo; renderHuespedes();
+      }));
+      document.getElementById('search-input').addEventListener('input', renderHuespedes);
+    });
+
+    async function cargarDatos() {
+      const snap = await db.collection('bienes').doc(bienId).collection('huespedes').orderBy('nombre').get();
+      huespedes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderHuespedes();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+    }
+
+    function renderHuespedes() {
+      const list = document.getElementById('huespedes-list'), empty = document.getElementById('empty-state');
+      const search = document.getElementById('search-input').value.toLowerCase();
+      let f = huespedes;
+      if (filtroActivo !== 'todos') f = f.filter(h => h.tipo === filtroActivo);
+      if (search) f = f.filter(h => h.nombre?.toLowerCase().includes(search) || h.email?.toLowerCase().includes(search));
+      if (!f.length) { list.style.display = 'none'; empty.style.display = 'block'; return; }
+      list.style.display = 'flex'; empty.style.display = 'none';
+      const tc = {titular:'tipo-titular',acompanante:'tipo-acompanante',invitado:'tipo-invitado',nido:'tipo-nido'};
+      const tl = {titular:'Titular',acompanante:'Acompañante',invitado:'Invitado',nido:'Familia'};
+      list.innerHTML = f.map(h => `<div class="huesped-card"><div class="huesped-avatar">👤</div><div class="huesped-info"><div class="huesped-nombre">${h.nombre||'Sin nombre'}</div><div class="huesped-meta"><span class="huesped-tipo ${tc[h.tipo]||''}">${tl[h.tipo]||h.tipo}</span>${h.email?`<span>📧 ${h.email}</span>`:''}${h.telefono?`<span>📱 ${h.telefono}</span>`:''}</div></div><div class="huesped-estancias"><div class="estancias-num">${h.estancias||0}</div><div class="estancias-label">estancias</div></div><div style="display:flex;gap:8px"><button class="btn-icon" onclick="editarHuesped('${h.id}')">✏️</button><button class="btn-icon" onclick="eliminarHuesped('${h.id}')">🗑️</button></div></div>`).join('');
+    }
+
+    function abrirModal() { editandoId = null; document.getElementById('modal-title').textContent = 'Nuevo Huésped'; ['nombre','email','telefono','documento','notas'].forEach(f => document.getElementById('huesped-'+f).value = ''); document.getElementById('huesped-tipo').value = 'titular'; document.getElementById('huesped-pais').value = 'España'; document.getElementById('modal-huesped').classList.add('active'); }
+    function editarHuesped(id) { const h = huespedes.find(x => x.id === id); if (!h) return; editandoId = id; document.getElementById('modal-title').textContent = 'Editar Huésped'; ['nombre','email','telefono','documento','pais','notas'].forEach(f => document.getElementById('huesped-'+f).value = h[f]||''); document.getElementById('huesped-tipo').value = h.tipo||'titular'; document.getElementById('modal-huesped').classList.add('active'); }
+    function cerrarModal() { document.getElementById('modal-huesped').classList.remove('active'); }
+
+    async function guardarHuesped() {
+      const nombre = document.getElementById('huesped-nombre').value.trim();
+      if (!nombre) { alert('Nombre obligatorio'); return; }
+      const data = { nombre, tipo: document.getElementById('huesped-tipo').value, email: document.getElementById('huesped-email').value.trim(), telefono: document.getElementById('huesped-telefono').value.trim(), documento: document.getElementById('huesped-documento').value.trim(), pais: document.getElementById('huesped-pais').value.trim(), notas: document.getElementById('huesped-notas').value.trim(), actualizado: firebase.firestore.FieldValue.serverTimestamp() };
+      if (editandoId) await db.collection('bienes').doc(bienId).collection('huespedes').doc(editandoId).update(data);
+      else { data.creado = firebase.firestore.FieldValue.serverTimestamp(); data.estancias = 0; await db.collection('bienes').doc(bienId).collection('huespedes').add(data); }
+      cerrarModal(); await cargarDatos();
+    }
+
+    async function eliminarHuesped(id) { if (!confirm('¿Eliminar huésped?')) return; await db.collection('bienes').doc(bienId).collection('huespedes').doc(id).delete(); await cargarDatos(); }
+    function volver() { window.location.href = `bien.html?id=${bienId}`; }
+    document.getElementById('modal-huesped').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) cerrarModal(); });
+  </script>
+</body>
+</html>
