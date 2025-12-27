@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Ajuar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F; --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-light: #D4927A;
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --mayordomo: #8B7355; --mayordomo-light: #A69076; --mayordomo-muted: rgba(139,115,85,0.15);
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header { background: var(--white); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--cream); border: none; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light); cursor: pointer; text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+
+    .main { max-width: 800px; margin: 0 auto; padding: 24px; }
+
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: var(--mayordomo); color: white; }
+    .btn-primary:hover { background: var(--mayordomo-light); transform: translateY(-2px); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
+    .btn-danger { background: #D4695A; color: white; }
+
+    .stats-row { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card { background: var(--white); padding: 16px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-soft); flex: 1; min-width: 120px; text-align: center; }
+    .stat-number { font-size: 1.8rem; font-weight: 700; color: var(--mayordomo); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+    .grupos-container { display: flex; flex-direction: column; gap: 12px; }
+
+    .grupo-card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .grupo-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; cursor: pointer; transition: background 0.2s; }
+    .grupo-header:hover { background: var(--cream); }
+    .grupo-info { display: flex; align-items: center; gap: 12px; }
+    .grupo-icon { width: 44px; height: 44px; background: var(--mayordomo-muted); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+    .grupo-nombre { font-weight: 700; font-size: 1rem; }
+    .grupo-count { font-size: 0.8rem; color: var(--text-muted); }
+    .grupo-toggle { color: var(--text-muted); transition: transform 0.2s; font-size: 0.9rem; }
+    .grupo-card.open .grupo-toggle { transform: rotate(180deg); }
+
+    .grupo-body { display: none; padding: 0 20px 20px; }
+    .grupo-card.open .grupo-body { display: block; }
+
+    .articulos-list { display: flex; flex-direction: column; gap: 10px; }
+    .articulo-item { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--cream); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; }
+    .articulo-item:hover { background: var(--sage-muted); transform: translateX(4px); }
+    .articulo-thumb { width: 50px; height: 50px; background: var(--white); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; overflow: hidden; flex-shrink: 0; }
+    .articulo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .articulo-info { flex: 1; min-width: 0; }
+    .articulo-nombre { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .articulo-meta { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .add-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border: 2px dashed var(--sage-light); border-radius: var(--radius-md); color: var(--sage-dark); font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; margin-top: 12px; }
+    .add-btn:hover { background: var(--sage-muted); border-style: solid; }
+
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
+    .empty-text { color: var(--text-muted); margin-bottom: 20px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--mayordomo); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Modales */
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; background: var(--mayordomo); color: white; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8; }
+    .modal-close:hover { opacity: 1; }
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.85rem; }
+    .form-input { width: 100%; padding: 12px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.95rem; transition: all 0.2s; }
+    .form-input:focus { outline: none; border-color: var(--mayordomo); }
+
+    .iconos-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+    .icono-option { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; background: var(--cream); border-radius: var(--radius-sm); cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+    .icono-option:hover { border-color: var(--sage-light); }
+    .icono-option.selected { border-color: var(--mayordomo); background: var(--mayordomo-muted); }
+
+    .foto-upload { width: 100%; height: 120px; border: 2px dashed var(--cream-dark); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; transition: all 0.2s; }
+    .foto-upload:hover { border-color: var(--mayordomo); background: var(--mayordomo-muted); }
+    .foto-upload img { width: 100%; height: 100%; object-fit: cover; }
+    .foto-upload-text { color: var(--text-muted); font-size: 0.9rem; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Volver</a>
+      <h1 class="page-title">🪑 <span id="bien-nombre">Ajuar</span></h1>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+
+    <div class="hidden" id="content">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-number" id="stat-grupos">0</div>
+          <div class="stat-label">Grupos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="stat-articulos">0</div>
+          <div class="stat-label">Artículos</div>
+        </div>
+      </div>
+
+      <div class="grupos-container" id="grupos-container"></div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:20px;" onclick="abrirModalGrupo()">+ Añadir grupo</button>
+    </div>
+
+    <div class="empty-state hidden" id="empty-state">
+      <div class="empty-icon">🪑</div>
+      <div class="empty-text">No hay artículos de ajuar registrados</div>
+      <button class="btn btn-primary" onclick="abrirModalGrupo()">+ Crear primer grupo</button>
+    </div>
+  </main>
+
+  <!-- Modal Grupo -->
+  <div class="modal-overlay" id="modal-grupo">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-grupo-title">📦 Nuevo grupo</h3>
+        <button class="modal-close" onclick="cerrarModalGrupo()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="grupo-id">
+        <div class="form-group">
+          <label class="form-label">Nombre del grupo *</label>
+          <input type="text" class="form-input" id="grupo-nombre" placeholder="Ej: Muebles salón, Electrodomésticos, Vajilla...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icono</label>
+          <div class="iconos-grid" id="grupo-iconos">
+            <div class="icono-option selected" data-icono="🪑">🪑</div>
+            <div class="icono-option" data-icono="🛋️">🛋️</div>
+            <div class="icono-option" data-icono="🛏️">🛏️</div>
+            <div class="icono-option" data-icono="🍽️">🍽️</div>
+            <div class="icono-option" data-icono="📺">📺</div>
+            <div class="icono-option" data-icono="🖼️">🖼️</div>
+            <div class="icono-option" data-icono="💡">💡</div>
+            <div class="icono-option" data-icono="🧺">🧺</div>
+            <div class="icono-option" data-icono="🚿">🚿</div>
+            <div class="icono-option" data-icono="🧹">🧹</div>
+            <div class="icono-option" data-icono="📦">📦</div>
+            <div class="icono-option" data-icono="🎨">🎨</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción</label>
+          <input type="text" class="form-input" id="grupo-desc" placeholder="Notas sobre este grupo...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-grupo" onclick="eliminarGrupo()">🗑️</button>
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalGrupo()">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarGrupo()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Artículo -->
+  <div class="modal-overlay" id="modal-articulo">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-articulo-title">🪑 Nuevo artículo</h3>
+        <button class="modal-close" onclick="cerrarModalArticulo()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="articulo-id">
+        <input type="hidden" id="articulo-grupo-id">
+        <div class="form-group">
+          <label class="form-label">Nombre *</label>
+          <input type="text" class="form-input" id="articulo-nombre" placeholder="Ej: Mesa comedor roble, Sofá chester...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Detalles</label>
+          <textarea class="form-input" id="articulo-desc" rows="2" placeholder="Características, estado, historia..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Lugar / Ubicación</label>
+          <input type="text" class="form-input" id="articulo-ubicacion" placeholder="Ej: Salón, Dormitorio 1...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Marca</label>
+          <input type="text" class="form-input" id="articulo-marca" placeholder="Ej: IKEA, antigüedad, artesanal...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Procedencia</label>
+          <input type="text" class="form-input" id="articulo-procedencia" placeholder="Ej: Herencia abuelos, comprado 2015...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Foto</label>
+          <div class="foto-upload" id="foto-upload" onclick="document.getElementById('articulo-foto').click()">
+            <span class="foto-upload-text" id="foto-preview">📷 Click para subir foto</span>
+          </div>
+          <input type="file" id="articulo-foto" accept="image/*" style="display:none" onchange="previewFoto(this)">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger btn-sm hidden" id="btn-eliminar-articulo" onclick="eliminarArticulo()">🗑️</button>
+        <div style="display:flex;gap:12px;">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalArticulo()">Cancelar</button>
+          <button type="button" class="btn btn-primary" onclick="guardarArticulo()">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const bienId = params.get('id');
+    const origen = params.get('origen') || 'bien';
+
+    let currentUser = null;
+    let bienData = null;
+    let gruposData = [];
+    let editingGrupoId = null;
+    let editingArticuloId = null;
+    let iconoSeleccionado = '🪑';
+    let fotoBase64 = null;
+
+    // Volver
+    document.getElementById('btn-volver').href = origen === 'bien' ? `bien.html?id=${bienId}` : 'lo-comun.html';
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      if (!bienId) { alert('ID no válido'); return; }
+
+      try {
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
+        bienData = bienDoc.data();
+        document.getElementById('bien-nombre').textContent = `Ajuar · ${bienData.nombre}`;
+
+        await cargarGrupos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar datos');
+      }
+    }
+
+    async function cargarGrupos() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('gruposAjuar').get();
+        gruposData = [];
+        
+        for (const doc of snap.docs) {
+          const grupo = { id: doc.id, ...doc.data(), articulos: [] };
+          const artSnap = await db.collection('bienes').doc(bienId)
+            .collection('gruposAjuar').doc(doc.id)
+            .collection('articulos').get();
+          grupo.articulos = artSnap.docs.map(a => ({ id: a.id, ...a.data() }));
+          gruposData.push(grupo);
+        }
+
+        document.getElementById('loading').classList.add('hidden');
+        renderGrupos();
+      } catch (error) {
+        console.error('Error cargando grupos:', error);
+        document.getElementById('loading').classList.add('hidden');
+      }
+    }
+
+    function renderGrupos() {
+      const container = document.getElementById('grupos-container');
+      const empty = document.getElementById('empty-state');
+      const content = document.getElementById('content');
+
+      const totalArticulos = gruposData.reduce((sum, g) => sum + (g.articulos?.length || 0), 0);
+      document.getElementById('stat-grupos').textContent = gruposData.length;
+      document.getElementById('stat-articulos').textContent = totalArticulos;
+
+      if (gruposData.length === 0) {
+        content.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      content.classList.remove('hidden');
+
+      container.innerHTML = gruposData.map(grupo => `
+        <div class="grupo-card" id="grupo-${grupo.id}">
+          <div class="grupo-header" onclick="toggleGrupo('${grupo.id}')">
+            <div class="grupo-info">
+              <div class="grupo-icon">${grupo.icono || '📦'}</div>
+              <div>
+                <div class="grupo-nombre">${grupo.nombre}</div>
+                <div class="grupo-count">${grupo.articulos?.length || 0} artículos</div>
+              </div>
+            </div>
+            <span class="grupo-toggle">▼</span>
+          </div>
+          <div class="grupo-body">
+            <div class="articulos-list">
+              ${(grupo.articulos || []).map(art => {
+                const meta = [art.ubicacion, art.marca].filter(Boolean).join(' · ') || art.descripcion || '';
+                return `
+                <div class="articulo-item" onclick="editarArticulo('${grupo.id}', '${art.id}')">
+                  <div class="articulo-thumb">
+                    ${art.foto ? `<img src="${art.foto}">` : '🪑'}
+                  </div>
+                  <div class="articulo-info">
+                    <div class="articulo-nombre">${art.nombre}</div>
+                    <div class="articulo-meta">${meta}</div>
+                  </div>
+                </div>
+              `}).join('')}
+            </div>
+            <div class="add-btn" onclick="abrirModalArticulo('${grupo.id}')">+ Añadir artículo</div>
+            <button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="editarGrupo('${grupo.id}')">✏️ Editar grupo</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function toggleGrupo(grupoId) {
+      document.getElementById('grupo-' + grupoId)?.classList.toggle('open');
+    }
+
+    // ===== MODAL GRUPO =====
+    document.getElementById('grupo-iconos').addEventListener('click', (e) => {
+      const opt = e.target.closest('.icono-option');
+      if (!opt) return;
+      document.querySelectorAll('#grupo-iconos .icono-option').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      iconoSeleccionado = opt.dataset.icono;
+    });
+
+    function abrirModalGrupo() {
+      editingGrupoId = null;
+      document.getElementById('grupo-id').value = '';
+      document.getElementById('grupo-nombre').value = '';
+      document.getElementById('grupo-desc').value = '';
+      iconoSeleccionado = '🪑';
+      document.querySelectorAll('#grupo-iconos .icono-option').forEach(o => o.classList.toggle('selected', o.dataset.icono === '🪑'));
+      document.getElementById('btn-eliminar-grupo').classList.add('hidden');
+      document.getElementById('modal-grupo-title').textContent = '📦 Nuevo grupo';
+      document.getElementById('modal-grupo').classList.add('active');
+    }
+
+    function editarGrupo(grupoId) {
+      const grupo = gruposData.find(g => g.id === grupoId);
+      if (!grupo) return;
+
+      editingGrupoId = grupoId;
+      document.getElementById('grupo-id').value = grupoId;
+      document.getElementById('grupo-nombre').value = grupo.nombre || '';
+      document.getElementById('grupo-desc').value = grupo.descripcion || '';
+      iconoSeleccionado = grupo.icono || '🪑';
+      document.querySelectorAll('#grupo-iconos .icono-option').forEach(o => o.classList.toggle('selected', o.dataset.icono === iconoSeleccionado));
+      document.getElementById('btn-eliminar-grupo').classList.remove('hidden');
+      document.getElementById('modal-grupo-title').textContent = '✏️ Editar grupo';
+      document.getElementById('modal-grupo').classList.add('active');
+    }
+
+    function cerrarModalGrupo() {
+      document.getElementById('modal-grupo').classList.remove('active');
+    }
+
+    async function guardarGrupo() {
+      const nombre = document.getElementById('grupo-nombre').value.trim();
+      if (!nombre) { alert('Introduce un nombre'); return; }
+
+      try {
+        const data = {
+          nombre,
+          icono: iconoSeleccionado,
+          descripcion: document.getElementById('grupo-desc').value.trim(),
+          actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (editingGrupoId) {
+          await db.collection('bienes').doc(bienId).collection('gruposAjuar').doc(editingGrupoId).update(data);
+        } else {
+          data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId).collection('gruposAjuar').add(data);
+        }
+
+        cerrarModalGrupo();
+        await cargarGrupos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    async function eliminarGrupo() {
+      if (!editingGrupoId || !confirm('¿Eliminar este grupo y todos sus artículos?')) return;
+
+      try {
+        // Eliminar artículos primero
+        const artSnap = await db.collection('bienes').doc(bienId)
+          .collection('gruposAjuar').doc(editingGrupoId)
+          .collection('articulos').get();
+        
+        const batch = db.batch();
+        artSnap.docs.forEach(doc => batch.delete(doc.ref));
+        batch.delete(db.collection('bienes').doc(bienId).collection('gruposAjuar').doc(editingGrupoId));
+        await batch.commit();
+
+        cerrarModalGrupo();
+        await cargarGrupos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar');
+      }
+    }
+
+    // ===== MODAL ARTÍCULO =====
+    function abrirModalArticulo(grupoId) {
+      editingArticuloId = null;
+      fotoBase64 = null;
+      document.getElementById('articulo-id').value = '';
+      document.getElementById('articulo-grupo-id').value = grupoId;
+      document.getElementById('articulo-nombre').value = '';
+      document.getElementById('articulo-desc').value = '';
+      document.getElementById('articulo-ubicacion').value = '';
+      document.getElementById('articulo-marca').value = '';
+      document.getElementById('articulo-procedencia').value = '';
+      document.getElementById('foto-preview').innerHTML = '📷 Click para subir foto';
+      document.getElementById('btn-eliminar-articulo').classList.add('hidden');
+      document.getElementById('modal-articulo-title').textContent = '🪑 Nuevo artículo';
+      document.getElementById('modal-articulo').classList.add('active');
+    }
+
+    function editarArticulo(grupoId, articuloId) {
+      const grupo = gruposData.find(g => g.id === grupoId);
+      const articulo = grupo?.articulos?.find(a => a.id === articuloId);
+      if (!articulo) return;
+
+      editingArticuloId = articuloId;
+      fotoBase64 = articulo.foto || null;
+
+      document.getElementById('articulo-id').value = articuloId;
+      document.getElementById('articulo-grupo-id').value = grupoId;
+      document.getElementById('articulo-nombre').value = articulo.nombre || '';
+      document.getElementById('articulo-desc').value = articulo.descripcion || '';
+      document.getElementById('articulo-ubicacion').value = articulo.ubicacion || '';
+      document.getElementById('articulo-marca').value = articulo.marca || '';
+      document.getElementById('articulo-procedencia').value = articulo.procedencia || '';
+
+      if (articulo.foto) {
+        document.getElementById('foto-preview').innerHTML = `<img src="${articulo.foto}" style="width:100%;height:100%;object-fit:cover;">`;
+      } else {
+        document.getElementById('foto-preview').innerHTML = '📷 Click para subir foto';
+      }
+
+      document.getElementById('btn-eliminar-articulo').classList.remove('hidden');
+      document.getElementById('modal-articulo-title').textContent = '✏️ Editar artículo';
+      document.getElementById('modal-articulo').classList.add('active');
+    }
+
+    function cerrarModalArticulo() {
+      document.getElementById('modal-articulo').classList.remove('active');
+    }
+
+    function previewFoto(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        fotoBase64 = e.target.result;
+        document.getElementById('foto-preview').innerHTML = `<img src="${fotoBase64}" style="width:100%;height:100%;object-fit:cover;">`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function guardarArticulo() {
+      const grupoId = document.getElementById('articulo-grupo-id').value;
+      const nombre = document.getElementById('articulo-nombre').value.trim();
+      if (!nombre) { alert('Introduce un nombre'); return; }
+
+      try {
+        const data = {
+          nombre,
+          descripcion: document.getElementById('articulo-desc').value.trim(),
+          ubicacion: document.getElementById('articulo-ubicacion').value.trim(),
+          marca: document.getElementById('articulo-marca').value.trim(),
+          procedencia: document.getElementById('articulo-procedencia').value.trim(),
+          foto: fotoBase64 || null,
+          actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const ref = db.collection('bienes').doc(bienId).collection('gruposAjuar').doc(grupoId).collection('articulos');
+
+        if (editingArticuloId) {
+          await ref.doc(editingArticuloId).update(data);
+        } else {
+          data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarModalArticulo();
+        await cargarGrupos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
+      }
+    }
+
+    async function eliminarArticulo() {
+      const grupoId = document.getElementById('articulo-grupo-id').value;
+      if (!editingArticuloId || !confirm('¿Eliminar este artículo?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('gruposAjuar').doc(grupoId)
+          .collection('articulos').doc(editingArticuloId).delete();
+
+        cerrarModalArticulo();
+        await cargarGrupos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar');
+      }
+    }
+
+    // Cerrar modales al click fuera
+    document.getElementById('modal-grupo').addEventListener('click', (e) => { if (e.target.id === 'modal-grupo') cerrarModalGrupo(); });
+    document.getElementById('modal-articulo').addEventListener('click', (e) => { if (e.target.id === 'modal-articulo') cerrarModalArticulo(); });
+  </script>
+</body>
+</html>

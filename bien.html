@@ -2245,8 +2245,16 @@
           <textarea class="form-input" id="articulo-ajuar-desc" rows="2" placeholder="Características, estado, historia..."></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label">Ubicación</label>
+          <label class="form-label">Ubicación / Lugar</label>
           <input type="text" class="form-input" id="articulo-ajuar-ubicacion" placeholder="Ej: Salón, Dormitorio 1...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Marca</label>
+          <input type="text" class="form-input" id="articulo-ajuar-marca" placeholder="Ej: IKEA, antigüedad, artesanal...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Procedencia</label>
+          <input type="text" class="form-input" id="articulo-ajuar-procedencia" placeholder="Ej: Herencia abuelos, comprado 2015, regalo boda...">
         </div>
         <div class="form-group">
           <label class="form-label">Foto (opcional)</label>
@@ -2725,6 +2733,7 @@
         const modulosConfig = [
           { key: 'reservas', icon: '📅', label: 'Reservas', url: `reservas.html?id=${bienId}&origen=bien` },
           { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario-config.html?id=${bienId}&origen=bien` },
+          { key: 'ajuar', icon: '🪑', label: 'Ajuar', url: `ajuar.html?id=${bienId}&origen=bien` },
           { key: 'menus', icon: '🍽️', label: 'Menús', url: `menus-nidos.html?id=${bienId}&origen=bien` },
           { key: 'gastos', icon: '💰', label: 'Gastos', url: `gastos.html?id=${bienId}&origen=bien` },
           { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mantenimiento.html?id=${bienId}&origen=bien` },
@@ -2743,6 +2752,7 @@
           { key: 'reservas', icon: '📅', label: 'Reservas', url: `reservas.html?id=${bienId}&origen=bien` },
           { key: 'contratos', icon: '📝', label: 'Contratos', url: `contratos.html?id=${bienId}` },
           { key: 'inquilinos', icon: '👥', label: 'Inquilinos', url: `inquilinos.html?id=${bienId}` },
+          { key: 'ajuar', icon: '🪑', label: 'Ajuar', url: `ajuar.html?id=${bienId}&origen=bien` },
           { key: 'menus', icon: '🍽️', label: 'Menús', url: `menus-nidos.html?id=${bienId}&origen=bien` },
           { key: 'facturacion', icon: '🧾', label: 'Facturación', url: `facturacion.html?id=${bienId}` },
           { key: 'contabilidad', icon: '📊', label: 'Contabilidad', url: `contabilidad.html?id=${bienId}` }
@@ -2842,6 +2852,7 @@
           updateData.mayordomoModulos = {
             reservas: true,
             inventario: true,
+            ajuar: false,
             menus: true,
             gastos: true,
             mantenimiento: true,
@@ -2883,6 +2894,7 @@
             reservas: true,
             contratos: true,
             inquilinos: true,
+            ajuar: false,
             menus: true,
             facturacion: true,
             contabilidad: true
@@ -4299,10 +4311,11 @@
     });
 
     // ========== CASEROS ==========
-    const seccionesPermisos = ['reservas', 'inventario', 'mantenimiento', 'limpieza', 'gastos', 'documentos'];
+    const seccionesPermisos = ['reservas', 'inventario', 'ajuar', 'mantenimiento', 'limpieza', 'gastos', 'documentos'];
     const seccionesLabels = {
       reservas: '📅',
       inventario: '📦',
+      ajuar: '🪑',
       mantenimiento: '🔧',
       limpieza: '🧹',
       gastos: '💶',
@@ -4473,11 +4486,12 @@
     // ========== HOSTERS (Gerente) ==========
     let hostersData = [];
     let editingHosterId = null;
-    const seccionesPermisosHoster = ['reservas', 'inquilinos', 'contratos', 'facturacion', 'contabilidad'];
+    const seccionesPermisosHoster = ['reservas', 'inquilinos', 'contratos', 'ajuar', 'facturacion', 'contabilidad'];
     const seccionesLabelsHoster = {
       reservas: '📅',
       inquilinos: '👥',
       contratos: '📝',
+      ajuar: '🪑',
       facturacion: '🧾',
       contabilidad: '📊'
     };
@@ -4718,17 +4732,19 @@
           </div>
           <div class="ajuar-grupo-body">
             <div class="ajuar-articulos">
-              ${(grupo.articulos || []).map(art => `
+              ${(grupo.articulos || []).map(art => {
+                const detalles = [art.ubicacion, art.marca].filter(Boolean).join(' · ') || art.descripcion || '';
+                return `
                 <div class="ajuar-articulo" onclick="editarArticuloAjuar('${grupo.id}', '${art.id}')">
                   <div class="ajuar-articulo-thumb">
                     ${art.foto ? `<img src="${art.foto}">` : '🪑'}
                   </div>
                   <div class="ajuar-articulo-info">
                     <div class="ajuar-articulo-nombre">${art.nombre}</div>
-                    <div class="ajuar-articulo-desc">${art.ubicacion || art.descripcion || ''}</div>
+                    <div class="ajuar-articulo-desc">${detalles}</div>
                   </div>
                 </div>
-              `).join('')}
+              `}).join('')}
             </div>
             <div class="ajuar-btn-add" onclick="abrirModalArticuloAjuar('${grupo.id}')">+ Añadir artículo</div>
             <button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="editarGrupoAjuar('${grupo.id}')">✏️ Editar grupo</button>
@@ -4831,6 +4847,8 @@
       document.getElementById('articulo-ajuar-nombre').value = '';
       document.getElementById('articulo-ajuar-desc').value = '';
       document.getElementById('articulo-ajuar-ubicacion').value = '';
+      document.getElementById('articulo-ajuar-marca').value = '';
+      document.getElementById('articulo-ajuar-procedencia').value = '';
       document.getElementById('articulo-foto-preview').innerHTML = '📷 Click para subir foto';
       document.getElementById('btn-eliminar-articulo-ajuar').classList.add('hidden');
       document.getElementById('modal-articulo-ajuar-title').textContent = '🪑 Nuevo artículo';
@@ -4850,6 +4868,8 @@
       document.getElementById('articulo-ajuar-nombre').value = articulo.nombre || '';
       document.getElementById('articulo-ajuar-desc').value = articulo.descripcion || '';
       document.getElementById('articulo-ajuar-ubicacion').value = articulo.ubicacion || '';
+      document.getElementById('articulo-ajuar-marca').value = articulo.marca || '';
+      document.getElementById('articulo-ajuar-procedencia').value = articulo.procedencia || '';
       
       if (articulo.foto) {
         document.getElementById('articulo-foto-preview').innerHTML = `<img src="${articulo.foto}">`;
@@ -4888,6 +4908,8 @@
           nombre,
           descripcion: document.getElementById('articulo-ajuar-desc').value.trim(),
           ubicacion: document.getElementById('articulo-ajuar-ubicacion').value.trim(),
+          marca: document.getElementById('articulo-ajuar-marca').value.trim(),
+          procedencia: document.getElementById('articulo-ajuar-procedencia').value.trim(),
           foto: articuloFotoBase64 || null,
           actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
         };
