@@ -417,6 +417,82 @@
       background: var(--capataz-light);
     }
 
+    /* Modal configuración módulos */
+    .modulos-config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      max-height: 60vh;
+      overflow-y: auto;
+      padding: 4px;
+    }
+
+    .modulo-config-card {
+      background: var(--cream);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .modulo-config-card:hover {
+      border-color: var(--sage-light);
+      transform: translateY(-2px);
+    }
+
+    .modulo-config-card.activo {
+      border-color: var(--sage);
+      background: var(--sage-muted);
+    }
+
+    .modulo-config-card.activo.gerente {
+      border-color: #4A5568;
+      background: rgba(74, 85, 104, 0.1);
+    }
+
+    .modulo-config-icon {
+      font-size: 1.8rem;
+      margin-bottom: 8px;
+    }
+
+    .modulo-config-nombre {
+      font-weight: 700;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
+    }
+
+    .modulo-config-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .modulo-config-check {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      color: transparent;
+    }
+
+    .modulo-config-card.activo .modulo-config-check {
+      background: var(--sage);
+      color: white;
+    }
+
+    .modulo-config-card.activo.gerente .modulo-config-check {
+      background: #4A5568;
+    }
+
     .btn-desactivar-gestion {
       padding: 8px 14px;
       background: transparent;
@@ -1536,7 +1612,10 @@
       <div class="gestion-modulos hidden" id="gestion-modulos">
         <div class="gestion-modulos-header">
           <div class="gestion-modulos-title" id="gestion-titulo">🎩 Módulos Mayordomo</div>
-          <button class="btn-desactivar-gestion" onclick="desactivarGestion()">❌ Desactivar Gestión</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="abrirConfigModulos()">⚙️ Configurar módulos</button>
+            <button class="btn-desactivar-gestion" onclick="desactivarGestion()">❌ Desactivar</button>
+          </div>
         </div>
         <div class="modulos-botones" id="modulos-botones"></div>
       </div>
@@ -1616,7 +1695,7 @@
 
           <div class="collapsible-section" id="section-caseros">
             <div class="collapsible-header" onclick="toggleSection('caseros')">
-              <div class="collapsible-title"><span>👤</span><span>Caseros/Guarda</span><span class="collapsible-count" id="count-caseros">0</span></div>
+              <div class="collapsible-title"><span>👤</span><span>Caseros</span><span class="collapsible-count" id="count-caseros">0</span></div>
               <span class="collapsible-toggle">▼</span>
             </div>
             <div class="collapsible-body">
@@ -1641,6 +1720,23 @@
       </div>
     </div>
   </main>
+
+  <!-- Modal Configurar Módulos -->
+  <div class="modal-overlay" id="modal-config-modulos">
+    <div class="modal" style="max-width:700px;">
+      <div class="modal-header" id="modal-config-header">
+        <h3 class="modal-title">⚙️ Configurar Módulos</h3>
+        <button class="modal-close" onclick="cerrarConfigModulos()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">Selecciona los módulos que necesitas para gestionar este bien. Puedes activarlos o desactivarlos en cualquier momento.</p>
+        <div class="modulos-config-grid" id="modulos-config-grid"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarConfigModulos()">Cerrar</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Reserva -->
   <div class="modal-overlay" id="modal-reserva">
@@ -2785,7 +2881,7 @@
       }
 
       if (!botonesHtml) {
-        botonesHtml = '<span style="color: var(--text-muted); font-size: 0.85rem;">Sin módulos activos. Configura desde ⚙️</span>';
+        botonesHtml = '<div style="text-align:center;padding:20px;"><div style="font-size:2rem;margin-bottom:8px;">📦</div><div style="color:var(--text-muted);font-size:0.9rem;">Sin módulos activos</div><div style="color:var(--text-muted);font-size:0.8rem;">Pulsa "⚙️ Configurar módulos" para activar los que necesites</div></div>';
       }
 
       botonesContainer.innerHTML = botonesHtml;
@@ -2853,13 +2949,13 @@
         
         if (!bienData.mayordomoModulos) {
           updateData.mayordomoModulos = {
-            reservas: true,
-            inventario: true,
+            reservas: false,
+            inventario: false,
             ajuar: false,
-            menus: true,
-            gastos: true,
-            mantenimiento: true,
-            limpieza: true,
+            menus: false,
+            gastos: false,
+            mantenimiento: false,
+            limpieza: false,
             eventos: false
           };
         }
@@ -2894,16 +2990,16 @@
         
         if (!bienData.gerenteModulos) {
           updateData.gerenteModulos = {
-            reservas: true,
-            habitaciones: true,
-            huespedes: true,
-            tarifas: true,
-            ventas: true,
-            inventario: true,
+            reservas: false,
+            habitaciones: false,
+            huespedes: false,
+            tarifas: false,
+            ventas: false,
+            inventario: false,
             ajuar: false,
             contratos: false,
-            servicios: true,
-            menus: true
+            servicios: false,
+            menus: false
           };
         }
 
@@ -2972,6 +3068,106 @@
       renderGestionCards();
     }
 
+    // ========== CONFIGURACIÓN DE MÓDULOS ==========
+    const modulosDescripcionesMayordomo = {
+      reservas: { icon: '📅', nombre: 'Reservas', desc: 'Gestiona quién usa el inmueble y cuándo. Calendario compartido y turnos familiares.' },
+      inventario: { icon: '📦', nombre: 'Inventario', desc: 'Control de productos consumibles (limpieza, despensa). Alertas de stock bajo y lista de compra.' },
+      ajuar: { icon: '🪑', nombre: 'Ajuar', desc: 'Catálogo de muebles y enseres. Registra ubicación, marca, procedencia y fotos.' },
+      menus: { icon: '🍽️', nombre: 'Menús', desc: 'Planificación de comidas. Organiza desayunos, comidas y cenas para cada estancia.' },
+      gastos: { icon: '💰', nombre: 'Gastos', desc: 'Registro de gastos del inmueble. Reparto entre nidos y control de pagos.' },
+      mantenimiento: { icon: '🔧', nombre: 'Mantenimiento', desc: 'Tareas programadas y averías. Historial de reparaciones y recordatorios.' },
+      limpieza: { icon: '🧹', nombre: 'Limpieza', desc: 'Checklists por estancia y turnos. Control de limpieza al entrar y salir.' },
+      eventos: { icon: '🎉', nombre: 'Eventos', desc: 'Celebraciones y reuniones familiares. Coordina cumpleaños, fiestas y encuentros.' }
+    };
+
+    const modulosDescripcionesGerente = {
+      reservas: { icon: '📅', nombre: 'Reservas', desc: 'Gestión profesional de reservas. Check-in, check-out y confirmaciones.' },
+      habitaciones: { icon: '🛏️', nombre: 'Habitaciones', desc: 'Define habitaciones y espacios disponibles. Capacidad, servicios y configuración.' },
+      huespedes: { icon: '👥', nombre: 'Huéspedes', desc: 'Registro de huéspedes. Titulares, acompañantes e invitados con historial.' },
+      tarifas: { icon: '💶', nombre: 'Tarifas', desc: 'Precios por temporada y tipo de habitación. Descuentos y ofertas especiales.' },
+      ventas: { icon: '💰', nombre: 'Ventas', desc: 'Ingresos por estancias, hospitalidad, actividades y servicios adicionales.' },
+      inventario: { icon: '📦', nombre: 'Inventario', desc: 'Control de productos consumibles. Amenities, limpieza y suministros.' },
+      ajuar: { icon: '🪑', nombre: 'Ajuar', desc: 'Catálogo de mobiliario y equipamiento. Control de estado y ubicación.' },
+      contratos: { icon: '📝', nombre: 'Contratos', desc: 'Gestión de contratos de alquiler. Documentos y condiciones legales.' },
+      servicios: { icon: '🚐', nombre: 'Otros Servicios', desc: 'Servicios externos: transfers, excursiones, catering, guías turísticos.' },
+      menus: { icon: '🍽️', nombre: 'Menús', desc: 'Planificación de hospitalidad. Desayunos, comidas, cenas y bar.' }
+    };
+
+    function abrirConfigModulos() {
+      const grid = document.getElementById('modulos-config-grid');
+      const header = document.getElementById('modal-config-header');
+      let html = '';
+      let modulos = {};
+      let descripciones = {};
+      let tipoGestion = '';
+
+      if (bienData.mayordomoActivo) {
+        modulos = bienData.mayordomoModulos || {};
+        descripciones = modulosDescripcionesMayordomo;
+        tipoGestion = 'mayordomo';
+        header.style.background = 'var(--mayordomo)';
+      } else if (bienData.gerenteActivo) {
+        modulos = bienData.gerenteModulos || {};
+        descripciones = modulosDescripcionesGerente;
+        tipoGestion = 'gerente';
+        header.style.background = '#4A5568';
+      } else {
+        return;
+      }
+
+      Object.keys(descripciones).forEach(key => {
+        const mod = descripciones[key];
+        const activo = modulos[key] === true;
+        html += `
+          <div class="modulo-config-card ${activo ? 'activo' : ''} ${tipoGestion}" onclick="toggleModuloConfig('${key}', '${tipoGestion}')">
+            <div class="modulo-config-check">✓</div>
+            <div class="modulo-config-icon">${mod.icon}</div>
+            <div class="modulo-config-nombre">${mod.nombre}</div>
+            <div class="modulo-config-desc">${mod.desc}</div>
+          </div>
+        `;
+      });
+
+      grid.innerHTML = html;
+      document.getElementById('modal-config-modulos').classList.add('active');
+    }
+
+    function cerrarConfigModulos() {
+      document.getElementById('modal-config-modulos').classList.remove('active');
+    }
+
+    async function toggleModuloConfig(modulo, tipo) {
+      try {
+        let modulos, field;
+        if (tipo === 'mayordomo') {
+          modulos = bienData.mayordomoModulos || {};
+          field = 'mayordomoModulos';
+        } else if (tipo === 'gerente') {
+          modulos = bienData.gerenteModulos || {};
+          field = 'gerenteModulos';
+        } else {
+          return;
+        }
+
+        const nuevoEstado = !modulos[modulo];
+        const updateData = {};
+        updateData[`${field}.${modulo}`] = nuevoEstado;
+
+        await db.collection('bienes').doc(bienId).update(updateData);
+
+        // Actualizar datos locales
+        if (!bienData[field]) bienData[field] = {};
+        bienData[field][modulo] = nuevoEstado;
+
+        // Actualizar UI
+        abrirConfigModulos();
+        renderModulosBotones(tipo);
+      } catch (error) {
+        console.error('Error al cambiar módulo:', error);
+        alert('Error al actualizar');
+      }
+    }
+
     async function toggleModulo(modulo, activo) {
       try {
         const updateData = {};
@@ -2989,6 +3185,11 @@
         alert('Error al actualizar');
       }
     }
+
+    // Cerrar modal config al click fuera
+    document.getElementById('modal-config-modulos').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-config-modulos') cerrarConfigModulos();
+    });
 
     function irAMayordomo() {
       window.location.href = `mayordomo.html?bien=${bienId}`;
