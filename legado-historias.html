@@ -201,6 +201,22 @@
     .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Visibilidad */
+    .visibilidad-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+    .visibilidad-option { flex: 1; cursor: pointer; }
+    .visibilidad-option input { display: none; }
+    .visibilidad-box { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; background: var(--cream); border: 2px solid transparent; border-radius: var(--radius-md); transition: all 0.2s; text-align: center; }
+    .visibilidad-option input:checked + .visibilidad-box { border-color: var(--historias); background: rgba(203,153,126,0.2); }
+    .visibilidad-box:hover { border-color: var(--sage-light); }
+    .visibilidad-icon { font-size: 1.4rem; }
+    .visibilidad-name { font-weight: 700; font-size: 0.75rem; }
+    .visibilidad-desc { font-size: 0.65rem; color: var(--text-muted); }
+    .visibilidad-badge { position: absolute; top: 8px; right: 8px; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; z-index: 2; }
+    .visibilidad-badge.rama { background: rgba(122,158,126,0.9); color: white; }
+    .visibilidad-badge.estirpe { background: rgba(193,119,87,0.9); color: white; }
+    .visibilidad-badge.nido { background: rgba(91,123,163,0.9); color: white; }
+    .historia-card { position: relative; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -241,6 +257,36 @@
       </div>
       <form id="form-historia">
         <div class="modal-body">
+          <!-- Selector de visibilidad -->
+          <div class="form-group">
+            <label class="form-label">🔒 ¿Quién puede ver esta historia?</label>
+            <div class="visibilidad-selector">
+              <label class="visibilidad-option">
+                <input type="radio" name="historia-visibilidad" value="rama" checked>
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">🌳</span>
+                  <span class="visibilidad-name">Rama</span>
+                  <span class="visibilidad-desc">Toda la familia</span>
+                </div>
+              </label>
+              <label class="visibilidad-option">
+                <input type="radio" name="historia-visibilidad" value="estirpe">
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">👨‍👩‍👧‍👦</span>
+                  <span class="visibilidad-name">Estirpe</span>
+                  <span class="visibilidad-desc">Tu nido y descendientes</span>
+                </div>
+              </label>
+              <label class="visibilidad-option">
+                <input type="radio" name="historia-visibilidad" value="nido">
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">🏠</span>
+                  <span class="visibilidad-name">Nido</span>
+                  <span class="visibilidad-desc">Solo tu nido</span>
+                </div>
+              </label>
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label">Título *</label>
             <input type="text" class="form-input" id="historia-titulo" placeholder="Ej: Cómo se conocieron los abuelos" required>
@@ -296,6 +342,8 @@
     let editingId = null;
     let selectedFile = null;
     let currentImageUrl = null;
+    let userNidoId = null;
+    let cadenaAncestros = [];
     
     // Inicializar Storage
     const storage = firebase.storage();
@@ -307,9 +355,30 @@
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       if (!userDoc.exists) return;
       
-      familiaId = userDoc.data().familiaId;
+      const userData = userDoc.data();
+      familiaId = userData.familiaId;
+      userNidoId = userData.nidoId || null;
+      if (userNidoId) await construirCadenaAncestros(userNidoId);
       await loadHistorias();
     });
+
+    async function construirCadenaAncestros(nidoId) {
+      cadenaAncestros = [nidoId];
+      let currentNidoId = nidoId;
+      let i = 0;
+      while (currentNidoId && i < 10) {
+        try {
+          const nidoDoc = await db.collection('nidos').doc(currentNidoId).get();
+          if (!nidoDoc.exists) break;
+          const nidoOrigen = nidoDoc.data().nidoOrigen;
+          if (nidoOrigen && !cadenaAncestros.includes(nidoOrigen)) {
+            cadenaAncestros.push(nidoOrigen);
+            currentNidoId = nidoOrigen;
+          } else break;
+        } catch (e) { break; }
+        i++;
+      }
+    }
 
     async function loadHistorias() {
       try {
@@ -326,15 +395,25 @@
             .get();
         }
 
-        historiasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        // Ordenar manualmente si no hay índice
-        historiasData.sort((a, b) => {
+        // Filtrar por visibilidad
+        items = items.filter(h => {
+          const vis = h.visibilidad || 'rama';
+          if (vis === 'rama') return true;
+          if (vis === 'nido') return h.nidoCreadorId === userNidoId;
+          if (vis === 'estirpe') return cadenaAncestros.includes(h.nidoCreadorId);
+          return true;
+        });
+        
+        // Ordenar manualmente
+        items.sort((a, b) => {
           const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
           const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
           return fechaB - fechaA;
         });
         
+        historiasData = items;
         document.getElementById('loading').classList.add('hidden');
         renderHistorias();
       } catch (error) {
@@ -361,9 +440,12 @@
         const fecha = h.fechaCreacion?.toDate?.();
         const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
         const tieneImagen = h.imagenUrl;
+        const vis = h.visibilidad || 'rama';
+        const visIcons = { rama: '🌳', estirpe: '👨‍👩‍👧‍👦', nido: '🏠' };
 
         return `
           <div class="historia-card ${tieneImagen ? 'con-imagen' : ''}" onclick="abrirModal('${h.id}')">
+            <div class="visibilidad-badge ${vis}">${visIcons[vis]}</div>
             ${tieneImagen ? `<img src="${h.imagenUrl}" class="historia-imagen" alt="">` : ''}
             <div class="historia-body">
               <div class="historia-titulo">${h.titulo}</div>
@@ -418,6 +500,7 @@
       document.getElementById('upload-placeholder').classList.remove('hidden');
       document.getElementById('upload-area').classList.remove('has-image');
       document.getElementById('upload-remove').classList.add('hidden');
+      document.querySelector('input[name="historia-visibilidad"][value="rama"]').checked = true;
 
       if (id) {
         const historia = historiasData.find(h => h.id === id);
@@ -426,6 +509,10 @@
           document.getElementById('historia-titulo').value = historia.titulo || '';
           document.getElementById('historia-texto').value = historia.texto || '';
           document.getElementById('historia-epoca').value = historia.epoca || '';
+          
+          // Cargar visibilidad
+          const visRadio = document.querySelector(`input[name="historia-visibilidad"][value="${historia.visibilidad || 'rama'}"]`);
+          if (visRadio) visRadio.checked = true;
           
           // Mostrar imagen si existe
           if (historia.imagenUrl) {
@@ -478,12 +565,14 @@
           imageUrl = await fileRef.getDownloadURL();
         }
 
+        const visibilidad = document.querySelector('input[name="historia-visibilidad"]:checked').value;
         const data = {
           titulo: document.getElementById('historia-titulo').value.trim(),
           texto: document.getElementById('historia-texto').value.trim(),
           epoca: document.getElementById('historia-epoca').value.trim(),
           imagenUrl: imageUrl || null,
           familiaId: familiaId,
+          visibilidad: visibilidad,
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -491,6 +580,7 @@
           await db.collection('legado-historias').doc(editingId).update(data);
         } else {
           data.creadoPor = currentUser.uid;
+          data.nidoCreadorId = userNidoId;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           await db.collection('legado-historias').add(data);
         }

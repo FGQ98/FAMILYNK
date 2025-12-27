@@ -350,6 +350,60 @@
     .bien-card:hover .bien-card-edit { opacity: 1; }
     .bien-card-edit:hover { background: var(--sage-muted); }
 
+    /* ============ VISIBILIDAD ============ */
+    .visibilidad-selector {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .visibilidad-option {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .visibilidad-option input { display: none; }
+
+    .visibilidad-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 14px 8px;
+      background: var(--cream-medium);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .visibilidad-option input:checked + .visibilidad-box {
+      border-color: var(--sage);
+      background: var(--sage-muted);
+    }
+
+    .visibilidad-box:hover { border-color: var(--sage-light); }
+    .visibilidad-icon { font-size: 1.6rem; }
+    .visibilidad-name { font-weight: 700; font-size: 0.8rem; }
+    .visibilidad-desc { font-size: 0.7rem; color: var(--text-muted); line-height: 1.3; }
+
+    /* Badge de visibilidad en cards */
+    .bien-card-visibilidad {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.65rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .bien-card-visibilidad.rama { background: rgba(122, 158, 126, 0.9); color: white; }
+    .bien-card-visibilidad.estirpe { background: rgba(193, 119, 87, 0.9); color: white; }
+    .bien-card-visibilidad.nido { background: rgba(91, 123, 163, 0.9); color: white; }
+
     /* Empty state */
     .empty-state {
       background: var(--white);
@@ -757,6 +811,37 @@
           <!-- TAB: Datos básicos -->
           <div class="tab-content active" id="tab-datos">
             <div class="form-section">
+              <div class="form-section-title">🔒 ¿Quién puede ver este bien?</div>
+              
+              <div class="visibilidad-selector">
+                <label class="visibilidad-option">
+                  <input type="radio" name="bien-visibilidad" value="rama" checked>
+                  <div class="visibilidad-box">
+                    <span class="visibilidad-icon">🌳</span>
+                    <span class="visibilidad-name">Rama</span>
+                    <span class="visibilidad-desc">Toda la familia</span>
+                  </div>
+                </label>
+                <label class="visibilidad-option">
+                  <input type="radio" name="bien-visibilidad" value="estirpe">
+                  <div class="visibilidad-box">
+                    <span class="visibilidad-icon">👨‍👩‍👧‍👦</span>
+                    <span class="visibilidad-name">Estirpe</span>
+                    <span class="visibilidad-desc">Tu nido y descendientes</span>
+                  </div>
+                </label>
+                <label class="visibilidad-option">
+                  <input type="radio" name="bien-visibilidad" value="nido">
+                  <div class="visibilidad-box">
+                    <span class="visibilidad-icon">🏠</span>
+                    <span class="visibilidad-name">Nido</span>
+                    <span class="visibilidad-desc">Solo tu nido</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-section">
               <div class="form-section-title">📍 Información general</div>
               
               <div class="form-group">
@@ -935,8 +1020,11 @@
     let bienesData = [];
     let filtroActual = 'todos';
     let editingBienId = null;
+    let userNidoId = null;
+    let cadenaAncestros = []; // IDs de nidos ancestros del usuario (para filtrar estirpe)
 
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
+    const visibilidadLabels = { rama: '🌳 Rama', estirpe: '👨‍👩‍👧‍👦 Estirpe', nido: '🏠 Nido' };
 
     // ========== AUTH ==========
     auth.onAuthStateChanged(async (user) => {
@@ -948,11 +1036,17 @@
       
       userData = userDoc.data();
       familiaId = userData.familiaId;
+      userNidoId = userData.nidoId || null;
 
       if (!familiaId) {
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('empty-state').classList.remove('hidden');
         return;
+      }
+
+      // Construir cadena de ancestros (para filtrar estirpe)
+      if (userNidoId) {
+        await construirCadenaAncestros(userNidoId);
       }
 
       const nombre = userData.nombre || user.email.split('@')[0];
@@ -961,6 +1055,34 @@
 
       await loadBienes();
     });
+
+    // ========== CONSTRUIR CADENA ANCESTROS ==========
+    async function construirCadenaAncestros(nidoId) {
+      cadenaAncestros = [nidoId];
+      let currentNidoId = nidoId;
+      let iteraciones = 0;
+      const maxIteraciones = 10; // Prevenir bucles infinitos
+
+      while (currentNidoId && iteraciones < maxIteraciones) {
+        try {
+          const nidoDoc = await db.collection('nidos').doc(currentNidoId).get();
+          if (!nidoDoc.exists) break;
+          
+          const nidoOrigen = nidoDoc.data().nidoOrigen;
+          if (nidoOrigen && !cadenaAncestros.includes(nidoOrigen)) {
+            cadenaAncestros.push(nidoOrigen);
+            currentNidoId = nidoOrigen;
+          } else {
+            break;
+          }
+        } catch (e) {
+          console.warn('Error construyendo cadena ancestros:', e);
+          break;
+        }
+        iteraciones++;
+      }
+      console.log('📍 Cadena de ancestros:', cadenaAncestros);
+    }
 
     // ========== CARGAR BIENES ==========
     async function loadBienes() {
@@ -977,7 +1099,29 @@
             .get();
         }
 
-        bienesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let bienes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Filtrar por visibilidad
+        bienes = bienes.filter(bien => {
+          const visibilidad = bien.visibilidad || 'rama'; // Por defecto rama (compatibilidad)
+          
+          if (visibilidad === 'rama') {
+            return true; // Todos en la familia pueden ver
+          }
+          
+          if (visibilidad === 'nido') {
+            return bien.nidoCreadorId === userNidoId; // Solo si es mi nido
+          }
+          
+          if (visibilidad === 'estirpe') {
+            // Puedo ver si el nido creador está en mi cadena de ancestros
+            return cadenaAncestros.includes(bien.nidoCreadorId);
+          }
+          
+          return true; // Fallback
+        });
+
+        bienesData = bienes;
         
         bienesData.sort((a, b) => {
           const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
@@ -1020,6 +1164,11 @@
         const tieneCapataz = b.capataz?.activo || b.capatazActivo;
         const imagen = b.imagenPrincipal || (b.fotos && b.fotos[0]?.url);
         
+        // Badge de visibilidad
+        const visibilidad = b.visibilidad || 'rama';
+        const visLabels = { rama: '🌳', estirpe: '👨‍👩‍👧‍👦', nido: '🏠' };
+        const visibilidadBadge = `<div class="bien-card-visibilidad ${visibilidad}">${visLabels[visibilidad]}</div>`;
+        
         // Determinar badge a mostrar (prioridad: Capataz > Gerente > Mayordomo)
         let badgeHtml = '';
         if (tieneCapataz) {
@@ -1038,6 +1187,7 @@
                   ? `<img src="${imagen}" alt="${b.nombre}">`
                   : icon
                 }
+                ${visibilidadBadge}
                 <div class="bien-card-tipo">${icon} ${b.tipo}</div>
                 ${badgeHtml}
               </div>
@@ -1090,6 +1240,10 @@
         document.getElementById('modal-title').textContent = '✏️ Editar bien';
         document.getElementById('btn-guardar').textContent = 'Guardar cambios';
         
+        // Cargar visibilidad
+        const visRadio = document.querySelector(`input[name="bien-visibilidad"][value="${bien.visibilidad || 'rama'}"]`);
+        if (visRadio) visRadio.checked = true;
+        
         // Cargar datos
         const tipoRadio = document.querySelector(`input[name="bien-tipo"][value="${bien.tipo}"]`);
         if (tipoRadio) tipoRadio.checked = true;
@@ -1120,7 +1274,8 @@
         // Modo nuevo
         document.getElementById('modal-title').textContent = '🏠 Nuevo bien';
         document.getElementById('btn-guardar').textContent = 'Crear bien';
-        // Por defecto inmueble
+        // Por defecto rama y inmueble
+        document.querySelector('input[name="bien-visibilidad"][value="rama"]').checked = true;
         actualizarCamposCondicionales('inmueble');
       }
 
@@ -1250,6 +1405,7 @@
 
       try {
         const tipoSeleccionado = document.querySelector('input[name="bien-tipo"]:checked').value;
+        const visibilidadSeleccionada = document.querySelector('input[name="bien-visibilidad"]:checked').value;
         
         const bienData = {
           tipo: tipoSeleccionado,
@@ -1262,6 +1418,7 @@
           personal: getPersonalFromForm(),
           contactos: getContactosFromForm(),
           familiaId: familiaId,
+          visibilidad: visibilidadSeleccionada,
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -1279,11 +1436,12 @@
         }
 
         if (editingBienId) {
-          // Actualizar existente
+          // Actualizar existente (no cambiar nidoCreadorId)
           await db.collection('bienes').doc(editingBienId).update(bienData);
         } else {
-          // Crear nuevo
+          // Crear nuevo - guardar nidoCreadorId
           bienData.creadoPor = currentUser.uid;
+          bienData.nidoCreadorId = userNidoId; // Clave para filtro de estirpe/nido
           bienData.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           bienData.mayordomo = { activo: false };
           bienData.mayordomoModulos = {

@@ -92,6 +92,22 @@
     .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--anecdotas); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Visibilidad */
+    .visibilidad-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+    .visibilidad-option { flex: 1; cursor: pointer; }
+    .visibilidad-option input { display: none; }
+    .visibilidad-box { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; background: var(--cream); border: 2px solid transparent; border-radius: var(--radius-md); transition: all 0.2s; text-align: center; }
+    .visibilidad-option input:checked + .visibilidad-box { border-color: var(--anecdotas); background: rgba(136,176,75,0.15); }
+    .visibilidad-box:hover { border-color: var(--sage-light); }
+    .visibilidad-icon { font-size: 1.4rem; }
+    .visibilidad-name { font-weight: 700; font-size: 0.75rem; }
+    .visibilidad-desc { font-size: 0.65rem; color: var(--text-muted); }
+    .visibilidad-badge { position: absolute; top: 8px; right: 8px; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+    .visibilidad-badge.rama { background: rgba(122,158,126,0.9); color: white; }
+    .visibilidad-badge.estirpe { background: rgba(193,119,87,0.9); color: white; }
+    .visibilidad-badge.nido { background: rgba(91,123,163,0.9); color: white; }
+    .anecdota-card { position: relative; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -129,6 +145,36 @@
       </div>
       <form id="form-anecdota">
         <div class="modal-body">
+          <!-- Selector de visibilidad -->
+          <div class="form-group">
+            <label class="form-label">🔒 ¿Quién puede ver esta anécdota?</label>
+            <div class="visibilidad-selector">
+              <label class="visibilidad-option">
+                <input type="radio" name="anecdota-visibilidad" value="rama" checked>
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">🌳</span>
+                  <span class="visibilidad-name">Rama</span>
+                  <span class="visibilidad-desc">Toda la familia</span>
+                </div>
+              </label>
+              <label class="visibilidad-option">
+                <input type="radio" name="anecdota-visibilidad" value="estirpe">
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">👨‍👩‍👧‍👦</span>
+                  <span class="visibilidad-name">Estirpe</span>
+                  <span class="visibilidad-desc">Tu nido y descendientes</span>
+                </div>
+              </label>
+              <label class="visibilidad-option">
+                <input type="radio" name="anecdota-visibilidad" value="nido">
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">🏠</span>
+                  <span class="visibilidad-name">Nido</span>
+                  <span class="visibilidad-desc">Solo tu nido</span>
+                </div>
+              </label>
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label">Protagonista *</label>
             <input type="text" class="form-input" id="anecdota-nombre" placeholder="¿De quién es esta anécdota?" required>
@@ -165,20 +211,53 @@
     let familiaId = null;
     let anecdotasData = [];
     let editingId = null;
+    let userNidoId = null;
+    let cadenaAncestros = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       if (!userDoc.exists) return;
-      familiaId = userDoc.data().familiaId;
+      const userData = userDoc.data();
+      familiaId = userData.familiaId;
+      userNidoId = userData.nidoId || null;
+      
+      if (userNidoId) await construirCadenaAncestros(userNidoId);
       await loadAnecdotas();
     });
+
+    async function construirCadenaAncestros(nidoId) {
+      cadenaAncestros = [nidoId];
+      let currentNidoId = nidoId;
+      let i = 0;
+      while (currentNidoId && i < 10) {
+        try {
+          const nidoDoc = await db.collection('nidos').doc(currentNidoId).get();
+          if (!nidoDoc.exists) break;
+          const nidoOrigen = nidoDoc.data().nidoOrigen;
+          if (nidoOrigen && !cadenaAncestros.includes(nidoOrigen)) {
+            cadenaAncestros.push(nidoOrigen);
+            currentNidoId = nidoOrigen;
+          } else break;
+        } catch (e) { break; }
+        i++;
+      }
+    }
 
     async function loadAnecdotas() {
       try {
         const snap = await db.collection('legado-anecdotas').where('familiaId', '==', familiaId).get();
-        anecdotasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Filtrar por visibilidad
+        items = items.filter(a => {
+          const vis = a.visibilidad || 'rama';
+          if (vis === 'rama') return true;
+          if (vis === 'nido') return a.nidoCreadorId === userNidoId;
+          if (vis === 'estirpe') return cadenaAncestros.includes(a.nidoCreadorId);
+          return true;
+        });
+        anecdotasData = items;
         document.getElementById('loading').classList.add('hidden');
         renderAnecdotas();
       } catch (error) {
@@ -198,8 +277,11 @@
         const iniciales = a.nombre ? a.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
         const fecha = a.fechaCreacion?.toDate?.();
         const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        const vis = a.visibilidad || 'rama';
+        const visIcons = { rama: '🌳', estirpe: '👨‍👩‍👧‍👦', nido: '🏠' };
         return `
           <div class="anecdota-card" onclick="abrirModal('${a.id}')">
+            <div class="visibilidad-badge ${vis}">${visIcons[vis]}</div>
             <div class="anecdota-header">
               <div class="anecdota-protagonista">
                 <div class="anecdota-avatar">${iniciales}</div>
@@ -217,6 +299,8 @@
       const form = document.getElementById('form-anecdota');
       const btnEliminar = document.getElementById('btn-eliminar');
       form.reset();
+      document.querySelector('input[name="anecdota-visibilidad"][value="rama"]').checked = true;
+      
       if (id) {
         const a = anecdotasData.find(x => x.id === id);
         if (a) {
@@ -224,6 +308,8 @@
           document.getElementById('anecdota-nombre').value = a.nombre || '';
           document.getElementById('anecdota-titulo').value = a.titulo || '';
           document.getElementById('anecdota-texto').value = a.texto || '';
+          const visRadio = document.querySelector(`input[name="anecdota-visibilidad"][value="${a.visibilidad || 'rama'}"]`);
+          if (visRadio) visRadio.checked = true;
           btnEliminar.classList.remove('hidden');
         }
       } else {
@@ -241,15 +327,17 @@
       const btn = document.getElementById('btn-guardar');
       btn.disabled = true; btn.textContent = 'Guardando...';
       try {
+        const visibilidad = document.querySelector('input[name="anecdota-visibilidad"]:checked').value;
         const data = {
           nombre: document.getElementById('anecdota-nombre').value.trim(),
           titulo: document.getElementById('anecdota-titulo').value.trim(),
           texto: document.getElementById('anecdota-texto').value.trim(),
           familiaId: familiaId,
+          visibilidad: visibilidad,
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
         if (editingId) { await db.collection('legado-anecdotas').doc(editingId).update(data); }
-        else { data.creadoPor = currentUser.uid; data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('legado-anecdotas').add(data); }
+        else { data.creadoPor = currentUser.uid; data.nidoCreadorId = userNidoId; data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('legado-anecdotas').add(data); }
         cerrarModal(); await loadAnecdotas();
       } catch (error) { console.error('Error:', error); alert('Error al guardar'); }
       btn.disabled = false; btn.textContent = 'Guardar';

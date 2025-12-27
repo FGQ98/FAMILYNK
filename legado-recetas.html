@@ -172,6 +172,32 @@
       font-size: 0.9rem; line-height: 1.6;
     }
 
+    /* Visibilidad */
+    .visibilidad-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+    .visibilidad-option { flex: 1; cursor: pointer; }
+    .visibilidad-option input { display: none; }
+    .visibilidad-box {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 12px 6px; background: var(--cream); border: 2px solid transparent;
+      border-radius: var(--radius-sm); transition: all 0.2s; text-align: center;
+    }
+    .visibilidad-option input:checked + .visibilidad-box { border-color: var(--sage); background: var(--sage-muted); }
+    .visibilidad-box:hover { border-color: var(--sage-light); }
+    .visibilidad-icon { font-size: 1.4rem; }
+    .visibilidad-name { font-weight: 700; font-size: 0.75rem; }
+    .visibilidad-desc { font-size: 0.65rem; color: var(--text-muted); }
+    
+    .visibilidad-badge {
+      position: absolute; top: 8px; right: 8px;
+      padding: 2px 6px; border-radius: 4px;
+      font-size: 0.7rem; font-weight: 600;
+    }
+    .visibilidad-badge.rama { background: rgba(122,158,126,0.9); color: white; }
+    .visibilidad-badge.estirpe { background: rgba(193,119,87,0.9); color: white; }
+    .visibilidad-badge.nido { background: rgba(91,123,163,0.9); color: white; }
+    
+    .receta-card { position: relative; }
+
     .hidden { display: none !important; }
 
     @media (max-width: 600px) {
@@ -227,6 +253,37 @@
       </div>
       
       <form id="form-receta" class="receta-form">
+        <!-- Selector de visibilidad -->
+        <div class="form-group">
+          <label class="form-label">🔒 ¿Quién puede ver esta receta?</label>
+          <div class="visibilidad-selector">
+            <label class="visibilidad-option">
+              <input type="radio" name="receta-visibilidad" value="rama" checked>
+              <div class="visibilidad-box">
+                <span class="visibilidad-icon">🌳</span>
+                <span class="visibilidad-name">Rama</span>
+                <span class="visibilidad-desc">Toda la familia</span>
+              </div>
+            </label>
+            <label class="visibilidad-option">
+              <input type="radio" name="receta-visibilidad" value="estirpe">
+              <div class="visibilidad-box">
+                <span class="visibilidad-icon">👨‍👩‍👧‍👦</span>
+                <span class="visibilidad-name">Estirpe</span>
+                <span class="visibilidad-desc">Tu nido y descendientes</span>
+              </div>
+            </label>
+            <label class="visibilidad-option">
+              <input type="radio" name="receta-visibilidad" value="nido">
+              <div class="visibilidad-box">
+                <span class="visibilidad-icon">🏠</span>
+                <span class="visibilidad-name">Nido</span>
+                <span class="visibilidad-desc">Solo tu nido</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
         <div class="receta-basicos">
           <div class="form-group">
             <label class="form-label">Nombre de la receta *</label>
@@ -341,6 +398,8 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     let recetasData = [];
     let recetaEditandoId = null;
     let recetaViendoId = null;
+    let userNidoId = null;
+    let cadenaAncestros = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -352,9 +411,33 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
         return;
       }
       userData = userDoc.data();
+      userNidoId = userData.nidoId || null;
+
+      // Construir cadena de ancestros
+      if (userNidoId) {
+        await construirCadenaAncestros(userNidoId);
+      }
 
       await cargarRecetas();
     });
+
+    async function construirCadenaAncestros(nidoId) {
+      cadenaAncestros = [nidoId];
+      let currentNidoId = nidoId;
+      let iteraciones = 0;
+      while (currentNidoId && iteraciones < 10) {
+        try {
+          const nidoDoc = await db.collection('nidos').doc(currentNidoId).get();
+          if (!nidoDoc.exists) break;
+          const nidoOrigen = nidoDoc.data().nidoOrigen;
+          if (nidoOrigen && !cadenaAncestros.includes(nidoOrigen)) {
+            cadenaAncestros.push(nidoOrigen);
+            currentNidoId = nidoOrigen;
+          } else { break; }
+        } catch (e) { break; }
+        iteraciones++;
+      }
+    }
 
     async function cargarRecetas() {
       try {
@@ -362,14 +445,22 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
           .where('familiaId', '==', userData.familiaId)
           .get();
         
+        // Filtrar por visibilidad
+        let recetas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        recetas = recetas.filter(r => {
+          const vis = r.visibilidad || 'rama';
+          if (vis === 'rama') return true;
+          if (vis === 'nido') return r.nidoCreadorId === userNidoId;
+          if (vis === 'estirpe') return cadenaAncestros.includes(r.nidoCreadorId);
+          return true;
+        });
+        
         // Ordenar en cliente
-        recetasData = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => {
-            const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
-            const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
-            return fechaB - fechaA;
-          });
+        recetasData = recetas.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
         renderRecetas();
       } catch (error) {
         console.error('Error cargando recetas:', error);
@@ -390,8 +481,12 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       const grid = document.getElementById('recetas-grid');
       grid.classList.remove('hidden');
 
-      grid.innerHTML = recetasData.map(r => `
+      grid.innerHTML = recetasData.map(r => {
+        const vis = r.visibilidad || 'rama';
+        const visIcons = { rama: '🌳', estirpe: '👨‍👩‍👧‍👦', nido: '🏠' };
+        return `
         <div class="receta-card" onclick="verReceta('${r.id}')">
+          <div class="visibilidad-badge ${vis}">${visIcons[vis]}</div>
           <div class="receta-card-header">
             <div class="receta-card-icon">🍳</div>
             <div class="receta-card-info">
@@ -404,7 +499,7 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
             ${r.tiempo ? `<div class="receta-card-meta-item"><span>⏱️</span> ${r.tiempo}</div>` : ''}
           </div>
         </div>
-      `).join('');
+      `}).join('');
     }
 
     function abrirModalReceta(receta = null) {
@@ -419,7 +514,14 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
       document.querySelector('.receta-tab').classList.add('active');
       document.getElementById('tab-ingredientes').classList.add('active');
       
+      // Reset visibilidad a rama por defecto
+      document.querySelector('input[name="receta-visibilidad"][value="rama"]').checked = true;
+      
       if (receta) {
+        // Cargar visibilidad
+        const visRadio = document.querySelector(`input[name="receta-visibilidad"][value="${receta.visibilidad || 'rama'}"]`);
+        if (visRadio) visRadio.checked = true;
+        
         document.getElementById('receta-nombre').value = receta.nombre || '';
         document.getElementById('receta-autor').value = receta.autor || '';
         document.getElementById('receta-version').value = receta.version || '';
@@ -451,6 +553,8 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     document.getElementById('form-receta').addEventListener('submit', async (e) => {
       e.preventDefault();
       
+      const visibilidadSeleccionada = document.querySelector('input[name="receta-visibilidad"]:checked').value;
+      
       const data = {
         nombre: document.getElementById('receta-nombre').value.trim(),
         autor: document.getElementById('receta-autor').value.trim(),
@@ -463,6 +567,7 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
         acabado: document.getElementById('receta-acabado').value.trim(),
         notas: document.getElementById('receta-notas').value.trim(),
         familiaId: userData.familiaId,
+        visibilidad: visibilidadSeleccionada,
         fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
       };
       
@@ -476,6 +581,7 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
           await db.collection('recetas').doc(recetaEditandoId).update(data);
         } else {
           data.creadoPor = currentUser.uid;
+          data.nidoCreadorId = userNidoId;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           await db.collection('recetas').add(data);
         }

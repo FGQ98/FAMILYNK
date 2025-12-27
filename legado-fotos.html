@@ -208,6 +208,21 @@
     .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Visibilidad */
+    .visibilidad-selector { display: flex; gap: 8px; margin-bottom: 16px; }
+    .visibilidad-option { flex: 1; cursor: pointer; }
+    .visibilidad-option input { display: none; }
+    .visibilidad-box { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; background: var(--cream); border: 2px solid transparent; border-radius: var(--radius-md); transition: all 0.2s; text-align: center; }
+    .visibilidad-option input:checked + .visibilidad-box { border-color: var(--fotos); background: rgba(244,162,97,0.2); }
+    .visibilidad-box:hover { border-color: var(--sage-light); }
+    .visibilidad-icon { font-size: 1.4rem; }
+    .visibilidad-name { font-weight: 700; font-size: 0.75rem; }
+    .visibilidad-desc { font-size: 0.65rem; color: var(--text-muted); }
+    .visibilidad-badge { position: absolute; top: 8px; left: 8px; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; z-index: 2; }
+    .visibilidad-badge.rama { background: rgba(122,158,126,0.9); color: white; }
+    .visibilidad-badge.estirpe { background: rgba(193,119,87,0.9); color: white; }
+    .visibilidad-badge.nido { background: rgba(91,123,163,0.9); color: white; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -248,6 +263,36 @@
       </div>
       <form id="form-foto">
         <div class="modal-body">
+          <!-- Selector de visibilidad -->
+          <div class="form-group">
+            <label class="form-label">🔒 ¿Quién puede ver esta foto?</label>
+            <div class="visibilidad-selector">
+              <label class="visibilidad-option">
+                <input type="radio" name="foto-visibilidad" value="rama" checked>
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">🌳</span>
+                  <span class="visibilidad-name">Rama</span>
+                  <span class="visibilidad-desc">Toda la familia</span>
+                </div>
+              </label>
+              <label class="visibilidad-option">
+                <input type="radio" name="foto-visibilidad" value="estirpe">
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">👨‍👩‍👧‍👦</span>
+                  <span class="visibilidad-name">Estirpe</span>
+                  <span class="visibilidad-desc">Tu nido y descendientes</span>
+                </div>
+              </label>
+              <label class="visibilidad-option">
+                <input type="radio" name="foto-visibilidad" value="nido">
+                <div class="visibilidad-box">
+                  <span class="visibilidad-icon">🏠</span>
+                  <span class="visibilidad-name">Nido</span>
+                  <span class="visibilidad-desc">Solo tu nido</span>
+                </div>
+              </label>
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label">Imagen *</label>
             <div class="upload-area" id="upload-area" onclick="document.getElementById('foto-file').click()">
@@ -302,6 +347,8 @@
     let fotosData = [];
     let editingId = null;
     let selectedFile = null;
+    let userNidoId = null;
+    let cadenaAncestros = [];
     
     // Inicializar Storage
     const storage = firebase.storage();
@@ -313,9 +360,30 @@
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       if (!userDoc.exists) return;
       
-      familiaId = userDoc.data().familiaId;
+      const userData = userDoc.data();
+      familiaId = userData.familiaId;
+      userNidoId = userData.nidoId || null;
+      if (userNidoId) await construirCadenaAncestros(userNidoId);
       await loadFotos();
     });
+
+    async function construirCadenaAncestros(nidoId) {
+      cadenaAncestros = [nidoId];
+      let currentNidoId = nidoId;
+      let i = 0;
+      while (currentNidoId && i < 10) {
+        try {
+          const nidoDoc = await db.collection('nidos').doc(currentNidoId).get();
+          if (!nidoDoc.exists) break;
+          const nidoOrigen = nidoDoc.data().nidoOrigen;
+          if (nidoOrigen && !cadenaAncestros.includes(nidoOrigen)) {
+            cadenaAncestros.push(nidoOrigen);
+            currentNidoId = nidoOrigen;
+          } else break;
+        } catch (e) { break; }
+        i++;
+      }
+    }
 
     async function loadFotos() {
       try {
@@ -332,15 +400,25 @@
             .get();
         }
 
-        fotosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Filtrar por visibilidad
+        items = items.filter(f => {
+          const vis = f.visibilidad || 'rama';
+          if (vis === 'rama') return true;
+          if (vis === 'nido') return f.nidoCreadorId === userNidoId;
+          if (vis === 'estirpe') return cadenaAncestros.includes(f.nidoCreadorId);
+          return true;
+        });
         
         // Ordenar manualmente
-        fotosData.sort((a, b) => {
+        items.sort((a, b) => {
           const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
           const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
           return fechaB - fechaA;
         });
         
+        fotosData = items;
         document.getElementById('loading').classList.add('hidden');
         actualizarContador();
         renderFotos();
@@ -390,9 +468,12 @@
       container.innerHTML = fotosData.map(f => {
         const fecha = f.fechaCreacion?.toDate?.();
         const fechaStr = fecha ? fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+        const vis = f.visibilidad || 'rama';
+        const visIcons = { rama: '🌳', estirpe: '👨‍👩‍👧‍👦', nido: '🏠' };
 
         return `
-          <div class="foto-card">
+          <div class="foto-card" style="position:relative;">
+            <div class="visibilidad-badge ${vis}">${visIcons[vis]}</div>
             <img src="${f.url}" class="foto-imagen" onclick="abrirLightbox('${f.id}')" alt="Foto familiar">
             <div class="foto-body" onclick="abrirModal('${f.id}')">
               ${f.pie ? `<div class="foto-pie">${f.pie}</div>` : '<div class="foto-pie" style="color:var(--text-muted);font-style:italic;">Sin pie de foto</div>'}
@@ -438,6 +519,7 @@
       document.getElementById('upload-preview').classList.add('hidden');
       document.getElementById('upload-placeholder').classList.remove('hidden');
       document.getElementById('upload-area').classList.remove('has-image');
+      document.querySelector('input[name="foto-visibilidad"][value="rama"]').checked = true;
 
       if (id) {
         const foto = fotosData.find(f => f.id === id);
@@ -446,6 +528,10 @@
           document.getElementById('btn-guardar').textContent = 'Guardar';
           document.getElementById('foto-pie').value = foto.pie || '';
           document.getElementById('foto-fecha').value = foto.fechaAproximada || '';
+          
+          // Cargar visibilidad
+          const visRadio = document.querySelector(`input[name="foto-visibilidad"][value="${foto.visibilidad || 'rama'}"]`);
+          if (visRadio) visRadio.checked = true;
           
           // Mostrar imagen actual
           document.getElementById('upload-preview').src = foto.url;
@@ -494,10 +580,12 @@
           imageUrl = await fileRef.getDownloadURL();
         }
 
+        const visibilidad = document.querySelector('input[name="foto-visibilidad"]:checked').value;
         const data = {
           pie: document.getElementById('foto-pie').value.trim(),
           fechaAproximada: document.getElementById('foto-fecha').value.trim(),
           familiaId: familiaId,
+          visibilidad: visibilidad,
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -515,6 +603,7 @@
             return;
           }
           data.creadoPor = currentUser.uid;
+          data.nidoCreadorId = userNidoId;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           await db.collection('legado-fotos').add(data);
         }
