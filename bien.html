@@ -493,6 +493,15 @@
       background: #4A5568;
     }
 
+    .modulo-config-card.activo.capataz {
+      border-color: var(--capataz);
+      background: rgba(139, 115, 85, 0.1);
+    }
+
+    .modulo-config-card.activo.capataz .modulo-config-check {
+      background: var(--capataz);
+    }
+
     .btn-desactivar-gestion {
       padding: 8px 14px;
       background: transparent;
@@ -2512,6 +2521,10 @@
         await loadInventario();
         await loadGastos();
         await loadCaseros();
+        
+        // Migrar módulos si existen datos antiguos
+        await migrarModulos();
+        
         renderBien();
         
         // Cargar catálogo si es tipo ajuar
@@ -2531,6 +2544,88 @@
       const snap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
       nidosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // Nidos se usan para gastos/reparto, no para reservas
+    }
+
+    // Migrar módulos existentes añadiendo los nuevos que falten
+    async function migrarModulos() {
+      const updateData = {};
+      let needsUpdate = false;
+
+      // Módulos completos de Mayordomo
+      const modulosMayordomoCompletos = {
+        reservas: false, inventario: false, ajuar: false, menus: false,
+        gastos: false, mantenimiento: false, limpieza: false, eventos: false
+      };
+
+      // Módulos completos de Gerente
+      const modulosGerenteCompletos = {
+        reservas: false, habitaciones: false, huespedes: false, tarifas: false,
+        ventas: false, inventario: false, ajuar: false, contratos: false,
+        servicios: false, menus: false
+      };
+
+      // Módulos completos de Capataz
+      const modulosCapatazCompletos = {
+        parcelas: false, instalaciones: false, maquinaria: false,
+        personal: false, labores: false, cosechas: false
+      };
+
+      // Verificar y migrar Mayordomo
+      if (bienData.mayordomoModulos) {
+        const existentes = bienData.mayordomoModulos;
+        const merged = { ...modulosMayordomoCompletos };
+        Object.keys(existentes).forEach(key => {
+          if (key in merged) merged[key] = existentes[key];
+        });
+        // Solo actualizar si hay diferencia
+        if (Object.keys(merged).length !== Object.keys(existentes).length ||
+            !Object.keys(modulosMayordomoCompletos).every(k => k in existentes)) {
+          updateData.mayordomoModulos = merged;
+          needsUpdate = true;
+        }
+      }
+
+      // Verificar y migrar Gerente
+      if (bienData.gerenteModulos) {
+        const existentes = bienData.gerenteModulos;
+        const merged = { ...modulosGerenteCompletos };
+        Object.keys(existentes).forEach(key => {
+          if (key in merged) merged[key] = existentes[key];
+        });
+        if (Object.keys(merged).length !== Object.keys(existentes).length ||
+            !Object.keys(modulosGerenteCompletos).every(k => k in existentes)) {
+          updateData.gerenteModulos = merged;
+          needsUpdate = true;
+        }
+      }
+
+      // Verificar y migrar Capataz
+      if (bienData.capatazModulos) {
+        const existentes = bienData.capatazModulos;
+        const merged = { ...modulosCapatazCompletos };
+        Object.keys(existentes).forEach(key => {
+          if (key in merged) merged[key] = existentes[key];
+        });
+        if (Object.keys(merged).length !== Object.keys(existentes).length ||
+            !Object.keys(modulosCapatazCompletos).every(k => k in existentes)) {
+          updateData.capatazModulos = merged;
+          needsUpdate = true;
+        }
+      }
+
+      // Guardar si hay cambios
+      if (needsUpdate) {
+        try {
+          await db.collection('bienes').doc(bienId).update(updateData);
+          // Actualizar datos locales
+          if (updateData.mayordomoModulos) bienData.mayordomoModulos = updateData.mayordomoModulos;
+          if (updateData.gerenteModulos) bienData.gerenteModulos = updateData.gerenteModulos;
+          if (updateData.capatazModulos) bienData.capatazModulos = updateData.capatazModulos;
+          console.log('Módulos migrados correctamente');
+        } catch (error) {
+          console.error('Error migrando módulos:', error);
+        }
+      }
     }
 
     async function loadTiposReserva() {
@@ -2747,7 +2842,7 @@
         statusGerente.textContent = 'Inactivo';
         statusCapataz.textContent = 'Inactivo';
         btnMayordomo.textContent = '⚙️ Configurar';
-        btnMayordomo.onclick = () => window.location.href = `mayordomo.html?bien=${bienId}`;
+        btnMayordomo.onclick = () => abrirConfigModulos();
         btnGerente.textContent = 'Activar';
         btnCapataz.textContent = 'Activar';
         gestionModulos.classList.remove('hidden');
@@ -2763,7 +2858,7 @@
         statusMayordomo.textContent = 'Inactivo';
         statusCapataz.textContent = 'Inactivo';
         btnGerente.textContent = '⚙️ Configurar';
-        btnGerente.onclick = () => window.location.href = `gerente.html?id=${bienId}`;
+        btnGerente.onclick = () => abrirConfigModulos();
         btnMayordomo.textContent = 'Activar';
         btnCapataz.textContent = 'Activar';
         gestionModulos.classList.remove('hidden');
@@ -2780,7 +2875,7 @@
         statusMayordomo.textContent = 'Inactivo';
         statusGerente.textContent = 'Inactivo';
         btnCapataz.textContent = '⚙️ Configurar';
-        btnCapataz.onclick = () => window.location.href = `capataz.html?bien=${bienId}`;
+        btnCapataz.onclick = () => abrirConfigModulos();
         btnMayordomo.textContent = 'Activar';
         btnGerente.textContent = 'Activar';
         gestionModulos.classList.remove('hidden');
@@ -3093,6 +3188,15 @@
       menus: { icon: '🍽️', nombre: 'Menús', desc: 'Planificación de hospitalidad. Desayunos, comidas, cenas y bar.' }
     };
 
+    const modulosDescripcionesCapataz = {
+      parcelas: { icon: '🗺️', nombre: 'Parcelas', desc: 'Gestión de parcelas y divisiones de terreno. Superficie, cultivos y linderos.' },
+      instalaciones: { icon: '🏭', nombre: 'Instalaciones', desc: 'Naves, almacenes, pozos y otras infraestructuras de la finca.' },
+      maquinaria: { icon: '🚜', nombre: 'Maquinaria', desc: 'Inventario de tractores, aperos y equipamiento agrícola.' },
+      personal: { icon: '👷', nombre: 'Personal', desc: 'Trabajadores de la finca. Jornales, tareas asignadas y contactos.' },
+      labores: { icon: '📋', nombre: 'Labores', desc: 'Planificación de trabajos agrícolas. Siembra, tratamientos, riegos.' },
+      cosechas: { icon: '🌻', nombre: 'Cosechas', desc: 'Registro de producciones. Kilos, calidades y destino de cada cosecha.' }
+    };
+
     function abrirConfigModulos() {
       const grid = document.getElementById('modulos-config-grid');
       const header = document.getElementById('modal-config-header');
@@ -3111,6 +3215,11 @@
         descripciones = modulosDescripcionesGerente;
         tipoGestion = 'gerente';
         header.style.background = '#4A5568';
+      } else if (bienData.capatazActivo) {
+        modulos = bienData.capatazModulos || {};
+        descripciones = modulosDescripcionesCapataz;
+        tipoGestion = 'capataz';
+        header.style.background = 'var(--capataz)';
       } else {
         return;
       }
@@ -3145,6 +3254,9 @@
         } else if (tipo === 'gerente') {
           modulos = bienData.gerenteModulos || {};
           field = 'gerenteModulos';
+        } else if (tipo === 'capataz') {
+          modulos = bienData.capatazModulos || {};
+          field = 'capatazModulos';
         } else {
           return;
         }
