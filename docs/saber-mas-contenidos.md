@@ -37,7 +37,7 @@ FAMILYNK se adapta a tu familia, sea como sea.
 
 - **El Nido** es la unidad básica: quienes comparten techo y vida diaria. Una pareja, una familia monoparental, un hogar multigeneracional... Cada nido es único.
 
-- **La Estirpe** agrupa a los nidos que descienden de un tronco común. Abuelos, padres, hijos, nietos: hasta cuatro generaciones conectadas.
+- **La Estirpe** agrupa los nidos que se crean a partir de uno determinado (ramas dentro de una rama) que no sea el de más arriba. Hasta cuatro generaciones conectadas.
 
 - **La Rama** es tu árbol familiar completo. El espacio donde todos los nidos y estirpes de tu rama familiar se encuentran.
 
@@ -69,6 +69,7 @@ El centro de mando, organizado en tres áreas:
 - **Memoria:** Documentos e información necesaria para compartir.
 - **Razón:** La lógica y objetividad de las cosas: normas, pautas, recomendaciones.
 - **Intuición:** Las propuestas, la revisión y adaptación permanente.
+- **Análisis:** Información de uso y actividad para sacar conclusiones.
 
 Lo que hace que todo funcione sin que se note.
 
@@ -83,10 +84,11 @@ Lo que hace que todo funcione sin que se note.
 La Consola de Gestión Individual es tu escritorio personal dentro de la familia.
 
 Desde aquí accedes a todo lo que te toca:
+- Ver el calendario familiar que te afecta
 - Tus notificaciones y mensajes
-- Las reservas y eventos que te afectan
+- Acceso rápido a herramientas y acciones
+- Acceso a los bienes y legados compartidos
 - Tus tareas pendientes
-- Acceso rápido a los bienes y herramientas que usas
 
 **Texto secundario:**
 
@@ -108,7 +110,7 @@ Cuando un bien familiar necesita gestión activa, FAMILYNK ofrece herramientas e
 
 **🏡 Mayordomo → Casero**
 
-Para la segunda residencia familiar. El Mayordomo (familiar) coordina. El Casero (externo) cuida, revisa, abre y cierra.
+Para la segunda residencia familiar. El Mayordomo (familiar) coordina. El Casero cuida, revisa, abre y cierra.
 
 **🏨 Gerente → Hoster**
 
