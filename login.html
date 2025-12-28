@@ -342,6 +342,12 @@
 
     // Función principal: determina a dónde redirigir
     async function verificarTipoUsuario(user) {
+      // DEBUG VISUAL
+      const debugDiv = document.createElement('div');
+      debugDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:cyan;padding:10px;z-index:9999;font-size:12px;';
+      document.body.appendChild(debugDiv);
+      debugDiv.innerHTML = 'LOGIN DEBUG: Verificando UID: ' + user.uid;
+      
       try {
         console.log('Verificando usuario UID:', user.uid);
         console.log('Email:', user.email);
@@ -349,36 +355,38 @@
         // 1. Buscar datos del usuario en Firestore
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         
+        debugDiv.innerHTML += '<br>LOGIN DEBUG: Documento existe: ' + userDoc.exists;
         console.log('Documento existe:', userDoc.exists);
         
         if (userDoc.exists) {
           const userData = userDoc.data();
+          debugDiv.innerHTML += '<br>LOGIN DEBUG: rol=' + userData.rol + ', superAdmin=' + userData.superAdmin;
           console.log('Datos usuario:', userData);
           console.log('Rol:', userData.rol);
           console.log('SuperAdmin:', userData.superAdmin);
           
           // 2. ¿Es primer acceso? → Cambiar contraseña
           if (userData.primerAcceso === true) {
-            console.log('Redirigiendo a cambiar-password.html');
-            window.location.href = 'cambiar-password.html';
+            debugDiv.innerHTML += '<br>LOGIN DEBUG: Primer acceso, redirigiendo a cambiar-password...';
+            setTimeout(() => { window.location.href = 'cambiar-password.html'; }, 2000);
             return;
           }
           
           // 3. ¿Es AdminSistema? → Panel de administración
           if (userData.rol === 'AdminSistema' || userData.superAdmin === true) {
-            console.log('Redirigiendo a admin-sistema.html');
-            window.location.href = 'admin-sistema.html';
+            debugDiv.innerHTML += '<br>LOGIN DEBUG: ✅ Es Admin! Redirigiendo a admin-sistema...';
+            setTimeout(() => { window.location.href = 'admin-sistema.html'; }, 2000);
             return;
           }
           
           // 4. Usuario normal → CGI
-          console.log('Redirigiendo a cgi.html');
-          window.location.href = 'cgi.html';
+          debugDiv.innerHTML += '<br>LOGIN DEBUG: Usuario normal, redirigiendo a cgi...';
+          setTimeout(() => { window.location.href = 'cgi.html'; }, 2000);
           return;
         }
 
         // 5. Verificar si es casero (con try-catch específico)
-        console.log('Usuario no encontrado en colección usuarios, buscando en caseros...');
+        debugDiv.innerHTML += '<br>LOGIN DEBUG: Buscando en caseros...';
         try {
           const caserosQuery = await db.collectionGroup('caseros')
             .where('email', '==', user.email.toLowerCase())
@@ -386,28 +394,23 @@
             .get();
 
           if (!caserosQuery.empty) {
-            console.log('Es casero, redirigiendo...');
-            window.location.href = 'casero.html';
+            debugDiv.innerHTML += '<br>LOGIN DEBUG: Es casero, redirigiendo...';
+            setTimeout(() => { window.location.href = 'casero.html'; }, 2000);
             return;
           }
         } catch (caseroError) {
-          console.warn('Error buscando caseros (índice no creado?):', caseroError);
-          // Continuar sin bloquear
+          debugDiv.innerHTML += '<br>LOGIN DEBUG: Error caseros: ' + caseroError.message;
         }
 
         // 6. Usuario no encontrado en ningún sitio
-        console.log('Usuario no encontrado en ninguna colección');
+        debugDiv.innerHTML += '<br>LOGIN DEBUG: ❌ Usuario no encontrado en ninguna colección';
         showError('Tu cuenta no está configurada. Contacta con el administrador de tu familia.');
         await auth.signOut();
         showLoading(false);
 
       } catch (error) {
+        debugDiv.innerHTML += '<br>LOGIN DEBUG: ERROR: ' + error.message;
         console.error('Error verificando usuario:', error);
-        
-        if (error.code === 'failed-precondition') {
-          console.log('Necesitas crear un índice en Firestore. Mira la consola para el link.');
-        }
-        
         showError('Error al verificar acceso. Inténtalo de nuevo.');
         showLoading(false);
       }
