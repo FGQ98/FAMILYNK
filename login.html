@@ -343,41 +343,60 @@
     // Función principal: determina a dónde redirigir
     async function verificarTipoUsuario(user) {
       try {
+        console.log('Verificando usuario UID:', user.uid);
+        console.log('Email:', user.email);
+        
         // 1. Buscar datos del usuario en Firestore
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         
+        console.log('Documento existe:', userDoc.exists);
+        
         if (userDoc.exists) {
           const userData = userDoc.data();
+          console.log('Datos usuario:', userData);
+          console.log('Rol:', userData.rol);
+          console.log('SuperAdmin:', userData.superAdmin);
           
           // 2. ¿Es primer acceso? → Cambiar contraseña
           if (userData.primerAcceso === true) {
+            console.log('Redirigiendo a cambiar-password.html');
             window.location.href = 'cambiar-password.html';
             return;
           }
           
           // 3. ¿Es AdminSistema? → Panel de administración
           if (userData.rol === 'AdminSistema' || userData.superAdmin === true) {
+            console.log('Redirigiendo a admin-sistema.html');
             window.location.href = 'admin-sistema.html';
             return;
           }
           
           // 4. Usuario normal → CGI
+          console.log('Redirigiendo a cgi.html');
           window.location.href = 'cgi.html';
           return;
         }
 
-        // 4. Verificar si es casero
-        const caserosQuery = await db.collectionGroup('caseros')
-          .where('email', '==', user.email.toLowerCase())
-          .where('activo', '==', true)
-          .get();
+        // 5. Verificar si es casero (con try-catch específico)
+        console.log('Usuario no encontrado en colección usuarios, buscando en caseros...');
+        try {
+          const caserosQuery = await db.collectionGroup('caseros')
+            .where('email', '==', user.email.toLowerCase())
+            .where('activo', '==', true)
+            .get();
 
-        if (!caserosQuery.empty) {
-          window.location.href = 'casero.html';
-          return;
+          if (!caserosQuery.empty) {
+            console.log('Es casero, redirigiendo...');
+            window.location.href = 'casero.html';
+            return;
+          }
+        } catch (caseroError) {
+          console.warn('Error buscando caseros (índice no creado?):', caseroError);
+          // Continuar sin bloquear
         }
 
-        // 5. Usuario no encontrado en ningún sitio
+        // 6. Usuario no encontrado en ningún sitio
+        console.log('Usuario no encontrado en ninguna colección');
         showError('Tu cuenta no está configurada. Contacta con el administrador de tu familia.');
         await auth.signOut();
         showLoading(false);
