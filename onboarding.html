@@ -681,13 +681,78 @@
       currentUser = user;
       document.getElementById('user-email').textContent = user.email;
 
-      // Verificar si ya tiene familia
+      // =====================================================
+      // VERIFICACIÓN ROBUSTA: ¿Ya pertenece a alguna familia/nido?
+      // =====================================================
+      
+      // 1. Verificar documento de usuario
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      if (userDoc.exists && userDoc.data().familiaId) {
-        // Ya tiene familia, ir al dashboard
-        window.location.href = 'app.html';
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        
+        // Si tiene familiaId o nidoId → ya pertenece a una familia
+        if (userData.familiaId || userData.nidoId) {
+          console.log('Usuario ya tiene familia/nido asignado');
+          window.location.href = 'cgi.html';
+          return;
+        }
+      }
+
+      // 2. Buscar si su email está en algún nido como miembro
+      const nidosSnap = await db.collection('nidos').get();
+      for (const nidoDoc of nidosSnap.docs) {
+        const nidoData = nidoDoc.data();
+        const miembros = nidoData.miembrosData || [];
+        
+        // Buscar por email o por uid
+        const yaEnNido = miembros.some(m => 
+          (m.email && m.email.toLowerCase() === user.email.toLowerCase()) ||
+          (m.uid && m.uid === user.uid)
+        );
+        
+        if (yaEnNido) {
+          console.log('Usuario encontrado en nido:', nidoDoc.id);
+          
+          // Actualizar su documento de usuario con la info del nido
+          await db.collection('usuarios').doc(user.uid).set({
+            email: user.email,
+            familiaId: nidoData.familiaId,
+            nidoId: nidoDoc.id,
+            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+          
+          window.location.href = 'cgi.html';
+          return;
+        }
+      }
+
+      // 3. Buscar si tiene invitación pendiente (no debería llegar aquí, pero por si acaso)
+      const invitacionSnap = await db.collection('invitaciones-email')
+        .where('email', '==', user.email.toLowerCase())
+        .where('estado', '==', 'pendiente')
+        .limit(1)
+        .get();
+      
+      if (!invitacionSnap.empty) {
+        const inv = invitacionSnap.docs[0].data();
+        console.log('Usuario tiene invitación pendiente');
+        
+        // Actualizar usuario con datos de invitación
+        await db.collection('usuarios').doc(user.uid).set({
+          email: user.email,
+          familiaId: inv.familiaId,
+          nidoId: inv.nidoId || null,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        
+        window.location.href = 'cgi.html';
         return;
       }
+
+      // =====================================================
+      // Si llega aquí: es usuario nuevo sin familia → permitir crear
+      // =====================================================
+      console.log('Usuario nuevo, permitiendo crear familia');
 
       // Añadir usuario como primer miembro del nido
       const nombre = user.displayName || user.email.split('@')[0];
