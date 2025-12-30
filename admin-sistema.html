@@ -326,6 +326,81 @@
     </div>
   </div>
 
+  <!-- MODAL FICHA RAMA -->
+  <div class="modal-overlay" id="modal-rama">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header"><h3 class="modal-title">🌳 Ficha de Rama</h3><button class="modal-close" onclick="cerrarModales()">×</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="rama-id">
+        
+        <!-- Info básica -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div><div class="text-muted" style="font-size:0.7rem;">Nombre</div><div id="rama-nombre" style="font-weight:700;font-size:1.1rem;">-</div></div>
+          <div><div class="text-muted" style="font-size:0.7rem;">Admin</div><div id="rama-admin">-</div></div>
+          <div><div class="text-muted" style="font-size:0.7rem;">Nidos</div><div id="rama-nidos">-</div></div>
+          <div><div class="text-muted" style="font-size:0.7rem;">Miembros</div><div id="rama-miembros">-</div></div>
+          <div><div class="text-muted" style="font-size:0.7rem;">Creada</div><div id="rama-fecha">-</div></div>
+          <div><div class="text-muted" style="font-size:0.7rem;">Plan actual</div><div id="rama-plan-actual">-</div></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Descuento en Plan -->
+        <div class="form-group">
+          <label class="form-label">🏷️ Descuento en Plan</label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--cream);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-plan" value="0" checked> Sin descuento
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(66,153,225,0.1);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-plan" value="30"> Promo <span class="badge badge-info">30%</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(236,201,75,0.1);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-plan" value="50"> Cercanos <span class="badge badge-warning">50%</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(72,187,120,0.1);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-plan" value="100"> Gratis <span class="badge badge-success">100%</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Descuento en Add-ons -->
+        <div class="form-group">
+          <label class="form-label">🧩 Descuento en Add-ons</label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--cream);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-addon" value="0" checked> Sin descuento
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(66,153,225,0.1);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-addon" value="30"> Promo <span class="badge badge-info">30%</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(236,201,75,0.1);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-addon" value="50"> Cercanos <span class="badge badge-warning">50%</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(72,187,120,0.1);border-radius:var(--radius-md);cursor:pointer;">
+              <input type="radio" name="descuento-addon" value="100"> Gratis <span class="badge badge-success">100%</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Add-ons activos -->
+        <div class="form-group">
+          <label class="form-label">🧩 Add-ons activos</label>
+          <div id="rama-addons" style="display:flex;gap:8px;flex-wrap:wrap;">-</div>
+        </div>
+
+        <!-- Notas admin -->
+        <div class="form-group">
+          <label class="form-label">📝 Notas internas</label>
+          <textarea class="form-textarea" id="rama-notas" rows="2" placeholder="Notas visibles solo para AdminSistema..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button><button class="btn btn-primary" onclick="guardarRama()">💾 Guardar</button></div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -347,7 +422,7 @@
     async function cargarDashboard(){try{const[rS,nS,uS,bS]=await Promise.all([db.collection('familias').get(),db.collection('nidos').get(),db.collection('usuarios').get(),db.collectionGroup('bienes').get()]);ramasData=rS.docs.map(d=>({id:d.id,...d.data()}));nidosData=nS.docs.map(d=>({id:d.id,...d.data()}));usuariosData=uS.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('stat-ramas').textContent=ramasData.length;const estirpes=calcularEstirpes(nidosData);document.getElementById('stat-estirpes').textContent=estirpes.length;document.getElementById('stat-nidos').textContent=nidosData.length;document.getElementById('stat-usuarios').textContent=usuariosData.length;document.getElementById('stat-bienes').textContent=bS.size;let a=0;ramasData.forEach(r=>{if(r.addons)a+=Object.values(r.addons).filter(v=>v===true).length});document.getElementById('stat-addons').textContent=a;document.getElementById('ultimas-ramas').innerHTML=ramasData.slice(0,5).map(r=>`<div class="log-entry"><span class="log-icon">🌳</span><div class="log-content"><span class="log-user">${r.nombre||'-'}</span></div><span class="log-time">${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</span></div>`).join('')||'<p class="empty-state">Sin ramas</p>';const lS=await db.collection('logs').orderBy('fecha','desc').limit(10).get();document.getElementById('actividad-reciente').innerHTML=lS.docs.map(d=>{const l=d.data();return`<div class="log-entry"><span class="log-icon">📋</span><div class="log-content"><span class="log-user">${l.usuario||'Sistema'}</span> <span class="log-action">${l.accion||''}</span></div><span class="log-time">${l.fecha?.toDate?.().toLocaleString('es')||'-'}</span></div>`}).join('')||'<p class="empty-state">Sin actividad</p>'}catch(e){console.error(e)}}
     async function cargarLogs(){const s=await db.collection('logs').orderBy('fecha','desc').limit(100).get();logsData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('logs-lista').innerHTML=logsData.map(l=>`<div class="log-entry"><span class="log-time">${l.fecha?.toDate?.().toLocaleString('es')||'-'}</span><span class="log-icon">📋</span><div class="log-content"><span class="log-user">${l.usuario||'Sistema'}</span> <span class="log-action">${l.accion||''}</span></div></div>`).join('')||'<p class="empty-state">Sin logs</p>'}
     function exportarLogs(){const c='Fecha,Usuario,Acción\n'+logsData.map(l=>`"${l.fecha?.toDate?.().toISOString()||''}","${l.usuario||''}","${l.accion||''}"`).join('\n');descargar(c,'logs.csv','text/csv')}
-    async function cargarRamas(){const s=await db.collection('familias').get();ramasData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-ramas').innerHTML=ramasData.map(r=>`<tr><td><strong>${r.nombre||'-'}</strong></td><td>${r.adminNombre||'-'}</td><td>${r.totalNidos||0}</td><td>${r.totalMiembros||0}</td><td><span class="badge badge-${r.plan==='mega'?'warning':r.plan==='plus'?'info':'neutral'}">${r.plan||'Free'}</span></td><td>${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`).join('')||'<tr><td colspan="7" class="text-center">Sin datos</td></tr>'}
+    async function cargarRamas(){const s=await db.collection('familias').get();ramasData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-ramas').innerHTML=ramasData.map(r=>`<tr><td><strong>${r.nombre||'-'}</strong></td><td>${r.adminNombre||'-'}</td><td>${r.totalNidos||0}</td><td>${r.totalMiembros||0}</td><td><span class="badge badge-${r.plan==='mega'?'warning':r.plan==='plus'?'info':'neutral'}">${r.plan||'Free'}</span>${r.descuentoPlan?` <span class="badge badge-success">-${r.descuentoPlan}%</span>`:''}</td><td>${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</td><td><button class="btn btn-sm btn-secondary" onclick="verRama('${r.id}')">👁️</button></td></tr>`).join('')||'<tr><td colspan="7" class="text-center">Sin datos</td></tr>'}
     async function cargarEstirpes(){const s=await db.collection('nidos').get();nidosData=s.docs.map(x=>({id:x.id,...x.data()}));const estirpes=calcularEstirpes(nidosData);document.getElementById('tabla-estirpes').innerHTML=estirpes.map(e=>{const nidosHijos=nidosData.filter(n=>n.nidoOrigen===e.id).length;return`<tr><td><strong>${e.nombre||'-'}</strong></td><td>${e.ramaNombre||'-'}</td><td>${nidosHijos}</td><td>${e.generacion||'-'}</td><td>${e.miembros?.length||e.miembrosData?.length||0}</td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`}).join('')||'<tr><td colspan="6" class="text-center">Sin estirpes</td></tr>'}
     async function cargarNidos(){const s=await db.collection('nidos').get();nidosData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-nidos').innerHTML=nidosData.map(n=>`<tr><td><strong>${n.nombre||'-'}</strong></td><td>${n.ramaNombre||'-'}</td><td>${n.miembros?.length||0}</td><td>${n.adminNombre||'-'}</td><td>${n.generacion||1}</td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center">Sin datos</td></tr>'}
     async function cargarUsuarios(){const s=await db.collection('usuarios').get();usuariosData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-usuarios').innerHTML=usuariosData.map(u=>`<tr><td><strong>${u.nombre||u.email||'-'}</strong></td><td>${u.ramaNombre||'-'}</td><td>${u.nidoNombre||'-'}</td><td><span class="badge badge-neutral">${u.rol||'Miembro'}</span></td><td><span class="badge ${u.primerAcceso?'badge-warning':'badge-success'}">${u.primerAcceso?'Invitado':'Activo'}</span></td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center">Sin datos</td></tr>'}
@@ -363,6 +438,48 @@
     async function guardarPrivacidad(){const c=document.getElementById('pp-contenido').value;if(!c.trim())return alert('Contenido requerido');try{await db.collection('config').doc('privacidad').set({contenido:c,fechaActualizacion:firebase.firestore.FieldValue.serverTimestamp()});document.getElementById('pp-fecha').textContent=new Date().toLocaleDateString('es');alert('✅ Guardado')}catch(e){alert('Error: '+e.message)}}
     async function exportarBackup(t){try{let d={};if(t==='ramas'||t==='todo')d.ramas=ramasData;if(t==='usuarios'||t==='todo')d.usuarios=usuariosData;if(t==='nidos'||t==='todo')d.nidos=nidosData;descargar(JSON.stringify(d,null,2),`familynk_${t}_${new Date().toISOString().split('T')[0]}.json`,'application/json')}catch(e){alert('Error: '+e.message)}}
     function descargar(c,n,t){const b=new Blob([c],{type:t});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=n;a.click()}
+    function verRama(id){
+      const r=ramasData.find(x=>x.id===id);
+      if(!r)return;
+      document.getElementById('rama-id').value=id;
+      document.getElementById('rama-nombre').textContent=r.nombre||'-';
+      document.getElementById('rama-admin').textContent=r.adminNombre||r.adminEmail||'-';
+      document.getElementById('rama-nidos').textContent=r.totalNidos||0;
+      document.getElementById('rama-miembros').textContent=r.totalMiembros||0;
+      document.getElementById('rama-fecha').textContent=r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-';
+      document.getElementById('rama-plan-actual').innerHTML=`<span class="badge badge-${r.plan==='mega'?'warning':r.plan==='plus'?'info':'neutral'}">${r.plan||'Free'}</span>`;
+      document.getElementById('rama-notas').value=r.notasAdmin||'';
+      // Descuentos
+      document.querySelectorAll('input[name="descuento-plan"]').forEach(i=>i.checked=(parseInt(i.value)===(r.descuentoPlan||0)));
+      document.querySelectorAll('input[name="descuento-addon"]').forEach(i=>i.checked=(parseInt(i.value)===(r.descuentoAddon||0)));
+      // Add-ons
+      const addons=r.addons||{};
+      const addonsList=[];
+      if(addons.crearRama)addonsList.push('<span class="badge badge-info">🌳 Crear Rama</span>');
+      if(addons.mayordomo)addonsList.push('<span class="badge badge-info">🏡 Mayordomo</span>');
+      if(addons.gerente)addonsList.push('<span class="badge badge-info">🏨 Gerente</span>');
+      if(addons.capataz)addonsList.push('<span class="badge badge-info">🌾 Capataz</span>');
+      document.getElementById('rama-addons').innerHTML=addonsList.length?addonsList.join(' '):'<span class="text-muted">Ninguno</span>';
+      document.getElementById('modal-rama').classList.add('active');
+    }
+    async function guardarRama(){
+      const id=document.getElementById('rama-id').value;
+      if(!id)return;
+      const descuentoPlan=parseInt(document.querySelector('input[name="descuento-plan"]:checked').value)||0;
+      const descuentoAddon=parseInt(document.querySelector('input[name="descuento-addon"]:checked').value)||0;
+      const notasAdmin=document.getElementById('rama-notas').value.trim();
+      try{
+        await db.collection('familias').doc(id).update({
+          descuentoPlan:descuentoPlan,
+          descuentoAddon:descuentoAddon,
+          notasAdmin:notasAdmin,
+          ultimaModificacionAdmin:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert('✅ Rama actualizada');
+        cerrarModales();
+        cargarRamas();
+      }catch(e){alert('Error: '+e.message);}
+    }
     function cerrarModales(){document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('active'))}
     document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)cerrarModales()})});
   </script>
