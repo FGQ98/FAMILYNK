@@ -369,7 +369,7 @@
   <script>
     let currentUser = null;
     let userData = null;
-    let familiaId = null;
+    let ramaId = null;
     let votacionesData = [];
     let miembrosData = [];
 
@@ -380,10 +380,10 @@
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       if (!userDoc.exists) return;
       userData = userDoc.data();
-      familiaId = userData.familiaId;
+      ramaId = userData.ramaId;
 
       // Verificar plan
-      const familiaDoc = await db.collection('familias').doc(familiaId).get();
+      const familiaDoc = await db.collection('familias').doc(ramaId).get();
       const plan = familiaDoc.exists ? (familiaDoc.data().plan || 'gratuito') : 'gratuito';
       
       if (plan === 'gratuito') {
@@ -399,7 +399,7 @@
 
     async function cargarMiembros() {
       const snap = await db.collection('usuarios')
-        .where('familiaId', '==', familiaId)
+        .where('ramaId', '==', ramaId)
         .get();
       miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
@@ -407,7 +407,7 @@
     async function loadVotaciones() {
       try {
         const snap = await db.collection('votaciones')
-          .where('familiaId', '==', familiaId)
+          .where('ramaId', '==', ramaId)
           .orderBy('fechaCreacion', 'desc')
           .get();
 
@@ -420,7 +420,7 @@
         // Fallback
         try {
           const snap = await db.collection('votaciones')
-            .where('familiaId', '==', familiaId)
+            .where('ramaId', '==', ramaId)
             .get();
           votacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           document.getElementById('loading').classList.add('hidden');
@@ -676,7 +676,7 @@
           anonima,
           votos: {},
           cerrada: false,
-          familiaId,
+          ramaId,
           creadoPor: currentUser.uid,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
