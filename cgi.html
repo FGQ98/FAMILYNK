@@ -2895,24 +2895,57 @@
     }
 
     // ============ MI PLAN ============
-    function renderPlan() {
+    let planesConfig = null;
+    
+    async function cargarPlanesConfig() {
+      if (planesConfig) return planesConfig;
+      try {
+        const doc = await db.collection('config').doc('planes').get();
+        if (doc.exists) {
+          planesConfig = doc.data();
+        }
+      } catch (e) {
+        console.warn('Error cargando config planes:', e);
+      }
+      return planesConfig;
+    }
+
+    async function renderPlan() {
+      // Cargar config desde Firestore
+      await cargarPlanesConfig();
+      
       // Datos del plan desde familia o usuario
       const plan = currentFamilia?.plan || userData?.plan || 'gratuito';
       const fotos = currentFamilia?.fotosUsadas || 0;
       
-      const planes = {
-        'gratuito': { nombre: 'Gratuito', icon: 'G', tipo: 'Plan base', maxFotos: 150, generaciones: 3 },
-        'plus': { nombre: 'Plus', icon: '+', tipo: 'Plan familiar', maxFotos: 500, generaciones: 4 },
-        'premium': { nombre: 'Premium', icon: 'P', tipo: 'Todo incluido', maxFotos: '∞', generaciones: '∞' }
+      // Defaults por si no hay config en Firestore
+      const planesDefault = {
+        'gratuito': { nombre: 'Gratuito', icon: 'G', descripcion: 'Plan base', maxFotos: 150, maxGeneraciones: 3 },
+        'plus': { nombre: 'Plus', icon: '+', descripcion: 'Plan familiar', maxFotos: 500, maxGeneraciones: 4 },
+        'premium': { nombre: 'Premium', icon: 'P', descripcion: 'Todo incluido', maxFotos: 9999, maxGeneraciones: 99 }
       };
-
-      const planData = planes[plan] || planes['gratuito'];
+      
+      // Usar config de Firestore si existe, sino defaults
+      let planData;
+      if (planesConfig && planesConfig[plan]) {
+        const p = planesConfig[plan];
+        planData = {
+          nombre: p.nombre || planesDefault[plan].nombre,
+          icon: p.icon || planesDefault[plan].icon,
+          tipo: p.descripcion || planesDefault[plan].descripcion,
+          maxFotos: p.maxFotos || planesDefault[plan].maxFotos,
+          generaciones: p.maxGeneraciones || planesDefault[plan].maxGeneraciones
+        };
+      } else {
+        const d = planesDefault[plan] || planesDefault['gratuito'];
+        planData = { nombre: d.nombre, icon: d.icon, tipo: d.descripcion, maxFotos: d.maxFotos, generaciones: d.maxGeneraciones };
+      }
 
       document.getElementById('plan-icon').textContent = planData.icon;
       document.getElementById('plan-nombre').textContent = planData.nombre;
       document.getElementById('plan-tipo').textContent = planData.tipo;
-      document.getElementById('plan-fotos').textContent = `${fotos} / ${planData.maxFotos}`;
-      document.getElementById('plan-generaciones').textContent = planData.generaciones;
+      document.getElementById('plan-fotos').textContent = `${fotos} / ${planData.maxFotos === 9999 ? '∞' : planData.maxFotos}`;
+      document.getElementById('plan-generaciones').textContent = planData.generaciones >= 99 ? '∞' : planData.generaciones;
 
       // Ocultar botón mejorar si ya tiene Premium
       if (plan === 'premium') {
