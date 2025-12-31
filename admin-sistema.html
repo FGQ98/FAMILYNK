@@ -91,6 +91,55 @@
           <div class="stat-card"><div class="stat-icon" style="background:rgba(139,115,85,0.2)">🏠</div><div><div class="stat-value" id="stat-bienes">-</div><div class="stat-label">Bienes</div></div></div>
         </div>
 
+        <!-- GRÁFICOS DE DISTRIBUCIÓN -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
+          <!-- Distribución de Planes -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">💳 Planes</span></div>
+            <div class="card-body" style="text-align:center;">
+              <div style="height:150px;position:relative;"><canvas id="chart-planes"></canvas></div>
+              <div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:0.7rem;">
+                <span><span style="color:#9CA3AF;">●</span> Free: <b id="stat-plan-free">0</b></span>
+                <span><span style="color:#4299E1;">●</span> Plus: <b id="stat-plan-plus">0</b></span>
+                <span><span style="color:#ECC94B;">●</span> Premium: <b id="stat-plan-premium">0</b></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Invitaciones -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">✉️ Invitaciones</span></div>
+            <div class="card-body" style="text-align:center;">
+              <div style="height:150px;position:relative;"><canvas id="chart-invitaciones"></canvas></div>
+              <div style="display:flex;justify-content:center;gap:12px;margin-top:8px;font-size:0.7rem;">
+                <span><span style="color:#48BB78;">●</span> Aceptadas: <b id="stat-inv-aceptadas">0</b></span>
+                <span><span style="color:#F6AD55;">●</span> Pendientes: <b id="stat-inv-pendientes">0</b></span>
+              </div>
+              <div style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;">Media reenvíos: <b id="stat-media-reenvios">0</b></div>
+            </div>
+          </div>
+
+          <!-- Facturación -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">💰 Facturación</span></div>
+            <div class="card-body" style="text-align:center;">
+              <div style="font-size:2rem;font-weight:700;color:var(--admin-dark);margin:20px 0;" id="stat-facturacion-total">0€</div>
+              <div style="font-size:0.8rem;color:var(--text-light);">MRR estimado</div>
+              <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--cream-dark);">
+                <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:4px;">
+                  <span>Media por cuenta:</span><b id="stat-facturacion-media">0€</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:4px;">
+                  <span>Ingresos Planes:</span><b id="stat-ingresos-planes">0€</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:0.75rem;">
+                  <span>Ingresos Add-ons:</span><b id="stat-ingresos-addons">0€</b>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- GRÁFICO DE EVOLUCIÓN -->
         <div class="card" style="margin-bottom:16px;">
           <div class="card-header"><span class="card-title">📈 Evolución de métricas</span><span class="text-muted" style="font-size:0.7rem;" id="historico-count">- registros</span></div>
@@ -480,7 +529,153 @@ Soporte prioritario</textarea></div>
     auth.onAuthStateChanged(async user=>{if(!user){window.location.href='login.html';return}currentUser=user;const doc=await db.collection('usuarios').doc(user.uid).get();if(!doc.exists||(doc.data().rol!=='AdminSistema'&&!doc.data().superAdmin)){alert('Acceso denegado');window.location.href='login.html';return}userData=doc.data();document.getElementById('user-name').textContent=(userData.nombre||'Admin').split(' ')[0];document.getElementById('user-avatar').textContent=(userData.nombre||'A').charAt(0).toUpperCase();cargarDashboard()});
     function cerrarSesion(){auth.signOut().then(()=>window.location.href='login.html')}
     function cambiarSeccion(s){document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.toggle('active',l.dataset.section===s));document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(`section-${s}`).classList.add('active');const m={dashboard:cargarDashboard,logs:cargarLogs,ramas:cargarRamas,estirpes:cargarEstirpes,nidos:cargarNidos,usuarios:cargarUsuarios,invitaciones:cargarInvitaciones,planes:cargarPlanesConfig,legal:cargarLegal};if(m[s])m[s]()}
-    async function cargarDashboard(){try{const[rS,nS,uS,bS]=await Promise.all([db.collection('familias').get(),db.collection('nidos').get(),db.collection('usuarios').get(),db.collectionGroup('bienes').get()]);ramasData=rS.docs.map(d=>({id:d.id,...d.data()}));nidosData=nS.docs.map(d=>({id:d.id,...d.data()}));usuariosData=uS.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('stat-ramas').textContent=ramasData.length;const estirpes=calcularEstirpes(nidosData);document.getElementById('stat-estirpes').textContent=estirpes.length;document.getElementById('stat-nidos').textContent=nidosData.length;document.getElementById('stat-usuarios').textContent=usuariosData.length;document.getElementById('stat-bienes').textContent=bS.size;let a=0;ramasData.forEach(r=>{if(r.addons)a+=Object.values(r.addons).filter(v=>v===true).length});document.getElementById('stat-addons').textContent=a;document.getElementById('ultimas-ramas').innerHTML=ramasData.slice(0,5).map(r=>`<div class="log-entry"><span class="log-icon">🌳</span><div class="log-content"><span class="log-user">${r.nombre||'-'}</span></div><span class="log-time">${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</span></div>`).join('')||'<p class="empty-state">Sin ramas</p>';await cargarHistorico()}catch(e){console.error(e)}}
+    async function cargarDashboard(){
+      try{
+        const[rS,nS,uS,bS,iS]=await Promise.all([
+          db.collection('familias').get(),
+          db.collection('nidos').get(),
+          db.collection('usuarios').get(),
+          db.collectionGroup('bienes').get(),
+          db.collection('invitaciones-email').get()
+        ]);
+        ramasData=rS.docs.map(d=>({id:d.id,...d.data()}));
+        nidosData=nS.docs.map(d=>({id:d.id,...d.data()}));
+        usuariosData=uS.docs.map(d=>({id:d.id,...d.data()}));
+        const invitacionesData=iS.docs.map(d=>({id:d.id,...d.data()}));
+        
+        // Stats básicos
+        document.getElementById('stat-ramas').textContent=ramasData.length;
+        const estirpes=calcularEstirpes(nidosData);
+        document.getElementById('stat-estirpes').textContent=estirpes.length;
+        document.getElementById('stat-nidos').textContent=nidosData.length;
+        document.getElementById('stat-usuarios').textContent=usuariosData.length;
+        document.getElementById('stat-bienes').textContent=bS.size;
+        let a=0;ramasData.forEach(r=>{if(r.addons)a+=Object.values(r.addons).filter(v=>v===true).length});
+        document.getElementById('stat-addons').textContent=a;
+        
+        // Últimas ramas
+        document.getElementById('ultimas-ramas').innerHTML=ramasData.slice(0,5).map(r=>`<div class="log-entry"><span class="log-icon">🌳</span><div class="log-content"><span class="log-user">${r.nombre||'-'}</span></div><span class="log-time">${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</span></div>`).join('')||'<p class="empty-state">Sin ramas</p>';
+        
+        // Cargar config de precios
+        const planesDoc=await db.collection('config').doc('planes').get();
+        const addonsDoc=await db.collection('config').doc('addons').get();
+        const preciosPlanes=planesDoc.exists?planesDoc.data():{gratuito:{precioMensual:0},plus:{precioMensual:5.99},premium:{precioMensual:9.99}};
+        const preciosAddons=addonsDoc.exists?addonsDoc.data():{mayordomo:{precio:4.99},gerente:{precio:9.99},capataz:{precio:9.99},crearRama:{precio:9.99}};
+        
+        // Distribución de planes
+        let planFree=0,planPlus=0,planPremium=0;
+        ramasData.forEach(r=>{
+          const plan=(r.plan||'gratuito').toLowerCase();
+          if(plan==='plus')planPlus++;
+          else if(plan==='premium'||plan==='mega')planPremium++;
+          else planFree++;
+        });
+        document.getElementById('stat-plan-free').textContent=planFree;
+        document.getElementById('stat-plan-plus').textContent=planPlus;
+        document.getElementById('stat-plan-premium').textContent=planPremium;
+        renderChartPlanes(planFree,planPlus,planPremium);
+        
+        // Invitaciones (sin contar reenvíos)
+        const invitacionesUnicas=new Map();
+        invitacionesData.forEach(inv=>{
+          const key=inv.email;
+          if(!invitacionesUnicas.has(key)||inv.estado==='aceptada'){
+            invitacionesUnicas.set(key,inv);
+          }
+        });
+        let aceptadas=0,pendientes=0,totalReenvios=0,usuariosConReenvio=0;
+        invitacionesUnicas.forEach(inv=>{
+          if(inv.estado==='aceptada')aceptadas++;
+          else pendientes++;
+        });
+        // Calcular media de reenvíos
+        const reenviosPorEmail=new Map();
+        invitacionesData.forEach(inv=>{
+          const count=reenviosPorEmail.get(inv.email)||0;
+          reenviosPorEmail.set(inv.email,count+1);
+        });
+        reenviosPorEmail.forEach((count,email)=>{
+          if(count>1){totalReenvios+=(count-1);usuariosConReenvio++;}
+        });
+        const mediaReenvios=usuariosConReenvio>0?(totalReenvios/usuariosConReenvio).toFixed(1):'0';
+        
+        document.getElementById('stat-inv-aceptadas').textContent=aceptadas;
+        document.getElementById('stat-inv-pendientes').textContent=pendientes;
+        document.getElementById('stat-media-reenvios').textContent=mediaReenvios;
+        renderChartInvitaciones(aceptadas,pendientes);
+        
+        // Facturación
+        let ingresoPlanes=0,ingresoAddons=0;
+        ramasData.forEach(r=>{
+          const plan=(r.plan||'gratuito').toLowerCase();
+          const descuento=(r.descuentoPlan||0)/100;
+          if(plan==='plus')ingresoPlanes+=(preciosPlanes.plus?.precioMensual||5.99)*(1-descuento);
+          else if(plan==='premium'||plan==='mega')ingresoPlanes+=(preciosPlanes.premium?.precioMensual||9.99)*(1-descuento);
+          // Add-ons
+          if(r.addons){
+            const descuentoAddon=(r.descuentoAddon||0)/100;
+            if(r.addons.mayordomo)ingresoAddons+=(preciosAddons.mayordomo?.precio||4.99)*(1-descuentoAddon);
+            if(r.addons.gerente)ingresoAddons+=(preciosAddons.gerente?.precio||9.99)*(1-descuentoAddon);
+            if(r.addons.capataz)ingresoAddons+=(preciosAddons.capataz?.precio||9.99)*(1-descuentoAddon);
+            if(r.addons.crearRama)ingresoAddons+=(preciosAddons.crearRama?.precio||9.99)*(1-descuentoAddon);
+          }
+        });
+        const totalMRR=ingresoPlanes+ingresoAddons;
+        const mediaPorCuenta=ramasData.length>0?(totalMRR/ramasData.length):0;
+        
+        document.getElementById('stat-facturacion-total').textContent=totalMRR.toFixed(2)+'€';
+        document.getElementById('stat-facturacion-media').textContent=mediaPorCuenta.toFixed(2)+'€';
+        document.getElementById('stat-ingresos-planes').textContent=ingresoPlanes.toFixed(2)+'€';
+        document.getElementById('stat-ingresos-addons').textContent=ingresoAddons.toFixed(2)+'€';
+        
+        await cargarHistorico();
+      }catch(e){console.error(e);}
+    }
+    
+    let chartPlanes=null,chartInvitaciones=null;
+    
+    function renderChartPlanes(free,plus,premium){
+      const ctx=document.getElementById('chart-planes');
+      if(!ctx)return;
+      if(chartPlanes)chartPlanes.destroy();
+      chartPlanes=new Chart(ctx,{
+        type:'doughnut',
+        data:{
+          labels:['Free','Plus','Premium'],
+          datasets:[{data:[free,plus,premium],backgroundColor:['#9CA3AF','#4299E1','#ECC94B'],borderWidth:0}]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          cutout:'65%'
+        }
+      });
+    }
+    
+    function renderChartInvitaciones(aceptadas,pendientes){
+      const ctx=document.getElementById('chart-invitaciones');
+      if(!ctx)return;
+      if(chartInvitaciones)chartInvitaciones.destroy();
+      const total=aceptadas+pendientes;
+      const pctAceptadas=total>0?Math.round((aceptadas/total)*100):0;
+      chartInvitaciones=new Chart(ctx,{
+        type:'doughnut',
+        data:{
+          labels:['Aceptadas','Pendientes'],
+          datasets:[{data:[aceptadas,pendientes],backgroundColor:['#48BB78','#F6AD55'],borderWidth:0}]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins:{
+            legend:{display:false},
+            tooltip:{callbacks:{label:function(c){return c.label+': '+c.raw+' ('+Math.round((c.raw/total)*100)+'%)';}}}
+          },
+          cutout:'65%'
+        }
+      });
+    }
     async function cargarHistorico(){
       try{
         const hS=await db.collection('metricas-historico').orderBy('fecha','desc').limit(30).get();
@@ -524,15 +719,22 @@ Soporte prioritario</textarea></div>
       const usuarios=parseInt(document.getElementById('stat-usuarios').textContent)||0;
       const addons=parseInt(document.getElementById('stat-addons').textContent)||0;
       const bienes=parseInt(document.getElementById('stat-bienes').textContent)||0;
+      // Nuevas métricas
+      const planFree=parseInt(document.getElementById('stat-plan-free').textContent)||0;
+      const planPlus=parseInt(document.getElementById('stat-plan-plus').textContent)||0;
+      const planPremium=parseInt(document.getElementById('stat-plan-premium').textContent)||0;
+      const invAceptadas=parseInt(document.getElementById('stat-inv-aceptadas').textContent)||0;
+      const invPendientes=parseInt(document.getElementById('stat-inv-pendientes').textContent)||0;
+      const mediaReenvios=parseFloat(document.getElementById('stat-media-reenvios').textContent)||0;
+      const facturacionTotal=parseFloat(document.getElementById('stat-facturacion-total').textContent.replace('€',''))||0;
+      const facturacionMedia=parseFloat(document.getElementById('stat-facturacion-media').textContent.replace('€',''))||0;
       try{
         await db.collection('metricas-historico').doc(fechaId).set({
           fecha:firebase.firestore.Timestamp.fromDate(hoy),
-          ramas:ramas,
-          estirpes:estirpes,
-          nidos:nidos,
-          usuarios:usuarios,
-          addons:addons,
-          bienes:bienes,
+          ramas,estirpes,nidos,usuarios,addons,bienes,
+          planes:{free:planFree,plus:planPlus,premium:planPremium},
+          invitaciones:{aceptadas:invAceptadas,pendientes:invPendientes,mediaReenvios},
+          facturacion:{mrr:facturacionTotal,mediaCuenta:facturacionMedia},
           guardadoPor:userData?.nombre||currentUser?.email||'Admin'
         });
         alert('✅ Métricas guardadas para '+fechaId);
