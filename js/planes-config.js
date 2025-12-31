@@ -13,16 +13,16 @@ const PLANES_DEFAULT = {
     descripcion: 'Para empezar con tu familia',
     precioMensual: 0,
     precioAnual: 0,
-    maxFotos: 150,
+    maxFotos: 100,
     maxGeneraciones: 3,
-    maxBienes: 3,
+    maxBienes: 2,
     features: [
       'Hasta 3 generaciones',
-      '150 fotos',
+      '100 fotos',
+      '2 bienes compartidos',
       'Árbol genealógico',
-      'Cerebro (memoria familiar)',
-      'Legado básico',
-      'Activación básica'
+      'Legado básico (3 categorías)',
+      '5 herramientas Activación'
     ],
     featuresDisabled: ['Herramientas avanzadas', 'Fusión de Ramas'],
     activo: true,

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turno | FAMILYNK</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Nunito:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #E8F0E9;
+      --sage-dark: #5C7D5F;
+      --cream: #FDF8F3;
+      --cream-dark: #F0E6D9;
+      --terracotta: #C17757;
+      --terracotta-light: #E8D4CC;
+      --text-dark: #3D3D3D;
+      --text-light: #6B7280;
+      --white: #FFFFFF;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text-dark); min-height: 100vh; }
+    
+    .header { background: var(--white); padding: 16px 20px; border-bottom: 1px solid var(--cream-dark); display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 100; }
+    .back-btn { width: 36px; height: 36px; border-radius: var(--radius-md); border: none; background: var(--sage-light); color: var(--sage-dark); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .header-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.2rem; color: var(--sage-dark); }
+    .header-subtitle { font-size: 0.8rem; color: var(--text-light); }
+    
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    
+    .card { background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); margin-bottom: 16px; overflow: hidden; }
+    .card-header { padding: 16px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .card-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem; color: var(--text-dark); display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 16px; }
+    
+    .turno-list { list-style: none; }
+    .turno-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--radius-md); margin-bottom: 8px; background: var(--cream); transition: all 0.2s; cursor: grab; }
+    .turno-item:active { cursor: grabbing; }
+    .turno-item.current { background: var(--sage-light); border: 2px solid var(--sage); }
+    .turno-item.current .turno-badge { background: var(--sage); color: white; }
+    .turno-order { width: 28px; height: 28px; border-radius: 50%; background: var(--cream-dark); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: var(--text-light); }
+    .turno-item.current .turno-order { background: var(--sage); color: white; }
+    .turno-name { flex: 1; font-weight: 600; }
+    .turno-badge { font-size: 0.7rem; padding: 4px 8px; border-radius: 20px; background: var(--cream-dark); color: var(--text-light); }
+    .turno-handle { color: var(--text-light); font-size: 1.2rem; }
+    
+    .btn { padding: 12px 20px; border-radius: var(--radius-md); border: none; font-family: 'Nunito', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: var(--sage); color: white; }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text-dark); }
+    .btn-terracotta { background: var(--terracotta); color: white; }
+    .btn-sm { padding: 8px 14px; font-size: 0.85rem; }
+    .btn-block { width: 100%; }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-input, .form-select { width: 100%; padding: 12px; border: 1px solid var(--cream-dark); border-radius: var(--radius-md); font-family: inherit; font-size: 1rem; }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--sage); }
+    
+    .info-box { background: var(--sage-light); border-radius: var(--radius-md); padding: 12px; margin-bottom: 16px; font-size: 0.85rem; color: var(--sage-dark); display: flex; gap: 10px; align-items: flex-start; }
+    .info-box-icon { font-size: 1.2rem; }
+    
+    .stats-row { display: flex; gap: 12px; margin-bottom: 16px; }
+    .stat-box { flex: 1; background: var(--cream); padding: 12px; border-radius: var(--radius-md); text-align: center; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--sage-dark); }
+    .stat-label { font-size: 0.75rem; color: var(--text-light); }
+    
+    .history-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--cream-dark); font-size: 0.9rem; }
+    .history-item:last-child { border-bottom: none; }
+    .history-date { color: var(--text-light); }
+    
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--text-light); }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+    
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 16px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light); }
+    .modal-body { padding: 16px; }
+    .modal-footer { padding: 16px; border-top: 1px solid var(--cream-dark); display: flex; gap: 12px; justify-content: flex-end; }
+    
+    .loading { text-align: center; padding: 40px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <div>
+      <h1 class="header-title">🔄 Turno</h1>
+      <p class="header-subtitle">Rotaciones justas para todos</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Info -->
+    <div class="info-box">
+      <span class="info-box-icon">💡</span>
+      <div>
+        <strong>¿Cómo funciona?</strong><br>
+        Crea turnos rotatorios para tareas o responsabilidades. Cada vez que se completa, pasa al siguiente automáticamente.
+      </div>
+    </div>
+
+    <!-- Turnos activos -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📋 Turnos Activos</span>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalNuevo()">+ Nuevo</button>
+      </div>
+      <div class="card-body" id="turnos-lista">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Historial -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">📜 Historial reciente</span>
+      </div>
+      <div class="card-body" id="historial-lista">
+        <div class="empty-state">
+          <div class="empty-state-icon">📝</div>
+          <p>Sin historial todavía</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Nuevo Turno -->
+  <div class="modal-overlay" id="modal-nuevo">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">➕ Nuevo Turno</span>
+        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nombre del turno</label>
+          <input type="text" class="form-input" id="turno-nombre" placeholder="Ej: Recoger la mesa">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descripción (opcional)</label>
+          <input type="text" class="form-input" id="turno-descripcion" placeholder="Ej: Después de cada comida">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Frecuencia</label>
+          <select class="form-select" id="turno-frecuencia">
+            <option value="diario">Diario</option>
+            <option value="semanal" selected>Semanal</option>
+            <option value="mensual">Mensual</option>
+            <option value="manual">Manual (yo decido)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Participantes</label>
+          <div id="participantes-lista" style="max-height:200px;overflow-y:auto;">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="crearTurno()">Crear turno</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Ver Turno -->
+  <div class="modal-overlay" id="modal-ver">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="ver-titulo">Turno</span>
+        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="ver-descripcion" style="color:var(--text-light);margin-bottom:16px;"></p>
+        <div class="stats-row">
+          <div class="stat-box">
+            <div class="stat-value" id="ver-ronda">1</div>
+            <div class="stat-label">Ronda actual</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="ver-total">0</div>
+            <div class="stat-label">Completados</div>
+          </div>
+        </div>
+        <h4 style="font-size:0.9rem;margin-bottom:12px;">🎯 Turno actual</h4>
+        <div id="ver-actual" style="background:var(--sage-light);padding:16px;border-radius:var(--radius-md);text-align:center;margin-bottom:16px;">
+          <div style="font-size:2rem;margin-bottom:8px;">👤</div>
+          <div style="font-weight:700;font-size:1.1rem;">-</div>
+        </div>
+        <h4 style="font-size:0.9rem;margin-bottom:12px;">📋 Orden de rotación</h4>
+        <ul class="turno-list" id="ver-orden"></ul>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="eliminarTurno()">🗑️ Eliminar</button>
+        <button class="btn btn-terracotta" onclick="completarTurno()">✓ Completado</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let currentUser = null;
+    let userData = null;
+    let currentRamaId = null;
+    let turnosData = [];
+    let miembrosRama = [];
+    let turnoSeleccionado = null;
+
+    auth.onAuthStateChanged(async user => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      const doc = await db.collection('usuarios').doc(user.uid).get();
+      if (doc.exists) {
+        userData = doc.data();
+        currentRamaId = userData.ramaId;
+        await cargarMiembros();
+        await cargarTurnos();
+      }
+    });
+
+    async function cargarMiembros() {
+      try {
+        const snap = await db.collection('usuarios').where('ramaId', '==', currentRamaId).get();
+        miembrosRama = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.nombre);
+      } catch (e) { console.error(e); }
+    }
+
+    async function cargarTurnos() {
+      try {
+        const snap = await db.collection('turnos')
+          .where('ramaId', '==', currentRamaId)
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+        turnosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderTurnos();
+        renderHistorial();
+      } catch (e) {
+        console.error(e);
+        document.getElementById('turnos-lista').innerHTML = '<div class="empty-state"><p>Error cargando turnos</p></div>';
+      }
+    }
+
+    function renderTurnos() {
+      const cont = document.getElementById('turnos-lista');
+      if (turnosData.length === 0) {
+        cont.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🔄</div>
+            <p>No hay turnos creados</p>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalNuevo()" style="margin-top:12px;">Crear primer turno</button>
+          </div>`;
+        return;
+      }
+      cont.innerHTML = turnosData.map(t => {
+        const actual = t.participantes[t.turnoActual || 0];
+        const miembro = miembrosRama.find(m => m.id === actual);
+        return `
+          <div class="turno-item" onclick="verTurno('${t.id}')">
+            <div class="turno-order">${(t.turnoActual || 0) + 1}</div>
+            <div class="turno-name">
+              <div>${t.nombre}</div>
+              <div style="font-size:0.8rem;color:var(--text-light);">Le toca: ${miembro?.nombre || 'Sin asignar'}</div>
+            </div>
+            <span class="turno-badge">${t.frecuencia}</span>
+            <span class="turno-handle">→</span>
+          </div>`;
+      }).join('');
+    }
+
+    function renderHistorial() {
+      // Recopilar historial de todos los turnos
+      let historial = [];
+      turnosData.forEach(t => {
+        if (t.historial) {
+          t.historial.forEach(h => {
+            historial.push({ ...h, turnoNombre: t.nombre });
+          });
+        }
+      });
+      historial.sort((a, b) => (b.fecha?.toDate?.() || 0) - (a.fecha?.toDate?.() || 0));
+      historial = historial.slice(0, 10);
+
+      const cont = document.getElementById('historial-lista');
+      if (historial.length === 0) {
+        cont.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><p>Sin historial todavía</p></div>';
+        return;
+      }
+      cont.innerHTML = historial.map(h => {
+        const miembro = miembrosRama.find(m => m.id === h.usuarioId);
+        return `
+          <div class="history-item">
+            <div><strong>${miembro?.nombre || '-'}</strong> completó "${h.turnoNombre}"</div>
+            <span class="history-date">${h.fecha?.toDate?.().toLocaleDateString('es') || '-'}</span>
+          </div>`;
+      }).join('');
+    }
+
+    function abrirModalNuevo() {
+      document.getElementById('turno-nombre').value = '';
+      document.getElementById('turno-descripcion').value = '';
+      document.getElementById('turno-frecuencia').value = 'semanal';
+      
+      // Render participantes
+      document.getElementById('participantes-lista').innerHTML = miembrosRama.map(m => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--cream);border-radius:var(--radius-sm);margin-bottom:6px;cursor:pointer;">
+          <input type="checkbox" value="${m.id}" checked>
+          <span>${m.nombre}</span>
+        </label>
+      `).join('') || '<p style="color:var(--text-light);">No hay miembros</p>';
+      
+      document.getElementById('modal-nuevo').classList.add('active');
+    }
+
+    function verTurno(id) {
+      turnoSeleccionado = turnosData.find(t => t.id === id);
+      if (!turnoSeleccionado) return;
+
+      document.getElementById('ver-titulo').textContent = '🔄 ' + turnoSeleccionado.nombre;
+      document.getElementById('ver-descripcion').textContent = turnoSeleccionado.descripcion || '';
+      document.getElementById('ver-ronda').textContent = Math.floor((turnoSeleccionado.completados || 0) / turnoSeleccionado.participantes.length) + 1;
+      document.getElementById('ver-total').textContent = turnoSeleccionado.completados || 0;
+
+      const actualId = turnoSeleccionado.participantes[turnoSeleccionado.turnoActual || 0];
+      const actualMiembro = miembrosRama.find(m => m.id === actualId);
+      document.getElementById('ver-actual').innerHTML = `
+        <div style="font-size:2rem;margin-bottom:8px;">👤</div>
+        <div style="font-weight:700;font-size:1.1rem;">${actualMiembro?.nombre || 'Sin asignar'}</div>
+      `;
+
+      document.getElementById('ver-orden').innerHTML = turnoSeleccionado.participantes.map((pId, i) => {
+        const m = miembrosRama.find(x => x.id === pId);
+        const isCurrent = i === (turnoSeleccionado.turnoActual || 0);
+        return `
+          <li class="turno-item ${isCurrent ? 'current' : ''}">
+            <div class="turno-order">${i + 1}</div>
+            <span class="turno-name">${m?.nombre || '-'}</span>
+            ${isCurrent ? '<span class="turno-badge">Actual</span>' : ''}
+          </li>`;
+      }).join('');
+
+      document.getElementById('modal-ver').classList.add('active');
+    }
+
+    async function crearTurno() {
+      const nombre = document.getElementById('turno-nombre').value.trim();
+      if (!nombre) return alert('Introduce un nombre');
+
+      const checkboxes = document.querySelectorAll('#participantes-lista input:checked');
+      const participantes = Array.from(checkboxes).map(c => c.value);
+      if (participantes.length < 2) return alert('Selecciona al menos 2 participantes');
+
+      try {
+        await db.collection('turnos').add({
+          nombre,
+          descripcion: document.getElementById('turno-descripcion').value.trim(),
+          frecuencia: document.getElementById('turno-frecuencia').value,
+          participantes,
+          turnoActual: 0,
+          completados: 0,
+          historial: [],
+          ramaId: currentRamaId,
+          creadoPor: currentUser.uid,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        cerrarModal();
+        await cargarTurnos();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function completarTurno() {
+      if (!turnoSeleccionado) return;
+      
+      const nuevoTurno = ((turnoSeleccionado.turnoActual || 0) + 1) % turnoSeleccionado.participantes.length;
+      const completados = (turnoSeleccionado.completados || 0) + 1;
+      const actualId = turnoSeleccionado.participantes[turnoSeleccionado.turnoActual || 0];
+
+      try {
+        await db.collection('turnos').doc(turnoSeleccionado.id).update({
+          turnoActual: nuevoTurno,
+          completados,
+          historial: firebase.firestore.FieldValue.arrayUnion({
+            usuarioId: actualId,
+            fecha: firebase.firestore.Timestamp.now(),
+            ronda: Math.floor(completados / turnoSeleccionado.participantes.length)
+          })
+        });
+        cerrarModal();
+        await cargarTurnos();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    async function eliminarTurno() {
+      if (!turnoSeleccionado) return;
+      if (!confirm('¿Eliminar este turno?')) return;
+      
+      try {
+        await db.collection('turnos').doc(turnoSeleccionado.id).delete();
+        cerrarModal();
+        await cargarTurnos();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    function cerrarModal() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      turnoSeleccionado = null;
+    }
+
+    // Cerrar modal con Escape
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarModal(); });
+  </script>
+</body>
+</html>
