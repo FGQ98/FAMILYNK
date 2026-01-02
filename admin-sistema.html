@@ -441,6 +441,20 @@ Soporte prioritario</textarea></div>
         <div class="config-grid">
           <div class="config-card"><div class="config-card-header"><span class="config-card-icon">✉️</span><span class="config-card-title">Invitaciones</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Expiración (días)</span><input type="number" class="config-input" value="7"></div><div class="config-item"><span class="config-item-label">Reenvíos máx</span><input type="number" class="config-input" value="3"></div></div></div>
           <div class="config-card"><div class="config-card-header"><span class="config-card-icon">🧪</span><span class="config-card-title">Trials</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Días prueba</span><input type="number" class="config-input" value="14"></div></div></div>
+          <div class="config-card">
+            <div class="config-card-header"><span class="config-card-icon">🔢</span><span class="config-card-title">Numeración</span></div>
+            <div class="config-card-body">
+              <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">Sistema de códigos para nidos (1.2.3) y miembros (#1, #2...)</p>
+              <div class="form-group">
+                <label class="form-label">Familia a numerar</label>
+                <select class="form-select" id="numeracion-familia" style="width:100%;padding:8px;">
+                  <option value="">Cargando familias...</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" style="width:100%;" onclick="ejecutarNumeracion()">🔢 Ejecutar Numeración</button>
+              <div id="numeracion-resultado" style="margin-top:12px;font-size:0.8rem;display:none;"></div>
+            </div>
+          </div>
         </div>
         <div class="mt-2"><button class="btn btn-primary">💾 Guardar</button></div>
       </section>
@@ -991,6 +1005,205 @@ Soporte prioritario</textarea></div>
     }
     function cerrarModales(){document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('active'))}
     document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)cerrarModales()})});
+
+    // ============================================
+    // SISTEMA DE NUMERACIÓN
+    // ============================================
+
+    // Cargar familias para el selector de numeración
+    async function cargarFamiliasNumeracion() {
+      try {
+        const snap = await db.collection('familias').get();
+        const select = document.getElementById('numeracion-familia');
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">Selecciona una familia...</option>' +
+          snap.docs.map(doc => {
+            const data = doc.data();
+            return `<option value="${doc.id}">${data.nombre || doc.id}</option>`;
+          }).join('');
+      } catch (e) {
+        console.error('Error cargando familias:', e);
+      }
+    }
+
+    // Ejecutar numeración
+    async function ejecutarNumeracion() {
+      const familiaId = document.getElementById('numeracion-familia').value;
+      const resultadoDiv = document.getElementById('numeracion-resultado');
+      
+      if (!familiaId) {
+        alert('Selecciona una familia');
+        return;
+      }
+      
+      resultadoDiv.style.display = 'block';
+      resultadoDiv.innerHTML = '<span style="color:var(--info);">⏳ Procesando...</span>';
+      
+      try {
+        const resultado = await ejecutarNumeracionCompleta(db, familiaId);
+        
+        const nidosCount = Object.keys(resultado.codigosNidos).length;
+        const miembrosCount = Object.keys(resultado.numerosMiembros).length;
+        
+        let html = `<div style="color:var(--success);">✅ Numeración completada</div>`;
+        html += `<div style="margin-top:8px;">📁 <strong>${nidosCount}</strong> nidos numerados</div>`;
+        html += `<div>👤 <strong>${miembrosCount}</strong> miembros numerados</div>`;
+        
+        if (resultado.errores.length > 0) {
+          html += `<div style="color:var(--error);margin-top:8px;">⚠️ Errores: ${resultado.errores.map(e => e.error).join(', ')}</div>`;
+        }
+        
+        // Mostrar detalle de códigos
+        html += `<details style="margin-top:12px;"><summary style="cursor:pointer;font-weight:600;">Ver códigos de nidos</summary><div style="margin-top:8px;max-height:150px;overflow-y:auto;font-family:monospace;font-size:0.75rem;">`;
+        Object.entries(resultado.codigosNidos).forEach(([id, codigo]) => {
+          html += `<div>${codigo} → ${id.substring(0,8)}...</div>`;
+        });
+        html += `</div></details>`;
+        
+        resultadoDiv.innerHTML = html;
+        
+      } catch (error) {
+        resultadoDiv.innerHTML = `<span style="color:var(--error);">❌ Error: ${error.message}</span>`;
+      }
+    }
+
+    // ============================================
+    // FUNCIONES DE NUMERACIÓN (Sistema)
+    // ============================================
+
+    function calcularCodigosNidos(nidos) {
+      const codigosNidos = {};
+      
+      const nidoRaiz = nidos.find(n => !n.nidoOrigen);
+      if (!nidoRaiz) return codigosNidos;
+      
+      codigosNidos[nidoRaiz.id] = '1';
+      
+      const hijosPorPadre = {};
+      nidos.forEach(n => {
+        if (n.nidoOrigen) {
+          if (!hijosPorPadre[n.nidoOrigen]) hijosPorPadre[n.nidoOrigen] = [];
+          hijosPorPadre[n.nidoOrigen].push(n);
+        }
+      });
+      
+      function asignarCodigosHijos(nidoPadreId, codigoPadre) {
+        const hijos = hijosPorPadre[nidoPadreId] || [];
+        
+        hijos.sort((a, b) => {
+          const edadA = obtenerEdadFundador(a);
+          const edadB = obtenerEdadFundador(b);
+          return edadA - edadB;
+        });
+        
+        hijos.forEach((hijo, index) => {
+          const codigoHijo = `${codigoPadre}.${index + 1}`;
+          codigosNidos[hijo.id] = codigoHijo;
+          asignarCodigosHijos(hijo.id, codigoHijo);
+        });
+      }
+      
+      asignarCodigosHijos(nidoRaiz.id, '1');
+      return codigosNidos;
+    }
+
+    function obtenerEdadFundador(nido) {
+      const miembros = nido.miembrosData || [];
+      const padres = miembros.filter(m => 
+        m.rol === 'padre' || m.rol === 'madre' || 
+        m.rol === 'Padre' || m.rol === 'Madre' ||
+        m.parentesco === 'padre' || m.parentesco === 'madre'
+      );
+      
+      const lista = padres.length > 0 ? padres : miembros;
+      if (lista.length === 0) return new Date();
+      
+      lista.sort((a, b) => {
+        const fechaA = a.fechaNacimiento ? new Date(a.fechaNacimiento) : new Date();
+        const fechaB = b.fechaNacimiento ? new Date(b.fechaNacimiento) : new Date();
+        return fechaA - fechaB;
+      });
+      
+      return lista[0].fechaNacimiento ? new Date(lista[0].fechaNacimiento) : new Date();
+    }
+
+    function calcularNumerosMiembros(nidos) {
+      const numerosMiembros = {};
+      const todosMiembros = [];
+      
+      nidos.forEach(nido => {
+        (nido.miembrosData || []).forEach(m => {
+          const idUnico = m.uid || m.email || m.id || `${nido.id}-${m.nombre}`;
+          if (!todosMiembros.find(tm => tm.idUnico === idUnico)) {
+            todosMiembros.push({
+              ...m,
+              idUnico,
+              nidoId: nido.id,
+              fechaNacimientoDate: m.fechaNacimiento ? new Date(m.fechaNacimiento) : null
+            });
+          }
+        });
+      });
+      
+      todosMiembros.sort((a, b) => {
+        if (!a.fechaNacimientoDate && !b.fechaNacimientoDate) return 0;
+        if (!a.fechaNacimientoDate) return 1;
+        if (!b.fechaNacimientoDate) return -1;
+        return a.fechaNacimientoDate - b.fechaNacimientoDate;
+      });
+      
+      todosMiembros.forEach((miembro, index) => {
+        numerosMiembros[miembro.idUnico] = index + 1;
+      });
+      
+      return numerosMiembros;
+    }
+
+    async function ejecutarNumeracionCompleta(db, familiaId) {
+      console.log('🔢 Numeración para familia:', familiaId);
+      
+      const resultados = { codigosNidos: {}, numerosMiembros: {}, errores: [] };
+      
+      try {
+        const nidosSnap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
+        const nidos = nidosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // Calcular códigos
+        resultados.codigosNidos = calcularCodigosNidos(nidos);
+        resultados.numerosMiembros = calcularNumerosMiembros(nidos);
+        
+        // Actualizar en Firestore
+        const batch = db.batch();
+        
+        // Actualizar nidos con codigoNido
+        Object.entries(resultados.codigosNidos).forEach(([nidoId, codigo]) => {
+          batch.update(db.collection('nidos').doc(nidoId), { codigoNido: codigo });
+        });
+        
+        // Actualizar miembrosData con numeroMiembro
+        nidos.forEach(nido => {
+          const miembrosActualizados = (nido.miembrosData || []).map(m => {
+            const idUnico = m.uid || m.email || m.id || `${nido.id}-${m.nombre}`;
+            return { ...m, numeroMiembro: resultados.numerosMiembros[idUnico] || null };
+          });
+          batch.update(db.collection('nidos').doc(nido.id), { miembrosData: miembrosActualizados });
+        });
+        
+        await batch.commit();
+        console.log('✅ Numeración guardada');
+        
+      } catch (error) {
+        resultados.errores.push({ tipo: 'general', error: error.message });
+      }
+      
+      return resultados;
+    }
+
+    // Cargar familias al iniciar
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarFamiliasNumeracion();
+    });
   </script>
 </body>
 </html>
