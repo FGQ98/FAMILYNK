@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Reservas Finca</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --cream-medium: #FAF5EF;
+      --terracotta: #C17757;
+      --capataz: #6B8E23;
+      --capataz-light: #8BA94D;
+      --capataz-dark: #4A6B10;
+      --capataz-muted: rgba(107, 142, 35, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+      
+      /* Colores de tipos de reserva rural */
+      --reserva-familia: #7B2D8E;
+      --reserva-familia-muted: rgba(123, 45, 142, 0.15);
+      --reserva-caza: #8B4513;
+      --reserva-caza-muted: rgba(139, 69, 19, 0.15);
+      --reserva-recoleccion: #DAA520;
+      --reserva-recoleccion-muted: rgba(218, 165, 32, 0.15);
+      --reserva-labores: #4682B4;
+      --reserva-labores-muted: rgba(70, 130, 180, 0.15);
+      --reserva-evento: #E91E63;
+      --reserva-evento-muted: rgba(233, 30, 99, 0.15);
+      --reserva-nodisponible: #6B6B6B;
+      --reserva-nodisponible-muted: rgba(107, 107, 107, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, var(--capataz) 0%, var(--capataz-dark) 100%);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-medium);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 16px; }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      color: white;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+
+    .header-title { display: flex; align-items: center; gap: 10px; color: white; }
+
+    .header-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(255,255,255,0.2);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+    }
+
+    .header-info h1 { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; }
+    .header-info p { font-size: 0.75rem; opacity: 0.85; }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+    .layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    .calendario-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .calendario-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: var(--capataz);
+      color: white;
+    }
+
+    .calendario-nav { display: flex; gap: 8px; }
+
+    .calendario-nav button {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .calendario-nav button:hover { background: rgba(255,255,255,0.3); }
+
+    .calendario-mes { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+
+    .calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+
+    .calendario-dia-header {
+      padding: 10px;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      background: var(--cream-medium);
+    }
+
+    .calendario-dia {
+      aspect-ratio: 1;
+      padding: 4px;
+      border: 1px solid var(--cream-dark);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 70px;
+    }
+
+    .calendario-dia:hover { background: var(--cream); }
+    .calendario-dia.otro-mes { background: var(--cream-medium); opacity: 0.5; }
+    .calendario-dia.hoy { background: var(--capataz-muted); }
+
+    .calendario-dia-numero { font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }
+
+    .calendario-dia.hoy .calendario-dia-numero {
+      background: var(--capataz);
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .calendario-dia-eventos { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+
+    .calendario-evento {
+      font-size: 0.65rem;
+      padding: 2px 4px;
+      border-radius: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: white;
+      font-weight: 600;
+    }
+
+    .calendario-evento.familia { background: var(--reserva-familia); }
+    .calendario-evento.caza { background: var(--reserva-caza); }
+    .calendario-evento.recoleccion { background: var(--reserva-recoleccion); color: #333; }
+    .calendario-evento.labores { background: var(--reserva-labores); }
+    .calendario-evento.evento { background: var(--reserva-evento); }
+    .calendario-evento.nodisponible { background: var(--reserva-nodisponible); }
+
+    .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+    .sidebar-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-add {
+      width: 32px;
+      height: 32px;
+      background: var(--capataz);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-add:hover { background: var(--capataz-dark); }
+
+    .sidebar-body { padding: 12px; }
+
+    .reserva-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .reserva-item:hover { background: var(--cream-dark); }
+    .reserva-item:last-child { margin-bottom: 0; }
+
+    .reserva-tipo-indicator {
+      width: 8px;
+      height: 40px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .reserva-tipo-indicator.familia { background: var(--reserva-familia); }
+    .reserva-tipo-indicator.caza { background: var(--reserva-caza); }
+    .reserva-tipo-indicator.recoleccion { background: var(--reserva-recoleccion); }
+    .reserva-tipo-indicator.labores { background: var(--reserva-labores); }
+    .reserva-tipo-indicator.evento { background: var(--reserva-evento); }
+    .reserva-tipo-indicator.nodisponible { background: var(--reserva-nodisponible); }
+
+    .reserva-info { flex: 1; min-width: 0; }
+
+    .reserva-quien {
+      font-weight: 600;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .reserva-fechas { font-size: 0.8rem; color: var(--text-light); }
+
+    .reserva-empty {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Leyenda */
+    .leyenda { padding: 12px; }
+
+    .leyenda-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .leyenda-items { display: flex; flex-direction: column; gap: 8px; }
+
+    .leyenda-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+
+    .leyenda-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      padding: 20px;
+    }
+
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 450px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+
+    .modal-overlay.active .modal { transform: translateY(0); }
+
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      background: var(--cream);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-close:hover { background: var(--cream-dark); }
+
+    .modal-body { padding: 20px; }
+
+    .form-group { margin-bottom: 16px; }
+
+    .form-label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--capataz);
+      background: var(--capataz-muted);
+    }
+
+    textarea.form-input { min-height: 80px; resize: vertical; }
+
+    /* Selector de tipo */
+    .tipo-selector {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .tipo-option {
+      padding: 10px 8px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 0.8rem;
+    }
+
+    .tipo-option:hover { border-color: var(--capataz-light); }
+
+    .tipo-option.active { border-color: var(--capataz); background: var(--capataz-muted); }
+
+    .tipo-option-icon { font-size: 1.3rem; margin-bottom: 4px; }
+    .tipo-option-label { font-weight: 600; font-size: 0.75rem; }
+
+    .tipo-option.familia.active { border-color: var(--reserva-familia); background: var(--reserva-familia-muted); }
+    .tipo-option.caza.active { border-color: var(--reserva-caza); background: var(--reserva-caza-muted); }
+    .tipo-option.recoleccion.active { border-color: var(--reserva-recoleccion); background: var(--reserva-recoleccion-muted); }
+    .tipo-option.labores.active { border-color: var(--reserva-labores); background: var(--reserva-labores-muted); }
+    .tipo-option.evento.active { border-color: var(--reserva-evento); background: var(--reserva-evento-muted); }
+    .tipo-option.nodisponible.active { border-color: var(--reserva-nodisponible); background: var(--reserva-nodisponible-muted); }
+
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+
+    .btn-secondary {
+      background: var(--cream);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover { background: var(--cream-dark); }
+
+    .btn-primary {
+      background: var(--capataz);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--capataz-dark); }
+
+    .btn-danger {
+      background: var(--error);
+      color: white;
+    }
+
+    .btn-danger:hover { opacity: 0.9; }
+
+    .hidden { display: none !important; }
+
+    /* Fechas en línea */
+    .fechas-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 500px) {
+      .fechas-row { grid-template-columns: 1fr; }
+      .tipo-selector { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Capataz</a>
+      <div class="header-title">
+        <div class="header-icon">📅</div>
+        <div class="header-info">
+          <h1>Reservas</h1>
+          <p id="bien-nombre">Cargando...</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="layout">
+      <!-- Calendario -->
+      <div class="calendario-card">
+        <div class="calendario-header">
+          <div class="calendario-nav">
+            <button onclick="mesAnterior()">◀</button>
+          </div>
+          <span class="calendario-mes" id="calendario-mes">Diciembre 2024</span>
+          <div class="calendario-nav">
+            <button onclick="mesSiguiente()">▶</button>
+          </div>
+        </div>
+        <div class="calendario-grid" id="calendario-grid"></div>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <!-- Nueva reserva -->
+        <div class="sidebar-card">
+          <div class="sidebar-header">
+            <span class="sidebar-title">🌾 Próximas reservas</span>
+            <button class="btn-add" onclick="abrirModal()">+</button>
+          </div>
+          <div class="sidebar-body" id="proximas-reservas">
+            <div class="reserva-empty">Sin reservas próximas</div>
+          </div>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="sidebar-card">
+          <div class="leyenda">
+            <div class="leyenda-title">Tipos de uso</div>
+            <div class="leyenda-items">
+              <div class="leyenda-item">
+                <div class="leyenda-color" style="background: var(--reserva-familia);"></div>
+                <span>Familia</span>
+              </div>
+              <div class="leyenda-item">
+                <div class="leyenda-color" style="background: var(--reserva-caza);"></div>
+                <span>Caza / Montería</span>
+              </div>
+              <div class="leyenda-item">
+                <div class="leyenda-color" style="background: var(--reserva-recoleccion);"></div>
+                <span>Recolección</span>
+              </div>
+              <div class="leyenda-item">
+                <div class="leyenda-color" style="background: var(--reserva-labores);"></div>
+                <span>Labores / Mantenimiento</span>
+              </div>
+              <div class="leyenda-item">
+                <div class="leyenda-color" style="background: var(--reserva-evento);"></div>
+                <span>Evento</span>
+              </div>
+              <div class="leyenda-item">
+                <div class="leyenda-color" style="background: var(--reserva-nodisponible);"></div>
+                <span>No disponible</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modal-titulo">Nueva reserva</h2>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form" onsubmit="guardar(event)">
+        <div class="modal-body">
+          <input type="hidden" id="item-id">
+          <input type="hidden" id="item-tipo" value="familia">
+
+          <div class="form-group">
+            <label class="form-label">Tipo de uso</label>
+            <div class="tipo-selector">
+              <div class="tipo-option familia active" data-tipo="familia" onclick="seleccionarTipo('familia')">
+                <div class="tipo-option-icon">👨‍👩‍👧‍👦</div>
+                <div class="tipo-option-label">Familia</div>
+              </div>
+              <div class="tipo-option caza" data-tipo="caza" onclick="seleccionarTipo('caza')">
+                <div class="tipo-option-icon">🦌</div>
+                <div class="tipo-option-label">Caza</div>
+              </div>
+              <div class="tipo-option recoleccion" data-tipo="recoleccion" onclick="seleccionarTipo('recoleccion')">
+                <div class="tipo-option-icon">🫒</div>
+                <div class="tipo-option-label">Recolección</div>
+              </div>
+              <div class="tipo-option labores" data-tipo="labores" onclick="seleccionarTipo('labores')">
+                <div class="tipo-option-icon">🚜</div>
+                <div class="tipo-option-label">Labores</div>
+              </div>
+              <div class="tipo-option evento" data-tipo="evento" onclick="seleccionarTipo('evento')">
+                <div class="tipo-option-icon">🎉</div>
+                <div class="tipo-option-label">Evento</div>
+              </div>
+              <div class="tipo-option nodisponible" data-tipo="nodisponible" onclick="seleccionarTipo('nodisponible')">
+                <div class="tipo-option-icon">🚫</div>
+                <div class="tipo-option-label">No disponible</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">¿Quién? / Motivo</label>
+            <input type="text" class="form-input" id="item-quien" placeholder="Ej: Familia García, Cuadrilla de caza..." required>
+          </div>
+
+          <div class="form-group">
+            <div class="fechas-row">
+              <div>
+                <label class="form-label">Desde</label>
+                <input type="date" class="form-input" id="item-entrada" required>
+              </div>
+              <div>
+                <label class="form-label">Hasta</label>
+                <input type="date" class="form-input" id="item-salida" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notas (opcional)</label>
+            <textarea class="form-input" id="item-notas" placeholder="Observaciones, necesidades especiales..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminar()">Eliminar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBN0dimN4jtPblzdE7qnPGdLvjTEgvFhEk",
+      authDomain: "familynk-d1baa.firebaseapp.com",
+      projectId: "familynk-d1baa"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const DIAS_SEMANA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    let bienId = null;
+    let currentUser = null;
+    let reservas = [];
+    let mesActual = new Date();
+
+    // Detectar origen (capataz o bien)
+    const urlParams = new URLSearchParams(window.location.search);
+    bienId = urlParams.get('id');
+    const origen = urlParams.get('origen') || 'capataz';
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      
+      if (!bienId) { window.location.href = 'lo-comun.html'; return; }
+      
+      await cargarBien();
+      await cargarReservas();
+    });
+
+    async function cargarBien() {
+      const doc = await db.collection('bienes').doc(bienId).get();
+      if (!doc.exists) { window.location.href = 'lo-comun.html'; return; }
+      
+      const data = doc.data();
+      document.getElementById('bien-nombre').textContent = data.nombre || 'Sin nombre';
+      document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+    }
+
+    async function cargarReservas() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('entrada', 'asc').get();
+        reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCalendario();
+        renderProximasReservas();
+      } catch (error) { console.error('Error cargando reservas:', error); }
+    }
+
+    function renderCalendario() {
+      const grid = document.getElementById('calendario-grid');
+      const mesLabel = document.getElementById('calendario-mes');
+      
+      const año = mesActual.getFullYear();
+      const mes = mesActual.getMonth();
+      
+      mesLabel.textContent = `${MESES[mes]} ${año}`;
+      
+      const primerDia = new Date(año, mes, 1);
+      const ultimoDia = new Date(año, mes + 1, 0);
+      
+      let diaSemana = primerDia.getDay();
+      diaSemana = diaSemana === 0 ? 6 : diaSemana - 1;
+      
+      let html = '';
+      DIAS_SEMANA.forEach(d => { html += `<div class="calendario-dia-header">${d}</div>`; });
+      
+      const diasMesAnterior = new Date(año, mes, 0).getDate();
+      for (let i = diaSemana - 1; i >= 0; i--) {
+        html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${diasMesAnterior - i}</span></div>`;
+      }
+      
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      
+      for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+        const fecha = new Date(año, mes, dia);
+        const fechaStr = fecha.toISOString().split('T')[0];
+        const esHoy = fecha.getTime() === hoy.getTime();
+        
+        // Reservas del día
+        const reservasDia = reservas.filter(r => {
+          const entrada = new Date(r.entrada);
+          const salida = new Date(r.salida);
+          return fecha >= entrada && fecha <= salida;
+        });
+        
+        html += `<div class="calendario-dia ${esHoy ? 'hoy' : ''}" onclick="clickDia('${fechaStr}')">
+          <span class="calendario-dia-numero">${dia}</span>
+          <div class="calendario-dia-eventos">
+            ${reservasDia.slice(0, 2).map(r => `<div class="calendario-evento ${r.tipo}">${r.quien}</div>`).join('')}
+            ${reservasDia.length > 2 ? `<div class="calendario-evento" style="background:var(--text-muted)">+${reservasDia.length - 2}</div>` : ''}
+          </div>
+        </div>`;
+      }
+      
+      const totalCeldas = diaSemana + ultimoDia.getDate();
+      const celdasFaltantes = totalCeldas % 7 === 0 ? 0 : 7 - (totalCeldas % 7);
+      for (let dia = 1; dia <= celdasFaltantes; dia++) {
+        html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${dia}</span></div>`;
+      }
+      
+      grid.innerHTML = html;
+    }
+
+    function mesAnterior() { mesActual.setMonth(mesActual.getMonth() - 1); renderCalendario(); }
+    function mesSiguiente() { mesActual.setMonth(mesActual.getMonth() + 1); renderCalendario(); }
+
+    function clickDia(fechaStr) {
+      const reservaDia = reservas.find(r => {
+        const entrada = new Date(r.entrada);
+        const salida = new Date(r.salida);
+        const fecha = new Date(fechaStr);
+        return fecha >= entrada && fecha <= salida;
+      });
+      
+      if (reservaDia) { editar(reservaDia.id); } 
+      else { abrirModal(fechaStr); }
+    }
+
+    function renderProximasReservas() {
+      const container = document.getElementById('proximas-reservas');
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      
+      const proximas = reservas.filter(r => new Date(r.salida) >= hoy).slice(0, 5);
+      
+      if (proximas.length === 0) {
+        container.innerHTML = '<div class="reserva-empty">Sin reservas próximas</div>';
+        return;
+      }
+      
+      container.innerHTML = proximas.map(r => {
+        const entrada = new Date(r.entrada);
+        const salida = new Date(r.salida);
+        const fechaStr = `${entrada.getDate()}/${entrada.getMonth() + 1} - ${salida.getDate()}/${salida.getMonth() + 1}`;
+        
+        return `<div class="reserva-item" onclick="editar('${r.id}')">
+          <div class="reserva-tipo-indicator ${r.tipo}"></div>
+          <div class="reserva-info">
+            <div class="reserva-quien">${r.quien}</div>
+            <div class="reserva-fechas">${fechaStr}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function abrirModal(fecha = null) {
+      document.getElementById('form').reset();
+      document.getElementById('item-id').value = '';
+      seleccionarTipo('familia');
+      
+      if (fecha) {
+        document.getElementById('item-entrada').value = fecha;
+        const salida = new Date(fecha);
+        salida.setDate(salida.getDate() + 1);
+        document.getElementById('item-salida').value = salida.toISOString().split('T')[0];
+      } else {
+        document.getElementById('item-entrada').value = new Date().toISOString().split('T')[0];
+      }
+      
+      document.getElementById('modal-titulo').textContent = 'Nueva reserva';
+      document.getElementById('btn-eliminar').classList.add('hidden');
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function editar(id) {
+      const r = reservas.find(x => x.id === id);
+      if (!r) return;
+      
+      document.getElementById('item-id').value = id;
+      seleccionarTipo(r.tipo || 'familia');
+      document.getElementById('item-quien').value = r.quien || '';
+      document.getElementById('item-entrada').value = r.entrada || '';
+      document.getElementById('item-salida').value = r.salida || '';
+      document.getElementById('item-notas').value = r.notas || '';
+      
+      document.getElementById('modal-titulo').textContent = 'Editar reserva';
+      document.getElementById('btn-eliminar').classList.remove('hidden');
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function cerrarModal() { document.getElementById('modal').classList.remove('active'); }
+
+    function seleccionarTipo(tipo) {
+      document.querySelectorAll('.tipo-option').forEach(opt => {
+        opt.classList.remove('active');
+        if (opt.dataset.tipo === tipo) opt.classList.add('active');
+      });
+      document.getElementById('item-tipo').value = tipo;
+    }
+
+    async function guardar(e) {
+      e.preventDefault();
+      
+      const id = document.getElementById('item-id').value;
+      const data = {
+        tipo: document.getElementById('item-tipo').value,
+        quien: document.getElementById('item-quien').value.trim(),
+        entrada: document.getElementById('item-entrada').value,
+        salida: document.getElementById('item-salida').value,
+        notas: document.getElementById('item-notas').value.trim(),
+        actualizado: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      if (new Date(data.salida) < new Date(data.entrada)) {
+        alert('La fecha de salida debe ser posterior a la entrada');
+        return;
+      }
+      
+      try {
+        const ref = db.collection('bienes').doc(bienId).collection('reservas');
+        if (id) { await ref.doc(id).update(data); }
+        else { data.creado = firebase.firestore.FieldValue.serverTimestamp(); data.creadoPor = currentUser.uid; await ref.add(data); }
+        
+        cerrarModal();
+        await cargarReservas();
+      } catch (error) { console.error('Error guardando:', error); alert('Error al guardar'); }
+    }
+
+    async function eliminar() {
+      const id = document.getElementById('item-id').value;
+      if (!id || !confirm('¿Eliminar esta reserva?')) return;
+      
+      try {
+        await db.collection('bienes').doc(bienId).collection('reservas').doc(id).delete();
+        cerrarModal();
+        await cargarReservas();
+      } catch (error) { console.error('Error eliminando:', error); }
+    }
+
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) cerrarModal();
+    });
+  </script>
+</body>
+</html>
