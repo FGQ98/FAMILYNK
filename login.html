@@ -332,15 +332,23 @@
     const form = document.getElementById('login-form');
     const btnLogin = document.getElementById('btn-login');
 
-    // ============ LOGOUT AL CARGAR (una sola vez) ============
-    // Cerrar cualquier sesión anterior al entrar a login
-    (async function() {
-      if (auth.currentUser) {
-        console.log('Cerrando sesión anterior...');
+    console.log('Login.html cargado');
+
+    // Flag para saber si el usuario está intentando hacer login
+    let loginEnProceso = false;
+
+    // Al cargar: si hay sesión previa (de antes), cerrarla
+    // Pero NO cerrar si es una sesión que acabamos de crear (loginEnProceso = true)
+    auth.onAuthStateChanged(async (user) => {
+      console.log('onAuthStateChanged:', user ? user.email : 'sin sesión', '| loginEnProceso:', loginEnProceso);
+      
+      if (user && !loginEnProceso) {
+        // Hay sesión previa de otra visita - cerrarla
+        console.log('Cerrando sesión previa de:', user.email);
         await auth.signOut();
-        console.log('Sesión cerrada.');
+        console.log('Sesión cerrada. Formulario listo.');
       }
-    })();
+    });
 
     // Submit del formulario
     form.addEventListener('submit', async (e) => {
@@ -360,6 +368,9 @@
       hideSuccess();
       
       try {
+        // Marcar que estamos en proceso de login (para que onAuthStateChanged no cierre la sesión nueva)
+        loginEnProceso = true;
+        
         // Intentar login
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
@@ -378,15 +389,19 @@
             error.code === 'auth/wrong-password') {
           await intentarActivarInvitacion(email, password);
         } else if (error.code === 'auth/invalid-email') {
+          loginEnProceso = false;
           showError('El email no es válido.');
           resetBtn();
         } else if (error.code === 'auth/too-many-requests') {
+          loginEnProceso = false;
           showError('Demasiados intentos. Espera unos minutos.');
           resetBtn();
         } else if (error.code === 'auth/user-disabled') {
+          loginEnProceso = false;
           showError('Esta cuenta ha sido desactivada.');
           resetBtn();
         } else {
+          loginEnProceso = false;
           showError('Error: ' + (error.code || error.message || 'Desconocido'));
           resetBtn();
         }
@@ -436,12 +451,14 @@
 
         // 6. Usuario no encontrado en ningún sitio
         showError('Tu cuenta no está configurada. Contacta con el administrador de tu familia.');
+        loginEnProceso = false;
         await auth.signOut();
         showLoading(false);
         resetBtn();
 
       } catch (error) {
         console.error('Error verificando usuario:', error);
+        loginEnProceso = false;
         showError('Error al verificar acceso. Inténtalo de nuevo.');
         showLoading(false);
         resetBtn();
@@ -474,6 +491,7 @@
             .get();
 
           showLoading(false);
+          loginEnProceso = false;
           
           if (!invitacionEmailSnap.empty) {
             showError('La contraseña no coincide con la de tu invitación. Revisa el email que te enviaron.');
@@ -495,6 +513,7 @@
                          new Date(invitacion.fechaExpiracion);
           if (expira < new Date()) {
             showLoading(false);
+            loginEnProceso = false;
             showError('Tu invitación ha expirado. Pide al administrador que te envíe una nueva.');
             resetBtn();
             return;
@@ -538,6 +557,7 @@
       } catch (error) {
         console.error('Error activando invitación:', error);
         showLoading(false);
+        loginEnProceso = false;
         
         let mensaje = 'Error al activar tu cuenta: ' + (error.code || error.message || 'Desconocido');
         
