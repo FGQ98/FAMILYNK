@@ -182,7 +182,7 @@
       <!-- USUARIOS -->
       <section class="section" id="section-usuarios">
         <div class="section-header"><div><h1 class="section-title">👤 Usuarios</h1></div></div>
-        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Usuario</th><th>Rama</th><th>Nido</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody id="tabla-usuarios"><tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>#</th><th>Usuario</th><th>Rama</th><th>Nido</th><th>Cód. Nido</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody id="tabla-usuarios"><tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
       </section>
 
       <!-- INVITACIONES -->
@@ -439,8 +439,8 @@ Soporte prioritario</textarea></div>
       <section class="section" id="section-estructura">
         <div class="section-header"><div><h1 class="section-title">🏗️ Estructura</h1></div></div>
         <div class="config-grid">
-          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">✉️</span><span class="config-card-title">Invitaciones</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Expiración (días)</span><input type="number" class="config-input" value="7"></div><div class="config-item"><span class="config-item-label">Reenvíos máx</span><input type="number" class="config-input" value="3"></div></div></div>
-          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">🧪</span><span class="config-card-title">Trials</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Días prueba</span><input type="number" class="config-input" value="14"></div></div></div>
+          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">✉️</span><span class="config-card-title">Invitaciones</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Expiración (días)</span><input type="number" class="config-input" id="config-invitacion-expiracion" value="7"></div><div class="config-item"><span class="config-item-label">Reenvíos máx</span><input type="number" class="config-input" id="config-invitacion-reenvios" value="3"></div></div></div>
+          <div class="config-card"><div class="config-card-header"><span class="config-card-icon">🧪</span><span class="config-card-title">Trials</span></div><div class="config-card-body"><div class="config-item"><span class="config-item-label">Días prueba</span><input type="number" class="config-input" id="config-trial-dias" value="14"></div></div></div>
           <div class="config-card">
             <div class="config-card-header"><span class="config-card-icon">🔢</span><span class="config-card-title">Numeración</span></div>
             <div class="config-card-body">
@@ -456,7 +456,7 @@ Soporte prioritario</textarea></div>
             </div>
           </div>
         </div>
-        <div class="mt-2"><button class="btn btn-primary">💾 Guardar</button></div>
+        <div class="mt-2"><button class="btn btn-primary" onclick="guardarConfigEstructura()">💾 Guardar</button></div>
       </section>
 
       <!-- SERVICIOS -->
@@ -607,7 +607,12 @@ Soporte prioritario</textarea></div>
     }
     auth.onAuthStateChanged(async user=>{if(!user){window.location.href='login.html';return}currentUser=user;const doc=await db.collection('usuarios').doc(user.uid).get();if(!doc.exists||(doc.data().rol!=='AdminSistema'&&!doc.data().superAdmin)){alert('Acceso denegado');window.location.href='login.html';return}userData=doc.data();document.getElementById('user-name').textContent=(userData.nombre||'Admin').split(' ')[0];document.getElementById('user-avatar').textContent=(userData.nombre||'A').charAt(0).toUpperCase();cargarDashboard()});
     function cerrarSesion(){auth.signOut().then(()=>window.location.href='login.html')}
-    function cambiarSeccion(s){document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.toggle('active',l.dataset.section===s));document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(`section-${s}`).classList.add('active');const m={dashboard:cargarDashboard,logs:cargarLogs,ramas:cargarRamas,estirpes:cargarEstirpes,nidos:cargarNidos,usuarios:cargarUsuarios,invitaciones:cargarInvitaciones,planes:cargarPlanesConfig,legal:cargarLegal,estructura:cargarFamiliasNumeracion};if(m[s])m[s]()}
+    function cambiarSeccion(s){document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.toggle('active',l.dataset.section===s));document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(`section-${s}`).classList.add('active');const m={dashboard:cargarDashboard,logs:cargarLogs,ramas:cargarRamas,estirpes:cargarEstirpes,nidos:cargarNidos,usuarios:cargarUsuarios,invitaciones:cargarInvitaciones,planes:cargarPlanesConfig,legal:cargarLegal,estructura:cargarEstructura};if(m[s])m[s]()}
+    
+    function cargarEstructura() {
+      cargarFamiliasNumeracion();
+      cargarConfigEstructura();
+    }
     async function cargarDashboard(){
       try{
         const[rS,nS,uS,bS,iS]=await Promise.all([
@@ -825,7 +830,33 @@ Soporte prioritario</textarea></div>
     async function cargarRamas(){const s=await db.collection('familias').get();ramasData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-ramas').innerHTML=ramasData.map(r=>`<tr><td><strong>${r.nombre||'-'}</strong></td><td>${r.adminNombre||'-'}</td><td>${r.totalNidos||0}</td><td>${r.totalMiembros||0}</td><td><span class="badge badge-${r.plan==='mega'||r.plan==='premium'?'warning':r.plan==='plus'?'info':'neutral'}">${r.plan||'Free'}</span>${r.descuentoPlan?` <span class="badge badge-success">-${r.descuentoPlan}%</span>`:''}</td><td>${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</td><td><button class="btn btn-sm btn-secondary" onclick="verRama('${r.id}')">👁️</button></td></tr>`).join('')||'<tr><td colspan="7" class="text-center">Sin datos</td></tr>'}
     async function cargarEstirpes(){const s=await db.collection('nidos').get();nidosData=s.docs.map(x=>({id:x.id,...x.data()}));const estirpes=calcularEstirpes(nidosData);document.getElementById('tabla-estirpes').innerHTML=estirpes.map(e=>{const nidosHijos=nidosData.filter(n=>n.nidoOrigen===e.id).length;return`<tr><td><strong>${e.nombre||'-'}</strong></td><td>${e.ramaNombre||'-'}</td><td>${nidosHijos}</td><td>${e.generacion||'-'}</td><td>${e.miembros?.length||e.miembrosData?.length||0}</td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`}).join('')||'<tr><td colspan="6" class="text-center">Sin estirpes</td></tr>'}
     async function cargarNidos(){const s=await db.collection('nidos').get();nidosData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-nidos').innerHTML=nidosData.map(n=>`<tr><td><strong>${n.nombre||'-'}</strong></td><td>${n.ramaNombre||'-'}</td><td>${n.miembros?.length||0}</td><td>${n.adminNombre||'-'}</td><td>${n.generacion||1}</td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center">Sin datos</td></tr>'}
-    async function cargarUsuarios(){const s=await db.collection('usuarios').get();usuariosData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-usuarios').innerHTML=usuariosData.map(u=>`<tr><td><strong>${u.nombre||u.email||'-'}</strong></td><td>${u.ramaNombre||'-'}</td><td>${u.nidoNombre||'-'}</td><td><span class="badge badge-neutral">${u.rol||'Miembro'}</span></td><td><span class="badge ${u.primerAcceso?'badge-warning':'badge-success'}">${u.primerAcceso?'Invitado':'Activo'}</span></td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center">Sin datos</td></tr>'}
+    async function cargarUsuarios(){
+      const s=await db.collection('usuarios').get();
+      usuariosData=s.docs.map(d=>({id:d.id,...d.data()}));
+      
+      // Cargar nidos para obtener códigos y números de miembro
+      const nidosSnap = await db.collection('nidos').get();
+      const nidosMap = {};
+      nidosSnap.docs.forEach(n => {
+        const data = n.data();
+        nidosMap[n.id] = {
+          codigoNido: data.codigoNido || '-',
+          miembrosData: data.miembrosData || []
+        };
+      });
+      
+      document.getElementById('tabla-usuarios').innerHTML=usuariosData.map(u=>{
+        // Buscar numeroMiembro en el nido del usuario
+        let numMiembro = '-';
+        let codNido = '-';
+        if (u.nidoId && nidosMap[u.nidoId]) {
+          codNido = nidosMap[u.nidoId].codigoNido;
+          const miembro = nidosMap[u.nidoId].miembrosData.find(m => m.uid === u.id || m.email === u.email);
+          if (miembro && miembro.numeroMiembro) numMiembro = '#' + miembro.numeroMiembro;
+        }
+        return `<tr><td><strong>${numMiembro}</strong></td><td><strong>${u.nombre||u.email||'-'}</strong></td><td>${u.ramaNombre||'-'}</td><td>${u.nidoNombre||'-'}</td><td><code>${codNido}</code></td><td><span class="badge badge-neutral">${u.rol||'Miembro'}</span></td><td><span class="badge ${u.primerAcceso?'badge-warning':'badge-success'}">${u.primerAcceso?'Invitado':'Activo'}</span></td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`;
+      }).join('')||'<tr><td colspan="8" class="text-center">Sin datos</td></tr>';
+    }
     async function cargarInvitaciones(){const s=await db.collection('invitaciones-email').orderBy('fechaEnvio','desc').limit(100).get();const d=s.docs.map(x=>({id:x.id,...x.data()}));document.getElementById('tabla-invitaciones').innerHTML=d.map(i=>`<tr><td>${i.email||'-'}</td><td>${i.ramaNombre||'-'}</td><td>${i.nidoNombre||'-'}</td><td>${i.fechaEnvio?.toDate?.().toLocaleDateString('es')||'-'}</td><td><span class="badge ${i.estado==='aceptada'?'badge-success':i.estado==='expirada'?'badge-error':'badge-warning'}">${i.estado||'pendiente'}</span></td><td><button class="btn btn-sm btn-secondary">🔄</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center">Sin datos</td></tr>'}
     async function cargarPlanesConfig(){
       try{
@@ -1005,6 +1036,49 @@ Soporte prioritario</textarea></div>
     }
     function cerrarModales(){document.querySelectorAll('.modal-overlay').forEach(m=>m.classList.remove('active'))}
     document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)cerrarModales()})});
+
+    // ============================================
+    // CONFIGURACIÓN ESTRUCTURA
+    // ============================================
+    
+    async function guardarConfigEstructura() {
+      try {
+        const config = {
+          invitaciones: {
+            expiracionDias: parseInt(document.getElementById('config-invitacion-expiracion').value) || 7,
+            reenviosMax: parseInt(document.getElementById('config-invitacion-reenvios').value) || 3
+          },
+          trials: {
+            diasPrueba: parseInt(document.getElementById('config-trial-dias').value) || 14
+          },
+          ultimaModificacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await db.collection('configuracion').doc('sistema').set(config, { merge: true });
+        alert('✅ Configuración guardada');
+      } catch (error) {
+        console.error('Error guardando config:', error);
+        alert('❌ Error al guardar: ' + error.message);
+      }
+    }
+    
+    async function cargarConfigEstructura() {
+      try {
+        const doc = await db.collection('configuracion').doc('sistema').get();
+        if (doc.exists) {
+          const data = doc.data();
+          if (data.invitaciones) {
+            document.getElementById('config-invitacion-expiracion').value = data.invitaciones.expiracionDias || 7;
+            document.getElementById('config-invitacion-reenvios').value = data.invitaciones.reenviosMax || 3;
+          }
+          if (data.trials) {
+            document.getElementById('config-trial-dias').value = data.trials.diasPrueba || 14;
+          }
+        }
+      } catch (e) {
+        console.error('Error cargando config estructura:', e);
+      }
+    }
 
     // ============================================
     // SISTEMA DE NUMERACIÓN
