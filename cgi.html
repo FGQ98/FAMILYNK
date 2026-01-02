@@ -4669,7 +4669,58 @@
 
     // ============ CTAs (ACCIONES RÁPIDAS) ============
     let bienesUsuario = [];
+    let bienesConGestion = []; // Solo bienes con add-on activo para reservas
     let adminsEstirpe = [];
+
+    // Cargar bienes filtrados por visibilidad del usuario
+    async function cargarBienesUsuario() {
+      if (bienesUsuario.length > 0) return;
+      try {
+        const snap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
+        const todosBienes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Cargar mapa de nidos para verificar visibilidad
+        const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
+        const nidosMap = {};
+        nidosSnap.docs.forEach(doc => {
+          nidosMap[doc.id] = { id: doc.id, ...doc.data() };
+        });
+        
+        // Filtrar bienes por visibilidad
+        bienesUsuario = todosBienes.filter(bien => {
+          return esVisibleParaUsuario(bien, nidosMap);
+        });
+      } catch (e) { console.error('Error cargando bienes:', e); }
+    }
+
+    // Cargar bienes que tienen add-on de gestión activo (Mayordomo, Gerente o Capataz)
+    async function cargarBienesConGestion() {
+      await cargarBienesUsuario(); // Primero cargar bienes visibles
+      
+      // Filtrar solo los que tienen gestión activa
+      bienesConGestion = bienesUsuario.filter(bien => {
+        return bien.mayordomoActivo || bien.gerenteActivo || bien.capatazActivo;
+      });
+      
+      return bienesConGestion;
+    }
+
+    // Popular select con bienes que tienen gestión (para reservas)
+    function popularSelectBienesConGestion(selectId) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      
+      if (bienesConGestion.length === 0) {
+        select.innerHTML = '<option value="">No hay bienes con gestión activa</option>';
+        return;
+      }
+      
+      select.innerHTML = '<option value="">Selecciona un bien...</option>' +
+        bienesConGestion.map(b => {
+          const gestion = b.mayordomoActivo ? '🎩' : b.gerenteActivo ? '💼' : '🚜';
+          return `<option value="${b.id}">${gestion} ${b.nombre}</option>`;
+        }).join('');
+    }
 
     async function cargarBienesUsuario() {
       if (bienesUsuario.length > 0) return;
@@ -4771,15 +4822,31 @@
       return radio ? radio.value : 'rama';
     }
 
+    // Resetear selector de visibilidad a 'rama' en un modal
+    function resetVisibilidad(modalId) {
+      const modal = document.getElementById(modalId);
+      if (!modal) return;
+      modal.querySelectorAll('.visibilidad-option').forEach(opt => {
+        opt.classList.remove('active');
+        const input = opt.querySelector('input');
+        if (input && input.value === 'rama') {
+          opt.classList.add('active');
+          input.checked = true;
+        }
+      });
+    }
+
     async function abrirModalAveria() {
       await cargarBienesUsuario();
       popularSelectBienes('averia-bien');
       document.getElementById('form-averia').reset();
+      resetVisibilidad('modal-averia');
       document.getElementById('modal-averia').classList.add('active');
     }
 
     async function abrirModalIniciativa() {
       document.getElementById('form-iniciativa').reset();
+      resetVisibilidad('modal-iniciativa');
       document.getElementById('modal-iniciativa').classList.add('active');
     }
 
@@ -4787,15 +4854,16 @@
       await cargarBienesUsuario();
       popularSelectBienes('evento-bien');
       document.getElementById('form-evento').reset();
-      // Establecer fecha mínima como hoy
+      resetVisibilidad('modal-evento');
       document.getElementById('evento-fecha').min = new Date().toISOString().split('T')[0];
       document.getElementById('modal-evento').classList.add('active');
     }
 
     async function abrirModalSolicitarReserva() {
-      await cargarBienesUsuario();
-      popularSelectBienes('reserva-bien');
+      await cargarBienesConGestion();
+      popularSelectBienesConGestion('reserva-bien');
       document.getElementById('form-reserva').reset();
+      resetVisibilidad('modal-reserva');
       const hoy = new Date().toISOString().split('T')[0];
       document.getElementById('reserva-inicio').min = hoy;
       document.getElementById('reserva-fin').min = hoy;
@@ -4806,12 +4874,13 @@
       await cargarBienesUsuario();
       popularSelectBienes('encargo-bien');
       document.getElementById('form-encargo').reset();
+      resetVisibilidad('modal-encargo');
       document.getElementById('modal-encargo').classList.add('active');
     }
 
     function abrirModalConvocatoria() {
       document.getElementById('form-convocatoria').reset();
-      // Establecer fecha mínima como hoy
+      resetVisibilidad('modal-convocatoria');
       document.getElementById('convocatoria-fecha').min = new Date().toISOString().split('T')[0];
       document.getElementById('modal-convocatoria').classList.add('active');
     }
@@ -4824,18 +4893,37 @@
       const hora = document.getElementById('convocatoria-hora').value || null;
       const lugar = document.getElementById('convocatoria-lugar').value.trim() || null;
       const notas = document.getElementById('convocatoria-notas').value.trim() || null;
-      const alcance = document.getElementById('convocatoria-alcance').value;
+      const visibilidad = obtenerVisibilidad('convocatoria');
 
       try {
-        // 1. Determinar destinatarios
+        // 1. Determinar destinatarios según visibilidad
         let destinatarios = [];
         
-        if (alcance === 'todos') {
+        if (visibilidad === 'rama') {
           // Todos los usuarios de la familia
           const usuariosSnap = await db.collection('usuarios')
             .where('familiaId', '==', currentFamilia.id)
             .get();
           destinatarios = usuariosSnap.docs.map(doc => doc.id).filter(uid => uid !== currentUser.uid);
+        } else if (visibilidad === 'estirpe') {
+          // Usuarios de mi estirpe (mi nido y descendientes)
+          const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
+          const nidosMap = {};
+          nidosSnap.docs.forEach(doc => { nidosMap[doc.id] = { id: doc.id, ...doc.data() }; });
+          
+          // Encontrar nidos de mi estirpe
+          const nidosEstirpe = new Set([miNidoPrincipal?.id]);
+          Object.values(nidosMap).forEach(n => {
+            if (n.nidoOrigen === miNidoPrincipal?.id) nidosEstirpe.add(n.id);
+          });
+          
+          // Obtener usuarios de esos nidos
+          const usuariosSnap = await db.collection('usuarios')
+            .where('familiaId', '==', currentFamilia.id)
+            .get();
+          destinatarios = usuariosSnap.docs
+            .filter(doc => nidosEstirpe.has(doc.data().nidoId) && doc.id !== currentUser.uid)
+            .map(doc => doc.id);
         } else {
           // Solo miembros de mi nido
           if (miNidoPrincipal) {
@@ -4860,7 +4948,7 @@
           hora: hora,
           lugar: lugar,
           notas: notas,
-          alcance: alcance,
+          visibilidad: visibilidad,
           familiaId: currentFamilia.id,
           nidoId: miNidoPrincipal?.id || null,
           creadoPor: currentUser.uid,
@@ -4883,6 +4971,8 @@
             titulo: `✋ ${miNombre} te convoca: "${titulo}"`,
             mensaje: `${fecha}${hora ? ' a las ' + hora : ''}${lugar ? ' en ' + lugar : ''}`,
             familiaId: currentFamilia.id,
+            nidoId: miNidoPrincipal?.id || null,
+            visibilidad: visibilidad,
             destinatarios: destinatarios,
             leidoPor: [],
             completadoPor: [],
@@ -4914,6 +5004,7 @@
       const bienId = document.getElementById('averia-bien').value;
       const descripcion = document.getElementById('averia-descripcion').value;
       const urgencia = document.querySelector('input[name="averia-urgencia"]:checked').value;
+      const visibilidad = obtenerVisibilidad('averia');
 
       try {
         await db.collection('bienes').doc(bienId).collection('reparaciones').add({
@@ -4922,6 +5013,8 @@
           estado: 'pendiente',
           reportadoPor: currentUser.uid,
           reportadoPorNombre: userData.nombre || userData.email,
+          nidoId: miNidoPrincipal?.id || null,
+          visibilidad,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
         cerrarModales();
@@ -4938,13 +5031,16 @@
       const titulo = document.getElementById('iniciativa-titulo').value;
       const descripcion = document.getElementById('iniciativa-descripcion').value;
       const categoria = document.getElementById('iniciativa-categoria').value;
+      const visibilidad = obtenerVisibilidad('iniciativa');
 
       try {
         // Guardar iniciativa y notificar admins
         await enviarNotificacionAdmins('iniciativa', {
           titulo,
           descripcion,
-          categoria
+          categoria,
+          visibilidad,
+          nidoId: miNidoPrincipal?.id || null
         });
 
         // También guardar en colección de iniciativas para votos
@@ -4956,6 +5052,8 @@
           votos: [],
           propuestoPor: currentUser.uid,
           propuestoPorNombre: userData.nombre || userData.email,
+          nidoId: miNidoPrincipal?.id || null,
+          visibilidad,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -4975,6 +5073,7 @@
       const bien = bienesUsuario.find(b => b.id === bienId);
       const fecha = document.getElementById('evento-fecha').value;
       const descripcion = document.getElementById('evento-descripcion').value;
+      const visibilidad = obtenerVisibilidad('evento');
 
       try {
         await enviarNotificacionAdmins('evento', {
@@ -4982,7 +5081,9 @@
           bienId,
           bienNombre: bien?.nombre || '',
           fecha,
-          descripcion
+          descripcion,
+          visibilidad,
+          nidoId: miNidoPrincipal?.id || null
         });
 
         cerrarModales();
@@ -4997,10 +5098,11 @@
     document.getElementById('form-reserva').addEventListener('submit', async (e) => {
       e.preventDefault();
       const bienId = document.getElementById('reserva-bien').value;
-      const bien = bienesUsuario.find(b => b.id === bienId);
+      const bien = bienesConGestion.find(b => b.id === bienId) || bienesUsuario.find(b => b.id === bienId);
       const fechaInicio = document.getElementById('reserva-inicio').value;
       const fechaFin = document.getElementById('reserva-fin').value;
       const motivo = document.getElementById('reserva-motivo').value;
+      const visibilidad = obtenerVisibilidad('reserva');
 
       if (fechaFin < fechaInicio) {
         alert('La fecha de fin debe ser posterior a la de inicio');
@@ -5013,7 +5115,9 @@
           bienNombre: bien?.nombre || '',
           fechaInicio,
           fechaFin,
-          motivo
+          motivo,
+          visibilidad,
+          nidoId: miNidoPrincipal?.id || null
         });
 
         cerrarModales();
@@ -5030,6 +5134,7 @@
       const bienId = document.getElementById('encargo-bien').value;
       const items = document.getElementById('encargo-items').value;
       const notas = document.getElementById('encargo-notas').value;
+      const visibilidad = obtenerVisibilidad('encargo');
 
       try {
         await db.collection('bienes').doc(bienId).collection('encargos').add({
@@ -5038,6 +5143,8 @@
           estado: 'pendiente',
           solicitadoPor: currentUser.uid,
           solicitadoPorNombre: userData.nombre || userData.email,
+          nidoId: miNidoPrincipal?.id || null,
+          visibilidad,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
         cerrarModales();
