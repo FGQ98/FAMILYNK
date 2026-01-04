@@ -932,9 +932,70 @@
       const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
       bienesData = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Cargar externos de esta familia
-      const externosSnap = await db.collection('externos').where('familiaId', '==', familiaData.id).get();
-      externosData = externosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Cargar externos - primero de colección 'externos'
+      externosData = [];
+      try {
+        const externosSnap = await db.collection('externos').where('familiaId', '==', familiaData.id).get();
+        externosData = externosSnap.docs.map(d => ({ id: d.id, esNuevo: true, ...d.data() }));
+      } catch (e) {
+        console.warn('Error cargando externos:', e);
+      }
+      
+      // También cargar de subcolecciones legacy (caseros/hosters dentro de cada bien)
+      for (const bien of bienesData) {
+        try {
+          // Caseros legacy
+          const caserosSnap = await db.collection('bienes').doc(bien.id).collection('caseros').get();
+          caserosSnap.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.migradoA === 'externos') return; // Ya migrado
+            const yaExiste = externosData.some(e => e.email?.toLowerCase() === data.email?.toLowerCase());
+            if (!yaExiste && data.email) {
+              externosData.push({
+                id: doc.id,
+                visibleId: `${bien.id}_casero_${doc.id}`,
+                esLegacy: true,
+                legacyBienId: bien.id,
+                tipo: 'casero',
+                activo: data.activo !== false,
+                bienesAsignados: [{
+                  bienId: bien.id,
+                  bienNombre: bien.nombre,
+                  permisos: data.permisos || {}
+                }],
+                ...data
+              });
+            }
+          });
+          
+          // Hosters legacy
+          const hostersSnap = await db.collection('bienes').doc(bien.id).collection('hosters').get();
+          hostersSnap.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.migradoA === 'externos') return;
+            const yaExiste = externosData.some(e => e.email?.toLowerCase() === data.email?.toLowerCase());
+            if (!yaExiste && data.email) {
+              externosData.push({
+                id: doc.id,
+                visibleId: `${bien.id}_hoster_${doc.id}`,
+                esLegacy: true,
+                legacyBienId: bien.id,
+                tipo: 'hoster',
+                activo: data.activo !== false,
+                bienesAsignados: [{
+                  bienId: bien.id,
+                  bienNombre: bien.nombre,
+                  permisos: data.permisos || {},
+                  rol: data.rol
+                }],
+                ...data
+              });
+            }
+          });
+        } catch (e) {
+          console.warn('Error cargando legacy de bien', bien.id, e);
+        }
+      }
 
       document.getElementById('stat-usuarios').textContent = usuariosData.length;
       document.getElementById('stat-nidos').textContent = nidosData.length;
@@ -1008,6 +1069,7 @@
       tbody.innerHTML = externosFiltrados.map(ext => {
         const iniciales = ext.nombre ? ext.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
         const bienes = ext.bienesAsignados || [];
+        const extId = ext.visibleId || ext.id;
         
         // Obtener nombres de bienes
         const bienesHtml = bienes.map(b => {
@@ -1015,13 +1077,16 @@
           return `<span class="bien-tag">${bien?.nombre || b.bienNombre || b.bienId}</span>`;
         }).join('');
         
+        // Badge de legacy
+        const legacyBadge = ext.esLegacy ? '<span style="background:#FCD34D;color:#92400E;padding:1px 6px;border-radius:8px;font-size:0.6rem;margin-left:4px;">legacy</span>' : '';
+        
         return `
           <tr class="user-row">
             <td>
               <div class="user-info">
                 <div class="user-avatar" style="background:${ext.tipo === 'casero' ? '#8B7355' : ext.tipo === 'hoster' ? '#4A5568' : '#6B8E23'}">${iniciales}</div>
                 <div>
-                  <div class="user-name">${ext.nombre || 'Sin nombre'}</div>
+                  <div class="user-name">${ext.nombre || 'Sin nombre'}${legacyBadge}</div>
                   <div class="user-email">${ext.email}</div>
                 </div>
               </div>
@@ -1030,10 +1095,10 @@
             <td><div class="bienes-tags">${bienesHtml || '<span style="color:var(--text-muted)">Ninguno</span>'}</div></td>
             <td><span class="estado-badge ${ext.activo ? 'activo' : 'inactivo'}">${ext.activo ? 'Activo' : 'Inactivo'}</span></td>
             <td>
-              <button class="btn btn-primary btn-sm" onclick="abrirModalExterno('${ext.id}')">✏️ Editar</button>
+              <button class="btn btn-primary btn-sm" onclick="abrirModalExterno('${extId}')">✏️ Editar</button>
               ${ext.activo ? 
-                `<button class="btn btn-sm" style="background:#dc3545;color:white;margin-left:4px;" onclick="toggleExterno('${ext.id}', false)">⏸️</button>` :
-                `<button class="btn btn-sm" style="background:#38A169;color:white;margin-left:4px;" onclick="toggleExterno('${ext.id}', true)">▶️</button>`
+                `<button class="btn btn-sm" style="background:#dc3545;color:white;margin-left:4px;" onclick="toggleExterno('${extId}', false)">⏸️</button>` :
+                `<button class="btn btn-sm" style="background:#38A169;color:white;margin-left:4px;" onclick="toggleExterno('${extId}', true)">▶️</button>`
               }
             </td>
           </tr>
@@ -1047,10 +1112,10 @@
     }
     
     function abrirModalExterno(externoId) {
-      const ext = externosData.find(e => e.id === externoId);
+      const ext = externosData.find(e => e.id === externoId || e.visibleId === externoId);
       if (!ext) return;
       
-      editandoExternoId = externoId;
+      editandoExternoId = ext.visibleId || ext.id;
       
       const tipoIconos = { casero: '🏠', hoster: '🏨', guarda: '🌾' };
       const tipoLabels = { casero: 'Casero', hoster: 'Hoster', guarda: 'Guarda' };
@@ -1115,7 +1180,7 @@
     async function guardarExterno() {
       if (!editandoExternoId) return;
       
-      const ext = externosData.find(e => e.id === editandoExternoId);
+      const ext = externosData.find(e => e.id === editandoExternoId || e.visibleId === editandoExternoId);
       if (!ext) return;
       
       try {
@@ -1135,24 +1200,53 @@
           bienesAsignados[bienIdx].permisos[sec][perm] = cb.checked;
         });
         
-        await db.collection('externos').doc(editandoExternoId).update({
-          nombre,
-          telefono,
-          bienesAsignados,
-          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // Actualizar local
-        const idx = externosData.findIndex(e => e.id === editandoExternoId);
-        if (idx >= 0) {
-          externosData[idx].nombre = nombre;
-          externosData[idx].telefono = telefono;
-          externosData[idx].bienesAsignados = bienesAsignados;
+        if (ext.esLegacy) {
+          // Guardar en legacy Y migrar a externos
+          const legacyPath = ext.tipo === 'casero' ? 'caseros' : 'hosters';
+          
+          // Actualizar en legacy
+          await db.collection('bienes').doc(ext.legacyBienId).collection(legacyPath).doc(ext.id).update({
+            nombre,
+            telefono,
+            permisos: bienesAsignados[0]?.permisos || {}
+          });
+          
+          // También crear/actualizar en externos para migración gradual
+          const existeEnExternos = await db.collection('externos').where('email', '==', ext.email).limit(1).get();
+          if (existeEnExternos.empty) {
+            await db.collection('externos').add({
+              email: ext.email,
+              nombre,
+              telefono,
+              tipo: ext.tipo,
+              activo: ext.activo !== false,
+              bienesAsignados,
+              familiaId: familiaData.id,
+              creadoPor: currentUser.uid,
+              fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+              fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp(),
+              migradoDesde: 'legacy-' + legacyPath
+            });
+            
+            // Marcar legacy como migrado
+            await db.collection('bienes').doc(ext.legacyBienId).collection(legacyPath).doc(ext.id).update({
+              migradoA: 'externos',
+              fechaMigracion: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          }
+        } else {
+          // Guardar en colección externos
+          await db.collection('externos').doc(ext.id).update({
+            nombre,
+            telefono,
+            bienesAsignados,
+            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+          });
         }
         
         cerrarModal('modal-externo');
-        renderExternos(document.getElementById('filtro-tipo-externo').value);
-        alert('✅ Externo actualizado');
+        await cargarDatos(); // Recargar todo
+        alert('✅ Externo actualizado' + (ext.esLegacy ? ' y migrado a nueva estructura' : ''));
       } catch (error) {
         console.error(error);
         alert('Error al guardar: ' + error.message);
@@ -1162,22 +1256,28 @@
     async function desactivarExterno() {
       if (!editandoExternoId) return;
       
-      const ext = externosData.find(e => e.id === editandoExternoId);
+      const ext = externosData.find(e => e.id === editandoExternoId || e.visibleId === editandoExternoId);
+      if (!ext) return;
+      
       const nuevoEstado = !ext.activo;
       
       if (!confirm(`¿${nuevoEstado ? 'Activar' : 'Desactivar'} este externo?`)) return;
       
       try {
-        await db.collection('externos').doc(editandoExternoId).update({
-          activo: nuevoEstado,
-          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        const idx = externosData.findIndex(e => e.id === editandoExternoId);
-        if (idx >= 0) externosData[idx].activo = nuevoEstado;
+        if (ext.esLegacy) {
+          const legacyPath = ext.tipo === 'casero' ? 'caseros' : 'hosters';
+          await db.collection('bienes').doc(ext.legacyBienId).collection(legacyPath).doc(ext.id).update({
+            activo: nuevoEstado
+          });
+        } else {
+          await db.collection('externos').doc(ext.id).update({
+            activo: nuevoEstado,
+            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
         
         cerrarModal('modal-externo');
-        renderExternos(document.getElementById('filtro-tipo-externo').value);
+        await cargarDatos();
         alert(`✅ Externo ${nuevoEstado ? 'activado' : 'desactivado'}`);
       } catch (error) {
         console.error(error);
@@ -1188,17 +1288,23 @@
     async function toggleExterno(externoId, activar) {
       if (!confirm(`¿${activar ? 'Activar' : 'Desactivar'} este externo?`)) return;
       
+      const ext = externosData.find(e => e.id === externoId || e.visibleId === externoId);
+      if (!ext) return;
+      
       try {
-        await db.collection('externos').doc(externoId).update({
-          activo: activar,
-          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        if (ext.esLegacy) {
+          const legacyPath = ext.tipo === 'casero' ? 'caseros' : 'hosters';
+          await db.collection('bienes').doc(ext.legacyBienId).collection(legacyPath).doc(ext.id).update({
+            activo: activar
+          });
+        } else {
+          await db.collection('externos').doc(ext.id).update({
+            activo: activar,
+            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
         
-        // Actualizar local
-        const idx = externosData.findIndex(e => e.id === externoId);
-        if (idx >= 0) externosData[idx].activo = activar;
-        
-        renderExternos(document.getElementById('filtro-tipo-externo').value);
+        await cargarDatos();
         alert(`✅ Externo ${activar ? 'activado' : 'desactivado'}`);
       } catch (error) {
         console.error(error);
