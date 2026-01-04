@@ -55,6 +55,7 @@
         <button class="sidebar-link" data-section="estirpes" onclick="cambiarSeccion('estirpes')"><span class="sidebar-link-icon">👨‍👩‍👧</span>Estirpes</button>
         <button class="sidebar-link" data-section="nidos" onclick="cambiarSeccion('nidos')"><span class="sidebar-link-icon">🪺</span>Nidos</button>
         <button class="sidebar-link" data-section="usuarios" onclick="cambiarSeccion('usuarios')"><span class="sidebar-link-icon">👤</span>Usuarios</button>
+        <button class="sidebar-link" data-section="externos" onclick="cambiarSeccion('externos')"><span class="sidebar-link-icon">👷</span>Externos</button>
         <button class="sidebar-link" data-section="invitaciones" onclick="cambiarSeccion('invitaciones')"><span class="sidebar-link-icon">✉️</span>Invitaciones</button>
       </nav></div>
       <div class="sidebar-section"><div class="sidebar-title">Monetización</div><nav class="sidebar-nav">
@@ -183,6 +184,29 @@
       <section class="section" id="section-usuarios">
         <div class="section-header"><div><h1 class="section-title">👤 Usuarios</h1></div></div>
         <div class="card"><div class="table-container"><table class="table"><thead><tr><th>#</th><th>Usuario</th><th>Rama</th><th>Nido</th><th>Cód. Nido</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody id="tabla-usuarios"><tr><td colspan="8"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+      </section>
+
+      <!-- EXTERNOS -->
+      <section class="section" id="section-externos">
+        <div class="section-header"><div><h1 class="section-title">👷 Externos</h1><p class="section-description">Caseros, Hosters y Guardas de todas las ramas</p></div>
+          <div style="display:flex;gap:8px;">
+            <select class="filter-select" id="filtro-rama-externo" onchange="filtrarExternosSistema()"><option value="">Todas las ramas</option></select>
+            <select class="filter-select" id="filtro-tipo-externo-sistema" onchange="filtrarExternosSistema()">
+              <option value="">Todos los tipos</option>
+              <option value="casero">🏠 Caseros</option>
+              <option value="hoster">🏨 Hosters</option>
+              <option value="guarda">🌾 Guardas</option>
+            </select>
+          </div>
+        </div>
+        <div class="stats-grid" style="margin-bottom:16px;">
+          <div class="stat-card"><div class="stat-icon" style="background:rgba(139,115,85,0.2)">👷</div><div><div class="stat-value" id="stat-externos-total">0</div><div class="stat-label">Total externos</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:rgba(139,115,85,0.2)">🏠</div><div><div class="stat-value" id="stat-ext-caseros">0</div><div class="stat-label">Caseros</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:rgba(74,85,104,0.2)">🏨</div><div><div class="stat-value" id="stat-ext-hosters">0</div><div class="stat-label">Hosters</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:rgba(107,142,35,0.2)">🌾</div><div><div class="stat-value" id="stat-ext-guardas">0</div><div class="stat-label">Guardas</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:rgba(72,187,120,0.2)">✅</div><div><div class="stat-value" id="stat-ext-activos">0</div><div class="stat-label">Activos</div></div></div>
+        </div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Externo</th><th>Tipo</th><th>Rama</th><th>Bienes</th><th>Estado</th><th></th></tr></thead><tbody id="tabla-externos"><tr><td colspan="6"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
       </section>
 
       <!-- INVITACIONES -->
@@ -607,7 +631,7 @@ Soporte prioritario</textarea></div>
     }
     auth.onAuthStateChanged(async user=>{if(!user){window.location.href='login.html';return}currentUser=user;const doc=await db.collection('usuarios').doc(user.uid).get();if(!doc.exists||(doc.data().rol!=='AdminSistema'&&!doc.data().superAdmin)){alert('Acceso denegado');window.location.href='login.html';return}userData=doc.data();document.getElementById('user-name').textContent=(userData.nombre||'Admin').split(' ')[0];document.getElementById('user-avatar').textContent=(userData.nombre||'A').charAt(0).toUpperCase();cargarDashboard()});
     function cerrarSesion(){auth.signOut().then(()=>window.location.href='login.html')}
-    function cambiarSeccion(s){document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.toggle('active',l.dataset.section===s));document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(`section-${s}`).classList.add('active');const m={dashboard:cargarDashboard,logs:cargarLogs,ramas:cargarRamas,estirpes:cargarEstirpes,nidos:cargarNidos,usuarios:cargarUsuarios,invitaciones:cargarInvitaciones,planes:cargarPlanesConfig,legal:cargarLegal,estructura:cargarEstructura};if(m[s])m[s]()}
+    function cambiarSeccion(s){document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.toggle('active',l.dataset.section===s));document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));document.getElementById(`section-${s}`).classList.add('active');const m={dashboard:cargarDashboard,logs:cargarLogs,ramas:cargarRamas,estirpes:cargarEstirpes,nidos:cargarNidos,usuarios:cargarUsuarios,externos:cargarExternosSistema,invitaciones:cargarInvitaciones,planes:cargarPlanesConfig,legal:cargarLegal,estructura:cargarEstructura};if(m[s])m[s]()}
     
     function cargarEstructura() {
       cargarFamiliasNumeracion();
@@ -858,6 +882,98 @@ Soporte prioritario</textarea></div>
       }).join('')||'<tr><td colspan="8" class="text-center">Sin datos</td></tr>';
     }
     async function cargarInvitaciones(){const s=await db.collection('invitaciones-email').orderBy('fechaEnvio','desc').limit(100).get();const d=s.docs.map(x=>({id:x.id,...x.data()}));document.getElementById('tabla-invitaciones').innerHTML=d.map(i=>`<tr><td>${i.email||'-'}</td><td>${i.ramaNombre||'-'}</td><td>${i.nidoNombre||'-'}</td><td>${i.fechaEnvio?.toDate?.().toLocaleDateString('es')||'-'}</td><td><span class="badge ${i.estado==='aceptada'?'badge-success':i.estado==='expirada'?'badge-error':'badge-warning'}">${i.estado||'pendiente'}</span></td><td><button class="btn btn-sm btn-secondary">🔄</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center">Sin datos</td></tr>'}
+    
+    // ========== EXTERNOS ==========
+    let externosDataSistema = [];
+    let bienesDataSistema = [];
+    
+    async function cargarExternosSistema() {
+      try {
+        // Cargar todos los externos
+        const extSnap = await db.collection('externos').get();
+        externosDataSistema = extSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Cargar bienes para referencia
+        const bienesSnap = await db.collection('bienes').get();
+        bienesDataSistema = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Llenar selector de ramas
+        const selectRama = document.getElementById('filtro-rama-externo');
+        selectRama.innerHTML = '<option value="">Todas las ramas</option>' + 
+          ramasData.map(r => `<option value="${r.id}">${r.nombre || r.id}</option>`).join('');
+        
+        renderExternosSistema();
+      } catch (error) {
+        console.error('Error cargando externos:', error);
+        document.getElementById('tabla-externos').innerHTML = '<tr><td colspan="6" class="text-center text-muted">Error al cargar</td></tr>';
+      }
+    }
+    
+    function renderExternosSistema(filtroRama = '', filtroTipo = '') {
+      let datos = externosDataSistema;
+      
+      // Aplicar filtros
+      if (filtroRama) datos = datos.filter(e => e.familiaId === filtroRama);
+      if (filtroTipo) datos = datos.filter(e => e.tipo === filtroTipo);
+      
+      // Estadísticas
+      const caseros = externosDataSistema.filter(e => e.tipo === 'casero');
+      const hosters = externosDataSistema.filter(e => e.tipo === 'hoster');
+      const guardas = externosDataSistema.filter(e => e.tipo === 'guarda');
+      const activos = externosDataSistema.filter(e => e.activo);
+      
+      document.getElementById('stat-externos-total').textContent = externosDataSistema.length;
+      document.getElementById('stat-ext-caseros').textContent = caseros.length;
+      document.getElementById('stat-ext-hosters').textContent = hosters.length;
+      document.getElementById('stat-ext-guardas').textContent = guardas.length;
+      document.getElementById('stat-ext-activos').textContent = activos.length;
+      
+      const tipoIconos = { casero: '🏠', hoster: '🏨', guarda: '🌾' };
+      const tipoLabels = { casero: 'Casero', hoster: 'Hoster', guarda: 'Guarda' };
+      
+      if (datos.length === 0) {
+        document.getElementById('tabla-externos').innerHTML = '<tr><td colspan="6" class="text-center text-muted">No hay externos</td></tr>';
+        return;
+      }
+      
+      document.getElementById('tabla-externos').innerHTML = datos.map(ext => {
+        const rama = ramasData.find(r => r.id === ext.familiaId);
+        const bienes = (ext.bienesAsignados || []).map(b => {
+          const bien = bienesDataSistema.find(bd => bd.id === b.bienId);
+          return bien?.nombre || b.bienNombre || '?';
+        }).slice(0, 3);
+        const masbienes = (ext.bienesAsignados || []).length > 3 ? ` +${(ext.bienesAsignados || []).length - 3}` : '';
+        
+        return `<tr>
+          <td><strong>${ext.nombre || '-'}</strong><br><span class="text-muted" style="font-size:0.75rem;">${ext.email}</span></td>
+          <td><span class="badge ${ext.tipo === 'casero' ? 'badge-warning' : ext.tipo === 'hoster' ? 'badge-info' : 'badge-success'}">${tipoIconos[ext.tipo]} ${tipoLabels[ext.tipo] || ext.tipo}</span></td>
+          <td>${rama?.nombre || ext.familiaId || '-'}</td>
+          <td style="font-size:0.75rem;">${bienes.join(', ')}${masbienes}</td>
+          <td><span class="badge ${ext.activo ? 'badge-success' : 'badge-neutral'}">${ext.activo ? 'Activo' : 'Inactivo'}</span></td>
+          <td><button class="btn btn-sm btn-secondary" onclick="verExternoDetalle('${ext.id}')">👁️</button></td>
+        </tr>`;
+      }).join('');
+    }
+    
+    function filtrarExternosSistema() {
+      const rama = document.getElementById('filtro-rama-externo').value;
+      const tipo = document.getElementById('filtro-tipo-externo-sistema').value;
+      renderExternosSistema(rama, tipo);
+    }
+    
+    function verExternoDetalle(id) {
+      const ext = externosDataSistema.find(e => e.id === id);
+      if (!ext) return;
+      
+      const rama = ramasData.find(r => r.id === ext.familiaId);
+      const bienes = (ext.bienesAsignados || []).map(b => {
+        const bien = bienesDataSistema.find(bd => bd.id === b.bienId);
+        return `• ${bien?.nombre || b.bienNombre || b.bienId}`;
+      }).join('\n');
+      
+      alert(`📋 ${ext.nombre || 'Sin nombre'}\n\nEmail: ${ext.email}\nTeléfono: ${ext.telefono || '-'}\nTipo: ${ext.tipo}\nRama: ${rama?.nombre || ext.familiaId}\nEstado: ${ext.activo ? 'Activo' : 'Inactivo'}\n\n🏠 Bienes:\n${bienes || 'Ninguno'}`);
+    }
+
     async function cargarPlanesConfig(){
       try{
         // Cargar planes

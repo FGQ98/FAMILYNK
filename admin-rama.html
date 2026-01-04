@@ -203,6 +203,18 @@
     .role-badge.admin { background: var(--rojo); color: white; }
     .role-badge.miembro { background: var(--sage-muted); color: var(--sage-dark); }
 
+    .tipo-badge { padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; }
+    .tipo-badge.casero { background: rgba(139, 115, 85, 0.15); color: #8B7355; }
+    .tipo-badge.hoster { background: rgba(74, 85, 104, 0.15); color: #4A5568; }
+    .tipo-badge.guarda { background: rgba(107, 142, 35, 0.15); color: #6B8E23; }
+    
+    .estado-badge { padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; }
+    .estado-badge.activo { background: rgba(72, 187, 120, 0.15); color: #38A169; }
+    .estado-badge.inactivo { background: var(--cream-dark); color: var(--text-muted); }
+    
+    .bienes-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+    .bien-tag { padding: 2px 8px; background: var(--cream); border-radius: var(--radius-sm); font-size: 0.7rem; color: var(--text-light); }
+
     .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 
     .config-item {
@@ -420,6 +432,7 @@
 
     <div class="admin-tabs">
       <button class="admin-tab active" data-section="usuarios" onclick="cambiarSeccion('usuarios')"><span>👥</span> Usuarios</button>
+      <button class="admin-tab" data-section="externos" onclick="cambiarSeccion('externos')"><span>👷</span> Externos</button>
       <button class="admin-tab" data-section="reservas" onclick="cambiarSeccion('reservas')"><span>📅</span> Reservas</button>
       <button class="admin-tab" data-section="mayordomo" onclick="cambiarSeccion('mayordomo')"><span>🎩</span> Mayordomo</button>
       <button class="admin-tab" data-section="secciones" onclick="cambiarSeccion('secciones')"><span>📂</span> Secciones</button>
@@ -437,6 +450,64 @@
           <thead><tr><th>Usuario</th><th>Nido</th><th>Rol</th><th>Acciones</th></tr></thead>
           <tbody id="usuarios-tbody"></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- SECCIÓN EXTERNOS -->
+    <section class="admin-section" id="section-externos">
+      <div class="section-header">
+        <h2 class="section-title">👷 Externos</h2>
+        <div style="display:flex;gap:8px;">
+          <select class="form-input" id="filtro-tipo-externo" onchange="filtrarExternos()" style="width:auto;padding:8px 12px;">
+            <option value="">Todos los tipos</option>
+            <option value="casero">🏠 Caseros</option>
+            <option value="hoster">🏨 Hosters</option>
+            <option value="guarda">🌾 Guardas</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-externos-total">0</div>
+          <div class="stat-label">Total externos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-caseros">0</div>
+          <div class="stat-label">🏠 Caseros</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-hosters">0</div>
+          <div class="stat-label">🏨 Hosters</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-guardas">0</div>
+          <div class="stat-label">🌾 Guardas</div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Externo</th>
+              <th>Tipo</th>
+              <th>Bienes asignados</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="externos-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="card" style="background:var(--cream);">
+        <p style="font-size:0.85rem;color:var(--text-muted);">
+          💡 <strong>Nota:</strong> Los externos se crean desde la ficha de cada bien (sección Caseros/Hosters/Guardas). 
+          Aquí puedes ver todos los externos de la rama y gestionar sus accesos.
+        </p>
       </div>
     </section>
 
@@ -685,7 +756,7 @@
   <script src="js/firebase-config.js"></script>
 
   <script>
-    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [];
+    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [], externosData = [];
     let bienSeleccionado = null;
     let tiposReservaData = [];
     let editandoTipoId = null;
@@ -744,12 +815,17 @@
       const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
       bienesData = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+      // Cargar externos de esta familia
+      const externosSnap = await db.collection('externos').where('familiaId', '==', familiaData.id).get();
+      externosData = externosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
       document.getElementById('stat-usuarios').textContent = usuariosData.length;
       document.getElementById('stat-nidos').textContent = nidosData.length;
       document.getElementById('stat-bienes').textContent = bienesData.length;
       document.getElementById('stat-generaciones').textContent = new Set(nidosData.map(n => n.generacion)).size;
 
       renderUsuarios();
+      renderExternos();
       renderMayordomo();
       renderSecciones();
       renderPermisos();
@@ -780,6 +856,120 @@
       const nuevoRol = prompt(`Rol actual: ${user.rol || 'miembro'}\n\nNuevo rol (adminSistema, adminNido, adulto, joven):`, user.rol || 'adulto');
       if (!nuevoRol) return;
       db.collection('usuarios').doc(userId).update({ rol: nuevoRol }).then(() => { alert('✅ Rol actualizado'); cargarDatos(); }).catch(err => alert('Error: ' + err.message));
+    }
+
+    // ============ EXTERNOS ============
+    function renderExternos(filtroTipo = '') {
+      const tbody = document.getElementById('externos-tbody');
+      
+      // Filtrar por tipo si hay filtro
+      let externosFiltrados = externosData;
+      if (filtroTipo) {
+        externosFiltrados = externosData.filter(e => e.tipo === filtroTipo);
+      }
+      
+      // Actualizar estadísticas
+      const caseros = externosData.filter(e => e.tipo === 'casero');
+      const hosters = externosData.filter(e => e.tipo === 'hoster');
+      const guardas = externosData.filter(e => e.tipo === 'guarda');
+      
+      document.getElementById('stat-externos-total').textContent = externosData.length;
+      document.getElementById('stat-caseros').textContent = caseros.length;
+      document.getElementById('stat-hosters').textContent = hosters.length;
+      document.getElementById('stat-guardas').textContent = guardas.length;
+      
+      if (externosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">
+          ${externosData.length === 0 ? 'No hay externos registrados. Se crean desde cada bien.' : 'No hay externos de este tipo.'}
+        </td></tr>`;
+        return;
+      }
+      
+      const tipoIconos = { casero: '🏠', hoster: '🏨', guarda: '🌾' };
+      const tipoLabels = { casero: 'Casero', hoster: 'Hoster', guarda: 'Guarda' };
+      
+      tbody.innerHTML = externosFiltrados.map(ext => {
+        const iniciales = ext.nombre ? ext.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '?';
+        const bienes = ext.bienesAsignados || [];
+        
+        // Obtener nombres de bienes
+        const bienesHtml = bienes.map(b => {
+          const bien = bienesData.find(bd => bd.id === b.bienId);
+          return `<span class="bien-tag">${bien?.nombre || b.bienNombre || b.bienId}</span>`;
+        }).join('');
+        
+        return `
+          <tr class="user-row">
+            <td>
+              <div class="user-info">
+                <div class="user-avatar" style="background:${ext.tipo === 'casero' ? '#8B7355' : ext.tipo === 'hoster' ? '#4A5568' : '#6B8E23'}">${iniciales}</div>
+                <div>
+                  <div class="user-name">${ext.nombre || 'Sin nombre'}</div>
+                  <div class="user-email">${ext.email}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="tipo-badge ${ext.tipo}">${tipoIconos[ext.tipo]} ${tipoLabels[ext.tipo]}</span></td>
+            <td><div class="bienes-tags">${bienesHtml || '<span style="color:var(--text-muted)">Ninguno</span>'}</div></td>
+            <td><span class="estado-badge ${ext.activo ? 'activo' : 'inactivo'}">${ext.activo ? 'Activo' : 'Inactivo'}</span></td>
+            <td>
+              <button class="btn btn-secondary btn-sm" onclick="verDetalleExterno('${ext.id}')">👁️ Ver</button>
+              ${ext.activo ? 
+                `<button class="btn btn-sm" style="background:#dc3545;color:white;margin-left:4px;" onclick="toggleExterno('${ext.id}', false)">⏸️</button>` :
+                `<button class="btn btn-sm" style="background:#38A169;color:white;margin-left:4px;" onclick="toggleExterno('${ext.id}', true)">▶️</button>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+    
+    function filtrarExternos() {
+      const filtro = document.getElementById('filtro-tipo-externo').value;
+      renderExternos(filtro);
+    }
+    
+    function verDetalleExterno(externoId) {
+      const ext = externosData.find(e => e.id === externoId);
+      if (!ext) return;
+      
+      const bienes = (ext.bienesAsignados || []).map(b => {
+        const bien = bienesData.find(bd => bd.id === b.bienId);
+        const permisos = b.permisos || {};
+        const permisosStr = Object.entries(permisos).map(([mod, p]) => {
+          const acciones = [];
+          if (p.ver) acciones.push('V');
+          if (p.crear) acciones.push('C');
+          if (p.editar) acciones.push('E');
+          if (p.borrar) acciones.push('B');
+          return acciones.length > 0 ? `${mod}: ${acciones.join('')}` : null;
+        }).filter(Boolean).join(', ');
+        
+        return `• ${bien?.nombre || b.bienNombre}\n  Permisos: ${permisosStr || 'Solo lectura'}`;
+      }).join('\n\n');
+      
+      alert(`📋 Detalle de ${ext.nombre}\n\nEmail: ${ext.email}\nTeléfono: ${ext.telefono || '-'}\nTipo: ${ext.tipo}\nEstado: ${ext.activo ? 'Activo' : 'Inactivo'}\n\n🏠 Bienes asignados:\n${bienes || 'Ninguno'}`);
+    }
+    
+    async function toggleExterno(externoId, activar) {
+      if (!confirm(`¿${activar ? 'Activar' : 'Desactivar'} este externo?`)) return;
+      
+      try {
+        await db.collection('externos').doc(externoId).update({
+          activo: activar,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Actualizar local
+        const idx = externosData.findIndex(e => e.id === externoId);
+        if (idx >= 0) externosData[idx].activo = activar;
+        
+        renderExternos(document.getElementById('filtro-tipo-externo').value);
+        alert(`✅ Externo ${activar ? 'activado' : 'desactivado'}`);
+      } catch (error) {
+        console.error(error);
+        alert('Error al actualizar');
+      }
     }
 
     // ============ MAYORDOMO ============
