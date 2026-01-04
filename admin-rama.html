@@ -344,6 +344,16 @@
 
     .hidden { display: none !important; }
 
+    .gestion-panel { display: none; }
+    .gestion-panel.active { display: block; }
+    .gestion-tab.active[data-gestion="mayordomo"] { background: #8B7355 !important; color: white !important; }
+    .gestion-tab.active[data-gestion="gerente"] { background: #4A5568 !important; color: white !important; }
+    .gestion-tab.active[data-gestion="capataz"] { background: #6B8E23 !important; color: white !important; }
+    
+    .toggle-slider-large.mayordomo { background: #8B7355 !important; }
+    .toggle-slider-large.gerente { background: #4A5568 !important; }
+    .toggle-slider-large.capataz { background: #6B8E23 !important; }
+
     /* Tipos de Reserva */
     .tipos-reserva-list { display: flex; flex-direction: column; gap: 12px; }
     .tipo-reserva-item {
@@ -434,7 +444,7 @@
       <button class="admin-tab active" data-section="usuarios" onclick="cambiarSeccion('usuarios')"><span>👥</span> Usuarios</button>
       <button class="admin-tab" data-section="externos" onclick="cambiarSeccion('externos')"><span>👷</span> Externos</button>
       <button class="admin-tab" data-section="reservas" onclick="cambiarSeccion('reservas')"><span>📅</span> Reservas</button>
-      <button class="admin-tab" data-section="mayordomo" onclick="cambiarSeccion('mayordomo')"><span>🎩</span> Mayordomo</button>
+      <button class="admin-tab" data-section="gestiones" onclick="cambiarSeccion('gestiones')"><span>⚙️</span> Gestiones</button>
       <button class="admin-tab" data-section="secciones" onclick="cambiarSeccion('secciones')"><span>📂</span> Secciones</button>
       <button class="admin-tab" data-section="permisos" onclick="cambiarSeccion('permisos')"><span>🔐</span> Permisos</button>
       <button class="admin-tab" data-section="estirpe" onclick="cambiarSeccion('estirpe')"><span>⚙️</span> Configuración</button>
@@ -537,79 +547,156 @@
       </div>
     </section>
 
-    <section class="admin-section" id="section-mayordomo">
+    <section class="admin-section" id="section-gestiones">
       <div class="section-header">
-        <h2 class="section-title">🎩 Mayordomo</h2>
+        <h2 class="section-title">⚙️ Gestiones de Bienes</h2>
       </div>
       
-      <div class="card">
-        <div class="card-title">Gestión de bienes</div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-          Activa el Mayordomo y configura los submódulos para cada bien de la estirpe
-        </p>
-        
-        <div class="form-group">
-          <label class="form-label">Selecciona un bien</label>
-          <select class="form-input" id="select-bien" onchange="cargarConfigBien()">
-            <option value="">-- Selecciona un bien --</option>
-          </select>
-        </div>
-        
-        <div id="config-bien-container" class="hidden">
-          <div class="bien-config-header">
-            <div class="bien-info">
-              <span class="bien-icono" id="bien-icono">🏠</span>
-              <div>
-                <div class="bien-nombre" id="bien-nombre">...</div>
-                <div class="bien-tipo" id="bien-tipo">...</div>
-              </div>
-            </div>
-            <label class="toggle-switch-large">
-              <input type="checkbox" id="toggle-mayordomo-activo" onchange="toggleMayordomoBien()">
-              <span class="toggle-slider-large"></span>
-              <span class="toggle-label" id="mayordomo-estado">Desactivado</span>
-            </label>
+      <!-- Subtabs para los 3 tipos de gestión -->
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-secondary gestion-tab active" data-gestion="mayordomo" onclick="cambiarGestion('mayordomo')" style="background:#8B7355;color:white;">🎩 Mayordomo</button>
+        <button class="btn btn-secondary gestion-tab" data-gestion="gerente" onclick="cambiarGestion('gerente')">🏨 Gerente</button>
+        <button class="btn btn-secondary gestion-tab" data-gestion="capataz" onclick="cambiarGestion('capataz')">🌾 Capataz</button>
+      </div>
+      
+      <!-- MAYORDOMO -->
+      <div class="gestion-panel active" id="panel-mayordomo">
+        <div class="card" style="border-left:4px solid #8B7355;">
+          <div class="card-title">🎩 Mayordomo - Gestión doméstica</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            Para viviendas y propiedades de uso familiar. Activa submódulos: reservas, inventario, gastos, mantenimiento, limpieza.
+          </p>
+          
+          <div class="form-group">
+            <label class="form-label">Selecciona un bien</label>
+            <select class="form-input" id="select-bien-mayordomo" onchange="cargarConfigBien('mayordomo')">
+              <option value="">-- Selecciona un bien --</option>
+            </select>
           </div>
           
-          <div id="submodulos-config" class="hidden">
-            <div class="submodulos-title">Submódulos activos</div>
-            <div class="submodulos-grid">
-              <label class="submodulo-item">
-                <input type="checkbox" id="mod-reservas" onchange="guardarSubmodulos()">
-                <span class="submodulo-icono">📅</span>
-                <span class="submodulo-nombre">Reservas</span>
-              </label>
-              <label class="submodulo-item">
-                <input type="checkbox" id="mod-inventario" onchange="guardarSubmodulos()">
-                <span class="submodulo-icono">📦</span>
-                <span class="submodulo-nombre">Inventario</span>
-              </label>
-              <label class="submodulo-item">
-                <input type="checkbox" id="mod-gastos" onchange="guardarSubmodulos()">
-                <span class="submodulo-icono">💰</span>
-                <span class="submodulo-nombre">Gastos</span>
-              </label>
-              <label class="submodulo-item">
-                <input type="checkbox" id="mod-mantenimiento" onchange="guardarSubmodulos()">
-                <span class="submodulo-icono">🔧</span>
-                <span class="submodulo-nombre">Mantenimiento</span>
-              </label>
-              <label class="submodulo-item">
-                <input type="checkbox" id="mod-limpieza" onchange="guardarSubmodulos()">
-                <span class="submodulo-icono">🧹</span>
-                <span class="submodulo-nombre">Limpieza</span>
+          <div id="config-mayordomo-container" class="hidden">
+            <div class="bien-config-header">
+              <div class="bien-info">
+                <span class="bien-icono" id="bien-icono-mayordomo">🏠</span>
+                <div>
+                  <div class="bien-nombre" id="bien-nombre-mayordomo">...</div>
+                  <div class="bien-tipo" id="bien-tipo-mayordomo">...</div>
+                </div>
+              </div>
+              <label class="toggle-switch-large">
+                <input type="checkbox" id="toggle-mayordomo-activo" onchange="toggleGestionBien('mayordomo')">
+                <span class="toggle-slider-large" style="background:var(--text-muted);"></span>
+                <span class="toggle-label" id="mayordomo-estado">Desactivado</span>
               </label>
             </div>
             
-            <a href="#" id="enlace-ver-bien" class="btn btn-secondary" style="margin-top: 16px;">
-              👁️ Ver ficha del bien
-            </a>
+            <div id="submodulos-mayordomo" class="hidden">
+              <div class="submodulos-title">Submódulos activos</div>
+              <div class="submodulos-grid">
+                <label class="submodulo-item"><input type="checkbox" id="mod-may-reservas" onchange="guardarSubmodulosGestion('mayordomo')"><span class="submodulo-icono">📅</span><span class="submodulo-nombre">Reservas</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-may-inventario" onchange="guardarSubmodulosGestion('mayordomo')"><span class="submodulo-icono">📦</span><span class="submodulo-nombre">Inventario</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-may-gastos" onchange="guardarSubmodulosGestion('mayordomo')"><span class="submodulo-icono">💰</span><span class="submodulo-nombre">Gastos</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-may-mantenimiento" onchange="guardarSubmodulosGestion('mayordomo')"><span class="submodulo-icono">🔧</span><span class="submodulo-nombre">Mantenimiento</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-may-limpieza" onchange="guardarSubmodulosGestion('mayordomo')"><span class="submodulo-icono">🧹</span><span class="submodulo-nombre">Limpieza</span></label>
+              </div>
+            </div>
           </div>
         </div>
       </div>
       
+      <!-- GERENTE -->
+      <div class="gestion-panel hidden" id="panel-gerente">
+        <div class="card" style="border-left:4px solid #4A5568;">
+          <div class="card-title">🏨 Gerente - Alquiler turístico/comercial</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            Para propiedades en alquiler. Gestiona huéspedes, tarifas, ocupación y facturación.
+          </p>
+          
+          <div class="form-group">
+            <label class="form-label">Selecciona un bien</label>
+            <select class="form-input" id="select-bien-gerente" onchange="cargarConfigBien('gerente')">
+              <option value="">-- Selecciona un bien --</option>
+            </select>
+          </div>
+          
+          <div id="config-gerente-container" class="hidden">
+            <div class="bien-config-header">
+              <div class="bien-info">
+                <span class="bien-icono" id="bien-icono-gerente">🏠</span>
+                <div>
+                  <div class="bien-nombre" id="bien-nombre-gerente">...</div>
+                  <div class="bien-tipo" id="bien-tipo-gerente">...</div>
+                </div>
+              </div>
+              <label class="toggle-switch-large">
+                <input type="checkbox" id="toggle-gerente-activo" onchange="toggleGestionBien('gerente')">
+                <span class="toggle-slider-large" style="background:var(--text-muted);"></span>
+                <span class="toggle-label" id="gerente-estado">Desactivado</span>
+              </label>
+            </div>
+            
+            <div id="submodulos-gerente" class="hidden">
+              <div class="submodulos-title">Submódulos activos</div>
+              <div class="submodulos-grid">
+                <label class="submodulo-item"><input type="checkbox" id="mod-ger-reservas" onchange="guardarSubmodulosGestion('gerente')"><span class="submodulo-icono">📅</span><span class="submodulo-nombre">Reservas</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-ger-habitaciones" onchange="guardarSubmodulosGestion('gerente')"><span class="submodulo-icono">🛏️</span><span class="submodulo-nombre">Habitaciones</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-ger-huespedes" onchange="guardarSubmodulosGestion('gerente')"><span class="submodulo-icono">👥</span><span class="submodulo-nombre">Huéspedes</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-ger-tarifas" onchange="guardarSubmodulosGestion('gerente')"><span class="submodulo-icono">💶</span><span class="submodulo-nombre">Tarifas</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-ger-facturacion" onchange="guardarSubmodulosGestion('gerente')"><span class="submodulo-icono">🧾</span><span class="submodulo-nombre">Facturación</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- CAPATAZ -->
+      <div class="gestion-panel hidden" id="panel-capataz">
+        <div class="card" style="border-left:4px solid #6B8E23;">
+          <div class="card-title">🌾 Capataz - Fincas rurales</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+            Para terrenos y fincas. Gestiona labores, aperos, parcelas, ganado e incidencias.
+          </p>
+          
+          <div class="form-group">
+            <label class="form-label">Selecciona un bien</label>
+            <select class="form-input" id="select-bien-capataz" onchange="cargarConfigBien('capataz')">
+              <option value="">-- Selecciona un bien --</option>
+            </select>
+          </div>
+          
+          <div id="config-capataz-container" class="hidden">
+            <div class="bien-config-header">
+              <div class="bien-info">
+                <span class="bien-icono" id="bien-icono-capataz">🌳</span>
+                <div>
+                  <div class="bien-nombre" id="bien-nombre-capataz">...</div>
+                  <div class="bien-tipo" id="bien-tipo-capataz">...</div>
+                </div>
+              </div>
+              <label class="toggle-switch-large">
+                <input type="checkbox" id="toggle-capataz-activo" onchange="toggleGestionBien('capataz')">
+                <span class="toggle-slider-large" style="background:var(--text-muted);"></span>
+                <span class="toggle-label" id="capataz-estado">Desactivado</span>
+              </label>
+            </div>
+            
+            <div id="submodulos-capataz" class="hidden">
+              <div class="submodulos-title">Submódulos activos</div>
+              <div class="submodulos-grid">
+                <label class="submodulo-item"><input type="checkbox" id="mod-cap-labores" onchange="guardarSubmodulosGestion('capataz')"><span class="submodulo-icono">📋</span><span class="submodulo-nombre">Labores</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-cap-aperos" onchange="guardarSubmodulosGestion('capataz')"><span class="submodulo-icono">🚜</span><span class="submodulo-nombre">Aperos</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-cap-parcelas" onchange="guardarSubmodulosGestion('capataz')"><span class="submodulo-icono">🗺️</span><span class="submodulo-nombre">Parcelas</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-cap-inventario" onchange="guardarSubmodulosGestion('capataz')"><span class="submodulo-icono">📦</span><span class="submodulo-nombre">Inventario</span></label>
+                <label class="submodulo-item"><input type="checkbox" id="mod-cap-incidencias" onchange="guardarSubmodulosGestion('capataz')"><span class="submodulo-icono">🔧</span><span class="submodulo-nombre">Incidencias</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Resumen de todos los bienes -->
       <div class="card">
-        <div class="card-title">Resumen de bienes</div>
+        <div class="card-title">📊 Resumen de bienes</div>
         <div class="bienes-resumen" id="bienes-resumen">
           <!-- Se carga dinámicamente -->
         </div>
@@ -750,6 +837,34 @@
     </div>
   </div>
 
+  <!-- Modal editar externo -->
+  <div class="modal-overlay" id="modal-externo">
+    <div class="modal" style="max-width:600px;">
+      <div class="modal-header"><h3 class="modal-title" id="modal-externo-titulo">👷 Editar externo</h3><button class="modal-close" onclick="cerrarModal('modal-externo')">×</button></div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="ext-nombre"></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="ext-email" disabled></div>
+        </div>
+        <div class="form-group"><label class="form-label">Teléfono</label><input type="tel" class="form-input" id="ext-telefono"></div>
+        
+        <div class="form-group">
+          <label class="form-label">Bienes y permisos</label>
+          <div id="ext-bienes-permisos" style="max-height:300px;overflow-y:auto;">
+            <!-- Se llena dinámicamente -->
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm" id="btn-desactivar-externo" onclick="desactivarExterno()">⏸️ Desactivar</button>
+        <div style="display:flex;gap:12px;">
+          <button class="btn btn-secondary" onclick="cerrarModal('modal-externo')">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarExterno()">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -758,8 +873,10 @@
   <script>
     let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [], externosData = [];
     let bienSeleccionado = null;
+    let bienSeleccionadoGestion = { mayordomo: null, gerente: null, capataz: null };
     let tiposReservaData = [];
     let editandoTipoId = null;
+    let editandoExternoId = null;
 
     const seccionesDisponibles = [
       { id: 'arbol', nombre: 'Árbol', icono: '🌳', desc: 'Árbol genealógico' },
@@ -913,7 +1030,7 @@
             <td><div class="bienes-tags">${bienesHtml || '<span style="color:var(--text-muted)">Ninguno</span>'}</div></td>
             <td><span class="estado-badge ${ext.activo ? 'activo' : 'inactivo'}">${ext.activo ? 'Activo' : 'Inactivo'}</span></td>
             <td>
-              <button class="btn btn-secondary btn-sm" onclick="verDetalleExterno('${ext.id}')">👁️ Ver</button>
+              <button class="btn btn-primary btn-sm" onclick="abrirModalExterno('${ext.id}')">✏️ Editar</button>
               ${ext.activo ? 
                 `<button class="btn btn-sm" style="background:#dc3545;color:white;margin-left:4px;" onclick="toggleExterno('${ext.id}', false)">⏸️</button>` :
                 `<button class="btn btn-sm" style="background:#38A169;color:white;margin-left:4px;" onclick="toggleExterno('${ext.id}', true)">▶️</button>`
@@ -929,26 +1046,143 @@
       renderExternos(filtro);
     }
     
-    function verDetalleExterno(externoId) {
+    function abrirModalExterno(externoId) {
       const ext = externosData.find(e => e.id === externoId);
       if (!ext) return;
       
-      const bienes = (ext.bienesAsignados || []).map(b => {
-        const bien = bienesData.find(bd => bd.id === b.bienId);
-        const permisos = b.permisos || {};
-        const permisosStr = Object.entries(permisos).map(([mod, p]) => {
-          const acciones = [];
-          if (p.ver) acciones.push('V');
-          if (p.crear) acciones.push('C');
-          if (p.editar) acciones.push('E');
-          if (p.borrar) acciones.push('B');
-          return acciones.length > 0 ? `${mod}: ${acciones.join('')}` : null;
-        }).filter(Boolean).join(', ');
-        
-        return `• ${bien?.nombre || b.bienNombre}\n  Permisos: ${permisosStr || 'Solo lectura'}`;
-      }).join('\n\n');
+      editandoExternoId = externoId;
       
-      alert(`📋 Detalle de ${ext.nombre}\n\nEmail: ${ext.email}\nTeléfono: ${ext.telefono || '-'}\nTipo: ${ext.tipo}\nEstado: ${ext.activo ? 'Activo' : 'Inactivo'}\n\n🏠 Bienes asignados:\n${bienes || 'Ninguno'}`);
+      const tipoIconos = { casero: '🏠', hoster: '🏨', guarda: '🌾' };
+      const tipoLabels = { casero: 'Casero', hoster: 'Hoster', guarda: 'Guarda' };
+      
+      document.getElementById('modal-externo-titulo').textContent = `${tipoIconos[ext.tipo]} Editar ${tipoLabels[ext.tipo]}`;
+      document.getElementById('ext-nombre').value = ext.nombre || '';
+      document.getElementById('ext-email').value = ext.email || '';
+      document.getElementById('ext-telefono').value = ext.telefono || '';
+      document.getElementById('btn-desactivar-externo').textContent = ext.activo ? '⏸️ Desactivar' : '▶️ Activar';
+      
+      // Renderizar bienes y permisos
+      const bienesContainer = document.getElementById('ext-bienes-permisos');
+      const bienes = ext.bienesAsignados || [];
+      
+      if (bienes.length === 0) {
+        bienesContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:16px;">Sin bienes asignados</p>';
+      } else {
+        // Determinar secciones según tipo
+        let secciones = [];
+        if (ext.tipo === 'casero') {
+          secciones = ['reservas', 'inventario', 'ajuar', 'mantenimiento', 'limpieza', 'gastos', 'documentos'];
+        } else if (ext.tipo === 'hoster') {
+          secciones = ['reservas', 'habitaciones', 'huespedes', 'tarifas', 'ventas', 'inventario', 'ajuar', 'servicios'];
+        } else if (ext.tipo === 'guarda') {
+          secciones = ['labores', 'aperos', 'parcelas', 'inventario', 'incidencias'];
+        }
+        
+        bienesContainer.innerHTML = bienes.map((b, idx) => {
+          const bien = bienesData.find(bd => bd.id === b.bienId);
+          const permisos = b.permisos || {};
+          
+          return `
+            <div style="background:var(--cream);border-radius:8px;padding:12px;margin-bottom:12px;">
+              <div style="font-weight:600;margin-bottom:8px;">${bien?.nombre || b.bienNombre}</div>
+              <table style="width:100%;font-size:0.75rem;">
+                <tr style="background:var(--cream-dark);">
+                  <th style="padding:4px;text-align:left;">Módulo</th>
+                  <th style="padding:4px;text-align:center;">Ver</th>
+                  <th style="padding:4px;text-align:center;">Crear</th>
+                  <th style="padding:4px;text-align:center;">Editar</th>
+                  <th style="padding:4px;text-align:center;">Borrar</th>
+                </tr>
+                ${secciones.map(sec => {
+                  const p = permisos[sec] || {};
+                  return `<tr>
+                    <td style="padding:4px;">${sec}</td>
+                    <td style="text-align:center;"><input type="checkbox" data-bien="${idx}" data-sec="${sec}" data-perm="ver" ${p.ver ? 'checked' : ''}></td>
+                    <td style="text-align:center;"><input type="checkbox" data-bien="${idx}" data-sec="${sec}" data-perm="crear" ${p.crear ? 'checked' : ''}></td>
+                    <td style="text-align:center;"><input type="checkbox" data-bien="${idx}" data-sec="${sec}" data-perm="editar" ${p.editar ? 'checked' : ''}></td>
+                    <td style="text-align:center;"><input type="checkbox" data-bien="${idx}" data-sec="${sec}" data-perm="borrar" ${p.borrar ? 'checked' : ''}></td>
+                  </tr>`;
+                }).join('')}
+              </table>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      document.getElementById('modal-externo').classList.add('active');
+    }
+    
+    async function guardarExterno() {
+      if (!editandoExternoId) return;
+      
+      const ext = externosData.find(e => e.id === editandoExternoId);
+      if (!ext) return;
+      
+      try {
+        const nombre = document.getElementById('ext-nombre').value.trim();
+        const telefono = document.getElementById('ext-telefono').value.trim();
+        
+        // Recoger permisos de la tabla
+        const bienesAsignados = [...(ext.bienesAsignados || [])];
+        
+        document.querySelectorAll('#ext-bienes-permisos input[type="checkbox"]').forEach(cb => {
+          const bienIdx = parseInt(cb.dataset.bien);
+          const sec = cb.dataset.sec;
+          const perm = cb.dataset.perm;
+          
+          if (!bienesAsignados[bienIdx].permisos) bienesAsignados[bienIdx].permisos = {};
+          if (!bienesAsignados[bienIdx].permisos[sec]) bienesAsignados[bienIdx].permisos[sec] = {};
+          bienesAsignados[bienIdx].permisos[sec][perm] = cb.checked;
+        });
+        
+        await db.collection('externos').doc(editandoExternoId).update({
+          nombre,
+          telefono,
+          bienesAsignados,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Actualizar local
+        const idx = externosData.findIndex(e => e.id === editandoExternoId);
+        if (idx >= 0) {
+          externosData[idx].nombre = nombre;
+          externosData[idx].telefono = telefono;
+          externosData[idx].bienesAsignados = bienesAsignados;
+        }
+        
+        cerrarModal('modal-externo');
+        renderExternos(document.getElementById('filtro-tipo-externo').value);
+        alert('✅ Externo actualizado');
+      } catch (error) {
+        console.error(error);
+        alert('Error al guardar: ' + error.message);
+      }
+    }
+    
+    async function desactivarExterno() {
+      if (!editandoExternoId) return;
+      
+      const ext = externosData.find(e => e.id === editandoExternoId);
+      const nuevoEstado = !ext.activo;
+      
+      if (!confirm(`¿${nuevoEstado ? 'Activar' : 'Desactivar'} este externo?`)) return;
+      
+      try {
+        await db.collection('externos').doc(editandoExternoId).update({
+          activo: nuevoEstado,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        const idx = externosData.findIndex(e => e.id === editandoExternoId);
+        if (idx >= 0) externosData[idx].activo = nuevoEstado;
+        
+        cerrarModal('modal-externo');
+        renderExternos(document.getElementById('filtro-tipo-externo').value);
+        alert(`✅ Externo ${nuevoEstado ? 'activado' : 'desactivado'}`);
+      } catch (error) {
+        console.error(error);
+        alert('Error: ' + error.message);
+      }
     }
     
     async function toggleExterno(externoId, activar) {
@@ -978,13 +1212,25 @@
       'mueble': '🛋️', 'otro': '📦'
     };
 
-    function renderMayordomo() {
-      // Llenar selector de bienes
-      const select = document.getElementById('select-bien');
-      select.innerHTML = '<option value="">-- Selecciona un bien --</option>' + 
+    // ============ GESTIONES (Mayordomo, Gerente, Capataz) ============
+    function cambiarGestion(gestion) {
+      document.querySelectorAll('.gestion-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.gestion-tab[data-gestion="${gestion}"]`).classList.add('active');
+      
+      document.querySelectorAll('.gestion-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(`panel-${gestion}`).classList.add('active');
+    }
+    
+    function renderGestiones() {
+      // Llenar selectores de bienes para cada gestión
+      const bienesOptions = '<option value="">-- Selecciona un bien --</option>' + 
         bienesData.map(b => `<option value="${b.id}">${tipoIconos[b.tipo] || '📦'} ${b.nombre}</option>`).join('');
       
-      // Resumen de bienes
+      document.getElementById('select-bien-mayordomo').innerHTML = bienesOptions;
+      document.getElementById('select-bien-gerente').innerHTML = bienesOptions;
+      document.getElementById('select-bien-capataz').innerHTML = bienesOptions;
+      
+      // Resumen de bienes con todas las gestiones
       const resumen = document.getElementById('bienes-resumen');
       if (bienesData.length === 0) {
         resumen.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No hay bienes registrados. Créalos en "Lo Común".</p>';
@@ -992,9 +1238,10 @@
       }
       
       resumen.innerHTML = bienesData.map(b => {
-        const activo = b.mayordomoActivo;
-        const modulos = b.mayordomoModulos || {};
-        const modulosActivos = Object.values(modulos).filter(v => v).length;
+        const badges = [];
+        if (b.mayordomoActivo) badges.push('<span style="background:#8B7355;color:white;padding:2px 8px;border-radius:12px;font-size:0.7rem;">🎩 Mayordomo</span>');
+        if (b.gerenteActivo) badges.push('<span style="background:#4A5568;color:white;padding:2px 8px;border-radius:12px;font-size:0.7rem;">🏨 Gerente</span>');
+        if (b.capatazActivo) badges.push('<span style="background:#6B8E23;color:white;padding:2px 8px;border-radius:12px;font-size:0.7rem;">🌾 Capataz</span>');
         
         return `
           <div class="bien-resumen-item">
@@ -1002,110 +1249,150 @@
               <span>${tipoIconos[b.tipo] || '📦'}</span>
               <span class="bien-resumen-nombre">${b.nombre}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              ${activo ? `<span style="font-size: 0.75rem; color: var(--text-muted);">${modulosActivos} módulos</span>` : ''}
-              <span class="bien-resumen-estado ${activo ? 'activo' : 'inactivo'}">
-                ${activo ? '🎩 Activo' : 'Inactivo'}
-              </span>
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              ${badges.length > 0 ? badges.join('') : '<span style="color:var(--text-muted);font-size:0.75rem;">Sin gestiones</span>'}
             </div>
           </div>
         `;
       }).join('');
     }
-
-    function cargarConfigBien() {
-      const bienId = document.getElementById('select-bien').value;
-      const container = document.getElementById('config-bien-container');
-      const submodulosConfig = document.getElementById('submodulos-config');
+    
+    function cargarConfigBien(gestion) {
+      const bienId = document.getElementById(`select-bien-${gestion}`).value;
+      const container = document.getElementById(`config-${gestion}-container`);
+      const submodulosDiv = document.getElementById(`submodulos-${gestion}`);
       
       if (!bienId) {
         container.classList.add('hidden');
-        bienSeleccionado = null;
+        bienSeleccionadoGestion[gestion] = null;
         return;
       }
       
-      bienSeleccionado = bienesData.find(b => b.id === bienId);
-      if (!bienSeleccionado) return;
+      const bien = bienesData.find(b => b.id === bienId);
+      if (!bien) return;
       
+      bienSeleccionadoGestion[gestion] = bien;
       container.classList.remove('hidden');
       
       // Info del bien
-      document.getElementById('bien-icono').textContent = tipoIconos[bienSeleccionado.tipo] || '📦';
-      document.getElementById('bien-nombre').textContent = bienSeleccionado.nombre;
-      document.getElementById('bien-tipo').textContent = bienSeleccionado.subtipo || bienSeleccionado.tipo;
-      document.getElementById('enlace-ver-bien').href = `bien.html?id=${bienId}`;
+      document.getElementById(`bien-icono-${gestion}`).textContent = tipoIconos[bien.tipo] || '📦';
+      document.getElementById(`bien-nombre-${gestion}`).textContent = bien.nombre;
+      document.getElementById(`bien-tipo-${gestion}`).textContent = bien.subtipo || bien.tipo;
       
-      // Estado del Mayordomo
-      const toggle = document.getElementById('toggle-mayordomo-activo');
-      toggle.checked = bienSeleccionado.mayordomoActivo || false;
-      document.getElementById('mayordomo-estado').textContent = toggle.checked ? 'Activado' : 'Desactivado';
+      // Estado de la gestión
+      const campoActivo = `${gestion}Activo`;
+      const campoModulos = `${gestion}Modulos`;
+      
+      const toggle = document.getElementById(`toggle-${gestion}-activo`);
+      toggle.checked = bien[campoActivo] || false;
+      document.getElementById(`${gestion}-estado`).textContent = toggle.checked ? 'Activado' : 'Desactivado';
+      
+      // Color del toggle según gestión
+      const slider = toggle.nextElementSibling;
+      if (toggle.checked) {
+        slider.classList.add(gestion);
+      } else {
+        slider.classList.remove(gestion);
+      }
       
       // Mostrar/ocultar submódulos
       if (toggle.checked) {
-        submodulosConfig.classList.remove('hidden');
-        cargarSubmodulos();
+        submodulosDiv.classList.remove('hidden');
+        cargarSubmodulosGestion(gestion, bien[campoModulos] || {});
       } else {
-        submodulosConfig.classList.add('hidden');
+        submodulosDiv.classList.add('hidden');
       }
     }
-
-    function cargarSubmodulos() {
-      const modulos = bienSeleccionado.mayordomoModulos || {};
-      document.getElementById('mod-reservas').checked = modulos.reservas || false;
-      document.getElementById('mod-inventario').checked = modulos.inventario || false;
-      document.getElementById('mod-gastos').checked = modulos.gastos || false;
-      document.getElementById('mod-mantenimiento').checked = modulos.mantenimiento || false;
-      document.getElementById('mod-limpieza').checked = modulos.limpieza || false;
+    
+    function cargarSubmodulosGestion(gestion, modulos) {
+      const prefijos = { mayordomo: 'may', gerente: 'ger', capataz: 'cap' };
+      const prefix = prefijos[gestion];
+      
+      const modulosPorGestion = {
+        mayordomo: ['reservas', 'inventario', 'gastos', 'mantenimiento', 'limpieza'],
+        gerente: ['reservas', 'habitaciones', 'huespedes', 'tarifas', 'facturacion'],
+        capataz: ['labores', 'aperos', 'parcelas', 'inventario', 'incidencias']
+      };
+      
+      modulosPorGestion[gestion].forEach(mod => {
+        const cb = document.getElementById(`mod-${prefix}-${mod}`);
+        if (cb) cb.checked = modulos[mod] || false;
+      });
     }
-
-    async function toggleMayordomoBien() {
-      if (!bienSeleccionado) return;
+    
+    async function toggleGestionBien(gestion) {
+      const bien = bienSeleccionadoGestion[gestion];
+      if (!bien) return;
       
-      const activo = document.getElementById('toggle-mayordomo-activo').checked;
-      document.getElementById('mayordomo-estado').textContent = activo ? 'Activado' : 'Desactivado';
+      const toggle = document.getElementById(`toggle-${gestion}-activo`);
+      const activo = toggle.checked;
+      const slider = toggle.nextElementSibling;
       
-      const submodulosConfig = document.getElementById('submodulos-config');
+      document.getElementById(`${gestion}-estado`).textContent = activo ? 'Activado' : 'Desactivado';
+      
+      // Color del toggle
       if (activo) {
-        submodulosConfig.classList.remove('hidden');
-        cargarSubmodulos();
+        slider.classList.add(gestion);
       } else {
-        submodulosConfig.classList.add('hidden');
+        slider.classList.remove(gestion);
+      }
+      
+      const submodulosDiv = document.getElementById(`submodulos-${gestion}`);
+      if (activo) {
+        submodulosDiv.classList.remove('hidden');
+        const campoModulos = `${gestion}Modulos`;
+        cargarSubmodulosGestion(gestion, bien[campoModulos] || {});
+      } else {
+        submodulosDiv.classList.add('hidden');
       }
       
       try {
-        await db.collection('bienes').doc(bienSeleccionado.id).update({
-          mayordomoActivo: activo
+        const campoActivo = `${gestion}Activo`;
+        await db.collection('bienes').doc(bien.id).update({
+          [campoActivo]: activo
         });
-        bienSeleccionado.mayordomoActivo = activo;
-        renderMayordomo(); // Actualizar resumen
+        bien[campoActivo] = activo;
+        renderGestiones();
       } catch (error) {
         console.error('Error:', error);
         alert('Error al actualizar');
       }
     }
-
-    async function guardarSubmodulos() {
-      if (!bienSeleccionado) return;
+    
+    async function guardarSubmodulosGestion(gestion) {
+      const bien = bienSeleccionadoGestion[gestion];
+      if (!bien) return;
       
-      const modulos = {
-        reservas: document.getElementById('mod-reservas').checked,
-        inventario: document.getElementById('mod-inventario').checked,
-        gastos: document.getElementById('mod-gastos').checked,
-        mantenimiento: document.getElementById('mod-mantenimiento').checked,
-        limpieza: document.getElementById('mod-limpieza').checked
+      const prefijos = { mayordomo: 'may', gerente: 'ger', capataz: 'cap' };
+      const prefix = prefijos[gestion];
+      
+      const modulosPorGestion = {
+        mayordomo: ['reservas', 'inventario', 'gastos', 'mantenimiento', 'limpieza'],
+        gerente: ['reservas', 'habitaciones', 'huespedes', 'tarifas', 'facturacion'],
+        capataz: ['labores', 'aperos', 'parcelas', 'inventario', 'incidencias']
       };
       
+      const modulos = {};
+      modulosPorGestion[gestion].forEach(mod => {
+        const cb = document.getElementById(`mod-${prefix}-${mod}`);
+        if (cb) modulos[mod] = cb.checked;
+      });
+      
       try {
-        await db.collection('bienes').doc(bienSeleccionado.id).update({
-          mayordomoModulos: modulos
+        const campoModulos = `${gestion}Modulos`;
+        await db.collection('bienes').doc(bien.id).update({
+          [campoModulos]: modulos
         });
-        bienSeleccionado.mayordomoModulos = modulos;
-        renderMayordomo(); // Actualizar resumen
+        bien[campoModulos] = modulos;
+        renderGestiones();
       } catch (error) {
         console.error('Error:', error);
         alert('Error al guardar submódulos');
       }
     }
+    
+    // Alias para compatibilidad
+    function renderMayordomo() { renderGestiones(); }
 
     function renderSecciones() {
       const config = familiaData.seccionesActivas || {};
