@@ -332,9 +332,22 @@
     const form = document.getElementById('login-form');
     const btnLogin = document.getElementById('btn-login');
 
-    console.log('Login.html cargado');
+    console.log('Login.html cargado - v2.0 con externos unificados');
 
-    // Submit del formulario
+    // ========== DESTINOS SEGÚN TIPO ==========
+    const DESTINOS = {
+      // Usuarios familia
+      'AdminSistema': 'admin-sistema.html',
+      'SuperAdmin': 'admin-sistema.html',
+      'familia': 'cgi.html',
+      'primerAcceso': 'cambiar-password.html',
+      // Externos
+      'casero': 'casero.html',
+      'hoster': 'hoster.html',
+      'guarda': 'guarda.html'
+    };
+
+    // ========== SUBMIT FORMULARIO ==========
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       
@@ -352,9 +365,6 @@
       hideSuccess();
       
       try {
-        // Marcar que estamos en proceso de login (para que onAuthStateChanged no cierre la sesión nueva)
-        
-        
         // Intentar login
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
@@ -373,88 +383,212 @@
             error.code === 'auth/wrong-password') {
           await intentarActivarInvitacion(email, password);
         } else if (error.code === 'auth/invalid-email') {
-          
           showError('El email no es válido.');
           resetBtn();
         } else if (error.code === 'auth/too-many-requests') {
-          
           showError('Demasiados intentos. Espera unos minutos.');
           resetBtn();
         } else if (error.code === 'auth/user-disabled') {
-          
           showError('Esta cuenta ha sido desactivada.');
           resetBtn();
         } else {
-          
           showError('Error: ' + (error.code || error.message || 'Desconocido'));
           resetBtn();
         }
       }
     });
 
-    // Función principal: determina a dónde redirigir según rol
+    // ========== DETERMINAR DESTINO SEGÚN ROL ==========
     async function redirigirSegunRol(user) {
       try {
-        // 1. Buscar datos del usuario en Firestore
+        // 1. Buscar en colección 'usuarios' (miembros familia)
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         
         if (userDoc.exists) {
           const userData = userDoc.data();
           
-          // 2. ¿Es primer acceso? → Cambiar contraseña
+          // ¿Es primer acceso? → Cambiar contraseña
           if (userData.primerAcceso === true) {
-            window.location.href = 'cambiar-password.html';
+            window.location.href = DESTINOS.primerAcceso;
             return;
           }
           
-          // 3. ¿Es AdminSistema o SuperAdmin? → Panel de administración
+          // ¿Es AdminSistema o SuperAdmin?
           if (userData.rol === 'AdminSistema' || userData.superAdmin === true) {
-            window.location.href = 'admin-sistema.html';
+            window.location.href = DESTINOS.AdminSistema;
             return;
           }
           
-          // 4. Usuario normal → CGI
-          window.location.href = 'cgi.html';
+          // Usuario familia normal → CGI
+          window.location.href = DESTINOS.familia;
           return;
         }
 
-        // 5. Verificar si es casero
-        try {
-          const caserosQuery = await db.collectionGroup('caseros')
-            .where('email', '==', user.email.toLowerCase())
-            .where('activo', '==', true)
-            .get();
-
-          if (!caserosQuery.empty) {
-            window.location.href = 'casero.html';
+        // 2. Buscar en colección 'externos' (caseros, hosters, guardas)
+        const externoDoc = await buscarExterno(user.email);
+        
+        if (externoDoc) {
+          const externo = externoDoc.data();
+          
+          // Verificar que está activo
+          if (externo.activo === false) {
+            showError('Tu acceso ha sido desactivado. Contacta con el administrador.');
+            await auth.signOut();
+            showLoading(false);
+            resetBtn();
             return;
           }
-        } catch (caseroError) {
-          console.warn('Error buscando caseros:', caseroError);
+          
+          // Verificar que tiene bienes asignados
+          if (!externo.bienesAsignados || externo.bienesAsignados.length === 0) {
+            showError('No tienes bienes asignados. Contacta con el administrador.');
+            await auth.signOut();
+            showLoading(false);
+            resetBtn();
+            return;
+          }
+          
+          // Guardar ID del externo en sessionStorage para uso en destino
+          sessionStorage.setItem('externoId', externoDoc.id);
+          sessionStorage.setItem('externoTipo', externo.tipo);
+          
+          // Redirigir según tipo
+          const destino = DESTINOS[externo.tipo];
+          if (destino) {
+            window.location.href = destino;
+            return;
+          } else {
+            console.error('Tipo de externo desconocido:', externo.tipo);
+            showError('Error de configuración. Contacta con el administrador.');
+            await auth.signOut();
+            showLoading(false);
+            resetBtn();
+            return;
+          }
         }
 
-        // 6. Usuario no encontrado en ningún sitio
-        showError('Tu cuenta no está configurada. Contacta con el administrador de tu familia.');
+        // 3. FALLBACK: Buscar en subcolecciones antiguas (migración)
+        const legacyExterno = await buscarExternoLegacy(user.email);
         
+        if (legacyExterno) {
+          // Guardar info para migración
+          sessionStorage.setItem('externoLegacy', JSON.stringify(legacyExterno));
+          sessionStorage.setItem('externoTipo', legacyExterno.tipo || 'casero');
+          
+          const destino = DESTINOS[legacyExterno.tipo || 'casero'];
+          window.location.href = destino;
+          return;
+        }
+
+        // 4. Usuario no encontrado en ningún sitio
+        showError('Tu cuenta no está configurada. Contacta con el administrador de tu familia.');
         await auth.signOut();
         showLoading(false);
         resetBtn();
 
       } catch (error) {
         console.error('Error verificando usuario:', error);
-        
         showError('Error al verificar acceso. Inténtalo de nuevo.');
         showLoading(false);
         resetBtn();
       }
     }
 
-    // Buscar invitación y crear usuario si coincide
+    // ========== BUSCAR EN COLECCIÓN EXTERNOS (NUEVA) ==========
+    async function buscarExterno(email) {
+      try {
+        const snapshot = await db.collection('externos')
+          .where('email', '==', email.toLowerCase())
+          .limit(1)
+          .get();
+        
+        if (!snapshot.empty) {
+          return snapshot.docs[0];
+        }
+        return null;
+      } catch (error) {
+        console.warn('Error buscando en externos:', error);
+        return null;
+      }
+    }
+
+    // ========== BUSCAR EN SUBCOLECCIONES LEGACY (MIGRACIÓN) ==========
+    async function buscarExternoLegacy(email) {
+      const emailLower = email.toLowerCase();
+      
+      // Buscar en caseros (subcolección de bienes)
+      try {
+        const caserosSnap = await db.collectionGroup('caseros')
+          .where('email', '==', emailLower)
+          .where('activo', '==', true)
+          .limit(1)
+          .get();
+        
+        if (!caserosSnap.empty) {
+          const doc = caserosSnap.docs[0];
+          const bienId = doc.ref.parent.parent.id;
+          return {
+            id: doc.id,
+            bienId: bienId,
+            tipo: 'casero',
+            ...doc.data()
+          };
+        }
+      } catch (e) {
+        console.warn('Error buscando caseros legacy:', e);
+      }
+
+      // Buscar en hosters
+      try {
+        const hostersSnap = await db.collectionGroup('hosters')
+          .where('email', '==', emailLower)
+          .where('activo', '==', true)
+          .limit(1)
+          .get();
+        
+        if (!hostersSnap.empty) {
+          const doc = hostersSnap.docs[0];
+          const bienId = doc.ref.parent.parent.id;
+          return {
+            id: doc.id,
+            bienId: bienId,
+            tipo: 'hoster',
+            ...doc.data()
+          };
+        }
+      } catch (e) {
+        console.warn('Error buscando hosters legacy:', e);
+      }
+
+      // Buscar en guardas
+      try {
+        const guardasSnap = await db.collectionGroup('guardas')
+          .where('email', '==', emailLower)
+          .where('activo', '==', true)
+          .limit(1)
+          .get();
+        
+        if (!guardasSnap.empty) {
+          const doc = guardasSnap.docs[0];
+          const bienId = doc.ref.parent.parent.id;
+          return {
+            id: doc.id,
+            bienId: bienId,
+            tipo: 'guarda',
+            ...doc.data()
+          };
+        }
+      } catch (e) {
+        console.warn('Error buscando guardas legacy:', e);
+      }
+
+      return null;
+    }
+
+    // ========== ACTIVAR INVITACIÓN ==========
     async function intentarActivarInvitacion(email, password) {
       try {
         showLoading(true, 'Buscando tu invitación...');
-        
-        console.log('Buscando invitación para:', email);
         
         // Buscar invitación pendiente con este email y contraseña
         const invitacionSnap = await db.collection('invitaciones-email')
@@ -463,8 +597,6 @@
           .where('estado', '==', 'pendiente')
           .limit(1)
           .get();
-
-        console.log('Invitaciones encontradas:', invitacionSnap.size);
 
         if (invitacionSnap.empty) {
           // No hay invitación con esa contraseña exacta
@@ -475,7 +607,6 @@
             .get();
 
           showLoading(false);
-          
           
           if (!invitacionEmailSnap.empty) {
             showError('La contraseña no coincide con la de tu invitación. Revisa el email que te enviaron.');
@@ -497,7 +628,6 @@
                          new Date(invitacion.fechaExpiracion);
           if (expira < new Date()) {
             showLoading(false);
-            
             showError('Tu invitación ha expirado. Pide al administrador que te envíe una nueva.');
             resetBtn();
             return;
@@ -542,7 +672,6 @@
         console.error('Error activando invitación:', error);
         showLoading(false);
         
-        
         let mensaje = 'Error al activar tu cuenta: ' + (error.code || error.message || 'Desconocido');
         
         if (error.code === 'auth/email-already-in-use') {
@@ -556,7 +685,7 @@
       }
     }
 
-    // Recuperar contraseña
+    // ========== RECUPERAR CONTRASEÑA ==========
     document.getElementById('forgot-password').addEventListener('click', async (e) => {
       e.preventDefault();
       
@@ -583,7 +712,7 @@
       }
     });
 
-    // Helpers
+    // ========== HELPERS ==========
     function showError(message) {
       errorEl.textContent = message;
       errorEl.classList.add('show');

@@ -747,6 +747,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/externos-security.js"></script>
 
   <script>
     let currentUser = null;
@@ -768,41 +769,25 @@
 
       currentUser = user;
 
+      // Usar módulo de seguridad para validar acceso
+      const autorizado = await ExternosSecurity.init('hoster');
+      
+      if (!autorizado) {
+        return; // ExternosSecurity ya redirige
+      }
+
       try {
-        // Buscar en colección hosters
-        const hosterDoc = await db.collection('hosters').doc(user.uid).get();
-        
-        if (hosterDoc.exists) {
-          hosterData = hosterDoc.data();
-          
-          // Cargar bienes asignados
-          if (hosterData.bienes && hosterData.bienes.length > 0) {
-            for (const bienId of hosterData.bienes) {
-              const bienDoc = await db.collection('bienes').doc(bienId).get();
-              if (bienDoc.exists) {
-                bienesAsignados.push({ id: bienDoc.id, ...bienDoc.data() });
-              }
-            }
-          }
-        } else {
-          // Buscar bienes donde el email está como hoster
-          const bienesSnap = await db.collection('bienes')
-            .where('hostersEmails', 'array-contains', user.email.toLowerCase())
-            .get();
+        // Cargar bienes desde ExternosSecurity
+        bienesAsignados = ExternosSecurity.bienesAsignados.map(bien => ({
+          id: bien.id,
+          nombre: bien.nombre,
+          tipo: bien.tipo,
+          ubicacion: bien.ubicacion || '',
+          permisos: bien.permisos
+        }));
 
-          if (bienesSnap.empty) {
-            alert('No tienes acceso como hoster');
-            auth.signOut();
-            return;
-          }
-
-          bienesAsignados = bienesSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-        }
-
-        document.getElementById('user-name').textContent = hosterData?.nombre || user.email.split('@')[0];
+        document.getElementById('user-name').textContent = 
+          ExternosSecurity.externoData?.nombre || user.email.split('@')[0];
 
         // Renderizar selector
         const select = document.getElementById('bien-select');
@@ -1148,7 +1133,7 @@
     }
 
     function logout() {
-      auth.signOut().then(() => window.location.href = 'login.html');
+      ExternosSecurity.logout();
     }
 
     // Cerrar modales con click fuera

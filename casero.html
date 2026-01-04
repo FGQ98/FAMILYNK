@@ -824,6 +824,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/externos-security.js"></script>
 
   <script>
     let currentUser = null;
@@ -846,11 +847,63 @@
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user) { window.location.href = 'login.html'; return; }
+      if (!user) { 
+        window.location.href = 'login.html'; 
+        return; 
+      }
+      
       currentUser = user;
-      document.getElementById('user-name').textContent = user.email;
-      await verificarAccesoCasero();
+      document.getElementById('user-name').textContent = user.displayName || user.email;
+      
+      // Usar módulo de seguridad para validar acceso
+      const autorizado = await ExternosSecurity.init('casero');
+      
+      if (autorizado) {
+        await cargarBienesDesdeSeguridad();
+      }
     });
+
+    // Nueva función que usa ExternosSecurity
+    async function cargarBienesDesdeSeguridad() {
+      try {
+        // Los bienes ya están cargados y validados por ExternosSecurity
+        bienesAcceso = ExternosSecurity.bienesAsignados.map(bien => ({
+          bienId: bien.id,
+          bien: { 
+            nombre: bien.nombre, 
+            tipo: bien.tipo,
+            ubicacion: bien.ubicacion || ''
+          },
+          permisos: bien.permisos || ExternosSecurity.getDefaultPermisos()
+        }));
+
+        if (bienesAcceso.length === 0) {
+          mostrarSinAcceso();
+          return;
+        }
+
+        // Mostrar selector si tiene varios bienes
+        if (bienesAcceso.length > 1) {
+          const select = document.getElementById('select-bien');
+          select.innerHTML = bienesAcceso.map((b, i) => 
+            `<option value="${i}">${b.bien.nombre} - ${b.bien.ubicacion || ''}</option>`
+          ).join('');
+          document.getElementById('bien-selector').classList.remove('hidden');
+        } else {
+          document.getElementById('bien-selector').classList.add('hidden');
+        }
+
+        // Cargar primer bien
+        await cargarBien(0);
+
+        document.getElementById('page-loading').classList.add('hidden');
+        document.getElementById('page-content').classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error cargando bienes:', error);
+        alert('Error al cargar datos');
+      }
+    }
 
     async function verificarAccesoCasero() {
       try {
@@ -1643,9 +1696,7 @@
     });
 
     function logout() {
-      auth.signOut().then(() => {
-        window.location.href = 'login.html';
-      });
+      ExternosSecurity.logout();
     }
 
     // ========== TOMA DE INVENTARIO ==========
