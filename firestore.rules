@@ -1,19 +1,157 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 1, 7);
+    
+    // ============================================================
+    // FUNCIONES AUXILIARES
+    // ============================================================
+    
+    // Verificar si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Obtener datos del usuario actual
+    function getUserData() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+    
+    // Verificar si es SuperAdmin
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             getUserData().superAdmin == true;
+    }
+    
+    // Verificar si es AdminSistema
+    function isAdminSistema() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             getUserData().rol == 'AdminSistema';
+    }
+    
+    // Verificar si es admin de una rama específica
+    function isAdminRama(ramaId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             getUserData().ramaId == ramaId &&
+             getUserData().rol == 'AdminRama';
+    }
+    
+    // Verificar si pertenece a una familia
+    function belongsToFamilia(familiaId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             getUserData().familiaId == familiaId;
+    }
+    
+    // ============================================================
+    // COLECCIÓN: usuarios
+    // ============================================================
+    match /usuarios/{userId} {
+      // Permitir leer: tu propio doc, superadmin, adminsistema, o miembros de tu misma familia
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid == userId || 
+                     isSuperAdmin() || 
+                     isAdminSistema() ||
+                     (resource.data.familiaId != null && belongsToFamilia(resource.data.familiaId)));
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+                      (request.auth.uid == userId || isSuperAdmin() || isAdminSistema());
+      allow delete: if isSuperAdmin();
+    }
+    
+    // ============================================================
+    // COLECCIÓN: externos (caseros, hosters, guardas)
+    // ============================================================
+    match /externos/{externoId} {
+      // Leer: autenticado y de tu familia
+      allow read: if isAuthenticated() && 
+                    (isSuperAdmin() || 
+                     isAdminSistema() || 
+                     belongsToFamilia(resource.data.familiaId));
+      // Escribir: superadmin, adminsistema, o miembro de la familia
+      allow create: if isAuthenticated() && 
+                      (isSuperAdmin() || isAdminSistema() || belongsToFamilia(request.resource.data.familiaId));
+      allow update, delete: if isAuthenticated() && 
+                              (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
+    }
+    
+    // ============================================================
+    // COLECCIÓN: familias
+    // ============================================================
+    match /familias/{familiaId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin() || isAdminSistema() || belongsToFamilia(familiaId);
+    }
+    
+    // ============================================================
+    // COLECCIÓN: ramas
+    // ============================================================
+    match /ramas/{ramaId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin() || isAdminSistema() || isAdminRama(ramaId);
+    }
+    
+    // ============================================================
+    // COLECCIÓN: nidos
+    // ============================================================
+    match /nidos/{nidoId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                     (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
+    }
+    
+    // ============================================================
+    // COLECCIÓN: bienes (con todas sus subcolecciones)
+    // ============================================================
+    match /bienes/{bienId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                     (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
+      
+      // Subcolecciones de bienes - acceso para usuarios autenticados de la familia
+      match /{subcollection}/{docId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+    
+    // ============================================================
+    // COLLECTION GROUP QUERIES para externos (caseros, hosters, guardas)
+    // Permite consultas collectionGroup para login de externos
+    // ============================================================
+    match /{path=**}/caseros/{caseroId} {
+      allow read: if isAuthenticated() && 
+                    request.auth.token.email == resource.data.email;
+    }
+    
+    match /{path=**}/hosters/{hosterId} {
+      allow read: if isAuthenticated() && 
+                    request.auth.token.email == resource.data.email;
+    }
+    
+    match /{path=**}/guardas/{guardaId} {
+      allow read: if isAuthenticated() && 
+                    request.auth.token.email == resource.data.email;
+    }
+    
+    // ============================================================
+    // COLECCIÓN: invitaciones-email
+    // ============================================================
+    match /invitaciones-email/{invId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isSuperAdmin() || isAdminSistema();
+    }
+    
+    // ============================================================
+    // COLECCIÓN: config
+    // ============================================================
+    match /config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
     }
   }
 }

@@ -759,7 +759,6 @@
     let huespedesData = [];
     let habitacionesData = [];
     let limpiezaData = [];
-    let inventarioData = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -770,37 +769,42 @@
       currentUser = user;
 
       try {
-        // Buscar en colección hosters
-        const hosterDoc = await db.collection('hosters').doc(user.uid).get();
-        
-        if (hosterDoc.exists) {
-          hosterData = hosterDoc.data();
+        // Buscar en todas las subcolecciones de hosters de cada bien
+        const hostersQuery = await db.collectionGroup('hosters')
+          .where('email', '==', user.email.toLowerCase())
+          .where('activo', '==', true)
+          .get();
+
+        if (hostersQuery.empty) {
+          alert('No tienes acceso como hoster a ninguna propiedad');
+          auth.signOut();
+          return;
+        }
+
+        // Recopilar bienes asignados
+        for (const doc of hostersQuery.docs) {
+          const hosterInfo = doc.data();
+          const bienId = hosterInfo.bienId;
           
-          // Cargar bienes asignados
-          if (hosterData.bienes && hosterData.bienes.length > 0) {
-            for (const bienId of hosterData.bienes) {
-              const bienDoc = await db.collection('bienes').doc(bienId).get();
-              if (bienDoc.exists) {
-                bienesAsignados.push({ id: bienDoc.id, ...bienDoc.data() });
-              }
+          const bienDoc = await db.collection('bienes').doc(bienId).get();
+          if (bienDoc.exists) {
+            bienesAsignados.push({
+              id: bienDoc.id,
+              ...bienDoc.data(),
+              permisos: hosterInfo.permisos || {},
+              rol: hosterInfo.rol || 'hoster'
+            });
+            
+            if (!hosterData) {
+              hosterData = hosterInfo;
             }
           }
-        } else {
-          // Buscar bienes donde el email está como hoster
-          const bienesSnap = await db.collection('bienes')
-            .where('hostersEmails', 'array-contains', user.email.toLowerCase())
-            .get();
+        }
 
-          if (bienesSnap.empty) {
-            alert('No tienes acceso como hoster');
-            auth.signOut();
-            return;
-          }
-
-          bienesAsignados = bienesSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
+        if (bienesAsignados.length === 0) {
+          alert('No tienes acceso como hoster');
+          auth.signOut();
+          return;
         }
 
         document.getElementById('user-name').textContent = hosterData?.nombre || user.email.split('@')[0];
@@ -876,10 +880,6 @@
           .get();
         limpiezaData = limpiezaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Inventario
-        const inventarioSnap = await bienRef.collection('inventario').get();
-        inventarioData = inventarioSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
         actualizarStats();
 
       } catch (error) {
@@ -910,58 +910,10 @@
       }
 
       container.innerHTML = `
-        ${renderModuloPedidos()}
         ${renderModuloReservas()}
         ${renderModuloHuespedes()}
         ${renderModuloHabitaciones()}
         ${renderModuloLimpieza()}
-      `;
-    }
-
-    function renderModuloPedidos() {
-      // Contar items bajo mínimo del inventario
-      const bajoMinimo = inventarioData.filter(i => i.cantidad < (i.minimo || 0));
-      
-      return `
-        <div class="modulo-card" style="grid-column: 1 / -1;">
-          <div class="modulo-card-header" style="background:rgba(74,85,104,0.08);">
-            <div class="modulo-card-title">🛒 Pedidos / Amenities</div>
-            <a href="tienda.html?bien=${bienActual?.id || ''}" style="font-size:0.75rem;color:#4A5568;text-decoration:none;">Ir a tienda →</a>
-          </div>
-          <div class="modulo-card-body">
-            ${bajoMinimo.length > 0 ? `
-              <div style="background:#FEF3C7;border-left:3px solid #F59E0B;padding:10px 12px;border-radius:8px;margin-bottom:12px;display:flex;align-items:center;gap:10px;">
-                <span>⚠️</span>
-                <div style="flex:1;">
-                  <div style="font-weight:600;font-size:0.8rem;">${bajoMinimo.length} producto${bajoMinimo.length > 1 ? 's' : ''} bajo mínimo</div>
-                  <div style="font-size:0.7rem;color:#92400E;">${bajoMinimo.slice(0,3).map(i => i.nombre).join(', ')}${bajoMinimo.length > 3 ? '...' : ''}</div>
-                </div>
-                <a href="tienda.html?bien=${bienActual?.id || ''}&auto=reposicion" style="background:#F59E0B;color:white;border:none;padding:6px 12px;border-radius:6px;font-size:0.75rem;cursor:pointer;text-decoration:none;">Reponer</a>
-              </div>
-            ` : `
-              <div style="text-align:center;padding:12px;color:#6B6B6B;font-size:0.85rem;">
-                ✅ Inventario completo
-              </div>
-            `}
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-              <div style="background:#FDF8F3;padding:10px;border-radius:8px;text-align:center;">
-                <div style="font-size:1.1rem;">🧴</div>
-                <div style="font-size:0.7rem;color:#9A9A9A;">Amenities</div>
-                <div style="font-weight:600;font-size:0.8rem;color:${bajoMinimo.some(i => i.grupo === 'amenities') ? '#D4695A' : '#7A9E7E'};">${bajoMinimo.filter(i => i.grupo === 'amenities').length || 'OK'}</div>
-              </div>
-              <div style="background:#FDF8F3;padding:10px;border-radius:8px;text-align:center;">
-                <div style="font-size:1.1rem;">🛏️</div>
-                <div style="font-size:0.7rem;color:#9A9A9A;">Ropa cama</div>
-                <div style="font-weight:600;font-size:0.8rem;color:${bajoMinimo.some(i => i.grupo === 'ropa') ? '#D4695A' : '#7A9E7E'};">${bajoMinimo.filter(i => i.grupo === 'ropa').length || 'OK'}</div>
-              </div>
-              <div style="background:#FDF8F3;padding:10px;border-radius:8px;text-align:center;">
-                <div style="font-size:1.1rem;">☕</div>
-                <div style="font-size:0.7rem;color:#9A9A9A;">Welcome</div>
-                <div style="font-weight:600;font-size:0.8rem;color:${bajoMinimo.some(i => i.grupo === 'welcome') ? '#D4695A' : '#7A9E7E'};">${bajoMinimo.filter(i => i.grupo === 'welcome').length || 'OK'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
       `;
     }
 
