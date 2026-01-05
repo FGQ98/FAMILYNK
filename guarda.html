@@ -413,6 +413,22 @@
     .item-valor.bajo { color: var(--error); }
     .item-valor.ok { color: var(--success); }
 
+    /* Actividad */
+    .actividad-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--cream-medium);
+      border-radius: var(--radius-md);
+      margin-bottom: 8px;
+    }
+
+    .actividad-icon { font-size: 1.2rem; }
+    .actividad-info { flex: 1; }
+    .actividad-titulo { font-weight: 600; font-size: 0.85rem; }
+    .actividad-meta { font-size: 0.75rem; color: var(--text-muted); }
+
     /* Botones */
     .btn {
       display: inline-flex;
@@ -747,6 +763,7 @@
     let aperosData = [];
     let parcelasData = [];
     let inventarioData = [];
+    let actividadData = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -884,6 +901,13 @@
         const invSnap = await bienRef.collection('inventario-campo').get();
         inventarioData = invSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+        // Actividad reciente
+        const actSnap = await bienRef.collection('actividad')
+          .orderBy('fecha', 'desc')
+          .limit(10)
+          .get();
+        actividadData = actSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
       } catch (error) {
         console.error('Error cargando datos:', error);
       }
@@ -902,6 +926,7 @@
         ${renderModuloAperos()}
         ${renderModuloParcelas()}
         ${renderModuloInventario()}
+        ${renderModuloActividad()}
       `;
     }
 
@@ -1000,6 +1025,32 @@
         <div class="modulo-card">
           <div class="modulo-card-header">
             <div class="modulo-card-title">📦 Inventario</div>
+          </div>
+          <div class="modulo-card-body">${items}</div>
+        </div>
+      `;
+    }
+
+    function renderModuloActividad() {
+      let items = actividadData.length === 0
+        ? '<div class="modulo-card-empty">No hay actividad reciente</div>'
+        : actividadData.slice(0, 5).map(a => {
+            const fecha = a.fecha ? new Date(a.fecha.seconds ? a.fecha.seconds * 1000 : a.fecha).toLocaleDateString('es-ES', {day: '2-digit', month: 'short'}) : '';
+            return `
+              <div class="actividad-row">
+                <div class="actividad-icon">${a.icono || '📝'}</div>
+                <div class="actividad-info">
+                  <div class="actividad-titulo">${a.titulo || 'Sin título'}</div>
+                  <div class="actividad-meta">${a.autor || 'Sistema'} · ${fecha}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">📊 Actividad reciente</div>
           </div>
           <div class="modulo-card-body">${items}</div>
         </div>

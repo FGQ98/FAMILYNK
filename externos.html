@@ -717,79 +717,102 @@
       
       try {
         const email = currentUser.email.toLowerCase();
+        console.log('Buscando accesos para:', email);
 
         // Buscar como casero
-        const caserosSnap = await db.collectionGroup('caseros')
-          .where('email', '==', email)
-          .where('activo', '==', true)
-          .get();
+        try {
+          const caserosSnap = await db.collectionGroup('caseros')
+            .where('email', '==', email)
+            .where('activo', '==', true)
+            .get();
 
-        for (const doc of caserosSnap.docs) {
-          const data = doc.data();
-          const bienDoc = await db.collection('bienes').doc(data.bienId).get();
-          if (bienDoc.exists) {
-            const bien = bienDoc.data();
-            accesosData.push({
-              tipo: 'casero',
-              bienId: data.bienId,
-              bienNombre: bien.nombre || 'Sin nombre',
-              bienUbicacion: bien.ubicacion || '',
-              nombre: data.nombre,
-              permisos: data.permisos,
-              familiaId: data.familiaId || bien.familiaId
-            });
-            if (!familiaId) familiaId = data.familiaId || bien.familiaId;
+          for (const doc of caserosSnap.docs) {
+            const data = doc.data();
+            const bienDoc = await db.collection('bienes').doc(data.bienId).get();
+            if (bienDoc.exists) {
+              const bien = bienDoc.data();
+              accesosData.push({
+                tipo: 'casero',
+                bienId: data.bienId,
+                bienNombre: bien.nombre || 'Sin nombre',
+                bienUbicacion: bien.ubicacion || '',
+                nombre: data.nombre,
+                permisos: data.permisos,
+                familiaId: data.familiaId || bien.familiaId
+              });
+              if (!familiaId) familiaId = data.familiaId || bien.familiaId;
+            }
+          }
+          console.log('Caseros encontrados:', caserosSnap.docs.length);
+        } catch (caseroError) {
+          console.error('Error buscando caseros (¿índice faltante?):', caseroError);
+          // Si falla por índice, mostrar mensaje específico
+          if (caseroError.code === 'failed-precondition') {
+            alert('Error de configuración: Faltan índices de Firebase.\n\nContacte al administrador para que ejecute:\nfirebase deploy --only firestore:indexes');
+            return;
           }
         }
 
         // Buscar como hoster
-        const hostersSnap = await db.collectionGroup('hosters')
-          .where('email', '==', email)
-          .where('activo', '==', true)
-          .get();
+        try {
+          const hostersSnap = await db.collectionGroup('hosters')
+            .where('email', '==', email)
+            .where('activo', '==', true)
+            .get();
 
-        for (const doc of hostersSnap.docs) {
-          const data = doc.data();
-          const bienDoc = await db.collection('bienes').doc(data.bienId).get();
-          if (bienDoc.exists) {
-            const bien = bienDoc.data();
-            accesosData.push({
-              tipo: 'hoster',
-              bienId: data.bienId,
-              bienNombre: bien.nombre || 'Sin nombre',
-              bienUbicacion: bien.ubicacion || '',
-              nombre: data.nombre,
-              permisos: data.permisos,
-              familiaId: data.familiaId || bien.familiaId
-            });
-            if (!familiaId) familiaId = data.familiaId || bien.familiaId;
+          for (const doc of hostersSnap.docs) {
+            const data = doc.data();
+            const bienDoc = await db.collection('bienes').doc(data.bienId).get();
+            if (bienDoc.exists) {
+              const bien = bienDoc.data();
+              accesosData.push({
+                tipo: 'hoster',
+                bienId: data.bienId,
+                bienNombre: bien.nombre || 'Sin nombre',
+                bienUbicacion: bien.ubicacion || '',
+                nombre: data.nombre,
+                permisos: data.permisos,
+                familiaId: data.familiaId || bien.familiaId
+              });
+              if (!familiaId) familiaId = data.familiaId || bien.familiaId;
+            }
           }
+          console.log('Hosters encontrados:', hostersSnap.docs.length);
+        } catch (hosterError) {
+          console.error('Error buscando hosters:', hosterError);
         }
 
         // Buscar como operario/guarda
-        const guardasSnap = await db.collectionGroup('guardas')
-          .where('email', '==', email)
-          .where('activo', '==', true)
-          .get();
+        try {
+          const guardasSnap = await db.collectionGroup('guardas')
+            .where('email', '==', email)
+            .where('activo', '==', true)
+            .get();
 
-        for (const doc of guardasSnap.docs) {
-          const data = doc.data();
-          const bienDoc = await db.collection('bienes').doc(data.bienId).get();
-          if (bienDoc.exists) {
-            const bien = bienDoc.data();
-            accesosData.push({
-              tipo: 'operario',
-              bienId: data.bienId,
-              bienNombre: bien.nombre || 'Sin nombre',
-              bienUbicacion: bien.ubicacion || '',
-              nombre: data.nombre,
-              rol: data.rol,
-              permisos: data.permisos,
-              familiaId: data.familiaId || bien.familiaId
-            });
-            if (!familiaId) familiaId = data.familiaId || bien.familiaId;
+          for (const doc of guardasSnap.docs) {
+            const data = doc.data();
+            const bienDoc = await db.collection('bienes').doc(data.bienId).get();
+            if (bienDoc.exists) {
+              const bien = bienDoc.data();
+              accesosData.push({
+                tipo: 'operario',
+                bienId: data.bienId,
+                bienNombre: bien.nombre || 'Sin nombre',
+                bienUbicacion: bien.ubicacion || '',
+                nombre: data.nombre,
+                rol: data.rol,
+                permisos: data.permisos,
+                familiaId: data.familiaId || bien.familiaId
+              });
+              if (!familiaId) familiaId = data.familiaId || bien.familiaId;
+            }
           }
+          console.log('Guardas encontrados:', guardasSnap.docs.length);
+        } catch (guardaError) {
+          console.error('Error buscando guardas:', guardaError);
         }
+
+        console.log('Total accesos encontrados:', accesosData.length);
 
         // Verificar si tiene accesos
         if (accesosData.length === 0) {
