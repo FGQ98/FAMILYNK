@@ -735,7 +735,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
-  <script src="js/externos-security.js"></script>
 
   <script>
     let currentUser = null;
@@ -757,25 +756,40 @@
 
       currentUser = user;
 
-      // Usar módulo de seguridad para validar acceso
-      const autorizado = await ExternosSecurity.init('guarda');
-      
-      if (!autorizado) {
-        return; // ExternosSecurity ya redirige
-      }
-
       try {
-        // Cargar bienes desde ExternosSecurity
-        bienesAsignados = ExternosSecurity.bienesAsignados.map(bien => ({
-          id: bien.id,
-          nombre: bien.nombre,
-          tipo: bien.tipo,
-          ubicacion: bien.ubicacion || '',
-          permisos: bien.permisos
-        }));
+        // Buscar en colección guardas
+        const guardaDoc = await db.collection('guardas').doc(user.uid).get();
+        
+        if (guardaDoc.exists) {
+          guardaData = guardaDoc.data();
+          
+          if (guardaData.bienes && guardaData.bienes.length > 0) {
+            for (const bienId of guardaData.bienes) {
+              const bienDoc = await db.collection('bienes').doc(bienId).get();
+              if (bienDoc.exists) {
+                bienesAsignados.push({ id: bienDoc.id, ...bienDoc.data() });
+              }
+            }
+          }
+        } else {
+          // Buscar bienes donde el email está como guarda
+          const bienesSnap = await db.collection('bienes')
+            .where('guardasEmails', 'array-contains', user.email.toLowerCase())
+            .get();
 
-        document.getElementById('user-name').textContent = 
-          ExternosSecurity.externoData?.nombre || user.email.split('@')[0];
+          if (bienesSnap.empty) {
+            alert('No tienes acceso como guarda');
+            auth.signOut();
+            return;
+          }
+
+          bienesAsignados = bienesSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+        }
+
+        document.getElementById('user-name').textContent = guardaData?.nombre || user.email.split('@')[0];
 
         // Renderizar selector
         const select = document.getElementById('bien-select');
@@ -862,10 +876,48 @@
       }
 
       container.innerHTML = `
+        ${renderModuloPedidos()}
         ${renderModuloLabores()}
         ${renderModuloAperos()}
         ${renderModuloParcelas()}
         ${renderModuloInventario()}
+      `;
+    }
+
+    function renderModuloPedidos() {
+      // Contar items bajo mínimo del inventario
+      const bajoMinimo = inventarioData.filter(i => i.cantidad < (i.minimo || 0));
+      
+      // Simular pedidos en curso (luego se cargarán de Firestore)
+      const pedidosEnCurso = []; // Se cargará de pedidosData cuando exista
+      
+      return `
+        <div class="modulo-card" style="grid-column: 1 / -1;">
+          <div class="modulo-card-header" style="background:rgba(107,142,35,0.1);">
+            <div class="modulo-card-title">🛒 Pedidos / Suministros</div>
+            <a href="tienda.html?bien=${bienActual?.id || ''}" style="font-size:0.75rem;color:#6B8E23;text-decoration:none;">Ir a tienda →</a>
+          </div>
+          <div class="modulo-card-body">
+            ${bajoMinimo.length > 0 ? `
+              <div style="font-size:0.75rem;color:#6B6B6B;margin-bottom:8px;">Necesidades detectadas</div>
+              ${bajoMinimo.slice(0, 3).map(item => `
+                <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#FDF8F3;border-radius:8px;margin-bottom:8px;border-left:3px solid #F59E0B;">
+                  <span style="font-size:1rem;">${item.icono || '📦'}</span>
+                  <div style="flex:1;">
+                    <div style="font-weight:600;font-size:0.8rem;">${item.nombre}</div>
+                    <div style="font-size:0.7rem;color:#9A9A9A;">Actual: ${item.cantidad} · Mín: ${item.minimo}</div>
+                  </div>
+                  <a href="tienda.html?bien=${bienActual?.id || ''}&producto=${item.id}" style="background:#6B8E23;color:white;border:none;padding:4px 10px;border-radius:6px;font-size:0.7rem;cursor:pointer;text-decoration:none;">Pedir</a>
+                </div>
+              `).join('')}
+              ${bajoMinimo.length > 3 ? `<div style="text-align:center;font-size:0.75rem;color:#6B6B6B;">+${bajoMinimo.length - 3} más</div>` : ''}
+            ` : `
+              <div style="text-align:center;padding:12px;color:#6B6B6B;font-size:0.85rem;">
+                ✅ Suministros completos
+              </div>
+            `}
+          </div>
+        </div>
       `;
     }
 
@@ -1110,7 +1162,7 @@
     }
 
     function logout() {
-      ExternosSecurity.logout();
+      auth.signOut().then(() => window.location.href = 'login.html');
     }
 
     // Cerrar modales con click fuera
