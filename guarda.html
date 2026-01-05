@@ -750,13 +750,17 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        window.location.href = 'login.html';
+        window.location.href = 'externos.html';
         return;
       }
 
       currentUser = user;
 
       try {
+        // Obtener bienId de la URL si viene
+        const urlParams = new URLSearchParams(window.location.search);
+        const bienIdParam = urlParams.get('bien');
+        
         // Buscar en todas las subcolecciones de guardas usando collectionGroup
         const guardasQuery = await db.collectionGroup('guardas')
           .where('email', '==', user.email.toLowerCase())
@@ -764,18 +768,21 @@
           .get();
 
         if (guardasQuery.empty) {
-          alert('No tienes acceso como guarda a ninguna finca');
-          auth.signOut();
+          alert('No tiene acceso como operario a ninguna finca');
+          window.location.href = 'externos.html';
           return;
         }
 
         // Recopilar bienes asignados
+        let bienParamIndex = -1;
+        
         for (const doc of guardasQuery.docs) {
           const guardaInfo = doc.data();
           const bienId = guardaInfo.bienId;
           
           const bienDoc = await db.collection('bienes').doc(bienId).get();
           if (bienDoc.exists) {
+            const idx = bienesAsignados.length;
             bienesAsignados.push({
               id: bienDoc.id,
               ...bienDoc.data(),
@@ -786,12 +793,17 @@
             if (!guardaData) {
               guardaData = guardaInfo;
             }
+            
+            // Verificar si es el bien solicitado por parámetro
+            if (bienIdParam && bienId === bienIdParam) {
+              bienParamIndex = idx;
+            }
           }
         }
 
         if (bienesAsignados.length === 0) {
-          alert('No tienes acceso como guarda');
-          auth.signOut();
+          alert('No tiene acceso como operario');
+          window.location.href = 'externos.html';
           return;
         }
 
@@ -806,8 +818,12 @@
           select.appendChild(opt);
         });
 
-        // Si solo hay uno, seleccionar automáticamente
-        if (bienesAsignados.length === 1) {
+        // Si viene por parámetro, seleccionar ese bien
+        if (bienParamIndex >= 0) {
+          select.value = bienesAsignados[bienParamIndex].id;
+          await cambiarBien();
+        } else if (bienesAsignados.length === 1) {
+          // Si solo hay uno, seleccionar automáticamente
           select.value = bienesAsignados[0].id;
           document.getElementById('bien-selector-container').classList.add('hidden');
           await cambiarBien();

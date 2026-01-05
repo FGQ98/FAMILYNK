@@ -846,7 +846,7 @@
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user) { window.location.href = 'login.html'; return; }
+      if (!user) { window.location.href = 'externos.html'; return; }
       currentUser = user;
       document.getElementById('user-name').textContent = user.email;
       await verificarAccesoCasero();
@@ -854,6 +854,10 @@
 
     async function verificarAccesoCasero() {
       try {
+        // Obtener bienId de la URL si viene
+        const urlParams = new URLSearchParams(window.location.search);
+        const bienIdParam = urlParams.get('bien');
+        
         // Buscar si este email tiene acceso como casero
         const caserosQuery = await db.collectionGroup('caseros')
           .where('email', '==', currentUser.email.toLowerCase())
@@ -861,13 +865,15 @@
           .get();
 
         if (caserosQuery.empty) {
-          // No es casero, redirigir a app normal
-          window.location.href = 'app.html';
+          // No es casero, redirigir a externos
+          window.location.href = 'externos.html';
           return;
         }
 
         // Recopilar todos los bienes a los que tiene acceso
         bienesAcceso = [];
+        let bienParamIndex = -1;
+        
         for (const doc of caserosQuery.docs) {
           const casero = doc.data();
           const bienId = casero.bienId;
@@ -875,12 +881,18 @@
           // Obtener datos del bien
           const bienDoc = await db.collection('bienes').doc(bienId).get();
           if (bienDoc.exists) {
+            const idx = bienesAcceso.length;
             bienesAcceso.push({
               caseroId: doc.id,
               bienId: bienId,
               bien: bienDoc.data(),
               permisos: casero.permisos || {}
             });
+            
+            // Verificar si es el bien solicitado por parámetro
+            if (bienIdParam && bienId === bienIdParam) {
+              bienParamIndex = idx;
+            }
           }
         }
 
@@ -896,12 +908,18 @@
             `<option value="${i}">${b.bien.nombre} - ${b.bien.ubicacion || ''}</option>`
           ).join('');
           document.getElementById('bien-selector').classList.remove('hidden');
+          
+          // Si viene por parámetro, seleccionar ese bien
+          if (bienParamIndex >= 0) {
+            select.value = bienParamIndex;
+          }
         } else {
           document.getElementById('bien-selector').classList.add('hidden');
         }
 
-        // Cargar primer bien
-        await cargarBien(0);
+        // Cargar bien (el solicitado por parámetro o el primero)
+        const indexCargar = bienParamIndex >= 0 ? bienParamIndex : 0;
+        await cargarBien(indexCargar);
 
         document.getElementById('page-loading').classList.add('hidden');
         document.getElementById('page-content').classList.remove('hidden');

@@ -1997,6 +1997,14 @@
               <input type="tel" class="form-input" id="casero-telefono" placeholder="600 000 000">
             </div>
           </div>
+          <div class="form-group" id="casero-password-group">
+            <label class="form-label">Contraseña inicial</label>
+            <div style="display:flex;gap:10px;">
+              <input type="text" class="form-input" id="casero-password" placeholder="Mínimo 6 caracteres" minlength="6" style="flex:1;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="generarPasswordCasero()" style="white-space:nowrap;">🎲 Generar</button>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Comunique estas credenciales al casero por teléfono o WhatsApp</div>
+          </div>
           
           <div class="form-group">
             <label class="form-label" style="margin-bottom:12px;">Permisos en este bien</label>
@@ -2101,6 +2109,14 @@
               <label class="form-label">Teléfono</label>
               <input type="tel" class="form-input" id="hoster-telefono" placeholder="600 000 000">
             </div>
+          </div>
+          <div class="form-group" id="hoster-password-group">
+            <label class="form-label">Contraseña inicial</label>
+            <div style="display:flex;gap:10px;">
+              <input type="text" class="form-input" id="hoster-password" placeholder="Mínimo 6 caracteres" minlength="6" style="flex:1;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="generarPasswordHoster()" style="white-space:nowrap;">🎲 Generar</button>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Comunique estas credenciales al hoster por teléfono o WhatsApp</div>
           </div>
           
           <div class="form-group">
@@ -2227,6 +2243,14 @@
               <option value="guarderia">🌲 Guardería</option>
               <option value="labores">🌾 Labores</option>
             </select>
+          </div>
+          <div class="form-group" id="guarda-password-group">
+            <label class="form-label">Contraseña inicial</label>
+            <div style="display:flex;gap:10px;">
+              <input type="text" class="form-input" id="guarda-password" placeholder="Mínimo 6 caracteres" minlength="6" style="flex:1;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="generarPasswordGuarda()" style="white-space:nowrap;">🎲 Generar</button>
+            </div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Comunique estas credenciales al operario por teléfono o WhatsApp</div>
           </div>
           
           <div class="form-group">
@@ -4856,12 +4880,17 @@
         document.getElementById(`perm-${sec}-b`).checked = false;
       });
       
+      // Campo contraseña: solo visible al crear nuevo
+      const pwdGroup = document.getElementById('casero-password-group');
+      
       if (casero) {
         document.getElementById('modal-casero-title').textContent = '✏️ Editar casero';
         document.getElementById('casero-nombre').value = casero.nombre || '';
         document.getElementById('casero-email').value = casero.email || '';
         document.getElementById('casero-email').disabled = true; // No editar email
         document.getElementById('casero-telefono').value = casero.telefono || '';
+        pwdGroup.style.display = 'none';
+        document.getElementById('casero-password').required = false;
         
         // Cargar permisos
         const permisos = casero.permisos || {};
@@ -4874,8 +4903,18 @@
       } else {
         document.getElementById('modal-casero-title').textContent = '👤 Nuevo casero';
         document.getElementById('casero-email').disabled = false;
+        pwdGroup.style.display = 'block';
+        document.getElementById('casero-password').required = true;
+        generarPasswordCasero(); // Generar contraseña por defecto
       }
       modalCasero.classList.add('active');
+    }
+    
+    function generarPasswordCasero() {
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let pwd = '';
+      for (let i = 0; i < 8; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+      document.getElementById('casero-password').value = pwd;
     }
 
     document.getElementById('modal-casero-close').addEventListener('click', () => modalCasero.classList.remove('active'));
@@ -4899,9 +4938,18 @@
           };
         });
 
+        const email = document.getElementById('casero-email').value.toLowerCase().trim();
+        const password = document.getElementById('casero-password').value;
+        
+        if (!email) {
+          alert('El email es obligatorio');
+          btn.disabled = false; btn.textContent = 'Guardar';
+          return;
+        }
+
         const data = {
           nombre: document.getElementById('casero-nombre').value,
-          email: document.getElementById('casero-email').value.toLowerCase().trim(),
+          email: email,
           telefono: document.getElementById('casero-telefono').value,
           permisos: permisos,
           bienId: bienId,
@@ -4910,23 +4958,43 @@
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        if (!data.email) {
-          alert('El email es obligatorio');
-          btn.disabled = false; btn.textContent = 'Guardar';
-          return;
-        }
-        
         const ref = db.collection('bienes').doc(bienId).collection('caseros');
         
         if (editingCaseroId) {
           await ref.doc(editingCaseroId).update(data);
         } else {
+          // Validar contraseña
+          if (!password || password.length < 6) {
+            alert('La contraseña debe tener al menos 6 caracteres');
+            btn.disabled = false; btn.textContent = 'Guardar';
+            return;
+          }
+          
+          // Crear usuario en Firebase Auth usando segunda app
+          try {
+            const secondaryApp = firebase.apps.find(app => app.name === 'Secondary') || 
+              firebase.initializeApp(firebase.app().options, 'Secondary');
+            const secondaryAuth = secondaryApp.auth();
+            
+            await secondaryAuth.createUserWithEmailAndPassword(email, password);
+            await secondaryAuth.signOut();
+          } catch (authError) {
+            if (authError.code === 'auth/email-already-in-use') {
+              // Usuario ya existe, continuar con el registro en Firestore
+              console.log('Usuario ya existe en Auth, añadiendo acceso');
+            } else {
+              throw authError;
+            }
+          }
+          
           data.creadoPor = currentUser.uid;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           data.activo = true;
           
-          // Crear en subcolección del bien
           await ref.add(data);
+          
+          // Mostrar credenciales
+          alert(`✅ Casero creado correctamente.\n\n📧 Email: ${email}\n🔑 Contraseña: ${password}\n\n⚠️ Comunique estas credenciales al casero.\nAcceso: externos.html`);
         }
         
         modalCasero.classList.remove('active');
@@ -4934,12 +5002,15 @@
         document.getElementById('count-caseros').textContent = caserosData.length;
         renderCaserosList();
         
-        if (!editingCaseroId) {
-          alert('✅ Casero añadido.\n\nEmail: ' + data.email);
+        if (editingCaseroId) {
+          alert('✅ Casero actualizado');
         }
       } catch (error) {
         console.error('Error guardando casero:', error);
-        alert('Error al guardar: ' + error.message);
+        let msg = 'Error al guardar';
+        if (error.code === 'auth/invalid-email') msg = 'Email no válido';
+        if (error.code === 'auth/weak-password') msg = 'Contraseña muy débil (mínimo 6 caracteres)';
+        alert(msg + ': ' + error.message);
       }
       
       btn.disabled = false; btn.textContent = 'Guardar';
@@ -5053,12 +5124,17 @@
         document.getElementById(`hperm-${sec}-b`).checked = false;
       });
       
+      // Campo contraseña: solo visible al crear nuevo
+      const pwdGroup = document.getElementById('hoster-password-group');
+      
       if (hoster) {
         document.getElementById('modal-hoster-title').textContent = '✏️ Editar hoster';
         document.getElementById('hoster-nombre').value = hoster.nombre || '';
         document.getElementById('hoster-email').value = hoster.email || '';
         document.getElementById('hoster-email').disabled = true;
         document.getElementById('hoster-telefono').value = hoster.telefono || '';
+        pwdGroup.style.display = 'none';
+        document.getElementById('hoster-password').required = false;
         
         const permisos = hoster.permisos || {};
         seccionesPermisosHoster.forEach(sec => {
@@ -5070,8 +5146,18 @@
       } else {
         document.getElementById('modal-hoster-title').textContent = '🏨 Nuevo hoster';
         document.getElementById('hoster-email').disabled = false;
+        pwdGroup.style.display = 'block';
+        document.getElementById('hoster-password').required = true;
+        generarPasswordHoster();
       }
       modalHoster.classList.add('active');
+    }
+    
+    function generarPasswordHoster() {
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let pwd = '';
+      for (let i = 0; i < 8; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+      document.getElementById('hoster-password').value = pwd;
     }
 
     document.getElementById('modal-hoster-close').addEventListener('click', () => modalHoster.classList.remove('active'));
@@ -5094,9 +5180,18 @@
           };
         });
 
+        const email = document.getElementById('hoster-email').value.toLowerCase().trim();
+        const password = document.getElementById('hoster-password').value;
+        
+        if (!email) {
+          alert('El email es obligatorio');
+          btn.disabled = false; btn.textContent = 'Guardar';
+          return;
+        }
+
         const data = {
           nombre: document.getElementById('hoster-nombre').value,
-          email: document.getElementById('hoster-email').value.toLowerCase().trim(),
+          email: email,
           telefono: document.getElementById('hoster-telefono').value,
           permisos: permisos,
           bienId: bienId,
@@ -5105,32 +5200,54 @@
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        if (!data.email) {
-          alert('El email es obligatorio');
-          btn.disabled = false; btn.textContent = 'Guardar';
-          return;
-        }
-        
         const ref = db.collection('bienes').doc(bienId).collection('hosters');
         
         if (editingHosterId) {
           await ref.doc(editingHosterId).update(data);
         } else {
+          // Validar contraseña
+          if (!password || password.length < 6) {
+            alert('La contraseña debe tener al menos 6 caracteres');
+            btn.disabled = false; btn.textContent = 'Guardar';
+            return;
+          }
+          
+          // Crear usuario en Firebase Auth
+          try {
+            const secondaryApp = firebase.apps.find(app => app.name === 'Secondary') || 
+              firebase.initializeApp(firebase.app().options, 'Secondary');
+            const secondaryAuth = secondaryApp.auth();
+            
+            await secondaryAuth.createUserWithEmailAndPassword(email, password);
+            await secondaryAuth.signOut();
+          } catch (authError) {
+            if (authError.code === 'auth/email-already-in-use') {
+              console.log('Usuario ya existe en Auth, añadiendo acceso');
+            } else {
+              throw authError;
+            }
+          }
+          
           data.creadoPor = currentUser.uid;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           data.activo = true;
           await ref.add(data);
+          
+          alert(`✅ Hoster creado correctamente.\n\n📧 Email: ${email}\n🔑 Contraseña: ${password}\n\n⚠️ Comunique estas credenciales al hoster.\nAcceso: externos.html`);
         }
         
         modalHoster.classList.remove('active');
         await cargarHosters();
         
-        if (!editingHosterId) {
-          alert('✅ Hoster añadido.\n\nEmail: ' + data.email);
+        if (editingHosterId) {
+          alert('✅ Hoster actualizado');
         }
       } catch (error) {
         console.error('Error guardando hoster:', error);
-        alert('Error al guardar: ' + error.message);
+        let msg = 'Error al guardar';
+        if (error.code === 'auth/invalid-email') msg = 'Email no válido';
+        if (error.code === 'auth/weak-password') msg = 'Contraseña muy débil';
+        alert(msg + ': ' + error.message);
       }
       
       btn.disabled = false; btn.textContent = 'Guardar';
@@ -5243,6 +5360,9 @@
         document.getElementById(`gperm-${sec}-b`).checked = false;
       });
       
+      // Campo contraseña: solo visible al crear nuevo
+      const pwdGroup = document.getElementById('guarda-password-group');
+      
       if (guarda) {
         document.getElementById('modal-guarda-title').textContent = '✏️ Editar operario';
         document.getElementById('guarda-nombre').value = guarda.nombre || '';
@@ -5250,6 +5370,8 @@
         document.getElementById('guarda-email').disabled = true;
         document.getElementById('guarda-telefono').value = guarda.telefono || '';
         document.getElementById('guarda-rol').value = guarda.rol || 'guarderia';
+        pwdGroup.style.display = 'none';
+        document.getElementById('guarda-password').required = false;
         
         const permisos = guarda.permisos || {};
         seccionesPermisosGuarda.forEach(sec => {
@@ -5261,8 +5383,18 @@
       } else {
         document.getElementById('modal-guarda-title').textContent = '🌾 Nuevo operario';
         document.getElementById('guarda-email').disabled = false;
+        pwdGroup.style.display = 'block';
+        document.getElementById('guarda-password').required = true;
+        generarPasswordGuarda();
       }
       modalGuarda.classList.add('active');
+    }
+    
+    function generarPasswordGuarda() {
+      const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let pwd = '';
+      for (let i = 0; i < 8; i++) pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+      document.getElementById('guarda-password').value = pwd;
     }
 
     document.getElementById('modal-guarda-close').addEventListener('click', () => modalGuarda.classList.remove('active'));
@@ -5285,9 +5417,18 @@
           };
         });
 
+        const email = document.getElementById('guarda-email').value.toLowerCase().trim();
+        const password = document.getElementById('guarda-password').value;
+        
+        if (!email) {
+          alert('El email es obligatorio');
+          btn.disabled = false; btn.textContent = 'Guardar';
+          return;
+        }
+
         const data = {
           nombre: document.getElementById('guarda-nombre').value,
-          email: document.getElementById('guarda-email').value.toLowerCase().trim(),
+          email: email,
           telefono: document.getElementById('guarda-telefono').value,
           rol: document.getElementById('guarda-rol').value,
           permisos: permisos,
@@ -5297,32 +5438,54 @@
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        if (!data.email) {
-          alert('El email es obligatorio');
-          btn.disabled = false; btn.textContent = 'Guardar';
-          return;
-        }
-        
         const ref = db.collection('bienes').doc(bienId).collection('guardas');
         
         if (editingGuardaId) {
           await ref.doc(editingGuardaId).update(data);
         } else {
+          // Validar contraseña
+          if (!password || password.length < 6) {
+            alert('La contraseña debe tener al menos 6 caracteres');
+            btn.disabled = false; btn.textContent = 'Guardar';
+            return;
+          }
+          
+          // Crear usuario en Firebase Auth
+          try {
+            const secondaryApp = firebase.apps.find(app => app.name === 'Secondary') || 
+              firebase.initializeApp(firebase.app().options, 'Secondary');
+            const secondaryAuth = secondaryApp.auth();
+            
+            await secondaryAuth.createUserWithEmailAndPassword(email, password);
+            await secondaryAuth.signOut();
+          } catch (authError) {
+            if (authError.code === 'auth/email-already-in-use') {
+              console.log('Usuario ya existe en Auth, añadiendo acceso');
+            } else {
+              throw authError;
+            }
+          }
+          
           data.creadoPor = currentUser.uid;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           data.activo = true;
           await ref.add(data);
+          
+          alert(`✅ Operario creado correctamente.\n\n📧 Email: ${email}\n🔑 Contraseña: ${password}\n\n⚠️ Comunique estas credenciales al operario.\nAcceso: externos.html`);
         }
         
         modalGuarda.classList.remove('active');
         await cargarGuardas();
         
-        if (!editingGuardaId) {
-          alert('✅ Operario añadido.\n\nEmail: ' + data.email);
+        if (editingGuardaId) {
+          alert('✅ Operario actualizado');
         }
       } catch (error) {
         console.error('Error guardando guarda:', error);
-        alert('Error al guardar: ' + error.message);
+        let msg = 'Error al guardar';
+        if (error.code === 'auth/invalid-email') msg = 'Email no válido';
+        if (error.code === 'auth/weak-password') msg = 'Contraseña muy débil';
+        alert(msg + ': ' + error.message);
       }
       
       btn.disabled = false; btn.textContent = 'Guardar';

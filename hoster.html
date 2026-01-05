@@ -762,13 +762,17 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        window.location.href = 'login.html';
+        window.location.href = 'externos.html';
         return;
       }
 
       currentUser = user;
 
       try {
+        // Obtener bienId de la URL si viene
+        const urlParams = new URLSearchParams(window.location.search);
+        const bienIdParam = urlParams.get('bien');
+        
         // Buscar en todas las subcolecciones de hosters de cada bien
         const hostersQuery = await db.collectionGroup('hosters')
           .where('email', '==', user.email.toLowerCase())
@@ -776,18 +780,21 @@
           .get();
 
         if (hostersQuery.empty) {
-          alert('No tienes acceso como hoster a ninguna propiedad');
-          auth.signOut();
+          alert('No tiene acceso como hoster a ninguna propiedad');
+          window.location.href = 'externos.html';
           return;
         }
 
         // Recopilar bienes asignados
+        let bienParamIndex = -1;
+        
         for (const doc of hostersQuery.docs) {
           const hosterInfo = doc.data();
           const bienId = hosterInfo.bienId;
           
           const bienDoc = await db.collection('bienes').doc(bienId).get();
           if (bienDoc.exists) {
+            const idx = bienesAsignados.length;
             bienesAsignados.push({
               id: bienDoc.id,
               ...bienDoc.data(),
@@ -798,12 +805,17 @@
             if (!hosterData) {
               hosterData = hosterInfo;
             }
+            
+            // Verificar si es el bien solicitado por parámetro
+            if (bienIdParam && bienId === bienIdParam) {
+              bienParamIndex = idx;
+            }
           }
         }
 
         if (bienesAsignados.length === 0) {
-          alert('No tienes acceso como hoster');
-          auth.signOut();
+          alert('No tiene acceso como hoster');
+          window.location.href = 'externos.html';
           return;
         }
 
@@ -818,8 +830,12 @@
           select.appendChild(opt);
         });
 
-        // Si solo hay uno, seleccionar automáticamente
-        if (bienesAsignados.length === 1) {
+        // Si viene por parámetro, seleccionar ese bien
+        if (bienParamIndex >= 0) {
+          select.value = bienesAsignados[bienParamIndex].id;
+          await cambiarBien();
+        } else if (bienesAsignados.length === 1) {
+          // Si solo hay uno, seleccionar automáticamente
           select.value = bienesAsignados[0].id;
           document.getElementById('bien-selector-container').classList.add('hidden');
           await cambiarBien();
