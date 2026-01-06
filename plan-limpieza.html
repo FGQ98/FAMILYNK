@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- FAMILYNK Icons & PWA -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Plan de Limpieza</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --mayordomo: #8B7355;
+      --mayordomo-light: #A69076;
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--mayordomo);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--mayordomo);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bien-nombre {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--mayordomo); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Días de la semana */
+    .dias-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+      .dias-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .dia-column {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+      min-height: 300px;
+    }
+    .dia-header {
+      background: var(--mayordomo);
+      color: white;
+      padding: 12px;
+      text-align: center;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+    }
+    .dia-header.hoy { background: var(--sage); }
+    .dia-body { padding: 12px; }
+    .dia-empty {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* Tareas */
+    .tarea-item {
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid var(--mayordomo);
+    }
+    .tarea-item:hover { transform: translateX(3px); box-shadow: var(--shadow-soft); }
+    .tarea-zona { font-size: 0.7rem; color: var(--mayordomo); font-weight: 700; text-transform: uppercase; }
+    .tarea-nombre { font-weight: 600; font-size: 0.85rem; margin: 4px 0; }
+    .tarea-meta { display: flex; gap: 10px; font-size: 0.75rem; color: var(--text-muted); }
+    .tarea-tiempo { display: flex; align-items: center; gap: 4px; }
+
+    /* Botón añadir */
+    .btn-add {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: var(--mayordomo);
+      color: white;
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(139, 115, 85, 0.4);
+      transition: all 0.3s;
+      z-index: 50;
+    }
+    .btn-add:hover { transform: scale(1.1); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.2rem; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .modal-body { padding: 20px; }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* Forms */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--mayordomo); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Buttons */
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+    }
+    .btn-primary { background: var(--mayordomo); color: white; }
+    .btn-primary:hover { background: var(--mayordomo-light); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-secondary:hover { background: #E8DED2; }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-danger:hover { opacity: 0.9; }
+
+    /* Iconos de tareas */
+    .tarea-icon { font-size: 1.2rem; }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--cream-dark);
+      border-top-color: var(--mayordomo);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="javascript:history.back()" class="back-btn">← Volver</a>
+      <div>
+        <h1 class="header-title">📋 Plan de Limpieza</h1>
+        <span class="bien-nombre" id="bien-nombre"></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 16px;">Cargando plan...</p>
+    </div>
+
+    <div id="content" class="hidden">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Tareas programadas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-zonas">0</div>
+          <div class="stat-label">Zonas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-tiempo">0h</div>
+          <div class="stat-label">Tiempo semanal</div>
+        </div>
+      </div>
+
+      <!-- Días de la semana -->
+      <div class="dias-grid" id="dias-grid">
+        <!-- Se genera dinámicamente -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Botón añadir -->
+  <button class="btn-add" onclick="abrirModalNuevo()">+</button>
+
+  <!-- Modal Nueva Tarea -->
+  <div class="modal-overlay" id="modal-tarea">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">📋 Nueva tarea de limpieza</h3>
+        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+      </div>
+      <form id="form-tarea">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Zona</label>
+            <select class="form-select" id="tarea-zona" required>
+              <option value="">Selecciona zona...</option>
+              <option value="cocina">🍳 Cocina</option>
+              <option value="salon">🛋️ Salón</option>
+              <option value="comedor">🍽️ Comedor</option>
+              <option value="dormitorio">🛏️ Dormitorio</option>
+              <option value="bano">🚿 Baño</option>
+              <option value="terraza">🌿 Terraza/Jardín</option>
+              <option value="garaje">🚗 Garaje</option>
+              <option value="lavadero">🧺 Lavadero</option>
+              <option value="entrada">🚪 Entrada/Pasillo</option>
+              <option value="general">🏠 General</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Dependencia (opcional)</label>
+            <input type="text" class="form-input" id="tarea-dependencia" placeholder="Ej: Dormitorio principal, Baño 2...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tarea</label>
+            <select class="form-select" id="tarea-tipo" required>
+              <option value="">Selecciona tarea...</option>
+              <option value="barrer-fregar">🧹 Barrer y fregar</option>
+              <option value="cambiar-sabanas">🛏️ Cambiar sábanas</option>
+              <option value="desinfectar">🧴 Desinfectar</option>
+              <option value="revisar-consumibles">📦 Revisar consumibles</option>
+              <option value="planchar">👔 Planchar</option>
+              <option value="lavar-ropa">🧺 Lavar ropa</option>
+              <option value="limpiar-cristales">🪟 Limpiar cristales</option>
+              <option value="aspirar">🔌 Aspirar</option>
+              <option value="quitar-polvo">✨ Quitar polvo</option>
+              <option value="limpiar-electrodomesticos">🔧 Limpiar electrodomésticos</option>
+              <option value="ordenar">📂 Ordenar</option>
+              <option value="otra">📋 Otra</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="grupo-otra-tarea" style="display: none;">
+            <label class="form-label">Especificar tarea</label>
+            <input type="text" class="form-input" id="tarea-otra" placeholder="Describe la tarea...">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Día de la semana</label>
+              <select class="form-select" id="tarea-dia" required>
+                <option value="1">Lunes</option>
+                <option value="2">Martes</option>
+                <option value="3">Miércoles</option>
+                <option value="4">Jueves</option>
+                <option value="5">Viernes</option>
+                <option value="6">Sábado</option>
+                <option value="0">Domingo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tiempo estimado</label>
+              <select class="form-select" id="tarea-tiempo" required>
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hora</option>
+                <option value="90">1h 30min</option>
+                <option value="120">2 horas</option>
+                <option value="180">3 horas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notas (opcional)</label>
+            <input type="text" class="form-input" id="tarea-notas" placeholder="Instrucciones especiales...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="btn-eliminar" style="display: none;" onclick="eliminarTarea()">Eliminar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBN1JSfcwqOi_6d1WIgtYiZQqJKyVjZTHU",
+      authDomain: "familynk-dfadb.firebaseapp.com",
+      projectId: "familynk-dfadb",
+      storageBucket: "familynk-dfadb.firebasestorage.app",
+      messagingSenderId: "1039790137920",
+      appId: "1:1039790137920:web:c67b318a3700594c8e2d03"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Variables globales
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let tareasData = [];
+    let tareaEditando = null;
+
+    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const zonaIcons = {
+      cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
+      bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
+      entrada: '🚪', general: '🏠'
+    };
+    const tareaIcons = {
+      'barrer-fregar': '🧹', 'cambiar-sabanas': '🛏️', 'desinfectar': '🧴',
+      'revisar-consumibles': '📦', 'planchar': '👔', 'lavar-ropa': '🧺',
+      'limpiar-cristales': '🪟', 'aspirar': '🔌', 'quitar-polvo': '✨',
+      'limpiar-electrodomesticos': '🔧', 'ordenar': '📂', 'otra': '📋'
+    };
+    const tareaNombres = {
+      'barrer-fregar': 'Barrer y fregar', 'cambiar-sabanas': 'Cambiar sábanas', 
+      'desinfectar': 'Desinfectar', 'revisar-consumibles': 'Revisar consumibles',
+      'planchar': 'Planchar', 'lavar-ropa': 'Lavar ropa', 'limpiar-cristales': 'Limpiar cristales',
+      'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo', 
+      'limpiar-electrodomesticos': 'Limpiar electrodomésticos', 'ordenar': 'Ordenar', 'otra': 'Otra'
+    };
+    const zonaNombres = {
+      cocina: 'Cocina', salon: 'Salón', comedor: 'Comedor', dormitorio: 'Dormitorio',
+      bano: 'Baño', terraza: 'Terraza/Jardín', garaje: 'Garaje', lavadero: 'Lavadero',
+      entrada: 'Entrada', general: 'General'
+    };
+
+    // Obtener parámetros URL
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('id');
+
+    if (!bienId) {
+      alert('No se especificó el bien');
+      window.location.href = 'cgi.html';
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        // Cargar bien
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) {
+          alert('Bien no encontrado');
+          window.location.href = 'cgi.html';
+          return;
+        }
+        bienData = bienDoc.data();
+        document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
+
+        // Cargar tareas de limpieza programadas
+        const tareasSnap = await db.collection('bienes').doc(bienId)
+          .collection('planLimpieza')
+          .orderBy('dia', 'asc')
+          .get();
+        tareasData = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        renderDias();
+        actualizarStats();
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar los datos');
+      }
+    }
+
+    function renderDias() {
+      const container = document.getElementById('dias-grid');
+      const hoyNum = new Date().getDay();
+
+      let html = '';
+      // Empezar por lunes (1) hasta domingo (0)
+      const orden = [1, 2, 3, 4, 5, 6, 0];
+      
+      orden.forEach(diaNum => {
+        const tareasDelDia = tareasData.filter(t => parseInt(t.dia) === diaNum);
+        const esHoy = diaNum === hoyNum;
+
+        html += `
+          <div class="dia-column">
+            <div class="dia-header ${esHoy ? 'hoy' : ''}">${diasSemana[diaNum]}</div>
+            <div class="dia-body">
+              ${tareasDelDia.length === 0 ? 
+                '<div class="dia-empty">Sin tareas</div>' : 
+                tareasDelDia.map(t => renderTarea(t)).join('')
+              }
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderTarea(tarea) {
+      const zonaIcon = zonaIcons[tarea.zona] || '🏠';
+      const zonaNombre = zonaNombres[tarea.zona] || tarea.zona;
+      const tareaNombre = tarea.tipo === 'otra' ? (tarea.otraTarea || 'Tarea') : (tareaNombres[tarea.tipo] || tarea.tipo);
+      const tareaIcon = tareaIcons[tarea.tipo] || '📋';
+      const tiempo = parseInt(tarea.tiempo) || 0;
+      const tiempoStr = tiempo >= 60 ? `${Math.floor(tiempo/60)}h ${tiempo%60 ? tiempo%60+'min' : ''}` : `${tiempo}min`;
+
+      return `
+        <div class="tarea-item" onclick="editarTarea('${tarea.id}')">
+          <div class="tarea-zona">${zonaIcon} ${zonaNombre}${tarea.dependencia ? ' - ' + tarea.dependencia : ''}</div>
+          <div class="tarea-nombre">${tareaIcon} ${tareaNombre}</div>
+          <div class="tarea-meta">
+            <span class="tarea-tiempo">⏱️ ${tiempoStr}</span>
+            ${tarea.notas ? '<span>📝</span>' : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function actualizarStats() {
+      document.getElementById('stat-total').textContent = tareasData.length;
+      
+      const zonas = new Set(tareasData.map(t => t.zona));
+      document.getElementById('stat-zonas').textContent = zonas.size;
+
+      const tiempoTotal = tareasData.reduce((acc, t) => acc + (parseInt(t.tiempo) || 0), 0);
+      const horas = Math.floor(tiempoTotal / 60);
+      const mins = tiempoTotal % 60;
+      document.getElementById('stat-tiempo').textContent = horas > 0 ? `${horas}h${mins ? ' ' + mins + 'm' : ''}` : `${mins}m`;
+    }
+
+    // Modal
+    function abrirModalNuevo() {
+      tareaEditando = null;
+      document.getElementById('modal-titulo').textContent = '📋 Nueva tarea de limpieza';
+      document.getElementById('form-tarea').reset();
+      document.getElementById('btn-eliminar').style.display = 'none';
+      document.getElementById('grupo-otra-tarea').style.display = 'none';
+      document.getElementById('modal-tarea').classList.add('active');
+    }
+
+    function editarTarea(tareaId) {
+      const tarea = tareasData.find(t => t.id === tareaId);
+      if (!tarea) return;
+
+      tareaEditando = tarea;
+      document.getElementById('modal-titulo').textContent = '✏️ Editar tarea';
+      document.getElementById('tarea-zona').value = tarea.zona || '';
+      document.getElementById('tarea-dependencia').value = tarea.dependencia || '';
+      document.getElementById('tarea-tipo').value = tarea.tipo || '';
+      document.getElementById('tarea-otra').value = tarea.otraTarea || '';
+      document.getElementById('tarea-dia').value = tarea.dia || '1';
+      document.getElementById('tarea-tiempo').value = tarea.tiempo || '30';
+      document.getElementById('tarea-notas').value = tarea.notas || '';
+      
+      document.getElementById('grupo-otra-tarea').style.display = tarea.tipo === 'otra' ? 'block' : 'none';
+      document.getElementById('btn-eliminar').style.display = 'block';
+      document.getElementById('modal-tarea').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-tarea').classList.remove('active');
+      tareaEditando = null;
+    }
+
+    // Mostrar/ocultar campo "otra tarea"
+    document.getElementById('tarea-tipo').addEventListener('change', (e) => {
+      document.getElementById('grupo-otra-tarea').style.display = e.target.value === 'otra' ? 'block' : 'none';
+    });
+
+    // Guardar tarea
+    document.getElementById('form-tarea').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const datos = {
+        zona: document.getElementById('tarea-zona').value,
+        dependencia: document.getElementById('tarea-dependencia').value.trim(),
+        tipo: document.getElementById('tarea-tipo').value,
+        otraTarea: document.getElementById('tarea-otra').value.trim(),
+        dia: document.getElementById('tarea-dia').value,
+        tiempo: document.getElementById('tarea-tiempo').value,
+        notas: document.getElementById('tarea-notas').value.trim(),
+        actualizadoPor: currentUser.uid,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        if (tareaEditando) {
+          await db.collection('bienes').doc(bienId)
+            .collection('planLimpieza').doc(tareaEditando.id)
+            .update(datos);
+        } else {
+          datos.creadoPor = currentUser.uid;
+          datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId)
+            .collection('planLimpieza').add(datos);
+        }
+
+        cerrarModal();
+        await cargarDatos();
+      } catch (error) {
+        console.error('Error guardando tarea:', error);
+        alert('Error al guardar');
+      }
+    });
+
+    async function eliminarTarea() {
+      if (!tareaEditando) return;
+      if (!confirm('¿Eliminar esta tarea del plan de limpieza?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('planLimpieza').doc(tareaEditando.id)
+          .delete();
+        cerrarModal();
+        await cargarDatos();
+      } catch (error) {
+        console.error('Error eliminando:', error);
+        alert('Error al eliminar');
+      }
+    }
+  </script>
+</body>
+</html>
