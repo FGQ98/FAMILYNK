@@ -283,10 +283,11 @@
     .plan-tarea.hoy { border-left-color: var(--warning); background: #fffbf5; }
     .plan-tarea.completada { opacity: 0.6; background: #f0f0f0; border-left-color: var(--success); }
     .plan-tarea.completada .plan-tarea-titulo { text-decoration: line-through; color: var(--text-muted); }
+    .plan-tarea.reparacion { border-left-color: var(--error); }
     .plan-tarea-check { width: 20px; height: 20px; cursor: pointer; accent-color: var(--sage); }
     .plan-tarea-info { flex: 1; }
     .plan-tarea-titulo { font-weight: 600; font-size: 0.85rem; }
-    .plan-tarea-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 10px; margin-top: 2px; }
+    .plan-tarea-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
     .plan-tarea-dia { 
       background: var(--sage-muted); 
       color: var(--sage-dark); 
@@ -294,6 +295,24 @@
       border-radius: 4px; 
       font-size: 0.7rem; 
       font-weight: 600; 
+    }
+    .badge-rep {
+      background: rgba(212, 105, 90, 0.15);
+      color: var(--error);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 600;
+    }
+    .plan-tiempo-total {
+      text-align: center;
+      padding: 8px;
+      background: var(--mayordomo-muted);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--mayordomo);
+      margin-bottom: 12px;
     }
     .plan-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
     .plan-progreso {
@@ -615,6 +634,7 @@
     // ========== PLAN SEMANAL DE MANTENIMIENTO ==========
     let tareasSemanalesData = [];
     let semanaKeyActual = '';
+    const MAX_MINUTOS_DIA = 420; // 7 horas máximo por día
 
     async function cargarPlanSemanal() {
       const container = document.getElementById('tareas-semanales');
@@ -622,34 +642,140 @@
       
       try {
         const hoy = new Date();
+        const diaHoy = hoy.getDay();
         const inicioSemana = new Date(hoy);
-        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1); // Lunes
         inicioSemana.setHours(0, 0, 0, 0);
         const finSemana = new Date(inicioSemana);
         finSemana.setDate(inicioSemana.getDate() + 6);
         
         semanaKeyActual = inicioSemana.toISOString().split('T')[0];
 
-        const snap = await db.collection('bienes').doc(bienId)
-          .collection('tareasProgramadas')
-          .where('fechaProgramada', '>=', inicioSemana.toISOString().split('T')[0])
-          .where('fechaProgramada', '<=', finSemana.toISOString().split('T')[0])
-          .orderBy('fechaProgramada', 'asc')
+        // 1. Cargar tareas del Mantenimiento Programado que tocan esta semana
+        const mantProgSnap = await db.collection('bienes').doc(bienId)
+          .collection('mantenimientoProgramado').get();
+        
+        let tareasProgramadas = [];
+        const diasSemanaFechas = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(inicioSemana);
+          d.setDate(inicioSemana.getDate() + i);
+          diasSemanaFechas.push(d);
+        }
+
+        mantProgSnap.docs.forEach(doc => {
+          const mant = { id: doc.id, ...doc.data() };
+          const frecuencia = mant.frecuencia || 'mensual';
+          const proximaFecha = mant.proximaFecha?.toDate ? mant.proximaFecha.toDate() : 
+                              mant.proximaFecha ? new Date(mant.proximaFecha) : null;
+          
+          if (!proximaFecha) return;
+          
+          // Verificar si toca esta semana según frecuencia
+          diasSemanaFechas.forEach((diaFecha, idx) => {
+            let tocaEsteDia = false;
+            
+            if (frecuencia === 'diario') {
+              tocaEsteDia = true;
+            } else if (frecuencia === 'semanal' && proximaFecha.getDay() === diaFecha.getDay()) {
+              tocaEsteDia = true;
+            } else if (frecuencia === 'quincenal') {
+              const diffDays = Math.floor((diaFecha - proximaFecha) / (1000 * 60 * 60 * 24));
+              tocaEsteDia = diffDays % 14 === 0 && diffDays >= 0;
+            } else if (frecuencia === 'mensual' && proximaFecha.getDate() === diaFecha.getDate()) {
+              tocaEsteDia = true;
+            } else if (diaFecha.toISOString().split('T')[0] === proximaFecha.toISOString().split('T')[0]) {
+              tocaEsteDia = true;
+            }
+
+            if (tocaEsteDia) {
+              tareasProgramadas.push({
+                id: `prog_${doc.id}_${idx}`,
+                titulo: mant.nombre || mant.titulo,
+                tipo: 'programado',
+                fechaProgramada: diaFecha.toISOString().split('T')[0],
+                tiempoEstimado: mant.tiempoEstimado || 60,
+                prioridad: 'normal',
+                completada: false,
+                origen: doc.id
+              });
+            }
+          });
+        });
+
+        // 2. Cargar reparaciones pendientes ordenadas por prioridad y antigüedad
+        const repsSnap = await db.collection('bienes').doc(bienId)
+          .collection('mantenimiento')
+          .where('estado', '==', 'pendiente')
           .get();
         
-        tareasSemanalesData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        let reparaciones = repsSnap.docs.map(doc => {
+          const rep = { id: doc.id, ...doc.data() };
+          // Calcular score de prioridad (mayor = más urgente)
+          let score = 0;
+          if (rep.urgencia === 'alta') score += 1000;
+          else if (rep.urgencia === 'media') score += 500;
+          // Añadir antigüedad (días desde reporte)
+          const fechaReporte = rep.fecha?.toDate ? rep.fecha.toDate() : new Date();
+          const diasDesdeReporte = Math.floor((hoy - fechaReporte) / (1000 * 60 * 60 * 24));
+          score += diasDesdeReporte;
+          
+          return {
+            id: `rep_${doc.id}`,
+            titulo: `🔧 ${rep.titulo}`,
+            tipo: 'reparacion',
+            tiempoEstimado: rep.tiempoEstimado || 60,
+            urgencia: rep.urgencia,
+            prioridad: rep.urgencia,
+            score: score,
+            completada: false,
+            origen: doc.id
+          };
+        }).sort((a, b) => b.score - a.score);
+
+        // 3. Distribuir reparaciones en días con tiempo disponible
+        const tiempoPorDia = [0, 0, 0, 0, 0, 0, 0]; // Lun-Dom
         
-        if (tareasSemanalesData.length === 0) {
-          // Fallback: cargar todas y filtrar
-          const allSnap = await db.collection('bienes').doc(bienId).collection('tareasProgramadas').get();
-          tareasSemanalesData = allSnap.docs
-            .map(d => ({ id: d.id, ...d.data() }))
-            .filter(t => {
-              const fecha = new Date(t.fechaProgramada);
-              return fecha >= inicioSemana && fecha <= finSemana;
+        // Primero contar tiempo de tareas programadas
+        tareasProgramadas.forEach(t => {
+          const fecha = new Date(t.fechaProgramada);
+          const diaIdx = (fecha.getDay() + 6) % 7; // Convertir: Dom=6, Lun=0, etc.
+          tiempoPorDia[diaIdx] += t.tiempoEstimado || 60;
+        });
+
+        // Asignar reparaciones a días con tiempo disponible
+        reparaciones.forEach(rep => {
+          // Buscar día con tiempo disponible
+          for (let i = 0; i < 7; i++) {
+            if (tiempoPorDia[i] + (rep.tiempoEstimado || 60) <= MAX_MINUTOS_DIA) {
+              const diaFecha = new Date(inicioSemana);
+              diaFecha.setDate(inicioSemana.getDate() + i);
+              rep.fechaProgramada = diaFecha.toISOString().split('T')[0];
+              tiempoPorDia[i] += rep.tiempoEstimado || 60;
+              tareasProgramadas.push(rep);
+              break;
+            }
+          }
+        });
+
+        // 4. Cargar estado de completado de esta semana
+        try {
+          const completadosDoc = await db.collection('bienes').doc(bienId)
+            .collection('planSemanalCompletados').doc(semanaKeyActual).get();
+          if (completadosDoc.exists) {
+            const completados = completadosDoc.data().tareas || {};
+            tareasProgramadas.forEach(t => {
+              if (completados[t.id]) {
+                t.completada = true;
+              }
             });
-        }
+          }
+        } catch (e) {}
+
+        // Ordenar por fecha
+        tareasProgramadas.sort((a, b) => new Date(a.fechaProgramada) - new Date(b.fechaProgramada));
         
+        tareasSemanalesData = tareasProgramadas;
         renderPlanSemanal();
         
       } catch (error) {
@@ -665,7 +791,7 @@
       const hoyNum = new Date().getDay();
 
       if (tareasSemanalesData.length === 0) {
-        container.innerHTML = '<div class="plan-empty">📋 Sin tareas programadas esta semana</div>';
+        container.innerHTML = '<div class="plan-empty">📋 Sin tareas programadas esta semana<br><small>Las tareas se generan desde Mant. Programado y Reparaciones</small></div>';
         progresoBar.style.width = '0%';
         return;
       }
@@ -675,42 +801,73 @@
       const progreso = Math.round((completadas / total) * 100);
       progresoBar.style.width = progreso + '%';
 
+      // Calcular tiempo total
+      const tiempoTotal = tareasSemanalesData.reduce((sum, t) => sum + (t.tiempoEstimado || 60), 0);
+      const horasTotal = Math.floor(tiempoTotal / 60);
+      const minsTotal = tiempoTotal % 60;
+
       let html = tareasSemanalesData.map(t => {
         const fecha = new Date(t.fechaProgramada);
         const diaNum = fecha.getDay();
         const diaStr = diasSemana[diaNum];
         const esHoy = diaNum === hoyNum;
         const completada = t.completada ? 'completada' : '';
+        const esReparacion = t.tipo === 'reparacion';
+        const tiempo = t.tiempoEstimado || 60;
+        const tiempoStr = tiempo >= 60 ? `${Math.floor(tiempo/60)}h${tiempo%60 ? tiempo%60+'m' : ''}` : `${tiempo}m`;
+        
+        // Icono de urgencia para reparaciones
+        let urgenciaIcon = '';
+        if (esReparacion) {
+          if (t.urgencia === 'alta') urgenciaIcon = '🔴';
+          else if (t.urgencia === 'media') urgenciaIcon = '🟡';
+          else urgenciaIcon = '🟢';
+        }
 
         return `
-          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''}">
+          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''} ${esReparacion ? 'reparacion' : ''}">
             <input type="checkbox" class="plan-tarea-check" 
               ${t.completada ? 'checked' : ''} 
               onchange="toggleTareaSemanal('${t.id}', this.checked)">
             <div class="plan-tarea-info">
-              <div class="plan-tarea-titulo">${t.titulo || 'Tarea'}</div>
+              <div class="plan-tarea-titulo">${urgenciaIcon} ${t.titulo || 'Tarea'}</div>
               <div class="plan-tarea-meta">
                 <span class="plan-tarea-dia">${diaStr} ${fecha.getDate()}</span>
-                ${t.responsable ? `<span>👤 ${t.responsable}</span>` : ''}
+                <span>⏱️ ${tiempoStr}</span>
+                ${esReparacion ? '<span class="badge-rep">Reparación</span>' : ''}
               </div>
             </div>
           </div>
         `;
       }).join('');
 
+      // Añadir resumen de tiempo
+      html = `<div class="plan-tiempo-total">⏱️ ${horasTotal}h ${minsTotal ? minsTotal + 'm' : ''} esta semana</div>` + html;
+
       container.innerHTML = html;
     }
 
     async function toggleTareaSemanal(tareaId, completada) {
       try {
-        await db.collection('bienes').doc(bienId)
-          .collection('tareasProgramadas').doc(tareaId)
-          .update({ 
-            completada: completada,
-            fechaCompletado: completada ? new Date().toISOString() : null,
-            completadoPor: completada ? currentUser.uid : null
-          });
+        // Guardar estado de completado en colección separada por semana
+        const docRef = db.collection('bienes').doc(bienId)
+          .collection('planSemanalCompletados').doc(semanaKeyActual);
         
+        if (completada) {
+          await docRef.set({
+            [`tareas.${tareaId}`]: {
+              completada: true,
+              fechaCompletado: new Date().toISOString(),
+              completadoPor: currentUser.uid
+            }
+          }, { merge: true });
+        } else {
+          await docRef.set({
+            [`tareas.${tareaId}`]: firebase.firestore.FieldValue.delete()
+          }, { merge: true });
+        }
+        
+        // Actualizar UI
         const tarea = tareasSemanalesData.find(t => t.id === tareaId);
         if (tarea) tarea.completada = completada;
         renderPlanSemanal();
