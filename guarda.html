@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- FAMILYNK Icons & PWA -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Guarda</title>
@@ -413,22 +424,6 @@
     .item-valor.bajo { color: var(--error); }
     .item-valor.ok { color: var(--success); }
 
-    /* Actividad */
-    .actividad-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      background: var(--cream-medium);
-      border-radius: var(--radius-md);
-      margin-bottom: 8px;
-    }
-
-    .actividad-icon { font-size: 1.2rem; }
-    .actividad-info { flex: 1; }
-    .actividad-titulo { font-weight: 600; font-size: 0.85rem; }
-    .actividad-meta { font-size: 0.75rem; color: var(--text-muted); }
-
     /* Botones */
     .btn {
       display: inline-flex;
@@ -763,65 +758,46 @@
     let aperosData = [];
     let parcelasData = [];
     let inventarioData = [];
-    let actividadData = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        window.location.href = 'externos.html';
+        window.location.href = 'login.html';
         return;
       }
 
       currentUser = user;
 
       try {
-        // Obtener bienId de la URL si viene
-        const urlParams = new URLSearchParams(window.location.search);
-        const bienIdParam = urlParams.get('bien');
+        // Buscar en colección guardas
+        const guardaDoc = await db.collection('guardas').doc(user.uid).get();
         
-        // Buscar en todas las subcolecciones de guardas usando collectionGroup
-        const guardasQuery = await db.collectionGroup('guardas')
-          .where('email', '==', user.email.toLowerCase())
-          .where('activo', '==', true)
-          .get();
-
-        if (guardasQuery.empty) {
-          alert('No tiene acceso como operario a ninguna finca');
-          window.location.href = 'externos.html';
-          return;
-        }
-
-        // Recopilar bienes asignados
-        let bienParamIndex = -1;
-        
-        for (const doc of guardasQuery.docs) {
-          const guardaInfo = doc.data();
-          const bienId = guardaInfo.bienId;
+        if (guardaDoc.exists) {
+          guardaData = guardaDoc.data();
           
-          const bienDoc = await db.collection('bienes').doc(bienId).get();
-          if (bienDoc.exists) {
-            const idx = bienesAsignados.length;
-            bienesAsignados.push({
-              id: bienDoc.id,
-              ...bienDoc.data(),
-              permisos: guardaInfo.permisos || {},
-              rol: guardaInfo.rol || 'guarda'
-            });
-            
-            if (!guardaData) {
-              guardaData = guardaInfo;
-            }
-            
-            // Verificar si es el bien solicitado por parámetro
-            if (bienIdParam && bienId === bienIdParam) {
-              bienParamIndex = idx;
+          if (guardaData.bienes && guardaData.bienes.length > 0) {
+            for (const bienId of guardaData.bienes) {
+              const bienDoc = await db.collection('bienes').doc(bienId).get();
+              if (bienDoc.exists) {
+                bienesAsignados.push({ id: bienDoc.id, ...bienDoc.data() });
+              }
             }
           }
-        }
+        } else {
+          // Buscar bienes donde el email está como guarda
+          const bienesSnap = await db.collection('bienes')
+            .where('guardasEmails', 'array-contains', user.email.toLowerCase())
+            .get();
 
-        if (bienesAsignados.length === 0) {
-          alert('No tiene acceso como operario');
-          window.location.href = 'externos.html';
-          return;
+          if (bienesSnap.empty) {
+            alert('No tienes acceso como guarda');
+            auth.signOut();
+            return;
+          }
+
+          bienesAsignados = bienesSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
         }
 
         document.getElementById('user-name').textContent = guardaData?.nombre || user.email.split('@')[0];
@@ -835,12 +811,8 @@
           select.appendChild(opt);
         });
 
-        // Si viene por parámetro, seleccionar ese bien
-        if (bienParamIndex >= 0) {
-          select.value = bienesAsignados[bienParamIndex].id;
-          await cambiarBien();
-        } else if (bienesAsignados.length === 1) {
-          // Si solo hay uno, seleccionar automáticamente
+        // Si solo hay uno, seleccionar automáticamente
+        if (bienesAsignados.length === 1) {
           select.value = bienesAsignados[0].id;
           document.getElementById('bien-selector-container').classList.add('hidden');
           await cambiarBien();
@@ -901,13 +873,6 @@
         const invSnap = await bienRef.collection('inventario-campo').get();
         inventarioData = invSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Actividad reciente
-        const actSnap = await bienRef.collection('actividad')
-          .orderBy('fecha', 'desc')
-          .limit(10)
-          .get();
-        actividadData = actSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
       } catch (error) {
         console.error('Error cargando datos:', error);
       }
@@ -926,7 +891,6 @@
         ${renderModuloAperos()}
         ${renderModuloParcelas()}
         ${renderModuloInventario()}
-        ${renderModuloActividad()}
       `;
     }
 
@@ -1025,32 +989,6 @@
         <div class="modulo-card">
           <div class="modulo-card-header">
             <div class="modulo-card-title">📦 Inventario</div>
-          </div>
-          <div class="modulo-card-body">${items}</div>
-        </div>
-      `;
-    }
-
-    function renderModuloActividad() {
-      let items = actividadData.length === 0
-        ? '<div class="modulo-card-empty">No hay actividad reciente</div>'
-        : actividadData.slice(0, 5).map(a => {
-            const fecha = a.fecha ? new Date(a.fecha.seconds ? a.fecha.seconds * 1000 : a.fecha).toLocaleDateString('es-ES', {day: '2-digit', month: 'short'}) : '';
-            return `
-              <div class="actividad-row">
-                <div class="actividad-icon">${a.icono || '📝'}</div>
-                <div class="actividad-info">
-                  <div class="actividad-titulo">${a.titulo || 'Sin título'}</div>
-                  <div class="actividad-meta">${a.autor || 'Sistema'} · ${fecha}</div>
-                </div>
-              </div>
-            `;
-          }).join('');
-
-      return `
-        <div class="modulo-card">
-          <div class="modulo-card-header">
-            <div class="modulo-card-title">📊 Actividad reciente</div>
           </div>
           <div class="modulo-card-body">${items}</div>
         </div>

@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- FAMILYNK Icons & PWA -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Admin Nido</title>
@@ -165,63 +176,6 @@
     .btn-secondary:hover { background: var(--cream-dark); }
     .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
 
-    /* Bienes */
-    .bienes-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-      gap: 12px;
-    }
-
-    .bien-card {
-      background: var(--cream);
-      border-radius: var(--radius-md);
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      cursor: pointer;
-      transition: all 0.2s;
-      border: 2px solid transparent;
-    }
-
-    .bien-card:hover {
-      background: var(--cream-dark);
-      border-color: var(--sage);
-    }
-
-    .bien-card-icon {
-      font-size: 2rem;
-      width: 50px;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--white);
-      border-radius: var(--radius-md);
-    }
-
-    .bien-card-info { flex: 1; }
-
-    .bien-card-nombre {
-      font-weight: 700;
-      font-size: 0.95rem;
-      margin-bottom: 2px;
-    }
-
-    .bien-card-ubicacion {
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      margin-top: 6px;
-    }
-
     /* Miembros */
     .miembros-grid {
       display: grid;
@@ -368,7 +322,6 @@
 
     <div class="admin-tabs">
       <button class="admin-tab active" data-section="miembros" onclick="cambiarSeccion('miembros')"><span>👥</span> Miembros</button>
-      <button class="admin-tab" data-section="bienes" onclick="cambiarSeccion('bienes')"><span>🏠</span> Lo Común</button>
       <button class="admin-tab" data-section="secciones" onclick="cambiarSeccion('secciones')"><span>📂</span> Secciones</button>
       <button class="admin-tab" data-section="accesos" onclick="cambiarSeccion('accesos')"><span>🔑</span> Accesos</button>
       <button class="admin-tab" data-section="config" onclick="cambiarSeccion('config')"><span>⚙️</span> Configuración</button>
@@ -380,25 +333,6 @@
       <div class="miembros-grid" id="miembros-grid"></div>
       <div style="margin-top: 16px;">
         <a href="#" id="btn-editar-nido" class="btn btn-primary"><span>✏️</span> Editar miembros</a>
-      </div>
-    </section>
-
-    <!-- BIENES / LO COMÚN -->
-    <section class="admin-section" id="section-bienes">
-      <h2 class="section-title">🏠 Bienes del nido</h2>
-      <div class="card">
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-          Gestiona los bienes asignados a este nido. Puedes crear, editar y configurar gestiones.
-        </p>
-        <div class="bienes-grid" id="bienes-nido-grid">
-          <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-            Cargando bienes...
-          </div>
-        </div>
-        <div style="margin-top: 16px; display: flex; gap: 12px;">
-          <a href="lo-comun.html" class="btn btn-secondary"><span>📋</span> Ver todos los bienes</a>
-          <button class="btn btn-primary" onclick="abrirModalNuevoBien()"><span>➕</span> Crear bien</button>
-        </div>
       </div>
     </section>
 
@@ -535,16 +469,12 @@
       renderSecciones();
       renderAccesos();
       renderConfig();
-      cargarBienesNido();
     }
 
     function cambiarSeccion(seccion) {
       document.querySelectorAll('.admin-tab').forEach(t => { t.classList.remove('active'); if (t.dataset.section === seccion) t.classList.add('active'); });
       document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
       document.getElementById(`section-${seccion}`).classList.add('active');
-      
-      // Cargar datos específicos de la sección
-      if (seccion === 'bienes') cargarBienesNido();
     }
 
     function renderMiembros() {
@@ -660,71 +590,6 @@
       } catch (error) {
         alert('Error al guardar');
       }
-    }
-
-    // ============ BIENES DEL NIDO ============
-    let bienesNido = [];
-
-    async function cargarBienesNido() {
-      try {
-        const familiaId = nidoData.familiaId || userData.familiaId;
-        if (!familiaId) {
-          document.getElementById('bienes-nido-grid').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">No hay familia asociada</p>';
-          return;
-        }
-
-        // Buscar bienes de este nido
-        const snap = await db.collection('bienes')
-          .where('familiaId', '==', familiaId)
-          .where('nidoId', '==', nidoId)
-          .get();
-
-        bienesNido = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderBienesNido();
-      } catch (error) {
-        console.error('Error cargando bienes:', error);
-        document.getElementById('bienes-nido-grid').innerHTML = '<p style="color:var(--error);">Error al cargar bienes</p>';
-      }
-    }
-
-    function renderBienesNido() {
-      const container = document.getElementById('bienes-nido-grid');
-      
-      if (bienesNido.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 40px; color: var(--text-muted);">
-            <div style="font-size: 3rem; margin-bottom: 12px;">🏠</div>
-            <p>Este nido no tiene bienes asignados</p>
-            <p style="font-size: 0.85rem; margin-top: 8px;">Crea un bien o asígnalo desde Lo Común</p>
-          </div>
-        `;
-        return;
-      }
-
-      const iconos = { inmueble: '🏠', vehiculo: '🚗', embarcacion: '⛵', rustico: '🌾', ajuar: '🪑', otro: '📦' };
-      
-      container.innerHTML = bienesNido.map(bien => {
-        let gestion = '';
-        if (bien.mayordomoActivo) gestion = '<span class="badge" style="background:#8B7355;color:white;">🎩 Mayordomo</span>';
-        else if (bien.gerenteActivo) gestion = '<span class="badge" style="background:#4A5568;color:white;">🏨 Gerente</span>';
-        else if (bien.capatazActivo) gestion = '<span class="badge" style="background:#6B8E23;color:white;">🌾 Capataz</span>';
-        
-        return `
-          <div class="bien-card" onclick="window.location.href='bien.html?id=${bien.id}'">
-            <div class="bien-card-icon">${iconos[bien.tipo] || '📦'}</div>
-            <div class="bien-card-info">
-              <div class="bien-card-nombre">${bien.nombre}</div>
-              <div class="bien-card-ubicacion">${bien.ubicacion || 'Sin ubicación'}</div>
-              ${gestion}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function abrirModalNuevoBien() {
-      // Redirigir a lo-comun.html con parámetro para abrir modal
-      window.location.href = `lo-comun.html?nuevo=1&nido=${nidoId}`;
     }
   </script>
 </body>

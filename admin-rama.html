@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- FAMILYNK Icons & PWA -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Admin Rama</title>
@@ -218,65 +229,6 @@
     .config-item-icon { font-size: 1.5rem; }
     .config-item-name { font-weight: 600; }
     .config-item-desc { font-size: 0.8rem; color: var(--text-muted); }
-
-    /* Editor de compromisos */
-    .compromiso-editor {
-      display: flex;
-      gap: 12px;
-      padding: 16px;
-      background: var(--cream);
-      border-radius: var(--radius-md);
-      align-items: flex-start;
-    }
-    .compromiso-editor-icon {
-      width: 60px;
-    }
-    .compromiso-editor-icon select {
-      width: 100%;
-      padding: 8px;
-      font-size: 1.2rem;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      background: white;
-      cursor: pointer;
-    }
-    .compromiso-editor-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .compromiso-editor-content input {
-      padding: 10px 12px;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .compromiso-editor-content textarea {
-      padding: 10px 12px;
-      border: 1px solid #E2E8F0;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      resize: vertical;
-      min-height: 60px;
-    }
-    .compromiso-editor-actions {
-      display: flex;
-      align-items: center;
-    }
-    .compromiso-editor-actions button {
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 8px;
-      border-radius: 8px;
-      transition: background 0.2s;
-    }
-    .compromiso-editor-actions button:hover {
-      background: #FED7D7;
-    }
 
     .toggle-switch { position: relative; width: 50px; height: 26px; }
     .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -684,26 +636,6 @@
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Estas acciones son irreversibles</p>
         <button class="btn btn-danger" onclick="exportarDatos()">📥 Exportar todos los datos</button>
       </div>
-
-      <div class="card">
-        <div class="card-title">🤝 Compromisos para colaboradores externos</div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-          Personalice el texto de bienvenida que verán caseros, hosters y operarios al acceder a la plataforma.
-        </p>
-        
-        <div id="compromisos-lista" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
-          <!-- Se genera dinámicamente -->
-        </div>
-        
-        <button class="btn btn-secondary" onclick="agregarCompromiso()" style="margin-bottom: 16px;">
-          ➕ Añadir compromiso
-        </button>
-        
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn btn-primary" onclick="guardarCompromisos()">💾 Guardar compromisos</button>
-          <button class="btn btn-secondary" onclick="restaurarCompromisosDefecto()">🔄 Restaurar por defecto</button>
-        </div>
-      </div>
     </section>
   </main>
 
@@ -1068,7 +1000,6 @@
       document.getElementById('config-lema').value = familiaData.lema || '';
       document.getElementById('config-generaciones').value = familiaData.numGeneraciones || 4;
       actualizarGeneraciones();
-      cargarCompromisos();
     }
 
     async function guardarConfigRama() {
@@ -1107,96 +1038,6 @@
     }
 
     function exportarDatos() { alert('Próximamente: Exportar todos los datos de la estirpe'); }
-
-    // ============ COMPROMISOS EXTERNOS ============
-    let compromisosData = [];
-    const compromisosDefecto = [
-      { icono: '🔒', titulo: 'Confidencialidad', descripcion: 'La información que gestione es privada y no debe compartirse fuera de esta plataforma.' },
-      { icono: '📱', titulo: 'Canalice todo por aquí', descripcion: 'Registre incidencias, consumos y novedades en la aplicación para mantener el historial actualizado.' },
-      { icono: '✅', titulo: 'Actúe diligentemente', descripcion: 'Complete las tareas asignadas y mantenga la información al día.' },
-      { icono: '💡', titulo: 'Aporte sugerencias', descripcion: 'Sus ideas para mejorar son bienvenidas.' }
-    ];
-
-    const iconosDisponibles = ['🔒', '📱', '✅', '💡', '🤝', '📋', '⚠️', '🏠', '🔧', '📞', '💬', '🎯', '⭐', '🛡️', '📝', '🔑'];
-
-    function cargarCompromisos() {
-      const config = familiaData.config || {};
-      compromisosData = config.compromisosExternos || [...compromisosDefecto];
-      renderCompromisos();
-    }
-
-    function renderCompromisos() {
-      const container = document.getElementById('compromisos-lista');
-      
-      container.innerHTML = compromisosData.map((comp, idx) => `
-        <div class="compromiso-editor" data-index="${idx}">
-          <div class="compromiso-editor-icon">
-            <select onchange="cambiarIconoCompromiso(${idx}, this.value)">
-              ${iconosDisponibles.map(ic => `<option value="${ic}" ${comp.icono === ic ? 'selected' : ''}>${ic}</option>`).join('')}
-            </select>
-          </div>
-          <div class="compromiso-editor-content">
-            <input type="text" value="${comp.titulo}" placeholder="Título del compromiso" onchange="cambiarTituloCompromiso(${idx}, this.value)">
-            <textarea placeholder="Descripción del compromiso" onchange="cambiarDescCompromiso(${idx}, this.value)">${comp.descripcion}</textarea>
-          </div>
-          <div class="compromiso-editor-actions">
-            <button onclick="eliminarCompromiso(${idx})" title="Eliminar">🗑️</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function agregarCompromiso() {
-      compromisosData.push({ icono: '📋', titulo: '', descripcion: '' });
-      renderCompromisos();
-    }
-
-    function eliminarCompromiso(idx) {
-      if (compromisosData.length <= 1) {
-        alert('Debe mantener al menos un compromiso');
-        return;
-      }
-      if (!confirm('¿Eliminar este compromiso?')) return;
-      compromisosData.splice(idx, 1);
-      renderCompromisos();
-    }
-
-    function cambiarIconoCompromiso(idx, valor) {
-      compromisosData[idx].icono = valor;
-    }
-
-    function cambiarTituloCompromiso(idx, valor) {
-      compromisosData[idx].titulo = valor;
-    }
-
-    function cambiarDescCompromiso(idx, valor) {
-      compromisosData[idx].descripcion = valor;
-    }
-
-    async function guardarCompromisos() {
-      // Validar que todos tengan título
-      const invalidos = compromisosData.filter(c => !c.titulo.trim());
-      if (invalidos.length > 0) {
-        alert('Todos los compromisos deben tener un título');
-        return;
-      }
-
-      try {
-        await db.collection('familias').doc(familiaData.id).update({
-          'config.compromisosExternos': compromisosData
-        });
-        alert('✅ Compromisos guardados correctamente');
-      } catch (error) {
-        console.error('Error guardando compromisos:', error);
-        alert('Error al guardar');
-      }
-    }
-
-    function restaurarCompromisosDefecto() {
-      if (!confirm('¿Restaurar los compromisos por defecto? Se perderán los cambios actuales.')) return;
-      compromisosData = [...compromisosDefecto];
-      renderCompromisos();
-    }
 
     // ============ TIPOS DE RESERVA ============
     async function cargarTiposReserva() {

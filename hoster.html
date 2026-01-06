@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- FAMILYNK Icons & PWA -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Hoster</title>
@@ -762,61 +773,44 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        window.location.href = 'externos.html';
+        window.location.href = 'login.html';
         return;
       }
 
       currentUser = user;
 
       try {
-        // Obtener bienId de la URL si viene
-        const urlParams = new URLSearchParams(window.location.search);
-        const bienIdParam = urlParams.get('bien');
+        // Buscar en colección hosters
+        const hosterDoc = await db.collection('hosters').doc(user.uid).get();
         
-        // Buscar en todas las subcolecciones de hosters de cada bien
-        const hostersQuery = await db.collectionGroup('hosters')
-          .where('email', '==', user.email.toLowerCase())
-          .where('activo', '==', true)
-          .get();
-
-        if (hostersQuery.empty) {
-          alert('No tiene acceso como hoster a ninguna propiedad');
-          window.location.href = 'externos.html';
-          return;
-        }
-
-        // Recopilar bienes asignados
-        let bienParamIndex = -1;
-        
-        for (const doc of hostersQuery.docs) {
-          const hosterInfo = doc.data();
-          const bienId = hosterInfo.bienId;
+        if (hosterDoc.exists) {
+          hosterData = hosterDoc.data();
           
-          const bienDoc = await db.collection('bienes').doc(bienId).get();
-          if (bienDoc.exists) {
-            const idx = bienesAsignados.length;
-            bienesAsignados.push({
-              id: bienDoc.id,
-              ...bienDoc.data(),
-              permisos: hosterInfo.permisos || {},
-              rol: hosterInfo.rol || 'hoster'
-            });
-            
-            if (!hosterData) {
-              hosterData = hosterInfo;
-            }
-            
-            // Verificar si es el bien solicitado por parámetro
-            if (bienIdParam && bienId === bienIdParam) {
-              bienParamIndex = idx;
+          // Cargar bienes asignados
+          if (hosterData.bienes && hosterData.bienes.length > 0) {
+            for (const bienId of hosterData.bienes) {
+              const bienDoc = await db.collection('bienes').doc(bienId).get();
+              if (bienDoc.exists) {
+                bienesAsignados.push({ id: bienDoc.id, ...bienDoc.data() });
+              }
             }
           }
-        }
+        } else {
+          // Buscar bienes donde el email está como hoster
+          const bienesSnap = await db.collection('bienes')
+            .where('hostersEmails', 'array-contains', user.email.toLowerCase())
+            .get();
 
-        if (bienesAsignados.length === 0) {
-          alert('No tiene acceso como hoster');
-          window.location.href = 'externos.html';
-          return;
+          if (bienesSnap.empty) {
+            alert('No tienes acceso como hoster');
+            auth.signOut();
+            return;
+          }
+
+          bienesAsignados = bienesSnap.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
         }
 
         document.getElementById('user-name').textContent = hosterData?.nombre || user.email.split('@')[0];
@@ -830,12 +824,8 @@
           select.appendChild(opt);
         });
 
-        // Si viene por parámetro, seleccionar ese bien
-        if (bienParamIndex >= 0) {
-          select.value = bienesAsignados[bienParamIndex].id;
-          await cambiarBien();
-        } else if (bienesAsignados.length === 1) {
-          // Si solo hay uno, seleccionar automáticamente
+        // Si solo hay uno, seleccionar automáticamente
+        if (bienesAsignados.length === 1) {
           select.value = bienesAsignados[0].id;
           document.getElementById('bien-selector-container').classList.add('hidden');
           await cambiarBien();
