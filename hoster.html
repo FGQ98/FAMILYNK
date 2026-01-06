@@ -773,47 +773,49 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        window.location.href = 'login.html';
+        window.location.href = 'externos.html';
         return;
       }
 
       currentUser = user;
 
       try {
-        // Buscar en colección hosters
-        const hosterDoc = await db.collection('hosters').doc(user.uid).get();
-        
-        if (hosterDoc.exists) {
-          hosterData = hosterDoc.data();
-          
-          // Cargar bienes asignados
-          if (hosterData.bienes && hosterData.bienes.length > 0) {
-            for (const bienId of hosterData.bienes) {
-              const bienDoc = await db.collection('bienes').doc(bienId).get();
-              if (bienDoc.exists) {
-                bienesAsignados.push({ id: bienDoc.id, ...bienDoc.data() });
-              }
-            }
-          }
-        } else {
-          // Buscar bienes donde el email está como hoster
-          const bienesSnap = await db.collection('bienes')
-            .where('hostersEmails', 'array-contains', user.email.toLowerCase())
-            .get();
+        // Buscar usando collectionGroup (hosters está como subcolección de bienes)
+        const hostersQuery = await db.collectionGroup('hosters')
+          .where('email', '==', user.email.toLowerCase())
+          .where('activo', '==', true)
+          .get();
 
-          if (bienesSnap.empty) {
-            alert('No tienes acceso como hoster');
-            auth.signOut();
-            return;
-          }
-
-          bienesAsignados = bienesSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
+        if (hostersQuery.empty) {
+          alert('No tienes acceso como hoster');
+          window.location.href = 'externos.html';
+          return;
         }
 
-        document.getElementById('user-name').textContent = hosterData?.nombre || user.email.split('@')[0];
+        // Recopilar todos los bienes a los que tiene acceso
+        for (const doc of hostersQuery.docs) {
+          const hoster = doc.data();
+          const bienId = hoster.bienId;
+          
+          // Obtener datos del bien
+          const bienDoc = await db.collection('bienes').doc(bienId).get();
+          if (bienDoc.exists) {
+            bienesAsignados.push({
+              id: bienId,
+              hosterId: doc.id,
+              permisos: hoster.permisos || {},
+              ...bienDoc.data()
+            });
+          }
+        }
+
+        if (bienesAsignados.length === 0) {
+          alert('No tienes bienes asignados');
+          window.location.href = 'externos.html';
+          return;
+        }
+
+        document.getElementById('user-name').textContent = hostersQuery.docs[0].data().nombre || user.email.split('@')[0];
 
         // Renderizar selector
         const select = document.getElementById('bien-select');
@@ -1159,7 +1161,7 @@
     }
 
     function logout() {
-      auth.signOut().then(() => window.location.href = 'login.html');
+      auth.signOut().then(() => window.location.href = 'externos.html');
     }
 
     // Cerrar modales con click fuera

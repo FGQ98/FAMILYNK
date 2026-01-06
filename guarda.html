@@ -761,46 +761,50 @@
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
-        window.location.href = 'login.html';
+        window.location.href = 'externos.html';
         return;
       }
 
       currentUser = user;
 
       try {
-        // Buscar en colección guardas
-        const guardaDoc = await db.collection('guardas').doc(user.uid).get();
-        
-        if (guardaDoc.exists) {
-          guardaData = guardaDoc.data();
-          
-          if (guardaData.bienes && guardaData.bienes.length > 0) {
-            for (const bienId of guardaData.bienes) {
-              const bienDoc = await db.collection('bienes').doc(bienId).get();
-              if (bienDoc.exists) {
-                bienesAsignados.push({ id: bienDoc.id, ...bienDoc.data() });
-              }
-            }
-          }
-        } else {
-          // Buscar bienes donde el email está como guarda
-          const bienesSnap = await db.collection('bienes')
-            .where('guardasEmails', 'array-contains', user.email.toLowerCase())
-            .get();
+        // Buscar usando collectionGroup (guardas está como subcolección de bienes)
+        const guardasQuery = await db.collectionGroup('guardas')
+          .where('email', '==', user.email.toLowerCase())
+          .where('activo', '==', true)
+          .get();
 
-          if (bienesSnap.empty) {
-            alert('No tienes acceso como guarda');
-            auth.signOut();
-            return;
-          }
-
-          bienesAsignados = bienesSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
+        if (guardasQuery.empty) {
+          alert('No tienes acceso como operario');
+          window.location.href = 'externos.html';
+          return;
         }
 
-        document.getElementById('user-name').textContent = guardaData?.nombre || user.email.split('@')[0];
+        // Recopilar todos los bienes a los que tiene acceso
+        for (const doc of guardasQuery.docs) {
+          const guarda = doc.data();
+          const bienId = guarda.bienId;
+          
+          // Obtener datos del bien
+          const bienDoc = await db.collection('bienes').doc(bienId).get();
+          if (bienDoc.exists) {
+            bienesAsignados.push({
+              id: bienId,
+              guardaId: doc.id,
+              rol: guarda.rol,
+              permisos: guarda.permisos || {},
+              ...bienDoc.data()
+            });
+          }
+        }
+
+        if (bienesAsignados.length === 0) {
+          alert('No tienes fincas asignadas');
+          window.location.href = 'externos.html';
+          return;
+        }
+
+        document.getElementById('user-name').textContent = guardasQuery.docs[0].data().nombre || user.email.split('@')[0];
 
         // Renderizar selector
         const select = document.getElementById('bien-select');
@@ -1135,7 +1139,7 @@
     }
 
     function logout() {
-      auth.signOut().then(() => window.location.href = 'login.html');
+      auth.signOut().then(() => window.location.href = 'externos.html');
     }
 
     // Cerrar modales con click fuera
