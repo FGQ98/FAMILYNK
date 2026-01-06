@@ -261,11 +261,6 @@
     .modulo-card.plan-semanal:hover { border-color: #5B8BA0; }
     .modulo-card.plan-semanal .modulo-stat-value { color: #4A7285; }
 
-    /* Card Plan Limpieza */
-    .modulo-card.plan-limpieza .modulo-card-header { background: linear-gradient(135deg, #7A9E7E 0%, #5C7D5F 100%); }
-    .modulo-card.plan-limpieza:hover { border-color: #7A9E7E; }
-    .modulo-card.plan-limpieza .modulo-stat-value { color: #5C7D5F; }
-
     /* Cards interactivas con tareas */
     .plan-card-content { padding: 12px 16px; max-height: 280px; overflow-y: auto; }
     .plan-tarea {
@@ -451,7 +446,7 @@
         <a href="#" class="modulo-card manual" id="card-manual">
           <div class="modulo-card-header">
             <div class="modulo-card-icon">📖</div>
-            <div class="modulo-card-title">Manual Técnico</div>
+            <div class="modulo-card-title">Manual Mantenimiento</div>
           </div>
           <div class="modulo-card-body">
             <p class="modulo-card-desc">Documentación técnica, manuales de equipos e instrucciones de uso.</p>
@@ -477,20 +472,6 @@
             <div class="plan-progreso-bar" id="progreso-semanal" style="width: 0%"></div>
           </div>
           <div class="plan-card-content" id="tareas-semanales">
-            <div class="plan-empty">Cargando...</div>
-          </div>
-        </div>
-
-        <!-- Plan de Limpieza Semanal -->
-        <div class="modulo-card plan-limpieza" id="card-plan-limpieza">
-          <div class="modulo-card-header">
-            <div class="modulo-card-icon">🧹</div>
-            <div class="modulo-card-title">Plan Limpieza</div>
-          </div>
-          <div class="plan-progreso">
-            <div class="plan-progreso-bar" id="progreso-limpieza" style="width: 0%"></div>
-          </div>
-          <div class="plan-card-content" id="tareas-limpieza">
             <div class="plan-empty">Cargando...</div>
           </div>
         </div>
@@ -626,9 +607,6 @@
 
       // Plan Semanal de Mantenimiento
       await cargarPlanSemanal();
-
-      // Plan de Limpieza
-      await cargarPlanLimpieza();
     }
 
     // ========== PLAN SEMANAL DE MANTENIMIENTO ==========
@@ -873,147 +851,6 @@
         renderPlanSemanal();
       } catch (error) {
         console.error('Error actualizando tarea:', error);
-      }
-    }
-
-    // ========== PLAN DE LIMPIEZA ==========
-    let planLimpiezaData = [];
-    let limpiezaCompletados = {};
-
-    async function cargarPlanLimpieza() {
-      const container = document.getElementById('tareas-limpieza');
-      const progresoBar = document.getElementById('progreso-limpieza');
-      
-      try {
-        const hoy = new Date();
-        const inicioSemana = new Date(hoy);
-        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
-        inicioSemana.setHours(0, 0, 0, 0);
-        const semanaKey = inicioSemana.toISOString().split('T')[0];
-
-        // Cargar plan base de limpieza
-        const planSnap = await db.collection('bienes').doc(bienId).collection('planLimpieza').get();
-        const planBase = planSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // Cargar completados de esta semana
-        try {
-          const completadosDoc = await db.collection('bienes').doc(bienId)
-            .collection('planLimpiezaCompletados').doc(semanaKey).get();
-          if (completadosDoc.exists) {
-            limpiezaCompletados = completadosDoc.data().tareas || {};
-          }
-        } catch (e) {}
-
-        // Combinar plan con estado de completados
-        planLimpiezaData = planBase.map(tarea => ({
-          ...tarea,
-          completada: !!limpiezaCompletados[tarea.id],
-          semanaKey: semanaKey
-        }));
-
-        // Ordenar por día
-        planLimpiezaData.sort((a, b) => {
-          const diaA = parseInt(a.dia);
-          const diaB = parseInt(b.dia);
-          return (diaA === 0 ? 7 : diaA) - (diaB === 0 ? 7 : diaB);
-        });
-
-        renderPlanLimpieza();
-        
-      } catch (error) {
-        console.log('Error cargando plan limpieza:', error);
-        container.innerHTML = '<div class="plan-empty">Sin plan de limpieza</div>';
-      }
-    }
-
-    function renderPlanLimpieza() {
-      const container = document.getElementById('tareas-limpieza');
-      const progresoBar = document.getElementById('progreso-limpieza');
-      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-      const hoyNum = new Date().getDay();
-
-      const zonaIcons = {
-        cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
-        bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
-        entrada: '🚪', general: '🏠'
-      };
-      const tareaIcons = {
-        'barrer-fregar': '🧹', 'cambiar-sabanas': '🛏️', 'desinfectar': '🧴',
-        'revisar-consumibles': '📦', 'planchar': '👔', 'lavar-ropa': '🧺',
-        'limpiar-cristales': '🪟', 'aspirar': '🔌', 'quitar-polvo': '✨',
-        'limpiar-electrodomesticos': '🔧', 'ordenar': '📂', 'otra': '📋'
-      };
-      const tareaNombres = {
-        'barrer-fregar': 'Barrer y fregar', 'cambiar-sabanas': 'Cambiar sábanas', 
-        'desinfectar': 'Desinfectar', 'revisar-consumibles': 'Revisar consumibles',
-        'planchar': 'Planchar', 'lavar-ropa': 'Lavar ropa', 'limpiar-cristales': 'Limpiar cristales',
-        'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo', 
-        'limpiar-electrodomesticos': 'Limpiar electrodom.', 'ordenar': 'Ordenar', 'otra': 'Otra'
-      };
-
-      if (planLimpiezaData.length === 0) {
-        container.innerHTML = '<div class="plan-empty">🧹 Sin plan de limpieza configurado<br><small><a href="plan-limpieza.html?id=' + bienId + '">Configurar plan →</a></small></div>';
-        progresoBar.style.width = '0%';
-        return;
-      }
-
-      const completadas = planLimpiezaData.filter(t => t.completada).length;
-      const total = planLimpiezaData.length;
-      const progreso = Math.round((completadas / total) * 100);
-      progresoBar.style.width = progreso + '%';
-
-      let html = planLimpiezaData.map(t => {
-        const diaNum = parseInt(t.dia);
-        const diaStr = diasSemana[diaNum];
-        const esHoy = diaNum === hoyNum;
-        const completada = t.completada ? 'completada' : '';
-        const zonaIcon = zonaIcons[t.zona] || '🏠';
-        const tareaIcon = tareaIcons[t.tipo] || '📋';
-        const tareaNombre = t.tipo === 'otra' ? (t.otraTarea || 'Tarea') : (tareaNombres[t.tipo] || t.tipo);
-
-        return `
-          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''}">
-            <input type="checkbox" class="plan-tarea-check" 
-              ${t.completada ? 'checked' : ''} 
-              onchange="toggleLimpieza('${t.id}', '${t.semanaKey}', this.checked)">
-            <div class="plan-tarea-info">
-              <div class="plan-tarea-titulo">${tareaIcon} ${tareaNombre}</div>
-              <div class="plan-tarea-meta">
-                <span class="plan-tarea-dia">${diaStr}</span>
-                <span>${zonaIcon} ${t.dependencia || ''}</span>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      container.innerHTML = html;
-    }
-
-    async function toggleLimpieza(tareaId, semanaKey, completada) {
-      try {
-        const docRef = db.collection('bienes').doc(bienId)
-          .collection('planLimpiezaCompletados').doc(semanaKey);
-        
-        if (completada) {
-          await docRef.set({
-            [`tareas.${tareaId}`]: {
-              completada: true,
-              fechaCompletado: new Date().toISOString(),
-              completadoPor: currentUser.uid
-            }
-          }, { merge: true });
-        } else {
-          await docRef.set({
-            [`tareas.${tareaId}`]: firebase.firestore.FieldValue.delete()
-          }, { merge: true });
-        }
-        
-        const tarea = planLimpiezaData.find(t => t.id === tareaId);
-        if (tarea) tarea.completada = completada;
-        renderPlanLimpieza();
-      } catch (error) {
-        console.error('Error actualizando limpieza:', error);
       }
     }
   </script>
