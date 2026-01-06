@@ -567,6 +567,39 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .hidden { display: none !important; }
+
+    /* Plan Semanal */
+    .plan-semanal-card {
+      background: linear-gradient(135deg, #FAF8F5 0%, #f0ebe3 100%);
+      border: 2px solid var(--gerente);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .plan-semanal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .plan-semanal-title { font-weight: 700; font-size: 1rem; }
+    .plan-semanal-semana { font-size: 0.75rem; color: var(--text-muted); }
+    .tarea-semanal {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .tarea-semanal.completada { opacity: 0.6; background: #f5f5f5; }
+    .tarea-semanal.completada .tarea-titulo { text-decoration: line-through; color: var(--text-muted); }
+    .tarea-checkbox { width: 22px; height: 22px; cursor: pointer; accent-color: var(--gerente); }
+    .tarea-info { flex: 1; }
+    .tarea-titulo { font-weight: 600; font-size: 0.9rem; }
+    .tarea-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 12px; margin-top: 2px; }
+    .tarea-dia { background: rgba(78, 121, 167, 0.15); color: var(--gerente); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
   </style>
 </head>
 <body>
@@ -770,6 +803,7 @@
     let huespedesData = [];
     let habitacionesData = [];
     let limpiezaData = [];
+    let tareasSemanalesData = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -888,6 +922,25 @@
           .get();
         limpiezaData = limpiezaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+        // Tareas Semanales
+        try {
+          const inicioSemana = new Date();
+          inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay() + 1);
+          inicioSemana.setHours(0, 0, 0, 0);
+          const finSemana = new Date(inicioSemana);
+          finSemana.setDate(inicioSemana.getDate() + 6);
+          
+          const tareasSnap = await bienRef.collection('tareasProgramadas')
+            .where('fechaProgramada', '>=', inicioSemana.toISOString().split('T')[0])
+            .where('fechaProgramada', '<=', finSemana.toISOString().split('T')[0])
+            .orderBy('fechaProgramada', 'asc')
+            .get();
+          tareasSemanalesData = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {
+          const tareasSnap = await bienRef.collection('tareasProgramadas').get();
+          tareasSemanalesData = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        }
+
         actualizarStats();
 
       } catch (error) {
@@ -922,7 +975,63 @@
         ${renderModuloHuespedes()}
         ${renderModuloHabitaciones()}
         ${renderModuloLimpieza()}
+        ${renderPlanSemanal()}
       `;
+    }
+
+    // ========== PLAN SEMANAL ==========
+    function renderPlanSemanal() {
+      const tareas = tareasSemanalesData || [];
+      const hoy = new Date();
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+      const finSemana = new Date(inicioSemana);
+      finSemana.setDate(inicioSemana.getDate() + 6);
+      
+      const formatoFecha = { day: 'numeric', month: 'short' };
+      const semanaStr = `${inicioSemana.toLocaleDateString('es-ES', formatoFecha)} - ${finSemana.toLocaleDateString('es-ES', formatoFecha)}`;
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      
+      let tareasHtml = '';
+      if (tareas.length === 0) {
+        tareasHtml = '<div style="text-align:center; padding:20px; color:var(--text-muted);">Sin tareas programadas esta semana</div>';
+      } else {
+        tareasHtml = tareas.map(t => {
+          const fecha = new Date(t.fechaProgramada);
+          const diaStr = diasSemana[fecha.getDay()];
+          const completada = t.completada ? 'completada' : '';
+          return `
+            <div class="tarea-semanal ${completada}">
+              <input type="checkbox" class="tarea-checkbox" ${t.completada ? 'checked' : ''} onchange="toggleTarea('${t.id}', this.checked)">
+              <div class="tarea-info">
+                <div class="tarea-titulo">${t.titulo || 'Tarea'}</div>
+                <div class="tarea-meta"><span class="tarea-dia">${diaStr} ${fecha.getDate()}</span></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      return `
+        <div class="plan-semanal-card">
+          <div class="plan-semanal-header">
+            <span class="plan-semanal-title">📋 Plan Semanal</span>
+            <span class="plan-semanal-semana">${semanaStr}</span>
+          </div>
+          ${tareasHtml}
+        </div>
+      `;
+    }
+
+    async function toggleTarea(tareaId, completada) {
+      try {
+        await db.collection('bienes').doc(bienActual.id).collection('tareasProgramadas').doc(tareaId).update({ 
+          completada, 
+          fechaCompletado: completada ? new Date().toISOString() : null 
+        });
+        await cargarDatos();
+        renderModulos();
+      } catch (e) { console.error(e); }
     }
 
     function renderModuloReservas() {

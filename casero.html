@@ -719,6 +719,71 @@
     }
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Estado badges */
+    .estado-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .estado-badge.pendiente { background: var(--warning); color: white; }
+    .estado-badge.en-proceso { background: #4A90A4; color: white; }
+    .estado-badge.completado { background: var(--success); color: white; }
+
+    /* Plan Semanal */
+    .plan-semanal-card {
+      background: linear-gradient(135deg, #FAF8F5 0%, #f0ebe3 100%);
+      border: 2px solid var(--sage);
+    }
+    .plan-semanal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .plan-semanal-semana {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .tarea-semanal {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: white;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+    .tarea-semanal:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .tarea-semanal.completada {
+      opacity: 0.6;
+      background: #f5f5f5;
+    }
+    .tarea-semanal.completada .tarea-titulo {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    .tarea-checkbox {
+      width: 22px;
+      height: 22px;
+      cursor: pointer;
+      accent-color: var(--sage);
+    }
+    .tarea-info { flex: 1; }
+    .tarea-titulo { font-weight: 600; font-size: 0.9rem; }
+    .tarea-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 12px; margin-top: 2px; }
+    .tarea-dia { 
+      background: var(--sage-muted); 
+      color: var(--sage-dark); 
+      padding: 2px 8px; 
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -849,7 +914,8 @@
       limpieza: [],
       gastos: [],
       documentos: [],
-      pedidos: []
+      pedidos: [],
+      tareasSemanales: []
     };
 
     let pedidoActual = null;
@@ -1015,6 +1081,44 @@
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(p => p.estado === 'pendiente' || p.estado === 'en_proceso');
       }
+
+      // Tareas Semanales (Plan Semanal)
+      try {
+        const hoy = new Date();
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1); // Lunes
+        inicioSemana.setHours(0, 0, 0, 0);
+        const finSemana = new Date(inicioSemana);
+        finSemana.setDate(inicioSemana.getDate() + 6); // Domingo
+        finSemana.setHours(23, 59, 59, 999);
+
+        const snap = await db.collection('bienes').doc(bienId).collection('tareasProgramadas')
+          .where('fechaProgramada', '>=', inicioSemana.toISOString().split('T')[0])
+          .where('fechaProgramada', '<=', finSemana.toISOString().split('T')[0])
+          .orderBy('fechaProgramada', 'asc')
+          .get();
+        datosModulos.tareasSemanales = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (error) {
+        console.log('Cargando tareas semanales:', error);
+        // Fallback: cargar todas las tareas y filtrar
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('tareasProgramadas').get();
+          const hoy = new Date();
+          const inicioSemana = new Date(hoy);
+          inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+          const finSemana = new Date(inicioSemana);
+          finSemana.setDate(inicioSemana.getDate() + 6);
+          
+          datosModulos.tareasSemanales = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(t => {
+              const fecha = new Date(t.fechaProgramada);
+              return fecha >= inicioSemana && fecha <= finSemana;
+            });
+        } catch (e) {
+          datosModulos.tareasSemanales = [];
+        }
+      }
     }
 
     function renderModulos() {
@@ -1053,6 +1157,9 @@
       if (permisosActuales.documentos?.ver) {
         html += renderModuloDocumentos();
       }
+
+      // PLAN SEMANAL (siempre visible si hay tareas)
+      html += renderPlanSemanal();
 
       container.innerHTML = html || '<div class="modulo-card-empty">No tienes módulos asignados</div>';
     }
@@ -1459,6 +1566,7 @@
     // ========== MANTENIMIENTO ==========
     function renderModuloMantenimiento() {
       const p = permisosActuales.mantenimiento;
+      const urgenciaIcons = { alta: '🔴', media: '🟡', baja: '🟢' };
 
       let itemsHtml = '';
       if (datosModulos.mantenimiento.length === 0) {
@@ -1467,10 +1575,13 @@
         const items = datosModulos.mantenimiento.slice(0, 5);
         itemsHtml = '<div class="item-list">' + items.map(m => `
           <div class="item-row no-hover">
-            <span class="item-icon">🔧</span>
+            <span class="item-icon">${urgenciaIcons[m.urgencia] || '🔧'}</span>
             <div class="item-content">
               <div class="item-title">${m.titulo}</div>
-              <div class="item-subtitle">${m.estado || 'Pendiente'}</div>
+              <div class="item-subtitle">
+                ${m.fechaAviso ? '📅 Aviso: ' + m.fechaAviso : ''} 
+                <span class="estado-badge ${m.estado}">${m.estado || 'Pendiente'}</span>
+              </div>
             </div>
           </div>
         `).join('') + '</div>';
@@ -1520,6 +1631,126 @@
           <div class="modulo-card-body">${itemsHtml}</div>
         </div>
       `;
+    }
+
+    // ========== PLAN SEMANAL ==========
+    function renderPlanSemanal() {
+      const tareas = datosModulos.tareasSemanales || [];
+      
+      // Calcular rango de la semana
+      const hoy = new Date();
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+      const finSemana = new Date(inicioSemana);
+      finSemana.setDate(inicioSemana.getDate() + 6);
+      
+      const formatoFecha = { day: 'numeric', month: 'short' };
+      const semanaStr = `${inicioSemana.toLocaleDateString('es-ES', formatoFecha)} - ${finSemana.toLocaleDateString('es-ES', formatoFecha)}`;
+      
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      
+      let tareasHtml = '';
+      if (tareas.length === 0) {
+        tareasHtml = `
+          <div class="modulo-card-empty">
+            <span style="font-size: 2rem; opacity: 0.5;">📋</span>
+            <p style="margin-top: 8px;">Sin tareas programadas esta semana</p>
+          </div>
+        `;
+      } else {
+        tareasHtml = tareas.map(t => {
+          const fecha = new Date(t.fechaProgramada);
+          const diaNum = fecha.getDay();
+          const diaStr = diasSemana[diaNum];
+          const completada = t.completada ? 'completada' : '';
+          
+          return `
+            <div class="tarea-semanal ${completada}">
+              <input type="checkbox" class="tarea-checkbox" 
+                ${t.completada ? 'checked' : ''} 
+                onchange="toggleTareaCompletada('${t.id}', this.checked)">
+              <div class="tarea-info">
+                <div class="tarea-titulo">${t.titulo || t.descripcion || 'Tarea'}</div>
+                <div class="tarea-meta">
+                  <span class="tarea-dia">${diaStr} ${fecha.getDate()}</span>
+                  ${t.responsable ? `<span>👤 ${t.responsable}</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      return `
+        <div class="modulo-card plan-semanal-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">📋 Plan Semanal</div>
+            <span class="plan-semanal-semana">${semanaStr}</span>
+          </div>
+          <div class="modulo-card-body">${tareasHtml}</div>
+          ${permisosActuales.mantenimiento?.crear ? `
+            <div class="modulo-card-footer">
+              <button class="btn btn-sm btn-secondary" onclick="abrirModalTareaProgramada()">+ Programar tarea</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    async function toggleTareaCompletada(tareaId, completada) {
+      try {
+        await db.collection('bienes').doc(bienActual.bienId)
+          .collection('tareasProgramadas').doc(tareaId)
+          .update({ 
+            completada: completada,
+            fechaCompletado: completada ? new Date().toISOString() : null,
+            completadoPor: completada ? currentUser.uid : null
+          });
+        
+        // Actualizar UI sin recargar
+        const tarea = datosModulos.tareasSemanales.find(t => t.id === tareaId);
+        if (tarea) tarea.completada = completada;
+        
+        const container = document.getElementById('modulos-grid');
+        // Solo actualizar la card de plan semanal
+        const planCard = container.querySelector('.plan-semanal-card');
+        if (planCard) {
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = renderPlanSemanal();
+          planCard.replaceWith(tempDiv.firstElementChild);
+        }
+      } catch (error) {
+        console.error('Error actualizando tarea:', error);
+      }
+    }
+
+    function abrirModalTareaProgramada() {
+      modalTipo = 'tareaProgramada';
+      const hoy = new Date().toISOString().split('T')[0];
+      document.getElementById('modal-add-title').textContent = '📋 Programar tarea';
+      document.getElementById('modal-add-body').innerHTML = `
+        <div class="form-group">
+          <label class="form-label">Descripción de la tarea</label>
+          <input type="text" class="form-input" id="add-titulo" placeholder="¿Qué hay que hacer?" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha programada</label>
+          <input type="date" class="form-input" id="add-fecha-programada" value="${hoy}" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Responsable (opcional)</label>
+          <input type="text" class="form-input" id="add-responsable" placeholder="¿Quién debe hacerlo?">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Prioridad</label>
+          <select class="form-select" id="add-prioridad">
+            <option value="normal">Normal</option>
+            <option value="alta">Alta</option>
+            <option value="baja">Baja</option>
+          </select>
+        </div>
+      `;
+      modalAdd.classList.add('active');
     }
 
     // ========== MODALES ==========
@@ -1592,11 +1823,16 @@
 
     function abrirModalMantenimiento() {
       modalTipo = 'mantenimiento';
+      const hoy = new Date().toISOString().split('T')[0];
       document.getElementById('modal-add-title').textContent = '🔧 Reportar incidencia';
       document.getElementById('modal-add-body').innerHTML = `
         <div class="form-group">
           <label class="form-label">Descripción</label>
           <input type="text" class="form-input" id="add-titulo" placeholder="¿Qué ha pasado?" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de aviso</label>
+          <input type="date" class="form-input" id="add-fecha-aviso" value="${hoy}">
         </div>
         <div class="form-group">
           <label class="form-label">Urgencia</label>
@@ -1638,9 +1874,20 @@
           await ref.collection('mantenimiento').add({
             titulo: document.getElementById('add-titulo').value,
             urgencia: document.getElementById('add-urgencia').value,
+            fechaAviso: document.getElementById('add-fecha-aviso').value,
             estado: 'pendiente',
             creadoPor: currentUser.uid,
             fecha: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else if (modalTipo === 'tareaProgramada') {
+          await ref.collection('tareasProgramadas').add({
+            titulo: document.getElementById('add-titulo').value,
+            fechaProgramada: document.getElementById('add-fecha-programada').value,
+            responsable: document.getElementById('add-responsable').value || null,
+            prioridad: document.getElementById('add-prioridad').value,
+            completada: false,
+            creadoPor: currentUser.uid,
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
           });
         }
 
