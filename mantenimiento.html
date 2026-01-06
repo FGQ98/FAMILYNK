@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <!-- FAMILYNK Icons & PWA -->
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Mantenimiento</title>
@@ -245,6 +256,60 @@
     .modulo-card.manual .modulo-stat-value,
     .modulo-card.manual .modulo-card-action { color: #6B5A45; }
 
+    /* Card Plan Semanal */
+    .modulo-card.plan-semanal .modulo-card-header { background: linear-gradient(135deg, #5B8BA0 0%, #4A7285 100%); }
+    .modulo-card.plan-semanal:hover { border-color: #5B8BA0; }
+    .modulo-card.plan-semanal .modulo-stat-value { color: #4A7285; }
+
+    /* Card Plan Limpieza */
+    .modulo-card.plan-limpieza .modulo-card-header { background: linear-gradient(135deg, #7A9E7E 0%, #5C7D5F 100%); }
+    .modulo-card.plan-limpieza:hover { border-color: #7A9E7E; }
+    .modulo-card.plan-limpieza .modulo-stat-value { color: #5C7D5F; }
+
+    /* Cards interactivas con tareas */
+    .plan-card-content { padding: 12px 16px; max-height: 280px; overflow-y: auto; }
+    .plan-tarea {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      border-left: 3px solid var(--mayordomo);
+      transition: all 0.2s;
+    }
+    .plan-tarea:hover { background: var(--cream-dark); }
+    .plan-tarea.hoy { border-left-color: var(--warning); background: #fffbf5; }
+    .plan-tarea.completada { opacity: 0.6; background: #f0f0f0; border-left-color: var(--success); }
+    .plan-tarea.completada .plan-tarea-titulo { text-decoration: line-through; color: var(--text-muted); }
+    .plan-tarea-check { width: 20px; height: 20px; cursor: pointer; accent-color: var(--sage); }
+    .plan-tarea-info { flex: 1; }
+    .plan-tarea-titulo { font-weight: 600; font-size: 0.85rem; }
+    .plan-tarea-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 10px; margin-top: 2px; }
+    .plan-tarea-dia { 
+      background: var(--sage-muted); 
+      color: var(--sage-dark); 
+      padding: 2px 6px; 
+      border-radius: 4px; 
+      font-size: 0.7rem; 
+      font-weight: 600; 
+    }
+    .plan-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
+    .plan-progreso {
+      height: 6px;
+      background: var(--cream-dark);
+      border-radius: 3px;
+      margin: 0 16px 12px;
+      overflow: hidden;
+    }
+    .plan-progreso-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--sage) 0%, var(--success) 100%);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
     /* Loading */
     .loading {
       display: flex;
@@ -382,6 +447,34 @@
             <span class="modulo-card-action">Ver manuales →</span>
           </div>
         </a>
+
+        <!-- Plan Semanal de Mantenimiento -->
+        <div class="modulo-card plan-semanal" id="card-plan-semanal">
+          <div class="modulo-card-header">
+            <div class="modulo-card-icon">📋</div>
+            <div class="modulo-card-title">Plan Semanal</div>
+          </div>
+          <div class="plan-progreso">
+            <div class="plan-progreso-bar" id="progreso-semanal" style="width: 0%"></div>
+          </div>
+          <div class="plan-card-content" id="tareas-semanales">
+            <div class="plan-empty">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Plan de Limpieza Semanal -->
+        <div class="modulo-card plan-limpieza" id="card-plan-limpieza">
+          <div class="modulo-card-header">
+            <div class="modulo-card-icon">🧹</div>
+            <div class="modulo-card-title">Plan Limpieza</div>
+          </div>
+          <div class="plan-progreso">
+            <div class="plan-progreso-bar" id="progreso-limpieza" style="width: 0%"></div>
+          </div>
+          <div class="plan-card-content" id="tareas-limpieza">
+            <div class="plan-empty">Cargando...</div>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -511,6 +604,260 @@
         const manualesSnap = await db.collection('bienes').doc(bienId).collection('manuales').get();
         document.getElementById('count-manuales').textContent = manualesSnap.size;
       } catch (e) { console.log('Sin datos de manuales'); }
+
+      // Plan Semanal de Mantenimiento
+      await cargarPlanSemanal();
+
+      // Plan de Limpieza
+      await cargarPlanLimpieza();
+    }
+
+    // ========== PLAN SEMANAL DE MANTENIMIENTO ==========
+    let tareasSemanalesData = [];
+    let semanaKeyActual = '';
+
+    async function cargarPlanSemanal() {
+      const container = document.getElementById('tareas-semanales');
+      const progresoBar = document.getElementById('progreso-semanal');
+      
+      try {
+        const hoy = new Date();
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+        inicioSemana.setHours(0, 0, 0, 0);
+        const finSemana = new Date(inicioSemana);
+        finSemana.setDate(inicioSemana.getDate() + 6);
+        
+        semanaKeyActual = inicioSemana.toISOString().split('T')[0];
+
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('tareasProgramadas')
+          .where('fechaProgramada', '>=', inicioSemana.toISOString().split('T')[0])
+          .where('fechaProgramada', '<=', finSemana.toISOString().split('T')[0])
+          .orderBy('fechaProgramada', 'asc')
+          .get();
+        
+        tareasSemanalesData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        if (tareasSemanalesData.length === 0) {
+          // Fallback: cargar todas y filtrar
+          const allSnap = await db.collection('bienes').doc(bienId).collection('tareasProgramadas').get();
+          tareasSemanalesData = allSnap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(t => {
+              const fecha = new Date(t.fechaProgramada);
+              return fecha >= inicioSemana && fecha <= finSemana;
+            });
+        }
+        
+        renderPlanSemanal();
+        
+      } catch (error) {
+        console.log('Error cargando plan semanal:', error);
+        container.innerHTML = '<div class="plan-empty">Sin tareas esta semana</div>';
+      }
+    }
+
+    function renderPlanSemanal() {
+      const container = document.getElementById('tareas-semanales');
+      const progresoBar = document.getElementById('progreso-semanal');
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const hoyNum = new Date().getDay();
+
+      if (tareasSemanalesData.length === 0) {
+        container.innerHTML = '<div class="plan-empty">📋 Sin tareas programadas esta semana</div>';
+        progresoBar.style.width = '0%';
+        return;
+      }
+
+      const completadas = tareasSemanalesData.filter(t => t.completada).length;
+      const total = tareasSemanalesData.length;
+      const progreso = Math.round((completadas / total) * 100);
+      progresoBar.style.width = progreso + '%';
+
+      let html = tareasSemanalesData.map(t => {
+        const fecha = new Date(t.fechaProgramada);
+        const diaNum = fecha.getDay();
+        const diaStr = diasSemana[diaNum];
+        const esHoy = diaNum === hoyNum;
+        const completada = t.completada ? 'completada' : '';
+
+        return `
+          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''}">
+            <input type="checkbox" class="plan-tarea-check" 
+              ${t.completada ? 'checked' : ''} 
+              onchange="toggleTareaSemanal('${t.id}', this.checked)">
+            <div class="plan-tarea-info">
+              <div class="plan-tarea-titulo">${t.titulo || 'Tarea'}</div>
+              <div class="plan-tarea-meta">
+                <span class="plan-tarea-dia">${diaStr} ${fecha.getDate()}</span>
+                ${t.responsable ? `<span>👤 ${t.responsable}</span>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    async function toggleTareaSemanal(tareaId, completada) {
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('tareasProgramadas').doc(tareaId)
+          .update({ 
+            completada: completada,
+            fechaCompletado: completada ? new Date().toISOString() : null,
+            completadoPor: completada ? currentUser.uid : null
+          });
+        
+        const tarea = tareasSemanalesData.find(t => t.id === tareaId);
+        if (tarea) tarea.completada = completada;
+        renderPlanSemanal();
+      } catch (error) {
+        console.error('Error actualizando tarea:', error);
+      }
+    }
+
+    // ========== PLAN DE LIMPIEZA ==========
+    let planLimpiezaData = [];
+    let limpiezaCompletados = {};
+
+    async function cargarPlanLimpieza() {
+      const container = document.getElementById('tareas-limpieza');
+      const progresoBar = document.getElementById('progreso-limpieza');
+      
+      try {
+        const hoy = new Date();
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+        inicioSemana.setHours(0, 0, 0, 0);
+        const semanaKey = inicioSemana.toISOString().split('T')[0];
+
+        // Cargar plan base de limpieza
+        const planSnap = await db.collection('bienes').doc(bienId).collection('planLimpieza').get();
+        const planBase = planSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Cargar completados de esta semana
+        try {
+          const completadosDoc = await db.collection('bienes').doc(bienId)
+            .collection('planLimpiezaCompletados').doc(semanaKey).get();
+          if (completadosDoc.exists) {
+            limpiezaCompletados = completadosDoc.data().tareas || {};
+          }
+        } catch (e) {}
+
+        // Combinar plan con estado de completados
+        planLimpiezaData = planBase.map(tarea => ({
+          ...tarea,
+          completada: !!limpiezaCompletados[tarea.id],
+          semanaKey: semanaKey
+        }));
+
+        // Ordenar por día
+        planLimpiezaData.sort((a, b) => {
+          const diaA = parseInt(a.dia);
+          const diaB = parseInt(b.dia);
+          return (diaA === 0 ? 7 : diaA) - (diaB === 0 ? 7 : diaB);
+        });
+
+        renderPlanLimpieza();
+        
+      } catch (error) {
+        console.log('Error cargando plan limpieza:', error);
+        container.innerHTML = '<div class="plan-empty">Sin plan de limpieza</div>';
+      }
+    }
+
+    function renderPlanLimpieza() {
+      const container = document.getElementById('tareas-limpieza');
+      const progresoBar = document.getElementById('progreso-limpieza');
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const hoyNum = new Date().getDay();
+
+      const zonaIcons = {
+        cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
+        bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
+        entrada: '🚪', general: '🏠'
+      };
+      const tareaIcons = {
+        'barrer-fregar': '🧹', 'cambiar-sabanas': '🛏️', 'desinfectar': '🧴',
+        'revisar-consumibles': '📦', 'planchar': '👔', 'lavar-ropa': '🧺',
+        'limpiar-cristales': '🪟', 'aspirar': '🔌', 'quitar-polvo': '✨',
+        'limpiar-electrodomesticos': '🔧', 'ordenar': '📂', 'otra': '📋'
+      };
+      const tareaNombres = {
+        'barrer-fregar': 'Barrer y fregar', 'cambiar-sabanas': 'Cambiar sábanas', 
+        'desinfectar': 'Desinfectar', 'revisar-consumibles': 'Revisar consumibles',
+        'planchar': 'Planchar', 'lavar-ropa': 'Lavar ropa', 'limpiar-cristales': 'Limpiar cristales',
+        'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo', 
+        'limpiar-electrodomesticos': 'Limpiar electrodom.', 'ordenar': 'Ordenar', 'otra': 'Otra'
+      };
+
+      if (planLimpiezaData.length === 0) {
+        container.innerHTML = '<div class="plan-empty">🧹 Sin plan de limpieza configurado<br><small><a href="plan-limpieza.html?id=' + bienId + '">Configurar plan →</a></small></div>';
+        progresoBar.style.width = '0%';
+        return;
+      }
+
+      const completadas = planLimpiezaData.filter(t => t.completada).length;
+      const total = planLimpiezaData.length;
+      const progreso = Math.round((completadas / total) * 100);
+      progresoBar.style.width = progreso + '%';
+
+      let html = planLimpiezaData.map(t => {
+        const diaNum = parseInt(t.dia);
+        const diaStr = diasSemana[diaNum];
+        const esHoy = diaNum === hoyNum;
+        const completada = t.completada ? 'completada' : '';
+        const zonaIcon = zonaIcons[t.zona] || '🏠';
+        const tareaIcon = tareaIcons[t.tipo] || '📋';
+        const tareaNombre = t.tipo === 'otra' ? (t.otraTarea || 'Tarea') : (tareaNombres[t.tipo] || t.tipo);
+
+        return `
+          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''}">
+            <input type="checkbox" class="plan-tarea-check" 
+              ${t.completada ? 'checked' : ''} 
+              onchange="toggleLimpieza('${t.id}', '${t.semanaKey}', this.checked)">
+            <div class="plan-tarea-info">
+              <div class="plan-tarea-titulo">${tareaIcon} ${tareaNombre}</div>
+              <div class="plan-tarea-meta">
+                <span class="plan-tarea-dia">${diaStr}</span>
+                <span>${zonaIcon} ${t.dependencia || ''}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = html;
+    }
+
+    async function toggleLimpieza(tareaId, semanaKey, completada) {
+      try {
+        const docRef = db.collection('bienes').doc(bienId)
+          .collection('planLimpiezaCompletados').doc(semanaKey);
+        
+        if (completada) {
+          await docRef.set({
+            [`tareas.${tareaId}`]: {
+              completada: true,
+              fechaCompletado: new Date().toISOString(),
+              completadoPor: currentUser.uid
+            }
+          }, { merge: true });
+        } else {
+          await docRef.set({
+            [`tareas.${tareaId}`]: firebase.firestore.FieldValue.delete()
+          }, { merge: true });
+        }
+        
+        const tarea = planLimpiezaData.find(t => t.id === tareaId);
+        if (tarea) tarea.completada = completada;
+        renderPlanLimpieza();
+      } catch (error) {
+        console.error('Error actualizando limpieza:', error);
+      }
     }
   </script>
 </body>
