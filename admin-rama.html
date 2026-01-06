@@ -549,6 +549,8 @@
 
     <section class="admin-section" id="section-planes">
       <div class="section-header"><h2 class="section-title">📋 Planes activos</h2></div>
+      
+      <!-- Plan de la rama -->
       <div class="card">
         <div class="card-title">Plan actual de la rama</div>
         <div id="plan-actual-info" style="padding: 16px; background: var(--cream); border-radius: 8px; margin-bottom: 16px;">
@@ -567,17 +569,28 @@
         <button class="btn btn-secondary" onclick="window.location.href='tienda.html'">🛒 Ver planes disponibles</button>
       </div>
       
+      <!-- Add-ons de la rama -->
       <div class="card">
-        <div class="card-title">Add-ons activos</div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Extensiones contratadas para esta rama</p>
-        <div id="addons-activos-list">
+        <div class="card-title">Add-ons de la rama</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Extensiones contratadas a nivel de rama (aplican a todos)</p>
+        <div id="addons-rama-list">
           <div style="padding: 20px; text-align: center; color: var(--text-muted);">
             <span style="font-size: 2rem; opacity: 0.5;">📦</span>
-            <p style="margin-top: 8px;">No hay add-ons activos</p>
+            <p style="margin-top: 8px;">No hay add-ons a nivel de rama</p>
           </div>
         </div>
       </div>
       
+      <!-- Desglose por nido -->
+      <div class="card">
+        <div class="card-title">Planes y add-ons por nido</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Desglose de contrataciones individuales por cada nido</p>
+        <div id="planes-por-nido-list">
+          <!-- Se genera dinámicamente -->
+        </div>
+      </div>
+      
+      <!-- Uso actual -->
       <div class="card">
         <div class="card-title">Uso actual</div>
         <div class="config-grid" style="gap: 12px;">
@@ -800,13 +813,19 @@
       document.getElementById('stat-nidos').textContent = nidosData.length;
       document.getElementById('stat-bienes').textContent = bienesData.length;
       
-      // Contar estirpes únicas (nidos con padre = null o generación 1)
-      const estirpesUnicas = new Set(nidosData.filter(n => n.generacion === 1 || !n.padreId).map(n => n.id)).size;
-      document.getElementById('stat-estirpes').textContent = estirpesUnicas || 1;
+      // Estirpes: contar nidos únicos de generación 1 (raíz) o sin padre
+      const nidosRaiz = nidosData.filter(n => n.generacion === 1 || n.generacion === '1' || (!n.padreId && !n.padre));
+      document.getElementById('stat-estirpes').textContent = nidosRaiz.length || 1;
       
-      // Generaciones: usar el máximo de generación de los nidos
-      const maxGeneracion = nidosData.length > 0 ? Math.max(...nidosData.map(n => n.generacion || 1)) : 1;
-      document.getElementById('stat-generaciones').textContent = maxGeneracion;
+      // Generaciones: usar config de familia o calcular máximo
+      let numGeneraciones = familiaData.numGeneraciones || 4;
+      if (nidosData.length > 0) {
+        const generaciones = nidosData.map(n => parseInt(n.generacion) || 0).filter(g => !isNaN(g) && g > 0);
+        if (generaciones.length > 0) {
+          numGeneraciones = Math.max(...generaciones);
+        }
+      }
+      document.getElementById('stat-generaciones').textContent = numGeneraciones;
 
       renderUsuarios();
       renderGestion();
@@ -1044,7 +1063,7 @@
     }
 
     function renderPlanes() {
-      // Plan actual
+      // Plan actual de la rama
       const plan = familiaData.plan || 'free';
       const planesInfo = {
         free: { nombre: 'Free', icono: '🌱', descripcion: 'Plan básico gratuito', precio: 0, usuarios: 10, bienes: 5, storage: 1 },
@@ -1066,26 +1085,25 @@
       document.getElementById('uso-storage').textContent = familiaData.storageUsado || 0;
       document.getElementById('limite-storage').textContent = planInfo.storage;
       
-      // Add-ons activos
-      const addons = familiaData.addons || [];
-      const addonsContainer = document.getElementById('addons-activos-list');
+      // Add-ons a nivel de rama
+      const addonsRama = familiaData.addons || [];
+      const addonsRamaContainer = document.getElementById('addons-rama-list');
       
-      if (addons.length === 0) {
-        addonsContainer.innerHTML = `
+      const addonsInfo = {
+        mayordomo: { icono: '🎩', nombre: 'Mayordomo', precio: 4.99 },
+        gerente: { icono: '🏨', nombre: 'Gerente', precio: 9.99 },
+        capataz: { icono: '🌾', nombre: 'Capataz', precio: 9.99 }
+      };
+      
+      if (addonsRama.length === 0) {
+        addonsRamaContainer.innerHTML = `
           <div style="padding: 20px; text-align: center; color: var(--text-muted);">
             <span style="font-size: 2rem; opacity: 0.5;">📦</span>
-            <p style="margin-top: 8px;">No hay add-ons activos</p>
-            <button class="btn btn-secondary btn-sm" style="margin-top: 12px;" onclick="window.location.href='tienda.html'">Ver add-ons disponibles</button>
+            <p style="margin-top: 8px;">No hay add-ons a nivel de rama</p>
           </div>
         `;
       } else {
-        const addonsInfo = {
-          mayordomo: { icono: '🎩', nombre: 'Mayordomo', precio: 4.99 },
-          gerente: { icono: '🏨', nombre: 'Gerente', precio: 9.99 },
-          capataz: { icono: '🌾', nombre: 'Capataz', precio: 9.99 }
-        };
-        
-        addonsContainer.innerHTML = addons.map(addon => {
+        addonsRamaContainer.innerHTML = addonsRama.map(addon => {
           const info = addonsInfo[addon] || { icono: '📦', nombre: addon, precio: 0 };
           return `
             <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--cream); border-radius: 8px; margin-bottom: 8px;">
@@ -1095,6 +1113,60 @@
                 <div style="font-size: 0.8rem; color: var(--text-muted);">${info.precio}€/mes</div>
               </div>
               <span style="color: var(--success);">✓ Activo</span>
+            </div>
+          `;
+        }).join('');
+      }
+      
+      // Desglose por nido
+      const planesPorNidoContainer = document.getElementById('planes-por-nido-list');
+      const nidosConPlanes = nidosData.filter(n => n.plan || (n.addons && n.addons.length > 0) || n.recargas);
+      
+      if (nidosConPlanes.length === 0) {
+        planesPorNidoContainer.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+            <span style="font-size: 2rem; opacity: 0.5;">🪺</span>
+            <p style="margin-top: 8px;">Ningún nido tiene planes o add-ons individuales</p>
+            <p style="font-size: 0.8rem;">Los nidos pueden contratar mejoras adicionales desde su panel</p>
+          </div>
+        `;
+      } else {
+        planesPorNidoContainer.innerHTML = nidosConPlanes.map(nido => {
+          let items = [];
+          
+          // Plan del nido
+          if (nido.plan && nido.plan !== 'free') {
+            const pInfo = planesInfo[nido.plan] || {};
+            items.push(`<span style="background: var(--sage); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${pInfo.icono || '📋'} ${pInfo.nombre || nido.plan}</span>`);
+          }
+          
+          // Add-ons del nido
+          if (nido.addons && nido.addons.length > 0) {
+            nido.addons.forEach(addon => {
+              const aInfo = addonsInfo[addon] || { icono: '📦', nombre: addon };
+              items.push(`<span style="background: var(--terracota); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">${aInfo.icono} ${aInfo.nombre}</span>`);
+            });
+          }
+          
+          // Recargas del nido
+          if (nido.recargas) {
+            Object.keys(nido.recargas).forEach(tipo => {
+              const cant = nido.recargas[tipo];
+              if (cant > 0) {
+                items.push(`<span style="background: #4A90A4; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">+${cant} ${tipo}</span>`);
+              }
+            });
+          }
+          
+          return `
+            <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--cream); border-radius: 8px; margin-bottom: 8px;">
+              <span style="font-size: 1.3rem;">🪺</span>
+              <div style="flex: 1;">
+                <div style="font-weight: 600;">${nido.nombre || 'Sin nombre'}</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;">
+                  ${items.join('')}
+                </div>
+              </div>
             </div>
           `;
         }).join('');
