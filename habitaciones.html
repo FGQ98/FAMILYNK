@@ -539,11 +539,27 @@
     let bienData = null;
     let editandoId = null;
 
-    auth.onAuthStateChanged(async user => {
-      if (!user) { window.location.href = 'login.html'; return; }
+    // Esperar a que Firebase verifique la sesión
+    async function verificarSesion() {
+      return new Promise((resolve) => {
+        const unsubscribe = auth.onAuthStateChanged(user => {
+          unsubscribe();
+          resolve(user);
+        });
+      });
+    }
+
+    (async function init() {
+      const user = await verificarSesion();
+      if (!user) { 
+        console.log('No hay usuario, redirigiendo a login');
+        window.location.href = 'login.html'; 
+        return; 
+      }
+      console.log('Usuario verificado:', user.email);
       if (!bienId) { alert('Falta ID del bien'); window.location.href = 'lo-comun.html'; return; }
       await cargarDatos();
-    });
+    })();
 
     async function cargarDatos() {
       try {
