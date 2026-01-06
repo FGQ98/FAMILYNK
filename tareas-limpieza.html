@@ -402,6 +402,7 @@
 
     .form-group { margin-bottom: 16px; }
     .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-input, .form-select {
       width: 100%;
       padding: 12px 14px;
@@ -458,6 +459,10 @@
             <input type="text" class="form-input" id="zona-nombre" placeholder="Ej: Cocina, Baño principal..." required>
           </div>
           <div class="form-group">
+            <label class="form-label">Dependencia (opcional)</label>
+            <input type="text" class="form-input" id="zona-dependencia" placeholder="Ej: Encimera, Horno, Ducha...">
+          </div>
+          <div class="form-group">
             <label class="form-label">Icono</label>
             <select class="form-select" id="zona-icono">
               <option value="🏠">🏠 General</option>
@@ -493,15 +498,46 @@
             <label class="form-label">Tarea *</label>
             <input type="text" class="form-input" id="tarea-nombre" placeholder="Ej: Fregar suelo, Limpiar cristales..." required>
           </div>
-          <div class="form-group">
-            <label class="form-label">Frecuencia</label>
-            <select class="form-select" id="tarea-frecuencia">
-              <option value="cada-uso">Cada uso</option>
-              <option value="diaria">Diaria</option>
-              <option value="semanal">Semanal</option>
-              <option value="quincenal">Quincenal</option>
-              <option value="mensual">Mensual</option>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Tiempo estimado</label>
+              <select class="form-select" id="tarea-tiempo">
+                <option value="5">5 min</option>
+                <option value="10">10 min</option>
+                <option value="15" selected>15 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hora</option>
+                <option value="90">1h 30min</option>
+                <option value="120">2 horas</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Periodicidad</label>
+              <select class="form-select" id="tarea-frecuencia" onchange="toggleDiaSemana()">
+                <option value="cada-uso">Cada uso</option>
+                <option value="diaria">Diaria</option>
+                <option value="semanal">Semanal</option>
+                <option value="quincenal">Quincenal</option>
+                <option value="mensual">Mensual</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" id="grupo-dia" style="display:none;">
+            <label class="form-label">¿Qué día?</label>
+            <select class="form-select" id="tarea-dia">
+              <option value="1">Lunes</option>
+              <option value="2">Martes</option>
+              <option value="3">Miércoles</option>
+              <option value="4">Jueves</option>
+              <option value="5">Viernes</option>
+              <option value="6">Sábado</option>
+              <option value="0">Domingo</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-input" id="tarea-notas" rows="2" placeholder="Instrucciones especiales, productos a usar..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -759,6 +795,7 @@
 
       if (zona) {
         document.getElementById('zona-nombre').value = zona.nombre || '';
+        document.getElementById('zona-dependencia').value = zona.dependencia || '';
         document.getElementById('zona-icono').value = zona.icono || '🏠';
       } else {
         document.getElementById('form-zona').reset();
@@ -779,6 +816,7 @@
 
       const data = {
         nombre: document.getElementById('zona-nombre').value,
+        dependencia: document.getElementById('zona-dependencia').value,
         icono: document.getElementById('zona-icono').value,
         orden: zonasData.length + 1
       };
@@ -823,15 +861,25 @@
       document.getElementById('modal-tarea').classList.add('active');
     }
 
+    function toggleDiaSemana() {
+      const frecuencia = document.getElementById('tarea-frecuencia').value;
+      const grupoDia = document.getElementById('grupo-dia');
+      grupoDia.style.display = (frecuencia === 'semanal' || frecuencia === 'quincenal') ? 'block' : 'none';
+    }
+
     document.getElementById('form-tarea').addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const zona = zonasData.find(z => z.id === currentZonaId);
       if (!zona) return;
 
+      const frecuencia = document.getElementById('tarea-frecuencia').value;
       const nuevaTarea = {
         nombre: document.getElementById('tarea-nombre').value,
-        frecuencia: document.getElementById('tarea-frecuencia').value,
+        tiempo: parseInt(document.getElementById('tarea-tiempo').value) || 15,
+        frecuencia: frecuencia,
+        dia: (frecuencia === 'semanal' || frecuencia === 'quincenal') ? document.getElementById('tarea-dia').value : null,
+        notas: document.getElementById('tarea-notas').value || '',
         completado: false
       };
 

@@ -252,7 +252,12 @@
       font-size: 0.7rem; 
       font-weight: 600; 
     }
+    .plan-tarea.lavanderia { border-left-color: #6B8E8E; }
+    .plan-tarea.lavanderia .plan-tarea-dia { background: rgba(107, 142, 142, 0.15); color: #507878; }
+    .plan-tarea.limpieza { border-left-color: var(--sage); }
+    .plan-tarea.limpieza .plan-tarea-dia { background: var(--sage-muted); color: var(--sage-dark); }
     .plan-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
+    .plan-empty a { color: var(--mayordomo); }
     .plan-progreso {
       height: 6px;
       background: var(--cream-dark);
@@ -446,9 +451,9 @@
       }
     }
 
-    // ========== PLAN SEMANAL DE LIMPIEZA ==========
-    let planLimpiezaData = [];
-    let limpiezaCompletados = {};
+    // ========== PLAN SEMANAL COMBINADO (LIMPIEZA + LAVANDERÍA) ==========
+    let planSemanalData = [];
+    let completadosData = {};
     let semanaKeyActual = '';
 
     async function cargarPlanSemanal() {
@@ -457,33 +462,94 @@
       
       try {
         const hoy = new Date();
+        const hoyNum = hoy.getDay();
         const inicioSemana = new Date(hoy);
         inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
         inicioSemana.setHours(0, 0, 0, 0);
         semanaKeyActual = inicioSemana.toISOString().split('T')[0];
 
-        // Cargar plan base de limpieza
-        const planSnap = await db.collection('bienes').doc(bienId).collection('planLimpieza').get();
-        const planBase = planSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        planSemanalData = [];
 
-        // Cargar completados de esta semana
+        // 1. Cargar tareas de LIMPIEZA (de zonas)
+        const zonasSnap = await db.collection('bienes').doc(bienId).collection('limpieza').get();
+        zonasSnap.docs.forEach(doc => {
+          const zona = { id: doc.id, ...doc.data() };
+          if (zona.tareas && zona.tareas.length > 0) {
+            zona.tareas.forEach((tarea, idx) => {
+              // Solo incluir tareas con día asignado (semanal/quincenal)
+              if (tarea.dia && (tarea.frecuencia === 'semanal' || tarea.frecuencia === 'quincenal' || tarea.frecuencia === 'diaria')) {
+                // Para diarias, añadir a todos los días
+                if (tarea.frecuencia === 'diaria') {
+                  for (let d = 1; d <= 6; d++) { // Lun-Sáb
+                    planSemanalData.push({
+                      id: `lim_${zona.id}_${idx}_${d}`,
+                      tipo: 'limpieza',
+                      nombre: tarea.nombre,
+                      zona: zona.nombre,
+                      zonaIcon: zona.icono || '🏠',
+                      dia: d.toString(),
+                      tiempo: tarea.tiempo || 15,
+                      notas: tarea.notas
+                    });
+                  }
+                } else {
+                  planSemanalData.push({
+                    id: `lim_${zona.id}_${idx}`,
+                    tipo: 'limpieza',
+                    nombre: tarea.nombre,
+                    zona: zona.nombre,
+                    zonaIcon: zona.icono || '🏠',
+                    dia: tarea.dia,
+                    tiempo: tarea.tiempo || 15,
+                    notas: tarea.notas
+                  });
+                }
+              }
+            });
+          }
+        });
+
+        // 2. Cargar prendas de LAVANDERÍA
+        const lavanderiaSnap = await db.collection('bienes').doc(bienId).collection('lavanderia').get();
+        lavanderiaSnap.docs.forEach(doc => {
+          const prenda = { id: doc.id, ...doc.data() };
+          // Solo incluir prendas con día asignado (semanal/quincenal)
+          if (prenda.dia && (prenda.frecuencia === 'semanal' || prenda.frecuencia === 'quincenal')) {
+            planSemanalData.push({
+              id: `lav_${prenda.id}`,
+              tipo: 'lavanderia',
+              nombre: prenda.nombre,
+              zona: prenda.lugar === 'tintoreria' ? 'Tintorería' : 'En casa',
+              zonaIcon: prenda.lugar === 'tintoreria' ? '🧺' : '👕',
+              dia: prenda.dia,
+              tiempo: 30, // Tiempo estimado para lavandería
+              notas: prenda.notas,
+              procesos: [
+                prenda.lavado ? '🧼' : '',
+                prenda.secado ? '☀️' : '',
+                prenda.planchado ? '👔' : ''
+              ].filter(Boolean).join(' ')
+            });
+          }
+        });
+
+        // 3. Cargar estado de completados de esta semana
         try {
           const completadosDoc = await db.collection('bienes').doc(bienId)
-            .collection('planLimpiezaCompletados').doc(semanaKeyActual).get();
+            .collection('planSemanalCompletados').doc(semanaKeyActual).get();
           if (completadosDoc.exists) {
-            limpiezaCompletados = completadosDoc.data().tareas || {};
+            completadosData = completadosDoc.data().tareas || {};
           }
         } catch (e) {}
 
-        // Combinar plan con estado de completados
-        planLimpiezaData = planBase.map(tarea => ({
+        // 4. Marcar completadas
+        planSemanalData = planSemanalData.map(tarea => ({
           ...tarea,
-          completada: !!limpiezaCompletados[tarea.id],
-          semanaKey: semanaKeyActual
+          completada: !!completadosData[tarea.id]
         }));
 
-        // Ordenar por día
-        planLimpiezaData.sort((a, b) => {
+        // 5. Ordenar por día
+        planSemanalData.sort((a, b) => {
           const diaA = parseInt(a.dia);
           const diaB = parseInt(b.dia);
           return (diaA === 0 ? 7 : diaA) - (diaB === 0 ? 7 : diaB);
@@ -493,7 +559,7 @@
         
       } catch (error) {
         console.log('Error cargando plan semanal:', error);
-        container.innerHTML = '<div class="plan-empty">Sin plan de limpieza</div>';
+        container.innerHTML = '<div class="plan-empty">Error cargando plan</div>';
       }
     }
 
@@ -503,55 +569,42 @@
       const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       const hoyNum = new Date().getDay();
 
-      const zonaIcons = {
-        cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
-        bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
-        entrada: '🚪', general: '🏠'
-      };
-      const tareaIcons = {
-        'barrer-fregar': '🧹', 'cambiar-sabanas': '🛏️', 'desinfectar': '🧴',
-        'revisar-consumibles': '📦', 'planchar': '👔', 'lavar-ropa': '🧺',
-        'limpiar-cristales': '🪟', 'aspirar': '🔌', 'quitar-polvo': '✨',
-        'limpiar-electrodomesticos': '🔧', 'ordenar': '📂', 'otra': '📋'
-      };
-      const tareaNombres = {
-        'barrer-fregar': 'Barrer y fregar', 'cambiar-sabanas': 'Cambiar sábanas', 
-        'desinfectar': 'Desinfectar', 'revisar-consumibles': 'Revisar consumibles',
-        'planchar': 'Planchar', 'lavar-ropa': 'Lavar ropa', 'limpiar-cristales': 'Limpiar cristales',
-        'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo', 
-        'limpiar-electrodomesticos': 'Limpiar electrodom.', 'ordenar': 'Ordenar', 'otra': 'Otra'
-      };
-
-      if (planLimpiezaData.length === 0) {
-        container.innerHTML = '<div class="plan-empty">🧹 Sin plan de limpieza configurado<br><small><a href="plan-limpieza.html?id=' + bienId + '">Configurar plan →</a></small></div>';
+      if (planSemanalData.length === 0) {
+        container.innerHTML = `
+          <div class="plan-empty">
+            📅 Sin tareas programadas esta semana<br>
+            <small>Configura tareas en <a href="tareas-limpieza.html?id=${bienId}">Tareas Limpieza</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
+          </div>
+        `;
         progresoBar.style.width = '0%';
         return;
       }
 
-      const completadas = planLimpiezaData.filter(t => t.completada).length;
-      const total = planLimpiezaData.length;
+      const completadas = planSemanalData.filter(t => t.completada).length;
+      const total = planSemanalData.length;
       const progreso = Math.round((completadas / total) * 100);
       progresoBar.style.width = progreso + '%';
 
-      let html = planLimpiezaData.map(t => {
+      let html = planSemanalData.map(t => {
         const diaNum = parseInt(t.dia);
         const diaStr = diasSemana[diaNum];
         const esHoy = diaNum === hoyNum;
         const completada = t.completada ? 'completada' : '';
-        const zonaIcon = zonaIcons[t.zona] || '🏠';
-        const tareaIcon = tareaIcons[t.tipo] || '📋';
-        const tareaNombre = t.tipo === 'otra' ? (t.otraTarea || 'Tarea') : (tareaNombres[t.tipo] || t.tipo);
+        const tipoClass = t.tipo === 'lavanderia' ? 'lavanderia' : 'limpieza';
+        const tipoIcon = t.tipo === 'lavanderia' ? '👕' : '🧹';
 
         return `
-          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''}">
+          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''} ${tipoClass}">
             <input type="checkbox" class="plan-tarea-check" 
               ${t.completada ? 'checked' : ''} 
-              onchange="toggleLimpieza('${t.id}', this.checked)">
+              onchange="toggleTarea('${t.id}', this.checked)">
             <div class="plan-tarea-info">
-              <div class="plan-tarea-titulo">${tareaIcon} ${tareaNombre}</div>
+              <div class="plan-tarea-titulo">${tipoIcon} ${t.nombre}</div>
               <div class="plan-tarea-meta">
                 <span class="plan-tarea-dia">${diaStr}</span>
-                <span>${zonaIcon} ${t.dependencia || ''}</span>
+                <span>${t.zonaIcon} ${t.zona}</span>
+                ${t.procesos ? `<span>${t.procesos}</span>` : ''}
+                <span>⏱️ ${t.tiempo}m</span>
               </div>
             </div>
           </div>
@@ -561,10 +614,10 @@
       container.innerHTML = html;
     }
 
-    async function toggleLimpieza(tareaId, completada) {
+    async function toggleTarea(tareaId, completada) {
       try {
         const docRef = db.collection('bienes').doc(bienId)
-          .collection('planLimpiezaCompletados').doc(semanaKeyActual);
+          .collection('planSemanalCompletados').doc(semanaKeyActual);
         
         if (completada) {
           await docRef.set({
@@ -580,11 +633,11 @@
           }, { merge: true });
         }
         
-        const tarea = planLimpiezaData.find(t => t.id === tareaId);
+        const tarea = planSemanalData.find(t => t.id === tareaId);
         if (tarea) tarea.completada = completada;
         renderPlanSemanal();
       } catch (error) {
-        console.error('Error actualizando limpieza:', error);
+        console.error('Error actualizando tarea:', error);
       }
     }
   </script>
