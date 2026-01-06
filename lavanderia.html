@@ -301,6 +301,34 @@
     }
     .form-input:focus, .form-select:focus { outline: none; border-color: var(--lavanderia); }
 
+    /* Filtros */
+    .filtros-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+    .filtro-btn {
+      padding: 8px 16px;
+      border: 2px solid var(--cream-dark);
+      background: var(--white);
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filtro-btn:hover { border-color: var(--lavanderia); color: var(--lavanderia); }
+    .filtro-btn.active { background: var(--lavanderia); border-color: var(--lavanderia); color: var(--white); }
+    .filtro-btn .count { background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; margin-left: 4px; }
+    .filtro-btn.active .count { background: rgba(255,255,255,0.3); }
+
     /* Procesos */
     .proceso-checks {
       display: flex;
@@ -362,6 +390,16 @@
         </div>
       </div>
 
+      <!-- Filtros por tipo -->
+      <div class="filtros-bar">
+        <button class="filtro-btn active" data-tipo="todas">Todas</button>
+        <button class="filtro-btn" data-tipo="sabanas">🛏️ Sábanas <span class="count" id="count-sabanas">0</span></button>
+        <button class="filtro-btn" data-tipo="toallas">🧴 Toallas <span class="count" id="count-toallas">0</span></button>
+        <button class="filtro-btn" data-tipo="ropa">👔 Ropa <span class="count" id="count-ropa">0</span></button>
+        <button class="filtro-btn" data-tipo="manteleria">🍽️ Mantelería <span class="count" id="count-manteleria">0</span></button>
+        <button class="filtro-btn" data-tipo="uniformes">👷 Uniformes <span class="count" id="count-uniformes">0</span></button>
+      </div>
+
       <!-- Lista de prendas -->
       <div class="prendas-list" id="prendas-container"></div>
     </div>
@@ -379,6 +417,17 @@
           <div class="form-group">
             <label class="form-label">Prenda *</label>
             <input type="text" class="form-input" id="prenda-nombre" placeholder="Ej: Sábanas dormitorio principal, Toallas baño..." required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tipo de prenda</label>
+            <select class="form-select" id="prenda-tipo">
+              <option value="sabanas">🛏️ Sábanas</option>
+              <option value="toallas">🧴 Toallas</option>
+              <option value="ropa">👔 Ropa</option>
+              <option value="manteleria">🍽️ Mantelería</option>
+              <option value="uniformes">👷 Uniformes</option>
+            </select>
           </div>
 
           <div class="form-row">
@@ -472,6 +521,15 @@
     let currentUser = null;
     let prendasData = [];
     let editingId = null;
+    let filtroActual = 'todas';
+
+    const TIPOS = {
+      sabanas: { icon: '🛏️', label: 'Sábanas' },
+      toallas: { icon: '🧴', label: 'Toallas' },
+      ropa: { icon: '👔', label: 'Ropa' },
+      manteleria: { icon: '🍽️', label: 'Mantelería' },
+      uniformes: { icon: '👷', label: 'Uniformes' }
+    };
 
     const urlParams = new URLSearchParams(window.location.search);
     bienId = urlParams.get('id');
@@ -480,6 +538,16 @@
     document.getElementById('btn-volver').href = `limpieza.html?id=${bienId}&origen=${origen}`;
 
     if (!bienId) window.location.href = 'lo-comun.html';
+
+    // Event listeners filtros
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filtroActual = btn.dataset.tipo;
+        render();
+      });
+    });
 
     const frecuenciaLabels = {
       'uso': 'Después de usar',
@@ -526,7 +594,7 @@
     function render() {
       const container = document.getElementById('prendas-container');
 
-      // Stats
+      // Stats generales
       const total = prendasData.length;
       const enCasa = prendasData.filter(p => p.lugar === 'casa').length;
       const tintoreria = prendasData.filter(p => p.lugar === 'tintoreria').length;
@@ -535,18 +603,30 @@
       document.getElementById('stat-casa').textContent = enCasa;
       document.getElementById('stat-tintoreria').textContent = tintoreria;
 
-      if (prendasData.length === 0) {
+      // Contadores por tipo
+      Object.keys(TIPOS).forEach(tipo => {
+        const count = prendasData.filter(p => p.tipo === tipo).length;
+        const el = document.getElementById(`count-${tipo}`);
+        if (el) el.textContent = count;
+      });
+
+      // Filtrar prendas
+      const prendasFiltradas = filtroActual === 'todas' 
+        ? prendasData 
+        : prendasData.filter(p => p.tipo === filtroActual);
+
+      if (prendasFiltradas.length === 0) {
         container.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">👕</div>
-            <div class="empty-state-text">No hay prendas configuradas<br>
+            <div class="empty-state-text">${filtroActual === 'todas' ? 'No hay prendas configuradas' : `No hay ${TIPOS[filtroActual]?.label || 'prendas'}`}<br>
             <small>Añade prendas para gestionar la colada</small></div>
           </div>
         `;
         return;
       }
 
-      container.innerHTML = prendasData.map(prenda => {
+      container.innerHTML = prendasFiltradas.map(prenda => {
         const procesos = [];
         if (prenda.lavado) procesos.push('🧼');
         if (prenda.secado) procesos.push('☀️');
@@ -554,10 +634,11 @@
 
         const frecLabel = frecuenciaLabels[prenda.frecuencia] || prenda.frecuencia;
         const diaLabel = prenda.dia && prenda.frecuencia !== 'uso' ? diasLabels[prenda.dia] : '';
+        const tipoInfo = TIPOS[prenda.tipo] || { icon: '👕', label: 'Otro' };
 
         return `
           <div class="prenda-card" onclick="editarPrenda('${prenda.id}')">
-            <div class="prenda-icon">${prenda.lugar === 'tintoreria' ? '🧺' : '🏠'}</div>
+            <div class="prenda-icon">${tipoInfo.icon}</div>
             <div class="prenda-info">
               <div class="prenda-nombre">${prenda.nombre}</div>
               <div class="prenda-meta">
@@ -591,6 +672,7 @@
 
       if (prenda) {
         document.getElementById('prenda-nombre').value = prenda.nombre || '';
+        document.getElementById('prenda-tipo').value = prenda.tipo || 'ropa';
         document.getElementById('prenda-lugar').value = prenda.lugar || 'casa';
         document.getElementById('prenda-tratamiento').value = prenda.tratamiento || 'normal';
         document.getElementById('proceso-lavado').checked = prenda.lavado !== false;
@@ -627,6 +709,7 @@
       const frecuencia = document.getElementById('prenda-frecuencia').value;
       const data = {
         nombre: document.getElementById('prenda-nombre').value,
+        tipo: document.getElementById('prenda-tipo').value,
         lugar: document.getElementById('prenda-lugar').value,
         tratamiento: document.getElementById('prenda-tratamiento').value,
         lavado: document.getElementById('proceso-lavado').checked,
