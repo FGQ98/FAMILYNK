@@ -600,6 +600,35 @@
     .tarea-titulo { font-weight: 600; font-size: 0.9rem; }
     .tarea-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 12px; margin-top: 2px; }
     .tarea-dia { background: rgba(78, 121, 167, 0.15); color: var(--gerente); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+
+    /* Plan Limpieza */
+    .plan-semanal-card.plan-limpieza { border-color: var(--sage); }
+    .plan-semanal-card.plan-limpieza .tarea-dia { background: rgba(122, 158, 126, 0.15); color: var(--sage-dark); }
+    .plan-semanal-card.plan-limpieza .tarea-checkbox { accent-color: var(--sage); }
+    .tarea-semanal.hoy { border-left: 3px solid var(--warning); background: #fffbf5; }
+    .plan-progreso {
+      position: relative;
+      height: 20px;
+      background: var(--cream-dark);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .plan-progreso-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--sage) 0%, var(--success) 100%);
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+    .plan-progreso-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text);
+    }
   </style>
 </head>
 <body>
@@ -804,6 +833,7 @@
     let habitacionesData = [];
     let limpiezaData = [];
     let tareasSemanalesData = [];
+    let planLimpiezaData = [];
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -941,6 +971,34 @@
           tareasSemanalesData = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         }
 
+        // Plan de Limpieza Semanal
+        try {
+          const hoy = new Date();
+          const inicioSemana = new Date(hoy);
+          inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+          inicioSemana.setHours(0, 0, 0, 0);
+          const semanaKey = inicioSemana.toISOString().split('T')[0];
+
+          const planSnap = await bienRef.collection('planLimpieza').get();
+          const planBase = planSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+          let completadosEstaSemana = {};
+          try {
+            const completadosDoc = await bienRef.collection('planLimpiezaCompletados').doc(semanaKey).get();
+            if (completadosDoc.exists) {
+              completadosEstaSemana = completadosDoc.data().tareas || {};
+            }
+          } catch (e) {}
+
+          planLimpiezaData = planBase.map(tarea => ({
+            ...tarea,
+            completada: !!completadosEstaSemana[tarea.id],
+            semanaKey: semanaKey
+          }));
+        } catch (e) {
+          planLimpiezaData = [];
+        }
+
         actualizarStats();
 
       } catch (error) {
@@ -974,9 +1032,126 @@
         ${renderModuloReservas()}
         ${renderModuloHuespedes()}
         ${renderModuloHabitaciones()}
-        ${renderModuloLimpieza()}
         ${renderPlanSemanal()}
+        ${renderPlanLimpiezaSemanal()}
+        ${renderModuloLimpieza()}
       `;
+    }
+
+    // ========== PLAN DE LIMPIEZA SEMANAL ==========
+    function renderPlanLimpiezaSemanal() {
+      const tareas = planLimpiezaData || [];
+      
+      if (tareas.length === 0) {
+        return '';
+      }
+
+      const hoy = new Date();
+      const diaHoy = hoy.getDay();
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+      const finSemana = new Date(inicioSemana);
+      finSemana.setDate(inicioSemana.getDate() + 6);
+      
+      const formatoFecha = { day: 'numeric', month: 'short' };
+      const semanaStr = `${inicioSemana.toLocaleDateString('es-ES', formatoFecha)} - ${finSemana.toLocaleDateString('es-ES', formatoFecha)}`;
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      
+      const zonaIcons = {
+        cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
+        bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
+        entrada: '🚪', general: '🏠'
+      };
+      const tareaIcons = {
+        'barrer-fregar': '🧹', 'cambiar-sabanas': '🛏️', 'desinfectar': '🧴',
+        'revisar-consumibles': '📦', 'planchar': '👔', 'lavar-ropa': '🧺',
+        'limpiar-cristales': '🪟', 'aspirar': '🔌', 'quitar-polvo': '✨',
+        'limpiar-electrodomesticos': '🔧', 'ordenar': '📂', 'otra': '📋'
+      };
+      const tareaNombres = {
+        'barrer-fregar': 'Barrer y fregar', 'cambiar-sabanas': 'Cambiar sábanas', 
+        'desinfectar': 'Desinfectar', 'revisar-consumibles': 'Revisar consumibles',
+        'planchar': 'Planchar', 'lavar-ropa': 'Lavar ropa', 'limpiar-cristales': 'Limpiar cristales',
+        'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo', 
+        'limpiar-electrodomesticos': 'Limpiar electrodom.', 'ordenar': 'Ordenar', 'otra': 'Otra'
+      };
+
+      // Ordenar por día
+      const tareasOrdenadas = [...tareas].sort((a, b) => {
+        const diaA = parseInt(a.dia);
+        const diaB = parseInt(b.dia);
+        return (diaA === 0 ? 7 : diaA) - (diaB === 0 ? 7 : diaB);
+      });
+
+      const completadas = tareas.filter(t => t.completada).length;
+      const total = tareas.length;
+      const progreso = Math.round((completadas / total) * 100);
+
+      let tareasHtml = tareasOrdenadas.map(t => {
+        const diaNum = parseInt(t.dia);
+        const diaStr = diasSemana[diaNum];
+        const completada = t.completada ? 'completada' : '';
+        const zonaIcon = zonaIcons[t.zona] || '🏠';
+        const tareaIcon = tareaIcons[t.tipo] || '📋';
+        const tareaNombre = t.tipo === 'otra' ? (t.otraTarea || 'Tarea') : (tareaNombres[t.tipo] || t.tipo);
+        const esHoy = diaNum === diaHoy;
+        
+        return `
+          <div class="tarea-semanal ${completada} ${esHoy ? 'hoy' : ''}">
+            <input type="checkbox" class="tarea-checkbox" 
+              ${t.completada ? 'checked' : ''} 
+              onchange="toggleLimpiezaCompletada('${t.id}', '${t.semanaKey}', this.checked)">
+            <div class="tarea-info">
+              <div class="tarea-titulo">${tareaIcon} ${tareaNombre}</div>
+              <div class="tarea-meta">
+                <span class="tarea-dia">${diaStr}</span>
+                <span>${zonaIcon} ${t.dependencia || ''}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="plan-semanal-card plan-limpieza">
+          <div class="plan-semanal-header">
+            <span class="plan-semanal-title">🧹 Plan Limpieza</span>
+            <span class="plan-semanal-semana">${semanaStr}</span>
+          </div>
+          <div class="plan-progreso">
+            <div class="plan-progreso-bar" style="width: ${progreso}%"></div>
+            <span class="plan-progreso-text">${completadas}/${total}</span>
+          </div>
+          ${tareasHtml}
+        </div>
+      `;
+    }
+
+    async function toggleLimpiezaCompletada(tareaId, semanaKey, completada) {
+      try {
+        const docRef = db.collection('bienes').doc(bienActual.id)
+          .collection('planLimpiezaCompletados').doc(semanaKey);
+        
+        if (completada) {
+          await docRef.set({
+            [`tareas.${tareaId}`]: {
+              completada: true,
+              fechaCompletado: new Date().toISOString(),
+              completadoPor: currentUser.uid
+            }
+          }, { merge: true });
+        } else {
+          await docRef.set({
+            [`tareas.${tareaId}`]: firebase.firestore.FieldValue.delete()
+          }, { merge: true });
+        }
+        
+        const tarea = planLimpiezaData.find(t => t.id === tareaId);
+        if (tarea) tarea.completada = completada;
+        renderModulos();
+      } catch (error) {
+        console.error('Error actualizando limpieza:', error);
+      }
     }
 
     // ========== PLAN SEMANAL ==========
