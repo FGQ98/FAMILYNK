@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Zonas y Tareas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --cream-medium: #FAF5EF;
+      --terracotta: #C17757;
+      --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+      --mayordomo: #8B7355;
+      --mayordomo-dark: #6B5A45;
+      --mayordomo-muted: rgba(139, 115, 85, 0.15);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-dark) 100%);
+      color: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .back-btn {
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.15);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      color: var(--white);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.25rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+    .header-bien { font-size: 0.85rem; opacity: 0.85; margin-left: auto; }
+
+    .main { max-width: 1000px; margin: 0 auto; padding: 24px; }
+    .loading { display: flex; align-items: center; justify-content: center; padding: 80px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--mayordomo); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--white);
+      padding: 6px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px 20px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-md);
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { background: var(--cream); color: var(--text); }
+    .tab-btn.active { background: var(--mayordomo); color: var(--white); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Cards */
+    .section-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .section-header {
+      padding: 16px 20px;
+      background: var(--cream-medium);
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .section-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-body { padding: 20px; }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--mayordomo); color: var(--white); }
+    .btn-primary:hover { background: var(--mayordomo-dark); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-danger { background: var(--error); color: var(--white); }
+    .btn-small { padding: 6px 12px; font-size: 0.8rem; }
+    .btn-icon { padding: 8px 12px; background: transparent; border: none; cursor: pointer; color: var(--text-muted); border-radius: var(--radius-sm); }
+    .btn-icon:hover { background: var(--cream); color: var(--text); }
+    .btn-icon.delete:hover { color: var(--error); }
+
+    /* Zonas Grid */
+    .zonas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .zona-card {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .zona-card:hover { border-color: var(--mayordomo); }
+    .zona-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .zona-card-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .zona-card-actions { display: flex; gap: 4px; }
+    .zona-dependencias {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .zona-dep-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--white);
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+    .zona-dep-badge .count {
+      background: var(--mayordomo-muted);
+      color: var(--mayordomo);
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.7rem;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state-text { font-size: 0.9rem; margin-bottom: 16px; }
+
+    /* Add Button */
+    .add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 16px;
+      border: 2px dashed var(--cream-dark);
+      background: transparent;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .add-btn:hover { border-color: var(--mayordomo); color: var(--mayordomo); background: var(--mayordomo-muted); }
+
+    /* Tareas por Tipo */
+    .tipo-section {
+      border-bottom: 1px solid var(--cream-dark);
+      padding-bottom: 16px;
+      margin-bottom: 16px;
+    }
+    .tipo-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .tipo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      cursor: pointer;
+    }
+    .tipo-title {
+      font-weight: 600;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .tipo-count {
+      background: var(--mayordomo-muted);
+      color: var(--mayordomo);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .tipo-toggle { color: var(--text-muted); transition: transform 0.2s; }
+    .tipo-section.expanded .tipo-toggle { transform: rotate(180deg); }
+    .tipo-content { display: none; padding-top: 12px; }
+    .tipo-section.expanded .tipo-content { display: block; }
+
+    /* Tareas List */
+    .tarea-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
+    .tarea-item:hover { background: var(--cream-dark); }
+    .tarea-icon { font-size: 1.2rem; }
+    .tarea-info { flex: 1; }
+    .tarea-nombre { font-weight: 600; font-size: 0.9rem; }
+    .tarea-frecuencia {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 500px;
+      max-height: calc(100vh - 40px);
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; max-height: 60vh; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; gap: 12px; justify-content: flex-end; flex-shrink: 0; }
+
+    /* Form */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px; color: var(--text-light); }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--mayordomo); }
+
+    /* Dependencias Selector */
+    .deps-selector { display: flex; flex-direction: column; gap: 8px; }
+    .dep-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+    }
+    .dep-row-icon { font-size: 1.2rem; width: 30px; text-align: center; }
+    .dep-row-label { flex: 1; font-size: 0.9rem; }
+    .dep-row-input {
+      width: 60px;
+      padding: 6px 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .dep-row-input:focus { outline: none; border-color: var(--mayordomo); }
+
+    /* Tareas Checkboxes */
+    .tareas-selector { display: flex; flex-direction: column; gap: 8px; }
+    .tarea-check-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+    }
+    .tarea-check-row input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--mayordomo);
+    }
+    .tarea-check-label { flex: 1; font-size: 0.9rem; }
+    .tarea-check-freq {
+      width: 140px;
+      padding: 6px 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 768px) {
+      .main { padding: 16px; }
+      .zonas-grid { grid-template-columns: 1fr; }
+      .tabs { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="#" id="btn-volver" class="back-btn">← Volver</a>
+    <h1 class="header-title"><span>🏠</span> Zonas y Tareas</h1>
+    <span class="header-bien" id="nombre-bien"></span>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="zonas">🏠 Zonas</button>
+        <button class="tab-btn" data-tab="tareas">🧹 Tareas por Tipo</button>
+      </div>
+
+      <!-- Tab: Zonas -->
+      <div id="tab-zonas" class="tab-content active">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">🏠 Zonas del Bien</div>
+            <button class="btn btn-primary btn-small" onclick="abrirModalZona()">+ Nueva Zona</button>
+          </div>
+          <div class="section-body">
+            <div id="zonas-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Tareas por Tipo -->
+      <div id="tab-tareas" class="tab-content">
+        <div class="section-card">
+          <div class="section-header">
+            <div class="section-title">🧹 Tareas por Tipo de Dependencia</div>
+          </div>
+          <div class="section-body">
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">
+              Configura qué tareas corresponden a cada tipo de dependencia y su frecuencia.
+            </p>
+            <div id="tareas-tipos-container"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Nueva/Editar Zona -->
+  <div class="modal-overlay" id="modal-zona">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-zona-title">🏠 Nueva Zona</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-zona">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nombre de la Zona *</label>
+            <input type="text" class="form-input" id="zona-nombre" placeholder="Ej: Planta Baja, Ala Norte..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dependencias (selecciona cantidad)</label>
+            <div class="deps-selector" id="deps-selector"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger hidden" id="btn-eliminar-zona" onclick="eliminarZona()">Eliminar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Configurar Tareas por Tipo -->
+  <div class="modal-overlay" id="modal-tareas-tipo">
+    <div class="modal" style="max-width:550px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-tareas-title">🧹 Configurar Tareas</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-tareas-tipo">
+        <div class="modal-body">
+          <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">
+            Selecciona las tareas y su frecuencia para este tipo de dependencia.
+          </p>
+          <div class="tareas-selector" id="tareas-selector"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    // Tipos de dependencia
+    const TIPOS_DEPENDENCIA = {
+      dormitorio: { icon: '🛏️', label: 'Dormitorio' },
+      servicio: { icon: '🚿', label: 'Servicio/Baño' },
+      aseo: { icon: '🚽', label: 'Aseo' },
+      cocina: { icon: '🍳', label: 'Cocina' },
+      salon: { icon: '🛋️', label: 'Salón' },
+      comedor: { icon: '🍽️', label: 'Comedor' },
+      almacen: { icon: '📦', label: 'Almacén' },
+      taller: { icon: '🔧', label: 'Taller' },
+      porche: { icon: '🌿', label: 'Porche/Terraza' },
+      otro: { icon: '🏠', label: 'Otro' }
+    };
+
+    // Tareas predefinidas
+    const TAREAS_PREDEFINIDAS = [
+      { id: 'barrer', nombre: 'Barrer', icon: '🧹' },
+      { id: 'fregar', nombre: 'Fregar', icon: '🪣' },
+      { id: 'desinfectar', nombre: 'Desinfectar', icon: '🧴' },
+      { id: 'limpiar', nombre: 'Limpiar superficies', icon: '🧽' },
+      { id: 'sabanas', nombre: 'Cambiar sábanas', icon: '🛏️' },
+      { id: 'ropa', nombre: 'Recoger ropa', icon: '👕' },
+      { id: 'consumibles', nombre: 'Reponer consumibles', icon: '🧻' },
+      { id: 'encendidos', nombre: 'Revisar encendidos', icon: '💡' },
+      { id: 'grifos', nombre: 'Revisar grifos', icon: '🚿' },
+      { id: 'cristales', nombre: 'Hacer cristales', icon: '🪟' }
+    ];
+
+    // Frecuencias
+    const FRECUENCIAS = {
+      despues_usar: 'Después de usar',
+      diario: 'Diario',
+      semanal: 'Semanal',
+      mensual: 'Mensual'
+    };
+
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let zonasData = [];
+    let tareasTipoData = {}; // { tipo: [{ tareaId, frecuencia }] }
+    let editingZonaId = null;
+    let editingTipo = null;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      bienId = new URLSearchParams(window.location.search).get('id');
+      if (!bienId) { alert('Bien no especificado'); return; }
+      await cargarDatos();
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('content').classList.remove('hidden');
+    });
+
+    async function cargarDatos() {
+      try {
+        // Cargar bien
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+        document.getElementById('nombre-bien').textContent = `· ${bienData.nombre || 'Sin nombre'}`;
+        document.getElementById('btn-volver').href = `limpieza.html?id=${bienId}`;
+
+        // Cargar zonas
+        const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
+        zonasData = zonasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Cargar configuración de tareas por tipo
+        const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').get();
+        tareasTipoData = configDoc.exists ? configDoc.data() : {};
+
+        renderZonas();
+        renderTareasTipos();
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+      }
+    }
+
+    // ========== TABS ==========
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+      });
+    });
+
+    // ========== ZONAS ==========
+    function renderZonas() {
+      const container = document.getElementById('zonas-container');
+      
+      if (zonasData.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🏠</div>
+            <div class="empty-state-text">No hay zonas definidas.<br>Crea zonas para organizar las dependencias del bien.</div>
+            <button class="btn btn-primary" onclick="abrirModalZona()">+ Crear primera zona</button>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="zonas-grid">
+          ${zonasData.map(zona => `
+            <div class="zona-card">
+              <div class="zona-card-header">
+                <div class="zona-card-title">${zona.nombre}</div>
+                <div class="zona-card-actions">
+                  <button class="btn-icon" onclick="editarZona('${zona.id}')">✏️</button>
+                  <button class="btn-icon delete" onclick="confirmarEliminarZona('${zona.id}')">🗑️</button>
+                </div>
+              </div>
+              <div class="zona-dependencias">
+                ${renderDependenciasZona(zona.dependencias || {})}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="add-btn" style="margin-top:16px" onclick="abrirModalZona()">+ Añadir otra zona</button>
+      `;
+    }
+
+    function renderDependenciasZona(deps) {
+      const items = [];
+      for (const [tipo, cantidad] of Object.entries(deps)) {
+        if (cantidad > 0 && TIPOS_DEPENDENCIA[tipo]) {
+          items.push(`
+            <span class="zona-dep-badge">
+              ${TIPOS_DEPENDENCIA[tipo].icon} ${TIPOS_DEPENDENCIA[tipo].label}
+              <span class="count">${cantidad}</span>
+            </span>
+          `);
+        }
+      }
+      return items.length > 0 ? items.join('') : '<span style="color:var(--text-muted);font-size:0.8rem;">Sin dependencias</span>';
+    }
+
+    function abrirModalZona(zona = null) {
+      editingZonaId = zona?.id || null;
+      document.getElementById('modal-zona-title').textContent = zona ? '✏️ Editar Zona' : '🏠 Nueva Zona';
+      document.getElementById('btn-eliminar-zona').classList.toggle('hidden', !zona);
+      document.getElementById('zona-nombre').value = zona?.nombre || '';
+
+      // Renderizar selector de dependencias
+      const container = document.getElementById('deps-selector');
+      container.innerHTML = Object.entries(TIPOS_DEPENDENCIA).map(([key, tipo]) => `
+        <div class="dep-row">
+          <span class="dep-row-icon">${tipo.icon}</span>
+          <span class="dep-row-label">${tipo.label}</span>
+          <input type="number" class="dep-row-input" id="dep-${key}" value="${zona?.dependencias?.[key] || 0}" min="0" max="20">
+        </div>
+      `).join('');
+
+      document.getElementById('modal-zona').classList.add('active');
+    }
+
+    function editarZona(id) {
+      const zona = zonasData.find(z => z.id === id);
+      if (zona) abrirModalZona(zona);
+    }
+
+    document.getElementById('form-zona').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const dependencias = {};
+      Object.keys(TIPOS_DEPENDENCIA).forEach(key => {
+        const val = parseInt(document.getElementById(`dep-${key}`).value) || 0;
+        if (val > 0) dependencias[key] = val;
+      });
+
+      const data = {
+        nombre: document.getElementById('zona-nombre').value,
+        dependencias: dependencias,
+        actualizadoPor: currentUser.uid,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        if (editingZonaId) {
+          await db.collection('bienes').doc(bienId).collection('zonasLimpieza').doc(editingZonaId).update(data);
+          const idx = zonasData.findIndex(z => z.id === editingZonaId);
+          if (idx !== -1) zonasData[idx] = { ...zonasData[idx], ...data };
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          const ref = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').add(data);
+          zonasData.push({ id: ref.id, ...data });
+        }
+        cerrarModal();
+        renderZonas();
+      } catch (error) {
+        console.error('Error guardando zona:', error);
+        alert('Error al guardar');
+      }
+    });
+
+    function confirmarEliminarZona(id) {
+      if (confirm('¿Eliminar esta zona?')) eliminarZonaDirecto(id);
+    }
+
+    async function eliminarZonaDirecto(id) {
+      try {
+        await db.collection('bienes').doc(bienId).collection('zonasLimpieza').doc(id).delete();
+        zonasData = zonasData.filter(z => z.id !== id);
+        renderZonas();
+      } catch (error) {
+        console.error('Error eliminando:', error);
+      }
+    }
+
+    async function eliminarZona() {
+      if (editingZonaId && confirm('¿Eliminar esta zona?')) {
+        await eliminarZonaDirecto(editingZonaId);
+        cerrarModal();
+      }
+    }
+
+    // ========== TAREAS POR TIPO ==========
+    function renderTareasTipos() {
+      const container = document.getElementById('tareas-tipos-container');
+      
+      container.innerHTML = Object.entries(TIPOS_DEPENDENCIA).map(([key, tipo]) => {
+        const tareas = tareasTipoData[key] || [];
+        const tareasActivas = tareas.filter(t => t.activo);
+        
+        return `
+          <div class="tipo-section" data-tipo="${key}">
+            <div class="tipo-header" onclick="toggleTipo('${key}')">
+              <div class="tipo-title">
+                <span>${tipo.icon}</span> ${tipo.label}
+                <span class="tipo-count">${tareasActivas.length} tareas</span>
+              </div>
+              <span class="tipo-toggle">▼</span>
+            </div>
+            <div class="tipo-content">
+              ${tareasActivas.length === 0 
+                ? '<div style="color:var(--text-muted);padding:12px;text-align:center">Sin tareas configuradas</div>'
+                : tareasActivas.map(t => {
+                    const tarea = TAREAS_PREDEFINIDAS.find(tp => tp.id === t.tareaId);
+                    return tarea ? `
+                      <div class="tarea-item">
+                        <span class="tarea-icon">${tarea.icon}</span>
+                        <div class="tarea-info">
+                          <div class="tarea-nombre">${tarea.nombre}</div>
+                        </div>
+                        <span class="tarea-frecuencia">${FRECUENCIAS[t.frecuencia] || t.frecuencia}</span>
+                      </div>
+                    ` : '';
+                  }).join('')
+              }
+              <button class="add-btn" style="margin-top:12px" onclick="abrirModalTareasTipo('${key}')">
+                ⚙️ Configurar tareas
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleTipo(tipo) {
+      const section = document.querySelector(`.tipo-section[data-tipo="${tipo}"]`);
+      section.classList.toggle('expanded');
+    }
+
+    function abrirModalTareasTipo(tipo) {
+      editingTipo = tipo;
+      const tipoInfo = TIPOS_DEPENDENCIA[tipo];
+      document.getElementById('modal-tareas-title').textContent = `${tipoInfo.icon} Tareas para ${tipoInfo.label}`;
+
+      const tareasConfig = tareasTipoData[tipo] || [];
+      const container = document.getElementById('tareas-selector');
+
+      container.innerHTML = TAREAS_PREDEFINIDAS.map(tarea => {
+        const config = tareasConfig.find(t => t.tareaId === tarea.id);
+        const activo = config?.activo || false;
+        const frecuencia = config?.frecuencia || 'semanal';
+
+        return `
+          <div class="tarea-check-row">
+            <input type="checkbox" id="check-${tarea.id}" ${activo ? 'checked' : ''}>
+            <span class="tarea-check-label">${tarea.icon} ${tarea.nombre}</span>
+            <select class="tarea-check-freq" id="freq-${tarea.id}">
+              ${Object.entries(FRECUENCIAS).map(([k, v]) => 
+                `<option value="${k}" ${frecuencia === k ? 'selected' : ''}>${v}</option>`
+              ).join('')}
+            </select>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('modal-tareas-tipo').classList.add('active');
+    }
+
+    document.getElementById('form-tareas-tipo').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const tareas = TAREAS_PREDEFINIDAS.map(tarea => ({
+        tareaId: tarea.id,
+        activo: document.getElementById(`check-${tarea.id}`).checked,
+        frecuencia: document.getElementById(`freq-${tarea.id}`).value
+      }));
+
+      try {
+        tareasTipoData[editingTipo] = tareas;
+        await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').set(tareasTipoData);
+        cerrarModal();
+        renderTareasTipos();
+      } catch (error) {
+        console.error('Error guardando tareas:', error);
+        alert('Error al guardar');
+      }
+    });
+
+    // ========== MODAL ==========
+    function cerrarModal() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      editingZonaId = null;
+      editingTipo = null;
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) cerrarModal();
+      });
+    });
+  </script>
+</body>
+</html>

@@ -315,14 +315,14 @@
           </div>
         </div>
 
-        <!-- Tareas Limpieza -->
+        <!-- Zonas y Tareas -->
         <div class="modulo-card tareas">
           <div class="modulo-card-header">
-            <div class="modulo-card-icon">📋</div>
-            <div class="modulo-card-title">Tareas Limpieza</div>
+            <div class="modulo-card-icon">🏠</div>
+            <div class="modulo-card-title">Zonas y Tareas</div>
           </div>
           <div class="modulo-card-body">
-            <p class="modulo-card-desc">Checklist de limpieza por zonas y estancias del hogar.</p>
+            <p class="modulo-card-desc">Organiza las zonas del bien y configura tareas por tipo de dependencia.</p>
             <div class="modulo-stats">
               <div class="modulo-stat">
                 <span class="modulo-stat-value" id="stat-zonas">0</span>
@@ -333,7 +333,7 @@
                 <span class="modulo-stat-label">tareas</span>
               </div>
             </div>
-            <a href="#" class="modulo-card-action" id="link-tareas">Ver tareas →</a>
+            <a href="#" class="modulo-card-action" id="link-tareas">Gestionar →</a>
           </div>
         </div>
 
@@ -378,7 +378,7 @@
 
     // Configurar links de cards
     document.getElementById('link-lavanderia').href = `lavanderia.html?id=${bienId}&origen=limpieza`;
-    document.getElementById('link-tareas').href = `tareas-limpieza.html?id=${bienId}&origen=limpieza`;
+    document.getElementById('link-tareas').href = `zonas-tareas.html?id=${bienId}&origen=limpieza`;
 
     if (!bienId) window.location.href = 'lo-comun.html';
 
@@ -418,16 +418,21 @@
 
     async function cargarStatsZonas() {
       try {
-        const snap = await db.collection('bienes').doc(bienId).collection('limpieza').get();
-        let totalZonas = snap.docs.length;
-        let totalTareas = 0;
+        // Contar zonas
+        const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
+        let totalZonas = zonasSnap.docs.length;
         
-        snap.docs.forEach(doc => {
-          const zona = doc.data();
-          if (zona.tareas) {
-            totalTareas += zona.tareas.length;
+        // Contar tareas activas configuradas por tipo
+        let totalTareas = 0;
+        const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').get();
+        if (configDoc.exists) {
+          const config = configDoc.data();
+          for (const tipo of Object.values(config)) {
+            if (Array.isArray(tipo)) {
+              totalTareas += tipo.filter(t => t.activo).length;
+            }
           }
-        });
+        }
 
         document.getElementById('stat-zonas').textContent = totalZonas;
         document.getElementById('stat-tareas').textContent = totalTareas;
@@ -456,6 +461,32 @@
     let completadosData = {};
     let semanaKeyActual = '';
 
+    const TAREAS_INFO = {
+      barrer: { nombre: 'Barrer', icon: '🧹' },
+      fregar: { nombre: 'Fregar', icon: '🪣' },
+      desinfectar: { nombre: 'Desinfectar', icon: '🧴' },
+      limpiar: { nombre: 'Limpiar superficies', icon: '🧽' },
+      sabanas: { nombre: 'Cambiar sábanas', icon: '🛏️' },
+      ropa: { nombre: 'Recoger ropa', icon: '👕' },
+      consumibles: { nombre: 'Reponer consumibles', icon: '🧻' },
+      encendidos: { nombre: 'Revisar encendidos', icon: '💡' },
+      grifos: { nombre: 'Revisar grifos', icon: '🚿' },
+      cristales: { nombre: 'Hacer cristales', icon: '🪟' }
+    };
+
+    const TIPOS_DEP = {
+      dormitorio: { icon: '🛏️', label: 'Dormitorio' },
+      servicio: { icon: '🚿', label: 'Servicio' },
+      aseo: { icon: '🚽', label: 'Aseo' },
+      cocina: { icon: '🍳', label: 'Cocina' },
+      salon: { icon: '🛋️', label: 'Salón' },
+      comedor: { icon: '🍽️', label: 'Comedor' },
+      almacen: { icon: '📦', label: 'Almacén' },
+      taller: { icon: '🔧', label: 'Taller' },
+      porche: { icon: '🌿', label: 'Porche' },
+      otro: { icon: '🏠', label: 'Otro' }
+    };
+
     async function cargarPlanSemanal() {
       const container = document.getElementById('tareas-semanales');
       const progresoBar = document.getElementById('progreso-semanal');
@@ -470,42 +501,54 @@
 
         planSemanalData = [];
 
-        // 1. Cargar tareas de LIMPIEZA (de zonas)
-        const zonasSnap = await db.collection('bienes').doc(bienId).collection('limpieza').get();
+        // 1. Cargar zonas y configuración de tareas
+        const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
+        const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').get();
+        const tareasConfig = configDoc.exists ? configDoc.data() : {};
+
+        // Generar tareas basadas en zonas + config
         zonasSnap.docs.forEach(doc => {
           const zona = { id: doc.id, ...doc.data() };
-          if (zona.tareas && zona.tareas.length > 0) {
-            zona.tareas.forEach((tarea, idx) => {
-              // Solo incluir tareas con día asignado (semanal/quincenal)
-              if (tarea.dia && (tarea.frecuencia === 'semanal' || tarea.frecuencia === 'quincenal' || tarea.frecuencia === 'diaria')) {
-                // Para diarias, añadir a todos los días
-                if (tarea.frecuencia === 'diaria') {
-                  for (let d = 1; d <= 6; d++) { // Lun-Sáb
+          const deps = zona.dependencias || {};
+          
+          // Por cada tipo de dependencia en la zona
+          for (const [tipoKey, cantidad] of Object.entries(deps)) {
+            if (cantidad > 0 && tareasConfig[tipoKey]) {
+              const tareasDelTipo = tareasConfig[tipoKey].filter(t => t.activo);
+              
+              tareasDelTipo.forEach(tareaConfig => {
+                const tareaInfo = TAREAS_INFO[tareaConfig.tareaId];
+                if (!tareaInfo) return;
+                
+                // Según frecuencia, asignar días
+                if (tareaConfig.frecuencia === 'diario') {
+                  for (let d = 1; d <= 6; d++) {
                     planSemanalData.push({
-                      id: `lim_${zona.id}_${idx}_${d}`,
+                      id: `lim_${zona.id}_${tipoKey}_${tareaConfig.tareaId}_${d}`,
                       tipo: 'limpieza',
-                      nombre: tarea.nombre,
-                      zona: zona.nombre,
-                      zonaIcon: zona.icono || '🏠',
+                      nombre: tareaInfo.nombre,
+                      zona: `${zona.nombre} - ${TIPOS_DEP[tipoKey]?.label || tipoKey}`,
+                      zonaIcon: tareaInfo.icon,
                       dia: d.toString(),
-                      tiempo: tarea.tiempo || 15,
-                      notas: tarea.notas
+                      tiempo: 15
                     });
                   }
-                } else {
+                } else if (tareaConfig.frecuencia === 'semanal') {
+                  // Asignar un día fijo basado en hash simple
+                  const diaHash = (zona.id.charCodeAt(0) + tipoKey.charCodeAt(0) + tareaConfig.tareaId.charCodeAt(0)) % 6 + 1;
                   planSemanalData.push({
-                    id: `lim_${zona.id}_${idx}`,
+                    id: `lim_${zona.id}_${tipoKey}_${tareaConfig.tareaId}`,
                     tipo: 'limpieza',
-                    nombre: tarea.nombre,
-                    zona: zona.nombre,
-                    zonaIcon: zona.icono || '🏠',
-                    dia: tarea.dia,
-                    tiempo: tarea.tiempo || 15,
-                    notas: tarea.notas
+                    nombre: tareaInfo.nombre,
+                    zona: `${zona.nombre} - ${TIPOS_DEP[tipoKey]?.label || tipoKey}`,
+                    zonaIcon: tareaInfo.icon,
+                    dia: diaHash.toString(),
+                    tiempo: 15
                   });
                 }
-              }
-            });
+                // Mensual no se muestra en plan semanal
+              });
+            }
           }
         });
 
@@ -573,7 +616,7 @@
         container.innerHTML = `
           <div class="plan-empty">
             📅 Sin tareas programadas esta semana<br>
-            <small>Configura tareas en <a href="tareas-limpieza.html?id=${bienId}">Tareas Limpieza</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
+            <small>Configura tareas en <a href="zonas-tareas.html?id=${bienId}">Zonas y Tareas</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
           </div>
         `;
         progresoBar.style.width = '0%';
