@@ -44,6 +44,7 @@
     .item-card { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--cream); border-radius: var(--radius-sm); margin-bottom: 8px; }
     .item-card.urgente { border-left: 3px solid var(--terracotta); background: var(--terracotta-muted); }
     .item-card.hoy { border-left: 3px solid var(--warning); background: #fffbf5; }
+    .item-card.evento-prep { border-left: 3px solid var(--mayordomo); background: var(--mayordomo-muted); }
     .item-icon { font-size: 1.3rem; }
     .item-info { flex: 1; }
     .item-title { font-weight: 600; font-size: 0.9rem; }
@@ -64,6 +65,9 @@
     .tipo-limpieza { background: var(--sage-muted); color: var(--sage-dark); }
     .tipo-mantenimiento { background: var(--mayordomo-muted); color: var(--mayordomo); }
     .tipo-lavanderia { background: rgba(107,142,142,0.15); color: #507878; }
+    .tipo-extra { background: var(--terracotta-muted); color: var(--terracotta); }
+    .plan-tarea.urgente { border-left-color: var(--error); background: rgba(212,105,90,0.08); }
+    .plan-tarea.alta { border-left-color: var(--warning); background: rgba(232,180,77,0.08); }
     .inventario-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--cream); border-radius: var(--radius-sm); margin-bottom: 6px; }
     .inventario-item.bajo { background: var(--terracotta-muted); }
     .inventario-nombre { font-weight: 600; font-size: 0.9rem; }
@@ -72,6 +76,7 @@
     .mensaje-card { padding: 12px 16px; background: var(--cream); border-radius: var(--radius-sm); margin-bottom: 8px; border-left: 3px solid var(--sage); }
     .mensaje-card.no-leido { background: var(--sage-muted); border-left-color: var(--casero); }
     .mensaje-card.notificacion { border-left-color: var(--terracotta); }
+    .mensaje-card.preparacion { border-left-color: var(--mayordomo); background: var(--mayordomo-muted); }
     .mensaje-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
     .mensaje-remitente { font-weight: 600; font-size: 0.9rem; }
     .mensaje-fecha { font-size: 0.75rem; color: var(--text-muted); }
@@ -99,7 +104,7 @@
   <script src="js/firebase-config.js"></script>
   <script>
     let currentUser = null, externoData = null, bienData = null, bienId = null, permisosActuales = {};
-    let datosModulos = { calendario: [], planSemanal: [], inventario: [], pedidos: [], buzon: [] };
+    let datosModulos = { calendario: [], planSemanal: [], inventario: [], pedidos: [], buzon: [], preparacion: null };
     const diasLabels = { '0': 'Dom', '1': 'Lun', '2': 'Mar', '3': 'Mié', '4': 'Jue', '5': 'Vie', '6': 'Sáb' };
 
     auth.onAuthStateChanged(async (user) => {
@@ -129,7 +134,10 @@
         if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('nombre-bien').textContent = bienData.nombre || 'Sin nombre';
-        await Promise.all([cargarCalendario(), cargarPlanSemanal(), cargarInventario(), cargarPedidos(), cargarBuzon()]);
+        // Primero cargar Plan Semanal (que incluye preparación)
+        await cargarPlanSemanal();
+        // Luego el resto en paralelo (ya tendrán acceso a datosModulos.preparacion)
+        await Promise.all([cargarCalendario(), cargarInventario(), cargarPedidos(), cargarBuzon()]);
         renderModulos();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
@@ -139,8 +147,41 @@
     async function cargarCalendario() {
       try {
         const hoy = new Date(), mes = new Date(); mes.setMonth(mes.getMonth() + 1);
+        // Reservas
         const snap = await db.collection('bienes').doc(bienId).collection('reservas').where('fechaInicio', '>=', hoy).where('fechaInicio', '<=', mes).orderBy('fechaInicio').limit(10).get();
-        datosModulos.calendario = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        let items = snap.docs.map(d => ({ id: d.id, source: 'reserva', ...d.data() }));
+        
+        // Añadir eventos de la preparación semanal (si existe)
+        if (datosModulos.preparacion?.eventos?.length > 0) {
+          const inicio = new Date(hoy); 
+          inicio.setDate(hoy.getDate() - hoy.getDay() + 1); // Lunes de esta semana
+          
+          const eventosPrep = datosModulos.preparacion.eventos.map((e, idx) => {
+            const fechaEvento = new Date(inicio);
+            const diaNum = parseInt(e.dia);
+            fechaEvento.setDate(inicio.getDate() + (diaNum === 0 ? 6 : diaNum - 1)); // Ajustar día
+            if (e.hora) {
+              const [h, m] = e.hora.split(':');
+              fechaEvento.setHours(parseInt(h), parseInt(m));
+            }
+            return {
+              id: `prep_evt_${idx}`,
+              source: 'preparacion',
+              titulo: e.titulo,
+              tipo: e.tipo,
+              hora: e.hora,
+              notas: e.notas,
+              fechaInicio: { toDate: () => fechaEvento }
+            };
+          });
+          items = [...eventosPrep, ...items];
+        }
+        
+        datosModulos.calendario = items.sort((a, b) => {
+          const fa = a.fechaInicio?.toDate ? a.fechaInicio.toDate() : new Date();
+          const fb = b.fechaInicio?.toDate ? b.fechaInicio.toDate() : new Date();
+          return fa - fb;
+        }).slice(0, 10);
       } catch (e) { datosModulos.calendario = []; }
     }
 
@@ -150,39 +191,75 @@
         const inicio = new Date(hoy); inicio.setDate(hoy.getDate() - hoy.getDay() + 1); inicio.setHours(0,0,0,0);
         const semanaKey = inicio.toISOString().split('T')[0];
         let tareas = [];
-        // Tareas limpieza
+        
+        // 1. Tareas limpieza (recurrentes)
         const limpSnap = await db.collection('bienes').doc(bienId).collection('tareasLimpieza').get();
         limpSnap.docs.forEach(doc => {
           const dep = { id: doc.id, ...doc.data() };
           (dep.tareas || []).forEach((t, idx) => {
             if (t.dia && (t.frecuencia === 'semanal' || t.frecuencia === 'quincenal')) {
-              tareas.push({ id: `lim_${dep.id}_${idx}`, tipo: 'limpieza', nombre: t.nombre, ubicacion: dep.nombre, dia: t.dia, tiempo: t.tiempo || 15 });
+              tareas.push({ id: `lim_${dep.id}_${idx}`, tipo: 'limpieza', nombre: t.nombre, ubicacion: dep.nombre, dia: t.dia, tiempo: t.tiempo || 15, prioridad: 'normal' });
             }
           });
         });
-        // Lavandería
+        
+        // 2. Lavandería (recurrente)
         const lavSnap = await db.collection('bienes').doc(bienId).collection('lavanderia').get();
         lavSnap.docs.forEach(doc => {
           const p = { id: doc.id, ...doc.data() };
           if (p.dia && (p.frecuencia === 'semanal' || p.frecuencia === 'quincenal')) {
-            tareas.push({ id: `lav_${p.id}`, tipo: 'lavanderia', nombre: p.nombre, ubicacion: p.lugar === 'tintoreria' ? 'Tintorería' : 'En casa', dia: p.dia, tiempo: 30 });
+            tareas.push({ id: `lav_${p.id}`, tipo: 'lavanderia', nombre: p.nombre, ubicacion: p.lugar === 'tintoreria' ? 'Tintorería' : 'En casa', dia: p.dia, tiempo: 30, prioridad: 'normal' });
           }
         });
-        // Reparaciones
+        
+        // 3. Reparaciones programadas
         const repSnap = await db.collection('bienes').doc(bienId).collection('reparaciones').where('estado', '==', 'pendiente').get();
         repSnap.docs.forEach(doc => {
           const r = { id: doc.id, ...doc.data() };
           if (r.fechaProgramada) {
             const fp = r.fechaProgramada.toDate ? r.fechaProgramada.toDate() : new Date(r.fechaProgramada);
             if (fp >= inicio && fp <= new Date(inicio.getTime() + 7*24*60*60*1000)) {
-              tareas.push({ id: `rep_${r.id}`, tipo: 'mantenimiento', nombre: r.descripcion || 'Reparación', ubicacion: r.ubicacion || '', dia: fp.getDay().toString(), tiempo: r.tiempoEstimado || 60 });
+              tareas.push({ id: `rep_${r.id}`, tipo: 'mantenimiento', nombre: r.descripcion || 'Reparación', ubicacion: r.ubicacion || '', dia: fp.getDay().toString(), tiempo: r.tiempoEstimado || 60, prioridad: 'normal' });
             }
           }
         });
+        
+        // 4. PREPARACIÓN SEMANAL (tareas extra del admin)
+        try {
+          const prepDoc = await db.collection('bienes').doc(bienId).collection('preparacionSemanal').doc(semanaKey).get();
+          if (prepDoc.exists && prepDoc.data().estado === 'enviado') {
+            const prep = prepDoc.data();
+            // Añadir tareas extra
+            (prep.tareas || []).forEach((t, idx) => {
+              tareas.push({
+                id: `prep_${semanaKey}_${idx}`,
+                tipo: 'extra',
+                nombre: t.titulo,
+                ubicacion: '',
+                dia: t.dia || '',
+                tiempo: t.tiempo || 0,
+                prioridad: t.prioridad || 'normal',
+                notas: t.notas
+              });
+            });
+            // Guardar mensajes para el buzón
+            datosModulos.preparacion = prep;
+          }
+        } catch (e) { console.log('Sin preparación semanal'); }
+        
+        // Cargar completados
         let completados = {};
         try { const c = await db.collection('bienes').doc(bienId).collection('planSemanalCompletados').doc(semanaKey).get(); if (c.exists) completados = c.data().tareas || {}; } catch (e) {}
+        
         datosModulos.planSemanal = tareas.map(t => ({ ...t, completada: !!completados[t.id], semanaKey, esHoy: parseInt(t.dia) === hoyNum }))
-          .sort((a, b) => ((parseInt(a.dia) || 7) - (parseInt(b.dia) || 7)));
+          .sort((a, b) => {
+            // Primero por prioridad, luego por día
+            const prioOrder = { urgente: 0, alta: 1, normal: 2 };
+            const prioA = prioOrder[a.prioridad] || 2;
+            const prioB = prioOrder[b.prioridad] || 2;
+            if (prioA !== prioB) return prioA - prioB;
+            return ((parseInt(a.dia) || 7) - (parseInt(b.dia) || 7));
+          });
       } catch (e) { datosModulos.planSemanal = []; }
     }
 
@@ -198,8 +275,26 @@
       try {
         const msgs = await db.collection('bienes').doc(bienId).collection('mensajes').orderBy('fecha', 'desc').limit(5).get();
         const notifs = await db.collection('bienes').doc(bienId).collection('notificaciones').where('paraExterno', '==', true).orderBy('fecha', 'desc').limit(5).get();
-        datosModulos.buzon = [...msgs.docs.map(d => ({ id: d.id, tipo: 'mensaje', ...d.data() })), ...notifs.docs.map(d => ({ id: d.id, tipo: 'notificacion', ...d.data() }))]
-          .sort((a, b) => (b.fecha?.toDate?.() || 0) - (a.fecha?.toDate?.() || 0)).slice(0, 10);
+        
+        let items = [
+          ...msgs.docs.map(d => ({ id: d.id, tipo: 'mensaje', ...d.data() })), 
+          ...notifs.docs.map(d => ({ id: d.id, tipo: 'notificacion', ...d.data() }))
+        ];
+        
+        // Añadir mensajes de la preparación semanal (si existe)
+        if (datosModulos.preparacion?.mensajes?.length > 0) {
+          const prepMsgs = datosModulos.preparacion.mensajes.map((m, idx) => ({
+            id: `prep_msg_${idx}`,
+            tipo: 'preparacion',
+            texto: m.texto,
+            tipoMensaje: m.tipo,
+            fecha: datosModulos.preparacion.fechaEnvio || { toDate: () => new Date() },
+            leido: false
+          }));
+          items = [...prepMsgs, ...items];
+        }
+        
+        datosModulos.buzon = items.sort((a, b) => (b.fecha?.toDate?.() || 0) - (a.fecha?.toDate?.() || 0)).slice(0, 10);
       } catch (e) { datosModulos.buzon = []; }
     }
 
@@ -215,10 +310,15 @@
 
     function renderCalendario() {
       const items = datosModulos.calendario;
+      const tipoEvtIcons = { checkin: '🛬', checkout: '🛫', visita: '👥', entrega: '📦', otro: '📌' };
       let body = items.length === 0 ? '<div class="modulo-card-empty">📅 Sin eventos próximos</div>' :
         items.map(i => {
           const f = i.fechaInicio?.toDate ? i.fechaInicio.toDate() : new Date();
-          return `<div class="item-card ${f.toDateString() === new Date().toDateString() ? 'hoy' : ''}"><span class="item-icon">📅</span><div class="item-info"><div class="item-title">${i.titulo || 'Reserva'}</div><div class="item-meta"><span>${f.toLocaleDateString('es-ES', {day:'numeric',month:'short'})}</span>${i.huesped ? `<span>👤 ${i.huesped}</span>` : ''}</div></div></div>`;
+          const esHoy = f.toDateString() === new Date().toDateString();
+          const icon = i.source === 'preparacion' ? (tipoEvtIcons[i.tipo] || '📌') : '📅';
+          const titulo = i.titulo || 'Reserva';
+          const horaStr = i.hora || '';
+          return `<div class="item-card ${esHoy ? 'hoy' : ''} ${i.source === 'preparacion' ? 'evento-prep' : ''}"><span class="item-icon">${icon}</span><div class="item-info"><div class="item-title">${titulo}</div><div class="item-meta"><span>${f.toLocaleDateString('es-ES', {day:'numeric',month:'short'})} ${horaStr}</span>${i.huesped ? `<span>👤 ${i.huesped}</span>` : ''}${i.notas ? `<span style="color:var(--text-muted)">${i.notas.substring(0,30)}...</span>` : ''}</div></div></div>`;
         }).join('');
       return `<div class="modulo-card"><div class="modulo-card-header"><div class="modulo-card-title">📅 Calendario</div></div><div class="modulo-card-body">${body}</div></div>`;
     }
@@ -228,9 +328,11 @@
       let body = t.length === 0 ? '<div class="modulo-card-empty">📋 Sin tareas esta semana</div>' :
         `<div class="plan-progreso"><div class="plan-progreso-bar" style="width:${prog}%"></div></div>` +
         t.map(x => {
-          const tc = x.tipo === 'limpieza' ? 'tipo-limpieza' : x.tipo === 'lavanderia' ? 'tipo-lavanderia' : 'tipo-mantenimiento';
-          const icon = x.tipo === 'limpieza' ? '🧹' : x.tipo === 'lavanderia' ? '👕' : '🔧';
-          return `<div class="plan-tarea ${x.completada ? 'completada' : ''} ${x.esHoy ? 'hoy' : ''}"><input type="checkbox" class="plan-tarea-check" ${x.completada ? 'checked' : ''} onchange="toggleTarea('${x.id}','${x.semanaKey}',this.checked)"><div class="plan-tarea-info"><div class="plan-tarea-titulo">${icon} ${x.nombre}</div><div class="plan-tarea-meta"><span class="plan-tipo ${tc}">${x.tipo}</span><span>${diasLabels[x.dia]}</span><span>⏱️${x.tiempo}m</span></div></div></div>`;
+          const tc = x.tipo === 'limpieza' ? 'tipo-limpieza' : x.tipo === 'lavanderia' ? 'tipo-lavanderia' : x.tipo === 'extra' ? 'tipo-extra' : 'tipo-mantenimiento';
+          const icon = x.tipo === 'limpieza' ? '🧹' : x.tipo === 'lavanderia' ? '👕' : x.tipo === 'extra' ? '📌' : '🔧';
+          const prioIcon = x.prioridad === 'urgente' ? '🔴 ' : x.prioridad === 'alta' ? '⚠️ ' : '';
+          const prioClass = x.prioridad === 'urgente' ? 'urgente' : x.prioridad === 'alta' ? 'alta' : '';
+          return `<div class="plan-tarea ${x.completada ? 'completada' : ''} ${x.esHoy ? 'hoy' : ''} ${prioClass}"><input type="checkbox" class="plan-tarea-check" ${x.completada ? 'checked' : ''} onchange="toggleTarea('${x.id}','${x.semanaKey}',this.checked)"><div class="plan-tarea-info"><div class="plan-tarea-titulo">${prioIcon}${icon} ${x.nombre}</div><div class="plan-tarea-meta"><span class="plan-tipo ${tc}">${x.tipo}</span>${x.dia ? `<span>${diasLabels[x.dia]}</span>` : ''}<span>⏱️${x.tiempo}m</span></div></div></div>`;
         }).join('');
       return `<div class="modulo-card"><div class="modulo-card-header"><div class="modulo-card-title">📋 Plan Semanal ${tot > 0 ? `<span class="modulo-badge">${c}/${tot}</span>` : ''}</div></div><div class="modulo-card-body">${body}</div></div>`;
     }
@@ -251,8 +353,16 @@
 
     function renderBuzon() {
       const items = datosModulos.buzon, nl = items.filter(i => !i.leido).length;
+      const tipoMsgIcons = { info: 'ℹ️', recordatorio: '🔔', importante: '⚠️' };
       let body = items.length === 0 ? '<div class="modulo-card-empty">📬 Sin mensajes</div>' :
-        items.map(i => `<div class="mensaje-card ${!i.leido ? 'no-leido' : ''} ${i.tipo === 'notificacion' ? 'notificacion' : ''}"><div class="mensaje-header"><span class="mensaje-remitente">${i.tipo === 'notificacion' ? '🔔 Notificación' : i.remitente || 'Sistema'}</span><span class="mensaje-fecha">${i.fecha?.toDate?.().toLocaleDateString('es-ES', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) || ''}</span></div><div class="mensaje-texto">${i.texto || i.mensaje || ''}</div></div>`).join('');
+        items.map(i => {
+          let remitente = 'Sistema';
+          let icono = '📬';
+          if (i.tipo === 'notificacion') { remitente = '🔔 Notificación'; icono = '🔔'; }
+          else if (i.tipo === 'preparacion') { remitente = `${tipoMsgIcons[i.tipoMensaje] || 'ℹ️'} Nota semanal`; icono = tipoMsgIcons[i.tipoMensaje] || 'ℹ️'; }
+          else if (i.remitente) { remitente = i.remitente; }
+          return `<div class="mensaje-card ${!i.leido ? 'no-leido' : ''} ${i.tipo === 'notificacion' ? 'notificacion' : ''} ${i.tipo === 'preparacion' ? 'preparacion' : ''}"><div class="mensaje-header"><span class="mensaje-remitente">${remitente}</span><span class="mensaje-fecha">${i.fecha?.toDate?.().toLocaleDateString('es-ES', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) || 'Esta semana'}</span></div><div class="mensaje-texto">${i.texto || i.mensaje || ''}</div></div>`;
+        }).join('');
       return `<div class="modulo-card"><div class="modulo-card-header"><div class="modulo-card-title">📬 Buzón ${nl > 0 ? `<span class="modulo-badge">${nl}</span>` : ''}</div></div><div class="modulo-card-body">${body}</div></div>`;
     }
 

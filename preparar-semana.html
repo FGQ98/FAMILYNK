@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Preparar Semana</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-dark: #5C7D5F; --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF; --success: #7DB59A; --warning: #E8B44D; --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+      --mayordomo: #8B7355; --mayordomo-muted: rgba(139, 115, 85, 0.15);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      padding: 8px 14px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      color: var(--text-light);
+      text-decoration: none;
+    }
+    .back-btn:hover { background: var(--cream-dark); }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.25rem; font-weight: 600; }
+    .header-right { display: flex; gap: 12px; align-items: center; }
+
+    .main { max-width: 800px; margin: 0 auto; padding: 24px; }
+    .loading { display: flex; align-items: center; justify-content: center; padding: 80px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--mayordomo); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* Semana Selector */
+    .semana-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 24px;
+    }
+    .semana-nav-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: var(--cream);
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .semana-nav-btn:hover { background: var(--cream-dark); }
+    .semana-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .semana-info { text-align: center; }
+    .semana-titulo { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 600; }
+    .semana-fechas { font-size: 0.85rem; color: var(--text-muted); }
+    .semana-estado {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+    .estado-pendiente { background: var(--terracotta-muted); color: var(--terracotta); }
+    .estado-preparado { background: var(--sage-muted); color: var(--sage-dark); }
+    .estado-enviado { background: var(--mayordomo-muted); color: var(--mayordomo); }
+
+    /* Alerta deadline */
+    .deadline-alert {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--warning);
+      color: var(--white);
+      border-radius: var(--radius-md);
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    .deadline-alert.pasado { background: var(--error); }
+
+    /* Secciones */
+    .seccion {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .seccion-header {
+      padding: 16px 20px;
+      background: var(--cream);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .seccion-titulo {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .seccion-count {
+      background: var(--sage);
+      color: var(--white);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+    }
+    .seccion-body { padding: 20px; }
+
+    /* Items de tarea/nota */
+    .item-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      margin-bottom: 10px;
+      border-left: 3px solid var(--sage);
+    }
+    .item-card.evento { border-left-color: var(--terracotta); }
+    .item-card.mensaje { border-left-color: var(--mayordomo); }
+    .item-icon { font-size: 1.2rem; }
+    .item-content { flex: 1; }
+    .item-titulo { font-weight: 600; font-size: 0.9rem; }
+    .item-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .item-descripcion { font-size: 0.85rem; color: var(--text-light); margin-top: 4px; }
+    .item-actions { display: flex; gap: 4px; }
+    .item-btn {
+      padding: 6px 10px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .item-btn:hover { background: var(--cream-dark); color: var(--text); }
+    .item-btn.delete:hover { color: var(--error); }
+
+    /* Botón añadir */
+    .add-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px;
+      border: 2px dashed var(--cream-dark);
+      background: transparent;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .add-btn:hover { border-color: var(--sage); color: var(--sage); background: var(--sage-muted); }
+
+    /* Footer acciones */
+    .footer-actions {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+    }
+    .btn {
+      padding: 12px 24px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--sage); color: var(--white); }
+    .btn-primary:hover { background: var(--sage-dark); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-mayordomo { background: var(--mayordomo); color: var(--white); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.15rem; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; gap: 12px; justify-content: flex-end; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+
+    .empty-state { text-align: center; padding: 30px; color: var(--text-muted); }
+
+    @media (max-width: 600px) {
+      .main { padding: 16px; padding-bottom: 100px; }
+      .form-row { grid-template-columns: 1fr; }
+      .semana-nav { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Volver</a>
+      <h1 class="page-title">📋 Preparar Semana</h1>
+    </div>
+    <div class="header-right">
+      <span id="bien-nombre" style="font-size:0.85rem;color:var(--text-muted);">Cargando...</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <!-- Navegador de semanas -->
+      <div class="semana-nav">
+        <button class="semana-nav-btn" id="btn-semana-anterior" onclick="cambiarSemana(-1)">◀</button>
+        <div class="semana-info">
+          <div class="semana-titulo" id="semana-titulo">Semana 3</div>
+          <div class="semana-fechas" id="semana-fechas">Lun 13 Ene → Dom 19 Ene</div>
+          <span class="semana-estado estado-pendiente" id="semana-estado">Pendiente</span>
+        </div>
+        <button class="semana-nav-btn" id="btn-semana-siguiente" onclick="cambiarSemana(1)">▶</button>
+      </div>
+
+      <!-- Alerta deadline -->
+      <div class="deadline-alert hidden" id="deadline-alert">
+        <span>⏰</span>
+        <span id="deadline-texto">Recuerda: Esta preparación debe estar lista el martes por la noche</span>
+      </div>
+
+      <!-- Sección: Eventos/Llegadas -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('eventos')">
+          <div class="seccion-titulo">
+            <span>📅</span> Eventos y llegadas
+            <span class="seccion-count" id="count-eventos">0</span>
+          </div>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body" id="body-eventos">
+          <div id="lista-eventos"></div>
+          <button class="add-btn" onclick="abrirModalEvento()">+ Añadir evento</button>
+        </div>
+      </div>
+
+      <!-- Sección: Tareas extra -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('tareas')">
+          <div class="seccion-titulo">
+            <span>✅</span> Tareas extra
+            <span class="seccion-count" id="count-tareas">0</span>
+          </div>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body" id="body-tareas">
+          <div id="lista-tareas"></div>
+          <button class="add-btn" onclick="abrirModalTarea()">+ Añadir tarea</button>
+        </div>
+      </div>
+
+      <!-- Sección: Mensajes/Notas -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('mensajes')">
+          <div class="seccion-titulo">
+            <span>💬</span> Notas para el externo
+            <span class="seccion-count" id="count-mensajes">0</span>
+          </div>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body" id="body-mensajes">
+          <div id="lista-mensajes"></div>
+          <button class="add-btn" onclick="abrirModalMensaje()">+ Añadir nota</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="footer-actions">
+    <button class="btn btn-secondary" onclick="guardarBorrador()">💾 Guardar borrador</button>
+    <button class="btn btn-mayordomo" onclick="enviarPreparacion()">📤 Enviar al externo</button>
+  </div>
+
+  <!-- Modal Evento -->
+  <div class="modal-overlay" id="modal-evento">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-evento-titulo">📅 Nuevo evento</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-evento">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Título *</label>
+            <input type="text" class="form-input" id="evento-titulo" placeholder="Ej: Check-in familia García" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Día</label>
+              <select class="form-select" id="evento-dia">
+                <option value="1">Lunes</option>
+                <option value="2">Martes</option>
+                <option value="3">Miércoles</option>
+                <option value="4">Jueves</option>
+                <option value="5">Viernes</option>
+                <option value="6">Sábado</option>
+                <option value="0">Domingo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hora</label>
+              <input type="time" class="form-input" id="evento-hora" value="12:00">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="evento-tipo">
+              <option value="checkin">🛬 Check-in</option>
+              <option value="checkout">🛫 Check-out</option>
+              <option value="visita">👥 Visita</option>
+              <option value="entrega">📦 Entrega</option>
+              <option value="otro">📌 Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-textarea" id="evento-notas" placeholder="Detalles adicionales..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Tarea -->
+  <div class="modal-overlay" id="modal-tarea">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-tarea-titulo">✅ Nueva tarea</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-tarea">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Tarea *</label>
+            <input type="text" class="form-input" id="tarea-titulo" placeholder="Ej: Revisar caldera antes del miércoles" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Día límite</label>
+              <select class="form-select" id="tarea-dia">
+                <option value="">Sin día específico</option>
+                <option value="1">Lunes</option>
+                <option value="2">Martes</option>
+                <option value="3">Miércoles</option>
+                <option value="4">Jueves</option>
+                <option value="5">Viernes</option>
+                <option value="6">Sábado</option>
+                <option value="0">Domingo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Tiempo estimado</label>
+              <select class="form-select" id="tarea-tiempo">
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="60">1 hora</option>
+                <option value="120">2 horas</option>
+                <option value="0">Variable</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prioridad</label>
+            <select class="form-select" id="tarea-prioridad">
+              <option value="normal">Normal</option>
+              <option value="alta">⚠️ Alta</option>
+              <option value="urgente">🔴 Urgente</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-textarea" id="tarea-notas" placeholder="Instrucciones adicionales..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Mensaje -->
+  <div class="modal-overlay" id="modal-mensaje">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">💬 Nueva nota</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-mensaje">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Mensaje *</label>
+            <textarea class="form-textarea" id="mensaje-texto" rows="4" placeholder="Información importante para el casero/hoster..." required></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="mensaje-tipo">
+              <option value="info">ℹ️ Información</option>
+              <option value="recordatorio">🔔 Recordatorio</option>
+              <option value="importante">⚠️ Importante</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let semanaActual = null; // Fecha del lunes de la semana
+    let preparacionData = { eventos: [], tareas: [], mensajes: [], estado: 'pendiente' };
+    let editingIdx = null;
+
+    const diasLabels = { '0': 'Domingo', '1': 'Lunes', '2': 'Martes', '3': 'Miércoles', '4': 'Jueves', '5': 'Viernes', '6': 'Sábado' };
+    const diasCortos = { '0': 'Dom', '1': 'Lun', '2': 'Mar', '3': 'Mié', '4': 'Jue', '5': 'Vie', '6': 'Sáb' };
+    const tipoEventoIcons = { checkin: '🛬', checkout: '🛫', visita: '👥', entrega: '📦', otro: '📌' };
+    const tipoMensajeIcons = { info: 'ℹ️', recordatorio: '🔔', importante: '⚠️' };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    bienId = urlParams.get('id');
+    const origen = urlParams.get('origen') || 'bien';
+    document.getElementById('btn-volver').href = `bien.html?id=${bienId}`;
+
+    if (!bienId) window.location.href = 'lo-comun.html';
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+        document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
+
+        // Iniciar en la semana actual (próximo lunes si ya pasó el martes)
+        inicializarSemana();
+        await cargarPreparacion();
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      } catch (e) {
+        console.error(e);
+        alert('Error cargando datos');
+      }
+    }
+
+    function inicializarSemana() {
+      const hoy = new Date();
+      const diaHoy = hoy.getDay();
+      
+      // Calcular el lunes de esta semana
+      const lunes = new Date(hoy);
+      const diff = diaHoy === 0 ? -6 : 1 - diaHoy;
+      lunes.setDate(hoy.getDate() + diff);
+      lunes.setHours(0, 0, 0, 0);
+      
+      // Si ya es miércoles o después, mostrar la semana siguiente por defecto
+      if (diaHoy >= 3) {
+        lunes.setDate(lunes.getDate() + 7);
+      }
+      
+      semanaActual = lunes;
+      actualizarVisualizacionSemana();
+    }
+
+    function getSemanaKey() {
+      return semanaActual.toISOString().split('T')[0];
+    }
+
+    function actualizarVisualizacionSemana() {
+      const lunes = new Date(semanaActual);
+      const domingo = new Date(lunes);
+      domingo.setDate(domingo.getDate() + 6);
+
+      const numSemana = getNumeroSemana(lunes);
+      document.getElementById('semana-titulo').textContent = `Semana ${numSemana}`;
+      document.getElementById('semana-fechas').textContent = 
+        `${formatFecha(lunes)} → ${formatFecha(domingo)}`;
+
+      // Comprobar deadline (martes noche)
+      const hoy = new Date();
+      const martes = new Date(lunes);
+      martes.setDate(martes.getDate() + 1);
+      martes.setHours(23, 59, 59);
+
+      const alertEl = document.getElementById('deadline-alert');
+      if (hoy > martes && preparacionData.estado === 'pendiente') {
+        alertEl.classList.remove('hidden');
+        alertEl.classList.add('pasado');
+        document.getElementById('deadline-texto').textContent = '⚠️ El plazo de preparación ha pasado';
+      } else if (hoy <= martes && hoy >= lunes) {
+        alertEl.classList.remove('hidden', 'pasado');
+        document.getElementById('deadline-texto').textContent = 'Recuerda: Esta preparación debe estar lista el martes por la noche';
+      } else {
+        alertEl.classList.add('hidden');
+      }
+
+      // Deshabilitar navegación hacia atrás si es semana pasada
+      const hoyLunes = new Date();
+      hoyLunes.setDate(hoyLunes.getDate() - (hoyLunes.getDay() === 0 ? 6 : hoyLunes.getDay() - 1));
+      hoyLunes.setHours(0, 0, 0, 0);
+      document.getElementById('btn-semana-anterior').disabled = semanaActual <= hoyLunes;
+    }
+
+    function getNumeroSemana(fecha) {
+      const inicio = new Date(fecha.getFullYear(), 0, 1);
+      const dias = Math.floor((fecha - inicio) / (24 * 60 * 60 * 1000));
+      return Math.ceil((dias + inicio.getDay() + 1) / 7);
+    }
+
+    function formatFecha(fecha) {
+      return fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+    }
+
+    async function cambiarSemana(direccion) {
+      // Guardar antes de cambiar
+      await guardarBorrador(true);
+      
+      semanaActual.setDate(semanaActual.getDate() + (direccion * 7));
+      actualizarVisualizacionSemana();
+      await cargarPreparacion();
+    }
+
+    async function cargarPreparacion() {
+      const semanaKey = getSemanaKey();
+      try {
+        const doc = await db.collection('bienes').doc(bienId)
+          .collection('preparacionSemanal').doc(semanaKey).get();
+        
+        if (doc.exists) {
+          preparacionData = doc.data();
+        } else {
+          preparacionData = { eventos: [], tareas: [], mensajes: [], estado: 'pendiente' };
+        }
+        
+        actualizarEstado();
+        renderEventos();
+        renderTareas();
+        renderMensajes();
+      } catch (e) {
+        console.error(e);
+        preparacionData = { eventos: [], tareas: [], mensajes: [], estado: 'pendiente' };
+      }
+    }
+
+    function actualizarEstado() {
+      const estadoEl = document.getElementById('semana-estado');
+      estadoEl.className = 'semana-estado';
+      
+      if (preparacionData.estado === 'enviado') {
+        estadoEl.classList.add('estado-enviado');
+        estadoEl.textContent = '✅ Enviado';
+      } else if (preparacionData.eventos.length > 0 || preparacionData.tareas.length > 0 || preparacionData.mensajes.length > 0) {
+        estadoEl.classList.add('estado-preparado');
+        estadoEl.textContent = '📝 Borrador';
+        preparacionData.estado = 'borrador';
+      } else {
+        estadoEl.classList.add('estado-pendiente');
+        estadoEl.textContent = '⏳ Pendiente';
+      }
+    }
+
+    // ========== EVENTOS ==========
+    function renderEventos() {
+      const container = document.getElementById('lista-eventos');
+      document.getElementById('count-eventos').textContent = preparacionData.eventos.length;
+
+      if (preparacionData.eventos.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin eventos programados</div>';
+        return;
+      }
+
+      container.innerHTML = preparacionData.eventos.map((e, idx) => `
+        <div class="item-card evento">
+          <span class="item-icon">${tipoEventoIcons[e.tipo] || '📌'}</span>
+          <div class="item-content">
+            <div class="item-titulo">${e.titulo}</div>
+            <div class="item-meta">${diasLabels[e.dia]} ${e.hora || ''}</div>
+            ${e.notas ? `<div class="item-descripcion">${e.notas}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <button class="item-btn" onclick="editarEvento(${idx})">✏️</button>
+            <button class="item-btn delete" onclick="eliminarEvento(${idx})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function abrirModalEvento(idx = null) {
+      editingIdx = idx;
+      const e = idx !== null ? preparacionData.eventos[idx] : null;
+      
+      document.getElementById('modal-evento-titulo').textContent = e ? '✏️ Editar evento' : '📅 Nuevo evento';
+      document.getElementById('evento-titulo').value = e?.titulo || '';
+      document.getElementById('evento-dia').value = e?.dia || '1';
+      document.getElementById('evento-hora').value = e?.hora || '12:00';
+      document.getElementById('evento-tipo').value = e?.tipo || 'otro';
+      document.getElementById('evento-notas').value = e?.notas || '';
+      
+      document.getElementById('modal-evento').classList.add('active');
+    }
+
+    function editarEvento(idx) { abrirModalEvento(idx); }
+
+    function eliminarEvento(idx) {
+      if (!confirm('¿Eliminar este evento?')) return;
+      preparacionData.eventos.splice(idx, 1);
+      renderEventos();
+      actualizarEstado();
+    }
+
+    document.getElementById('form-evento').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = {
+        titulo: document.getElementById('evento-titulo').value,
+        dia: document.getElementById('evento-dia').value,
+        hora: document.getElementById('evento-hora').value,
+        tipo: document.getElementById('evento-tipo').value,
+        notas: document.getElementById('evento-notas').value
+      };
+
+      if (editingIdx !== null) {
+        preparacionData.eventos[editingIdx] = data;
+      } else {
+        preparacionData.eventos.push(data);
+      }
+
+      cerrarModales();
+      renderEventos();
+      actualizarEstado();
+    });
+
+    // ========== TAREAS ==========
+    function renderTareas() {
+      const container = document.getElementById('lista-tareas');
+      document.getElementById('count-tareas').textContent = preparacionData.tareas.length;
+
+      if (preparacionData.tareas.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin tareas extra</div>';
+        return;
+      }
+
+      container.innerHTML = preparacionData.tareas.map((t, idx) => {
+        const prioClass = t.prioridad === 'urgente' ? 'color:var(--error)' : t.prioridad === 'alta' ? 'color:var(--warning)' : '';
+        return `
+          <div class="item-card">
+            <span class="item-icon">✅</span>
+            <div class="item-content">
+              <div class="item-titulo" style="${prioClass}">${t.prioridad === 'urgente' ? '🔴 ' : t.prioridad === 'alta' ? '⚠️ ' : ''}${t.titulo}</div>
+              <div class="item-meta">${t.dia ? diasLabels[t.dia] : 'Sin día'} · ${t.tiempo > 0 ? t.tiempo + ' min' : 'Variable'}</div>
+              ${t.notas ? `<div class="item-descripcion">${t.notas}</div>` : ''}
+            </div>
+            <div class="item-actions">
+              <button class="item-btn" onclick="editarTarea(${idx})">✏️</button>
+              <button class="item-btn delete" onclick="eliminarTarea(${idx})">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function abrirModalTarea(idx = null) {
+      editingIdx = idx;
+      const t = idx !== null ? preparacionData.tareas[idx] : null;
+      
+      document.getElementById('modal-tarea-titulo').textContent = t ? '✏️ Editar tarea' : '✅ Nueva tarea';
+      document.getElementById('tarea-titulo').value = t?.titulo || '';
+      document.getElementById('tarea-dia').value = t?.dia || '';
+      document.getElementById('tarea-tiempo').value = t?.tiempo || '30';
+      document.getElementById('tarea-prioridad').value = t?.prioridad || 'normal';
+      document.getElementById('tarea-notas').value = t?.notas || '';
+      
+      document.getElementById('modal-tarea').classList.add('active');
+    }
+
+    function editarTarea(idx) { abrirModalTarea(idx); }
+
+    function eliminarTarea(idx) {
+      if (!confirm('¿Eliminar esta tarea?')) return;
+      preparacionData.tareas.splice(idx, 1);
+      renderTareas();
+      actualizarEstado();
+    }
+
+    document.getElementById('form-tarea').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = {
+        titulo: document.getElementById('tarea-titulo').value,
+        dia: document.getElementById('tarea-dia').value,
+        tiempo: parseInt(document.getElementById('tarea-tiempo').value) || 0,
+        prioridad: document.getElementById('tarea-prioridad').value,
+        notas: document.getElementById('tarea-notas').value
+      };
+
+      if (editingIdx !== null) {
+        preparacionData.tareas[editingIdx] = data;
+      } else {
+        preparacionData.tareas.push(data);
+      }
+
+      cerrarModales();
+      renderTareas();
+      actualizarEstado();
+    });
+
+    // ========== MENSAJES ==========
+    function renderMensajes() {
+      const container = document.getElementById('lista-mensajes');
+      document.getElementById('count-mensajes').textContent = preparacionData.mensajes.length;
+
+      if (preparacionData.mensajes.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin notas</div>';
+        return;
+      }
+
+      container.innerHTML = preparacionData.mensajes.map((m, idx) => `
+        <div class="item-card mensaje">
+          <span class="item-icon">${tipoMensajeIcons[m.tipo] || 'ℹ️'}</span>
+          <div class="item-content">
+            <div class="item-descripcion">${m.texto}</div>
+          </div>
+          <div class="item-actions">
+            <button class="item-btn" onclick="editarMensaje(${idx})">✏️</button>
+            <button class="item-btn delete" onclick="eliminarMensaje(${idx})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function abrirModalMensaje(idx = null) {
+      editingIdx = idx;
+      const m = idx !== null ? preparacionData.mensajes[idx] : null;
+      
+      document.getElementById('mensaje-texto').value = m?.texto || '';
+      document.getElementById('mensaje-tipo').value = m?.tipo || 'info';
+      
+      document.getElementById('modal-mensaje').classList.add('active');
+    }
+
+    function editarMensaje(idx) { abrirModalMensaje(idx); }
+
+    function eliminarMensaje(idx) {
+      if (!confirm('¿Eliminar esta nota?')) return;
+      preparacionData.mensajes.splice(idx, 1);
+      renderMensajes();
+      actualizarEstado();
+    }
+
+    document.getElementById('form-mensaje').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = {
+        texto: document.getElementById('mensaje-texto').value,
+        tipo: document.getElementById('mensaje-tipo').value
+      };
+
+      if (editingIdx !== null) {
+        preparacionData.mensajes[editingIdx] = data;
+      } else {
+        preparacionData.mensajes.push(data);
+      }
+
+      cerrarModales();
+      renderMensajes();
+      actualizarEstado();
+    });
+
+    // ========== GUARDAR / ENVIAR ==========
+    async function guardarBorrador(silencioso = false) {
+      const semanaKey = getSemanaKey();
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('preparacionSemanal').doc(semanaKey).set({
+            ...preparacionData,
+            estado: preparacionData.estado === 'enviado' ? 'enviado' : 'borrador',
+            actualizadoPor: currentUser.uid,
+            fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true });
+        
+        if (!silencioso) {
+          alert('✅ Borrador guardado');
+        }
+      } catch (e) {
+        console.error(e);
+        if (!silencioso) alert('Error al guardar');
+      }
+    }
+
+    async function enviarPreparacion() {
+      if (preparacionData.eventos.length === 0 && preparacionData.tareas.length === 0 && preparacionData.mensajes.length === 0) {
+        alert('Añade al menos un evento, tarea o nota antes de enviar');
+        return;
+      }
+
+      if (!confirm('¿Enviar esta preparación al externo? Podrá ver los eventos, tareas y notas en su portal.')) return;
+
+      const semanaKey = getSemanaKey();
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('preparacionSemanal').doc(semanaKey).set({
+            ...preparacionData,
+            estado: 'enviado',
+            enviadoPor: currentUser.uid,
+            fechaEnvio: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        
+        preparacionData.estado = 'enviado';
+        actualizarEstado();
+        alert('✅ Preparación enviada correctamente');
+      } catch (e) {
+        console.error(e);
+        alert('Error al enviar');
+      }
+    }
+
+    // ========== UTILS ==========
+    function toggleSeccion(id) {
+      document.getElementById(`body-${id}`).classList.toggle('hidden');
+    }
+
+    function cerrarModales() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      editingIdx = null;
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) cerrarModales();
+      });
+    });
+  </script>
+</body>
+</html>

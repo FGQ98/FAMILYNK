@@ -99,7 +99,7 @@
   <script src="js/firebase-config.js"></script>
   <script>
     let currentUser = null, externoData = null, bienData = null, bienId = null, permisosActuales = {};
-    let datosModulos = { calendario: [], planSemanal: [], inventario: [], pedidos: [], buzon: [] };
+    let datosModulos = { calendario: [], planSemanal: [], inventario: [], pedidos: [], buzon: [], preparacion: null };
     const diasLabels = { '0': 'Dom', '1': 'Lun', '2': 'Mar', '3': 'Mié', '4': 'Jue', '5': 'Vie', '6': 'Sáb' };
 
     auth.onAuthStateChanged(async (user) => {
@@ -129,7 +129,10 @@
         if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('nombre-bien').textContent = bienData.nombre || 'Sin nombre';
-        await Promise.all([cargarCalendario(), cargarPlanSemanal(), cargarInventario(), cargarPedidos(), cargarBuzon()]);
+        // Primero cargar Plan Semanal (que incluye preparación)
+        await cargarPlanSemanal();
+        // Luego el resto en paralelo
+        await Promise.all([cargarCalendario(), cargarInventario(), cargarPedidos(), cargarBuzon()]);
         renderModulos();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
@@ -155,7 +158,7 @@
           const dep = { id: doc.id, ...doc.data() };
           (dep.tareas || []).forEach((t, idx) => {
             if (t.dia && (t.frecuencia === 'semanal' || t.frecuencia === 'quincenal')) {
-              tareas.push({ id: `lim_${dep.id}_${idx}`, tipo: 'limpieza', nombre: t.nombre, ubicacion: dep.nombre, dia: t.dia, tiempo: t.tiempo || 15 });
+              tareas.push({ id: `lim_${dep.id}_${idx}`, tipo: 'limpieza', nombre: t.nombre, ubicacion: dep.nombre, dia: t.dia, tiempo: t.tiempo || 15, prioridad: 'normal' });
             }
           });
         });
@@ -163,9 +166,20 @@
         lavSnap.docs.forEach(doc => {
           const p = { id: doc.id, ...doc.data() };
           if (p.dia && (p.frecuencia === 'semanal' || p.frecuencia === 'quincenal')) {
-            tareas.push({ id: `lav_${p.id}`, tipo: 'lavanderia', nombre: p.nombre, ubicacion: p.lugar === 'tintoreria' ? 'Tintorería' : 'En casa', dia: p.dia, tiempo: 30 });
+            tareas.push({ id: `lav_${p.id}`, tipo: 'lavanderia', nombre: p.nombre, ubicacion: p.lugar === 'tintoreria' ? 'Tintorería' : 'En casa', dia: p.dia, tiempo: 30, prioridad: 'normal' });
           }
         });
+        // PREPARACIÓN SEMANAL
+        try {
+          const prepDoc = await db.collection('bienes').doc(bienId).collection('preparacionSemanal').doc(semanaKey).get();
+          if (prepDoc.exists && prepDoc.data().estado === 'enviado') {
+            const prep = prepDoc.data();
+            (prep.tareas || []).forEach((t, idx) => {
+              tareas.push({ id: `prep_${semanaKey}_${idx}`, tipo: 'extra', nombre: t.titulo, ubicacion: '', dia: t.dia || '', tiempo: t.tiempo || 0, prioridad: t.prioridad || 'normal' });
+            });
+            datosModulos.preparacion = prep;
+          }
+        } catch (e) {}
         let completados = {};
         try { const c = await db.collection('bienes').doc(bienId).collection('planSemanalCompletados').doc(semanaKey).get(); if (c.exists) completados = c.data().tareas || {}; } catch (e) {}
         datosModulos.planSemanal = tareas.map(t => ({ ...t, completada: !!completados[t.id], semanaKey, esHoy: parseInt(t.dia) === hoyNum }))
