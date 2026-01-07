@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Productos Especiales</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-dark: #5C7D5F; --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF; --success: #7DB59A; --warning: #E8B44D; --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+      --mayordomo: #8B7355; --mayordomo-muted: rgba(139, 115, 85, 0.15);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { padding: 8px 14px; background: var(--cream); border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-light); text-decoration: none; }
+    .back-btn:hover { background: var(--cream-dark); }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.25rem; font-weight: 600; }
+    .header-right { display: flex; gap: 12px; align-items: center; }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .loading { display: flex; align-items: center; justify-content: center; padding: 80px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--mayordomo); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* Info box */
+    .info-box {
+      background: var(--sage-muted);
+      border-left: 4px solid var(--sage);
+      padding: 16px 20px;
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+    }
+
+    /* Filtros */
+    .filtros-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .filtro-btn {
+      padding: 8px 16px;
+      background: var(--white);
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filtro-btn:hover { border-color: var(--sage); }
+    .filtro-btn.active { background: var(--sage); color: var(--white); border-color: var(--sage); }
+    .filtro-count { margin-left: 6px; opacity: 0.7; }
+
+    /* Lista productos */
+    .productos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .producto-card {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+    .producto-card.inactivo { opacity: 0.5; }
+    .producto-header {
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .producto-icon { font-size: 2rem; }
+    .producto-info { flex: 1; }
+    .producto-nombre { font-weight: 600; font-size: 1rem; margin-bottom: 4px; }
+    .producto-grupo { font-size: 0.75rem; color: var(--text-muted); }
+    .producto-toggle {
+      position: relative;
+      width: 48px;
+      height: 26px;
+      background: var(--cream-dark);
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .producto-toggle.activo { background: var(--sage); }
+    .producto-toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      background: var(--white);
+      border-radius: 50%;
+      transition: left 0.2s;
+    }
+    .producto-toggle.activo::after { left: 25px; }
+    .producto-body {
+      padding: 0 16px 16px;
+      display: flex;
+      gap: 8px;
+    }
+    .producto-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: var(--cream);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+    }
+    .producto-actions {
+      padding: 12px 16px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .btn-icon {
+      padding: 6px 10px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .btn-icon:hover { background: var(--cream); color: var(--text); }
+    .btn-icon.delete:hover { color: var(--error); }
+
+    /* Botón añadir */
+    .add-card {
+      background: var(--white);
+      border: 2px dashed var(--cream-dark);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-height: 150px;
+    }
+    .add-card:hover { border-color: var(--sage); background: var(--sage-muted); }
+    .add-card-icon { font-size: 2rem; margin-bottom: 8px; color: var(--text-muted); }
+    .add-card-text { color: var(--text-muted); font-size: 0.9rem; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.15rem; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; gap: 12px; justify-content: flex-end; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary { background: var(--sage); color: var(--white); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-danger { background: var(--error); color: var(--white); }
+
+    @media (max-width: 600px) {
+      .main { padding: 16px; }
+      .form-row { grid-template-columns: 1fr; }
+      .productos-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Volver</a>
+      <h1 class="page-title">🛍️ Productos Especiales</h1>
+    </div>
+    <div class="header-right">
+      <span id="bien-nombre" style="font-size:0.85rem;color:var(--text-muted);">Cargando...</span>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <div class="info-box">
+        💡 Configura los productos especiales que estarán disponibles en la Tienda. Los miembros de la familia podrán añadirlos a sus pedidos.
+      </div>
+
+      <div class="filtros-bar" id="filtros-bar"></div>
+
+      <div class="productos-grid" id="productos-grid"></div>
+    </div>
+  </main>
+
+  <!-- Modal Producto -->
+  <div class="modal-overlay" id="modal-producto">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">🛍️ Nuevo producto</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form-producto">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nombre del producto *</label>
+            <input type="text" class="form-input" id="producto-nombre" placeholder="Ej: Vino Rioja Reserva" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Categoría</label>
+              <select class="form-select" id="producto-grupo">
+                <option value="alimentacion">🍎 Alimentación</option>
+                <option value="bebidas">🍷 Bebidas</option>
+                <option value="limpieza">🧹 Limpieza</option>
+                <option value="higiene">🧴 Higiene</option>
+                <option value="hogar">🏠 Hogar</option>
+                <option value="otros">📦 Otros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Unidad</label>
+              <select class="form-select" id="producto-unidad">
+                <option value="uds">Unidades</option>
+                <option value="kg">Kilogramos</option>
+                <option value="l">Litros</option>
+                <option value="pack">Packs</option>
+                <option value="cajas">Cajas</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Cantidad sugerida</label>
+              <input type="number" class="form-input" id="producto-cantidad" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Precio aprox. (€)</label>
+              <input type="number" class="form-input" id="producto-precio" step="0.01" placeholder="0.00">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <input type="text" class="form-input" id="producto-notas" placeholder="Marca preferida, dónde comprarlo...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminarProducto()">🗑️ Eliminar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let productos = [];
+    let filtroActual = 'todos';
+    let editingId = null;
+
+    const GRUPOS = {
+      alimentacion: { icon: '🍎', label: 'Alimentación' },
+      bebidas: { icon: '🍷', label: 'Bebidas' },
+      limpieza: { icon: '🧹', label: 'Limpieza' },
+      higiene: { icon: '🧴', label: 'Higiene' },
+      hogar: { icon: '🏠', label: 'Hogar' },
+      otros: { icon: '📦', label: 'Otros' }
+    };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    bienId = urlParams.get('id');
+    document.getElementById('btn-volver').href = `bien.html?id=${bienId}`;
+
+    if (!bienId) window.location.href = 'lo-comun.html';
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+        document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
+
+        await cargarProductos();
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      } catch (e) {
+        console.error(e);
+        alert('Error cargando datos');
+      }
+    }
+
+    async function cargarProductos() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('catalogoEspeciales')
+          .orderBy('nombre')
+          .get();
+
+        productos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderFiltros();
+        renderProductos();
+      } catch (e) {
+        console.error(e);
+        productos = [];
+        renderProductos();
+      }
+    }
+
+    function renderFiltros() {
+      const container = document.getElementById('filtros-bar');
+      const conteo = { todos: productos.length };
+
+      productos.forEach(p => {
+        conteo[p.grupo] = (conteo[p.grupo] || 0) + 1;
+      });
+
+      let html = `<button class="filtro-btn ${filtroActual === 'todos' ? 'active' : ''}" onclick="filtrar('todos')">Todos<span class="filtro-count">${conteo.todos}</span></button>`;
+
+      Object.keys(GRUPOS).forEach(g => {
+        if (conteo[g]) {
+          html += `<button class="filtro-btn ${filtroActual === g ? 'active' : ''}" onclick="filtrar('${g}')">${GRUPOS[g].icon} ${GRUPOS[g].label}<span class="filtro-count">${conteo[g]}</span></button>`;
+        }
+      });
+
+      container.innerHTML = html;
+    }
+
+    function filtrar(grupo) {
+      filtroActual = grupo;
+      renderFiltros();
+      renderProductos();
+    }
+
+    function renderProductos() {
+      const container = document.getElementById('productos-grid');
+
+      let lista = productos;
+      if (filtroActual !== 'todos') {
+        lista = productos.filter(p => p.grupo === filtroActual);
+      }
+
+      if (productos.length === 0) {
+        container.innerHTML = `
+          <div class="add-card" onclick="abrirModal()">
+            <div class="add-card-icon">➕</div>
+            <div class="add-card-text">Añadir primer producto</div>
+          </div>
+        `;
+        return;
+      }
+
+      let html = lista.map(p => {
+        const grupo = GRUPOS[p.grupo] || GRUPOS.otros;
+        return `
+          <div class="producto-card ${p.activo === false ? 'inactivo' : ''}">
+            <div class="producto-header">
+              <span class="producto-icon">${grupo.icon}</span>
+              <div class="producto-info">
+                <div class="producto-nombre">${p.nombre}</div>
+                <div class="producto-grupo">${grupo.label}</div>
+              </div>
+              <div class="producto-toggle ${p.activo !== false ? 'activo' : ''}" onclick="toggleActivo('${p.id}', ${p.activo !== false})"></div>
+            </div>
+            <div class="producto-body">
+              <span class="producto-meta">×${p.cantidadSugerida || 1} ${p.unidad || 'uds'}</span>
+              ${p.precioAprox ? `<span class="producto-meta">~${p.precioAprox}€</span>` : ''}
+            </div>
+            <div class="producto-actions">
+              <button class="btn-icon" onclick="editarProducto('${p.id}')">✏️</button>
+              <button class="btn-icon delete" onclick="confirmarEliminar('${p.id}')">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      html += `
+        <div class="add-card" onclick="abrirModal()">
+          <div class="add-card-icon">➕</div>
+          <div class="add-card-text">Añadir producto</div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    async function toggleActivo(id, estadoActual) {
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('catalogoEspeciales').doc(id)
+          .update({ activo: !estadoActual });
+
+        const prod = productos.find(p => p.id === id);
+        if (prod) prod.activo = !estadoActual;
+        renderProductos();
+      } catch (e) {
+        console.error(e);
+        alert('Error al actualizar');
+      }
+    }
+
+    function abrirModal(id = null) {
+      editingId = id;
+      const modal = document.getElementById('modal-producto');
+      const form = document.getElementById('form-producto');
+      const btnEliminar = document.getElementById('btn-eliminar');
+
+      if (id) {
+        const p = productos.find(x => x.id === id);
+        if (!p) return;
+
+        document.getElementById('modal-titulo').textContent = '✏️ Editar producto';
+        document.getElementById('producto-nombre').value = p.nombre || '';
+        document.getElementById('producto-grupo').value = p.grupo || 'otros';
+        document.getElementById('producto-unidad').value = p.unidad || 'uds';
+        document.getElementById('producto-cantidad').value = p.cantidadSugerida || 1;
+        document.getElementById('producto-precio').value = p.precioAprox || '';
+        document.getElementById('producto-notas').value = p.notas || '';
+        btnEliminar.classList.remove('hidden');
+      } else {
+        document.getElementById('modal-titulo').textContent = '🛍️ Nuevo producto';
+        form.reset();
+        document.getElementById('producto-cantidad').value = 1;
+        btnEliminar.classList.add('hidden');
+      }
+
+      modal.classList.add('active');
+    }
+
+    function editarProducto(id) {
+      abrirModal(id);
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-producto').classList.remove('active');
+      editingId = null;
+    }
+
+    document.getElementById('form-producto').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const data = {
+        nombre: document.getElementById('producto-nombre').value.trim(),
+        grupo: document.getElementById('producto-grupo').value,
+        unidad: document.getElementById('producto-unidad').value,
+        cantidadSugerida: parseInt(document.getElementById('producto-cantidad').value) || 1,
+        precioAprox: parseFloat(document.getElementById('producto-precio').value) || null,
+        notas: document.getElementById('producto-notas').value.trim(),
+        activo: true,
+        actualizadoPor: currentUser.uid,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        if (editingId) {
+          await db.collection('bienes').doc(bienId)
+            .collection('catalogoEspeciales').doc(editingId)
+            .update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId)
+            .collection('catalogoEspeciales').add(data);
+        }
+
+        cerrarModal();
+        await cargarProductos();
+      } catch (e) {
+        console.error(e);
+        alert('Error al guardar');
+      }
+    });
+
+    function confirmarEliminar(id) {
+      if (confirm('¿Eliminar este producto del catálogo?')) {
+        eliminarProductoById(id);
+      }
+    }
+
+    function eliminarProducto() {
+      if (editingId && confirm('¿Eliminar este producto del catálogo?')) {
+        eliminarProductoById(editingId);
+      }
+    }
+
+    async function eliminarProductoById(id) {
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('catalogoEspeciales').doc(id).delete();
+        cerrarModal();
+        await cargarProductos();
+      } catch (e) {
+        console.error(e);
+        alert('Error al eliminar');
+      }
+    }
+
+    document.getElementById('modal-producto').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) cerrarModal();
+    });
+  </script>
+</body>
+</html>

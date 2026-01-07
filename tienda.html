@@ -850,10 +850,9 @@
         <div id="loading-especiales" class="loading hidden"><div class="spinner"></div></div>
         <div id="lista-especiales" class="productos-lista"></div>
         <div id="empty-especiales" class="empty-state hidden">
-          <div class="empty-state-icon">+</div>
-          <div class="empty-state-title">Sin especiales guardados</div>
-          <p class="empty-state-text">Añade productos para pedidos puntuales</p>
-          <button class="btn btn-primary" onclick="abrirModalEspecial()">+ Añadir especial</button>
+          <div class="empty-state-icon">🛍️</div>
+          <div class="empty-state-title">Sin productos especiales</div>
+          <p class="empty-state-text">El administrador del bien debe configurar el catálogo de productos especiales</p>
         </div>
       </div>
     </div>
@@ -1202,20 +1201,27 @@
       }).join('');
     }
 
-    // ========== CARGAR ESPECIALES ==========
+    // ========== CARGAR ESPECIALES (desde catálogo del bien) ==========
     async function cargarProductosEspeciales() {
       try {
+        // Cargar del catálogo de productos especiales del bien
         const snap = await db.collection('bienes').doc(bienId)
-          .collection('especiales')
-          .where('nidoId', '==', nidoActual.id)
+          .collection('catalogoEspeciales')
+          .where('activo', '==', true)
           .orderBy('grupo')
           .get();
 
         productosEspeciales = [];
         snap.forEach(doc => {
+          const data = doc.data();
           productosEspeciales.push({
             id: doc.id,
-            ...doc.data(),
+            nombre: data.nombre,
+            grupo: data.grupo || 'otros',
+            unidad: data.unidad || 'uds',
+            cantidad: data.cantidadSugerida || 1,
+            precioAprox: data.precioAprox,
+            notas: data.notas,
             tipo: 'especial'
           });
         });
@@ -1225,8 +1231,35 @@
         actualizarBadges();
       } catch (error) {
         console.error('Error cargando especiales:', error);
-        // Si falla por índice, mostrar vacío
-        renderListaEspeciales();
+        // Si falla por índice, intentar sin orderBy
+        try {
+          const snap = await db.collection('bienes').doc(bienId)
+            .collection('catalogoEspeciales')
+            .get();
+          
+          productosEspeciales = [];
+          snap.forEach(doc => {
+            const data = doc.data();
+            if (data.activo !== false) {
+              productosEspeciales.push({
+                id: doc.id,
+                nombre: data.nombre,
+                grupo: data.grupo || 'otros',
+                unidad: data.unidad || 'uds',
+                cantidad: data.cantidadSugerida || 1,
+                precioAprox: data.precioAprox,
+                notas: data.notas,
+                tipo: 'especial'
+              });
+            }
+          });
+          renderFiltrosEspeciales();
+          renderListaEspeciales();
+          actualizarBadges();
+        } catch (e2) {
+          console.error('Error fallback:', e2);
+          renderListaEspeciales();
+        }
       }
     }
 
@@ -1282,7 +1315,7 @@
         const enCarrito = carrito.especiales.find(c => c.id === p.id);
         const checked = enCarrito ? 'checked' : '';
         const selected = enCarrito ? 'selected' : '';
-        const cantidad = enCarrito ? enCarrito.cantidad : (p.unidades || 1);
+        const cantidad = enCarrito ? enCarrito.cantidad : (p.cantidad || 1);
 
         return `
           <div class="producto-item ${selected}" data-id="${p.id}" data-tipo="especial">
@@ -1299,7 +1332,7 @@
               <input type="number" class="cantidad-input" value="${cantidad}" min="1" 
                      onchange="actualizarCantidad('${p.id}', 'especial', this.value)"
                      ${!enCarrito ? 'disabled' : ''}>
-              <span class="cantidad-unidad">uds</span>
+              <span class="cantidad-unidad">${p.unidad || 'uds'}</span>
             </div>
           </div>
         `;
@@ -1317,7 +1350,7 @@
 
       if (añadir) {
         // Añadir al carrito
-        const cantidad = tipo === 'reposicion' ? producto.faltante : (producto.unidades || 1);
+        const cantidad = tipo === 'reposicion' ? producto.faltante : (producto.cantidad || 1);
         carrito[carritoTipo].push({
           id: producto.id,
           nombre: producto.nombre,
