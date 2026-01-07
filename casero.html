@@ -293,7 +293,38 @@
     }
 
     async function cargarInventario() {
-      try { const snap = await db.collection('bienes').doc(bienId).collection('inventario').orderBy('nombre').get(); datosModulos.inventario = snap.docs.map(d => ({ id: d.id, ...d.data() })); } catch (e) { datosModulos.inventario = []; }
+      try {
+        // El inventario está en el documento del bien, no en subcolección
+        const doc = await db.collection('bienes').doc(bienId).get();
+        const inventarioData = doc.data()?.inventario || {};
+        
+        // Aplanar estructura Lugar → Grupo → Artículos
+        const items = [];
+        for (const [lugarKey, lugar] of Object.entries(inventarioData)) {
+          if (lugar.grupos) {
+            for (const [grupoKey, grupo] of Object.entries(lugar.grupos)) {
+              if (grupo.articulos) {
+                grupo.articulos.forEach((art, idx) => {
+                  items.push({
+                    id: `${lugarKey}.${grupoKey}.${idx}`,
+                    nombre: art.nombre,
+                    lugar: lugar.nombre,
+                    grupo: grupo.nombre,
+                    cantidad: art.actual || 0,
+                    minimo: art.minimo || 0,
+                    unidad: art.unidad || 'uds',
+                    formato: art.formato
+                  });
+                });
+              }
+            }
+          }
+        }
+        datosModulos.inventario = items;
+      } catch (e) { 
+        console.error('Error cargando inventario:', e);
+        datosModulos.inventario = []; 
+      }
     }
 
     async function cargarPedidos() {
@@ -310,16 +341,18 @@
           ...notifs.docs.map(d => ({ id: d.id, tipo: 'notificacion', ...d.data() }))
         ];
         
-        // Añadir mensajes de la preparación semanal (si existe)
+        // Añadir mensajes de la preparación semanal (si existe y son para casero)
         if (datosModulos.preparacion?.mensajes?.length > 0) {
-          const prepMsgs = datosModulos.preparacion.mensajes.map((m, idx) => ({
-            id: `prep_msg_${idx}`,
-            tipo: 'preparacion',
-            texto: m.texto,
-            tipoMensaje: m.tipo,
-            fecha: datosModulos.preparacion.fechaEnvio || { toDate: () => new Date() },
-            leido: false
-          }));
+          const prepMsgs = datosModulos.preparacion.mensajes
+            .filter(m => !m.destinatario || m.destinatario === 'todos' || m.destinatario === 'casero')
+            .map((m, idx) => ({
+              id: `prep_msg_${idx}`,
+              tipo: 'preparacion',
+              texto: m.texto,
+              tipoMensaje: m.tipo,
+              fecha: datosModulos.preparacion.fechaEnvio || { toDate: () => new Date() },
+              leido: false
+            }));
           items = [...prepMsgs, ...items];
         }
         
