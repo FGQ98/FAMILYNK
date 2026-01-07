@@ -77,6 +77,35 @@
     .mensaje-card.no-leido { background: var(--sage-muted); border-left-color: var(--casero); }
     .mensaje-card.notificacion { border-left-color: var(--terracotta); }
     .mensaje-card.preparacion { border-left-color: var(--mayordomo); background: var(--mayordomo-muted); }
+
+    /* Pedidos expandibles */
+    .pedido-card { background: var(--cream); border-radius: var(--radius-sm); margin-bottom: 10px; overflow: hidden; }
+    .pedido-card.urgente { border-left: 3px solid var(--terracotta); }
+    .pedido-card.en-curso { border-left: 3px solid var(--warning); }
+    .pedido-card.completado { border-left: 3px solid var(--success); opacity: 0.7; }
+    .pedido-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; }
+    .pedido-header:hover { background: var(--cream-dark); }
+    .pedido-icon { font-size: 1.2rem; }
+    .pedido-info { flex: 1; }
+    .pedido-titulo { font-weight: 600; font-size: 0.9rem; }
+    .pedido-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 8px; margin-top: 2px; }
+    .pedido-progreso { display: flex; align-items: center; gap: 6px; }
+    .pedido-progreso-bar { width: 50px; height: 6px; background: var(--cream-dark); border-radius: 3px; overflow: hidden; }
+    .pedido-progreso-fill { height: 100%; background: var(--success); transition: width 0.3s; }
+    .pedido-progreso-text { font-size: 0.7rem; color: var(--text-muted); }
+    .pedido-toggle { font-size: 0.8rem; color: var(--text-muted); transition: transform 0.2s; }
+    .pedido-card.expanded .pedido-toggle { transform: rotate(180deg); }
+    .pedido-items { display: none; padding: 0 16px 12px; }
+    .pedido-card.expanded .pedido-items { display: block; }
+    .pedido-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--white); border-radius: var(--radius-sm); margin-bottom: 6px; }
+    .pedido-item.comprado { opacity: 0.6; }
+    .pedido-item.comprado .pedido-item-nombre { text-decoration: line-through; }
+    .pedido-item-check { width: 18px; height: 18px; accent-color: var(--casero); cursor: pointer; }
+    .pedido-item-nombre { flex: 1; font-size: 0.85rem; }
+    .pedido-item-cantidad { font-size: 0.8rem; color: var(--text-muted); background: var(--cream); padding: 2px 8px; border-radius: 4px; }
+    .pedido-item-tipo { font-size: 0.65rem; padding: 2px 6px; border-radius: 3px; }
+    .pedido-item-tipo.reposicion { background: var(--sage-muted); color: var(--sage-dark); }
+    .pedido-item-tipo.especial { background: var(--terracotta-muted); color: var(--terracotta); }
     .mensaje-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
     .mensaje-remitente { font-weight: 600; font-size: 0.9rem; }
     .mensaje-fecha { font-size: 0.75rem; color: var(--text-muted); }
@@ -345,10 +374,104 @@
     }
 
     function renderPedidos() {
-      const p = datosModulos.pedidos, pend = p.filter(x => x.estado === 'pendiente').length;
-      let body = p.length === 0 ? '<div class="modulo-card-empty">🛒 Sin pedidos</div>' :
-        p.map(x => `<div class="item-card ${x.estado === 'pendiente' ? 'urgente' : ''}"><span class="item-icon">🛒</span><div class="item-info"><div class="item-title">${x.titulo || 'Pedido'}</div><div class="item-meta"><span>${x.fechaCreacion?.toDate?.().toLocaleDateString('es-ES', {day:'numeric',month:'short'}) || ''}</span><span>${x.items?.length || 0} productos</span></div></div><span class="item-badge badge-pendiente">${x.estado}</span></div>`).join('');
-      return `<div class="modulo-card"><div class="modulo-card-header"><div class="modulo-card-title">🛒 Pedidos ${pend > 0 ? `<span class="modulo-badge">${pend}</span>` : ''}</div></div><div class="modulo-card-body">${body}</div></div>`;
+      const pedidos = datosModulos.pedidos;
+      const pendientes = pedidos.filter(p => calcularEstadoPedido(p) === 'pendiente').length;
+
+      let html = '';
+      if (pedidos.length === 0) {
+        html = '<div class="modulo-card-empty">🛒 Sin pedidos</div>';
+      } else {
+        html = pedidos.map(p => {
+          const estado = calcularEstadoPedido(p);
+          const { comprados, total } = contarItemsPedido(p);
+          const progreso = total > 0 ? Math.round((comprados / total) * 100) : 0;
+          const fecha = p.fechaCreacion?.toDate?.().toLocaleDateString('es-ES', {day:'numeric',month:'short'}) || '';
+          
+          return `
+            <div class="pedido-card ${estado === 'pendiente' ? 'urgente' : estado === 'en_curso' ? 'en-curso' : 'completado'}" id="pedido-${p.id}">
+              <div class="pedido-header" onclick="togglePedido('${p.id}')">
+                <span class="pedido-icon">🛒</span>
+                <div class="pedido-info">
+                  <div class="pedido-titulo">${p.nidoNombre || 'Pedido'}</div>
+                  <div class="pedido-meta">
+                    <span>${fecha}</span>
+                    <span>${total} productos</span>
+                  </div>
+                </div>
+                <div class="pedido-progreso">
+                  <div class="pedido-progreso-bar"><div class="pedido-progreso-fill" style="width:${progreso}%"></div></div>
+                  <span class="pedido-progreso-text">${comprados}/${total}</span>
+                </div>
+                <span class="pedido-toggle">▼</span>
+              </div>
+              <div class="pedido-items">
+                ${(p.items || []).map((item, idx) => `
+                  <div class="pedido-item ${item.comprado ? 'comprado' : ''}">
+                    <input type="checkbox" class="pedido-item-check" ${item.comprado ? 'checked' : ''} 
+                      onchange="toggleItemPedido('${p.id}', ${idx}, this.checked)">
+                    <span class="pedido-item-nombre">${item.nombre || item.id}</span>
+                    <span class="pedido-item-cantidad">×${item.cantidad || 1}</span>
+                    <span class="pedido-item-tipo ${item.tipo}">${item.tipo === 'reposicion' ? 'Repos.' : 'Extra'}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      return `<div class="modulo-card"><div class="modulo-card-header"><div class="modulo-card-title">🛒 Pedidos ${pendientes > 0 ? `<span class="modulo-badge">${pendientes}</span>` : ''}</div></div><div class="modulo-card-body">${html}</div></div>`;
+    }
+
+    function calcularEstadoPedido(pedido) {
+      const items = pedido.items || [];
+      if (items.length === 0) return 'pendiente';
+      const comprados = items.filter(i => i.comprado).length;
+      if (comprados === 0) return 'pendiente';
+      if (comprados === items.length) return 'completado';
+      return 'en_curso';
+    }
+
+    function contarItemsPedido(pedido) {
+      const items = pedido.items || [];
+      return {
+        comprados: items.filter(i => i.comprado).length,
+        total: items.length
+      };
+    }
+
+    function togglePedido(pedidoId) {
+      const card = document.getElementById(`pedido-${pedidoId}`);
+      if (card) card.classList.toggle('expanded');
+    }
+
+    async function toggleItemPedido(pedidoId, itemIdx, comprado) {
+      try {
+        const pedido = datosModulos.pedidos.find(p => p.id === pedidoId);
+        if (!pedido || !pedido.items[itemIdx]) return;
+
+        // Actualizar localmente
+        pedido.items[itemIdx].comprado = comprado;
+        if (comprado) {
+          pedido.items[itemIdx].compradoPor = currentUser.uid;
+          pedido.items[itemIdx].fechaComprado = new Date().toISOString();
+        } else {
+          delete pedido.items[itemIdx].compradoPor;
+          delete pedido.items[itemIdx].fechaComprado;
+        }
+
+        // Guardar en Firebase
+        await db.collection('bienes').doc(bienId).collection('pedidos').doc(pedidoId).update({
+          items: pedido.items,
+          fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Re-renderizar
+        renderModulos();
+      } catch (e) {
+        console.error('Error actualizando item:', e);
+        alert('Error al actualizar');
+      }
     }
 
     function renderBuzon() {
