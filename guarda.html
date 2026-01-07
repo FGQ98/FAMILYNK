@@ -110,8 +110,18 @@
 
     async function cargarDatosExterno() {
       try {
-        const snap = await db.collection('externos').where('email', '==', currentUser.email).where('tipo', '==', 'guarda').where('activo', '==', true).limit(1).get();
-        if (snap.empty) { alert('No tienes acceso'); window.location.href = 'login.html'; return; }
+        // Buscar acceso como guarda usando collectionGroup
+        const snap = await db.collectionGroup('guardas')
+          .where('email', '==', currentUser.email.toLowerCase())
+          .where('activo', '==', true)
+          .limit(1).get();
+          
+        if (snap.empty) { 
+          alert('No tienes acceso como guarda'); 
+          window.location.href = 'login.html'; 
+          return; 
+        }
+        
         externoData = { id: snap.docs[0].id, ...snap.docs[0].data() };
         bienId = externoData.bienId;
         permisosActuales = externoData.permisos || {};
