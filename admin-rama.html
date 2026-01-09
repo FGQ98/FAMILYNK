@@ -202,6 +202,13 @@
     .role-badge { padding: 4px 10px; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; }
     .role-badge.admin { background: var(--rojo); color: white; }
     .role-badge.miembro { background: var(--sage-muted); color: var(--sage-dark); }
+    .role-badge.invitado { background: #F6E05E; color: #744210; }
+    .role-badge.especial { background: #E9D8FD; color: #553C9A; }
+
+    .user-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 8px; margin-top: 2px; }
+    .user-meta-item { display: flex; align-items: center; gap: 3px; }
+    .user-nidos { display: flex; gap: 4px; flex-wrap: wrap; }
+    .nido-badge { padding: 2px 8px; background: var(--cream); border-radius: 4px; font-size: 0.7rem; color: var(--text-light); }
 
     .config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 
@@ -436,7 +443,7 @@
       </div>
       <div class="card">
         <table class="users-table">
-          <thead><tr><th>Usuario</th><th>Nido</th><th>Rol</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Nº</th><th>Usuario</th><th>Nidos</th><th>Rol</th><th>Acciones</th></tr></thead>
           <tbody id="usuarios-tbody"></tbody>
         </table>
       </div>
@@ -698,8 +705,38 @@
       <div class="modal-header"><h3 class="modal-title">➕ Invitar usuario</h3><button class="modal-close" onclick="cerrarModal('modal-invitar')">×</button></div>
       <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="invitar-email" placeholder="email@ejemplo.com"></div>
       <div class="form-group"><label class="form-label">Nido</label><select class="form-input" id="invitar-nido"><option value="">Sin asignar</option></select></div>
-      <div class="form-group"><label class="form-label">Rol</label><select class="form-input" id="invitar-rol"><option value="adulto">Adulto</option><option value="joven">Joven</option><option value="adminNido">Admin Nido</option><option value="adminRama">Admin Rama</option></select></div>
+      <div class="form-group"><label class="form-label">Rol</label><select class="form-input" id="invitar-rol"><option value="adulto">👤 Adulto</option><option value="nino">👶 Niño</option><option value="novio">💕 Novio/a</option><option value="prometido">💍 Prometido/a</option><option value="adminNido">🏠 Admin Nido</option><option value="adminRama">👑 Admin Rama</option></select></div>
       <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-invitar')">Cancelar</button><button class="btn btn-primary" onclick="enviarInvitacion()">Enviar invitación</button></div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Usuario -->
+  <div class="modal-overlay" id="modal-editar-usuario">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ Editar Usuario</h3>
+        <button class="modal-close" onclick="cerrarModal('modal-editar-usuario')">×</button>
+      </div>
+      <div style="padding:20px;">
+        <p style="font-weight:600;margin-bottom:16px;" id="editar-usuario-nombre"></p>
+        <div class="form-group">
+          <label class="form-label">Rol del miembro</label>
+          <select class="form-input" id="editar-usuario-rol">
+            <option value="adminRama">👑 Admin Rama</option>
+            <option value="adminNido">🏠 Admin Nido</option>
+            <option value="adulto">👤 Adulto</option>
+            <option value="nino">👶 Niño</option>
+            <option value="novio">💕 Novio/a</option>
+            <option value="prometido">💍 Prometido/a</option>
+            <option value="separado">💔 Separado/a</option>
+            <option value="divorciado">📄 Divorciado/a</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('modal-editar-usuario')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarRolUsuario()">Guardar</button>
+      </div>
     </div>
   </div>
 
@@ -750,7 +787,7 @@
   <script src="js/firebase-config.js"></script>
 
   <script>
-    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [];
+    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [], invitacionesData = [];
     let bienSeleccionado = null;
     let tiposReservaData = [];
     let editandoTipoId = null;
@@ -809,6 +846,13 @@
       const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
       bienesData = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+      // Cargar invitaciones pendientes
+      const invitacionesSnap = await db.collection('invitaciones')
+        .where('familiaId', '==', familiaData.id)
+        .where('estado', '==', 'pendiente')
+        .get();
+      invitacionesData = invitacionesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
       document.getElementById('stat-usuarios').textContent = usuariosData.length;
       document.getElementById('stat-nidos').textContent = nidosData.length;
       document.getElementById('stat-bienes').textContent = bienesData.length;
@@ -844,21 +888,123 @@
       document.getElementById(`section-${seccion}`).classList.add('active');
     }
 
+    const ROLES_LABELS = {
+      'adminRama': 'Admin Rama',
+      'adminNido': 'Admin Nido', 
+      'adulto': 'Adulto',
+      'nino': 'Niño',
+      'novio': 'Novio/a',
+      'prometido': 'Prometido/a',
+      'separado': 'Separado/a',
+      'divorciado': 'Divorciado/a'
+    };
+
     function renderUsuarios() {
-      document.getElementById('usuarios-tbody').innerHTML = usuariosData.map(u => {
+      // Función para obtener nidos de un usuario
+      function getNidosUsuario(userId, email) {
+        const nidosComoHijo = nidosData.filter(n => 
+          (n.hijos && n.hijos.some(h => h.userId === userId || h.email === email)) ||
+          (n.miembros && n.miembros.some(m => m.userId === userId || m.email === email))
+        );
+        const nidosComoPadre = nidosData.filter(n => 
+          n.creadorId === userId || 
+          (n.padres && n.padres.some(p => p.userId === userId || p.email === email))
+        );
+        return { comoHijo: nidosComoHijo, comoPadre: nidosComoPadre };
+      }
+
+      // Función para obtener número de miembro
+      function getNumeroMiembro(user) {
+        if (user.numeroMiembro) return user.numeroMiembro;
+        // Generar basado en orden y generación
+        const idx = usuariosData.findIndex(u => u.id === user.id);
+        return `M${String(idx + 1).padStart(3, '0')}`;
+      }
+
+      // Renderizar usuarios activos
+      let html = usuariosData.map(u => {
         const inicial = (u.nombre || u.email || '?').charAt(0).toUpperCase();
-        const nido = nidosData.find(n => n.id === u.nidoId);
-        const rolClass = u.rol === 'adminSistema' || u.rol === 'adminNido' ? 'admin' : 'miembro';
-        return `<tr class="user-row"><td><div class="user-info"><div class="user-avatar">${inicial}</div><div><div class="user-name">${u.nombre || 'Sin nombre'}</div><div class="user-email">${u.email}</div></div></div></td><td>${nido?.nombre || '—'}</td><td><span class="role-badge ${rolClass}">${u.rol || 'miembro'}</span></td><td><button class="btn btn-secondary btn-sm" onclick="editarUsuario('${u.id}')">✏️</button></td></tr>`;
+        const nidos = getNidosUsuario(u.id, u.email);
+        const numMiembro = getNumeroMiembro(u);
+        const rolClass = (u.rol === 'adminRama' || u.rol === 'adminNido') ? 'admin' : 
+                        (['novio','prometido','separado','divorciado'].includes(u.rol)) ? 'especial' : 'miembro';
+        const rolLabel = ROLES_LABELS[u.rol] || u.rol || 'Adulto';
+        
+        // Renderizar nidos
+        let nidosHtml = '';
+        if (nidos.comoPadre.length > 0) {
+          nidosHtml += nidos.comoPadre.map(n => `<span class="nido-badge">👨‍👩‍👧 ${n.nombre || 'Nido'}</span>`).join('');
+        }
+        if (nidos.comoHijo.length > 0) {
+          nidosHtml += nidos.comoHijo.map(n => `<span class="nido-badge">👶 ${n.nombre || 'Nido'}</span>`).join('');
+        }
+        if (!nidosHtml) nidosHtml = '<span style="color:var(--text-muted)">—</span>';
+
+        return `<tr class="user-row">
+          <td><strong style="font-family:'Quicksand',sans-serif;color:var(--text-muted)">${numMiembro}</strong></td>
+          <td><div class="user-info"><div class="user-avatar">${inicial}</div><div><div class="user-name">${u.nombre || 'Sin nombre'}</div><div class="user-email">${u.email}</div></div></div></td>
+          <td><div class="user-nidos">${nidosHtml}</div></td>
+          <td><span class="role-badge ${rolClass}">${rolLabel}</span></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="abrirModalEditarUsuario('${u.id}')">✏️</button></td>
+        </tr>`;
       }).join('');
+
+      // Añadir invitaciones pendientes
+      if (invitacionesData.length > 0) {
+        html += invitacionesData.map((inv, idx) => {
+          const nido = nidosData.find(n => n.id === inv.nidoId);
+          return `<tr class="user-row" style="opacity:0.7">
+            <td><strong style="font-family:'Quicksand',sans-serif;color:var(--warning)">INV${String(idx + 1).padStart(2, '0')}</strong></td>
+            <td><div class="user-info"><div class="user-avatar" style="background:#F6E05E;color:#744210">✉️</div><div><div class="user-name" style="color:var(--text-muted)">${inv.email}</div><div class="user-email">Pendiente de aceptar</div></div></div></td>
+            <td>${nido ? `<span class="nido-badge">${nido.nombre}</span>` : '—'}</td>
+            <td><span class="role-badge invitado">📩 Invitado</span></td>
+            <td><button class="btn btn-secondary btn-sm" onclick="reenviarInvitacion('${inv.id}')">📤</button><button class="btn btn-secondary btn-sm" onclick="cancelarInvitacion('${inv.id}')" style="margin-left:4px">❌</button></td>
+          </tr>`;
+        }).join('');
+      }
+
+      document.getElementById('usuarios-tbody').innerHTML = html;
     }
 
-    function editarUsuario(userId) {
+    let editandoUsuarioId = null;
+
+    function abrirModalEditarUsuario(userId) {
       const user = usuariosData.find(u => u.id === userId);
       if (!user) return;
-      const nuevoRol = prompt(`Rol actual: ${user.rol || 'miembro'}\n\nNuevo rol (adminSistema, adminNido, adulto, joven):`, user.rol || 'adulto');
-      if (!nuevoRol) return;
-      db.collection('usuarios').doc(userId).update({ rol: nuevoRol }).then(() => { alert('✅ Rol actualizado'); cargarDatos(); }).catch(err => alert('Error: ' + err.message));
+      editandoUsuarioId = userId;
+      document.getElementById('editar-usuario-nombre').textContent = user.nombre || user.email;
+      document.getElementById('editar-usuario-rol').value = user.rol || 'adulto';
+      document.getElementById('modal-editar-usuario').classList.add('active');
+    }
+
+    async function guardarRolUsuario() {
+      if (!editandoUsuarioId) return;
+      const nuevoRol = document.getElementById('editar-usuario-rol').value;
+      try {
+        await db.collection('usuarios').doc(editandoUsuarioId).update({ rol: nuevoRol });
+        cerrarModal('modal-editar-usuario');
+        await cargarDatos();
+        alert('✅ Rol actualizado');
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function reenviarInvitacion(invId) {
+      const inv = invitacionesData.find(i => i.id === invId);
+      if (!inv) return;
+      alert(`📤 Se reenviaría invitación a ${inv.email}\n(Funcionalidad de email pendiente)`);
+    }
+
+    async function cancelarInvitacion(invId) {
+      if (!confirm('¿Cancelar esta invitación?')) return;
+      try {
+        await db.collection('invitaciones').doc(invId).delete();
+        await cargarDatos();
+        alert('✅ Invitación cancelada');
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
     }
 
     // ============ MAYORDOMO ============
