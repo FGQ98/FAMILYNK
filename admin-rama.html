@@ -846,12 +846,17 @@
       const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
       bienesData = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Cargar invitaciones pendientes
-      const invitacionesSnap = await db.collection('invitaciones')
-        .where('familiaId', '==', familiaData.id)
-        .where('estado', '==', 'pendiente')
-        .get();
-      invitacionesData = invitacionesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Cargar invitaciones pendientes (try-catch por si no hay permisos)
+      try {
+        const invitacionesSnap = await db.collection('invitaciones')
+          .where('familiaId', '==', familiaData.id)
+          .where('estado', '==', 'pendiente')
+          .get();
+        invitacionesData = invitacionesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) {
+        console.log('No se pudieron cargar invitaciones:', e.message);
+        invitacionesData = [];
+      }
 
       document.getElementById('stat-usuarios').textContent = usuariosData.length;
       document.getElementById('stat-nidos').textContent = nidosData.length;
