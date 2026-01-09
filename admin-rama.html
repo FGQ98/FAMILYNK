@@ -788,6 +788,7 @@
 
   <script>
     let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [], invitacionesData = [];
+    let nidosNumerados = {}; // Cache de numeración de nidos
     let bienSeleccionado = null;
     let tiposReservaData = [];
     let editandoTipoId = null;
@@ -862,9 +863,9 @@
       document.getElementById('stat-nidos').textContent = nidosData.length;
       document.getElementById('stat-bienes').textContent = bienesData.length;
       
-      // Estirpes: contar nidos únicos de generación 1 (raíz) o sin padre
-      const nidosRaiz = nidosData.filter(n => n.generacion === 1 || n.generacion === '1' || (!n.padreId && !n.padre));
-      document.getElementById('stat-estirpes').textContent = nidosRaiz.length || 1;
+      // Estirpes: contar nidos de generación 2 (abuelos)
+      const estirpes = nidosData.filter(n => n.generacion === 2 || n.generacion === '2');
+      document.getElementById('stat-estirpes').textContent = estirpes.length || 0;
       
       // Generaciones: usar config de familia o calcular máximo
       let numGeneraciones = familiaData.numGeneraciones || 4;
@@ -876,6 +877,9 @@
       }
       document.getElementById('stat-generaciones').textContent = numGeneraciones;
 
+      // Calcular numeración jerárquica de nidos ANTES de renderizar
+      calcularNumeracionNidos();
+
       renderUsuarios();
       renderGestion();
       renderSecciones();
@@ -884,7 +888,89 @@
       renderPlanes();
       await cargarTiposReserva();
 
-      document.getElementById('invitar-nido').innerHTML = '<option value="">Sin asignar</option>' + nidosData.map(n => `<option value="${n.id}">${n.nombre}</option>`).join('');
+      document.getElementById('invitar-nido').innerHTML = '<option value="">Sin asignar</option>' + nidosData.map(n => `<option value="${n.id}">${nidosNumerados[n.id] || ''} ${n.nombre}</option>`).join('');
+    }
+
+    // ============ NUMERACIÓN JERÁRQUICA DE NIDOS ============
+    function calcularNumeracionNidos() {
+      nidosNumerados = {};
+      
+      // Agrupar nidos por generación
+      const porGeneracion = {};
+      nidosData.forEach(n => {
+        const gen = parseInt(n.generacion) || 1;
+        if (!porGeneracion[gen]) porGeneracion[gen] = [];
+        porGeneracion[gen].push(n);
+      });
+
+      // Ordenar cada generación por fecha de nacimiento del creador/padre más antiguo
+      Object.keys(porGeneracion).forEach(gen => {
+        porGeneracion[gen].sort((a, b) => {
+          const fechaA = obtenerFechaMasAntigua(a);
+          const fechaB = obtenerFechaMasAntigua(b);
+          return fechaA - fechaB;
+        });
+      });
+
+      // Generación 1 = "1"
+      if (porGeneracion[1] && porGeneracion[1].length > 0) {
+        nidosNumerados[porGeneracion[1][0].id] = '1';
+      }
+
+      // Generación 2+ = basado en padre + orden
+      for (let gen = 2; gen <= 4; gen++) {
+        if (!porGeneracion[gen]) continue;
+        
+        // Agrupar por padre
+        const porPadre = {};
+        porGeneracion[gen].forEach(nido => {
+          const padreId = nido.padreId || nido.padre || 'root';
+          if (!porPadre[padreId]) porPadre[padreId] = [];
+          porPadre[padreId].push(nido);
+        });
+
+        // Numerar cada grupo
+        Object.keys(porPadre).forEach(padreId => {
+          const hijos = porPadre[padreId];
+          // Ordenar hijos por edad
+          hijos.sort((a, b) => {
+            const fechaA = obtenerFechaMasAntigua(a);
+            const fechaB = obtenerFechaMasAntigua(b);
+            return fechaA - fechaB;
+          });
+
+          const prefijo = nidosNumerados[padreId] || '1';
+          hijos.forEach((nido, idx) => {
+            nidosNumerados[nido.id] = `${prefijo}.${idx + 1}`;
+          });
+        });
+      }
+    }
+
+    function obtenerFechaMasAntigua(nido) {
+      let fechaMasAntigua = new Date('2100-01-01');
+      
+      // Buscar en padres del nido
+      if (nido.padres && nido.padres.length > 0) {
+        nido.padres.forEach(p => {
+          const usuario = usuariosData.find(u => u.id === p.userId || u.email === p.email);
+          if (usuario && usuario.fechaNacimiento) {
+            const fecha = new Date(usuario.fechaNacimiento);
+            if (fecha < fechaMasAntigua) fechaMasAntigua = fecha;
+          }
+        });
+      }
+      
+      // Buscar creador
+      if (nido.creadorId) {
+        const creador = usuariosData.find(u => u.id === nido.creadorId);
+        if (creador && creador.fechaNacimiento) {
+          const fecha = new Date(creador.fechaNacimiento);
+          if (fecha < fechaMasAntigua) fechaMasAntigua = fecha;
+        }
+      }
+
+      return fechaMasAntigua;
     }
 
     function cambiarSeccion(seccion) {
@@ -905,6 +991,13 @@
     };
 
     function renderUsuarios() {
+      // Ordenar usuarios por edad (fecha de nacimiento, más antiguos primero)
+      const usuariosOrdenados = [...usuariosData].sort((a, b) => {
+        const fechaA = a.fechaNacimiento ? new Date(a.fechaNacimiento) : new Date('2100-01-01');
+        const fechaB = b.fechaNacimiento ? new Date(b.fechaNacimiento) : new Date('2100-01-01');
+        return fechaA - fechaB;
+      });
+
       // Función para obtener nidos de un usuario
       function getNidosUsuario(userId, email) {
         const nidosComoHijo = nidosData.filter(n => 
@@ -918,32 +1011,33 @@
         return { comoHijo: nidosComoHijo, comoPadre: nidosComoPadre };
       }
 
-      // Función para obtener número de miembro
-      function getNumeroMiembro(user) {
-        if (user.numeroMiembro) return user.numeroMiembro;
-        // Generar basado en orden y generación
-        const idx = usuariosData.findIndex(u => u.id === user.id);
-        return `M${String(idx + 1).padStart(3, '0')}`;
-      }
-
-      // Renderizar usuarios activos
-      let html = usuariosData.map(u => {
+      // Renderizar usuarios activos ordenados por edad
+      let html = usuariosOrdenados.map((u, idx) => {
         const inicial = (u.nombre || u.email || '?').charAt(0).toUpperCase();
         const nidos = getNidosUsuario(u.id, u.email);
-        const numMiembro = getNumeroMiembro(u);
+        const numMiembro = `M${String(idx + 1).padStart(3, '0')}`;
         const rolClass = (u.rol === 'adminRama' || u.rol === 'adminNido') ? 'admin' : 
                         (['novio','prometido','separado','divorciado'].includes(u.rol)) ? 'especial' : 'miembro';
         const rolLabel = ROLES_LABELS[u.rol] || u.rol || 'Adulto';
         
-        // Renderizar nidos
+        // Obtener códigos de nido (máximo 2)
+        let todosNidos = [];
+        nidos.comoPadre.forEach(n => todosNidos.push({ nido: n, tipo: '👨‍👩‍👧' }));
+        nidos.comoHijo.forEach(n => todosNidos.push({ nido: n, tipo: '👶' }));
+        
+        // Limitar a 2 y mostrar código numérico
         let nidosHtml = '';
-        if (nidos.comoPadre.length > 0) {
-          nidosHtml += nidos.comoPadre.map(n => `<span class="nido-badge">👨‍👩‍👧 ${n.nombre || 'Nido'}</span>`).join('');
+        if (todosNidos.length > 0) {
+          nidosHtml = todosNidos.slice(0, 2).map(item => {
+            const codigo = nidosNumerados[item.nido.id] || '?';
+            return `<span class="nido-badge" title="${item.nido.nombre || 'Nido'}">${item.tipo} ${codigo}</span>`;
+          }).join('');
+          if (todosNidos.length > 2) {
+            nidosHtml += `<span class="nido-badge" style="background:var(--text-muted);color:white">+${todosNidos.length - 2}</span>`;
+          }
+        } else {
+          nidosHtml = '<span style="color:var(--text-muted)">—</span>';
         }
-        if (nidos.comoHijo.length > 0) {
-          nidosHtml += nidos.comoHijo.map(n => `<span class="nido-badge">👶 ${n.nombre || 'Nido'}</span>`).join('');
-        }
-        if (!nidosHtml) nidosHtml = '<span style="color:var(--text-muted)">—</span>';
 
         return `<tr class="user-row">
           <td><strong style="font-family:'Quicksand',sans-serif;color:var(--text-muted)">${numMiembro}</strong></td>
