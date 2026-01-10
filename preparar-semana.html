@@ -19,7 +19,7 @@
       --mayordomo: #8B7355; --mayordomo-muted: rgba(139, 115, 85, 0.15);
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; padding-bottom: 100px; }
 
     .header {
       background: var(--white);
@@ -90,20 +90,6 @@
     .estado-preparado { background: var(--sage-muted); color: var(--sage-dark); }
     .estado-enviado { background: var(--mayordomo-muted); color: var(--mayordomo); }
 
-    /* Alerta deadline */
-    .deadline-alert {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      background: var(--warning);
-      color: var(--white);
-      border-radius: var(--radius-md);
-      margin-bottom: 20px;
-      font-size: 0.9rem;
-    }
-    .deadline-alert.pasado { background: var(--error); }
-
     /* Secciones */
     .seccion {
       background: var(--white);
@@ -137,7 +123,46 @@
     }
     .seccion-body { padding: 20px; }
 
-    /* Items de tarea/nota */
+    /* Checkbox habitaciones */
+    .habitacion-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .habitacion-check {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .habitacion-check:hover { border-color: var(--sage-muted); }
+    .habitacion-check.selected { border-color: var(--sage); background: var(--sage-muted); }
+    .habitacion-check input { width: 18px; height: 18px; accent-color: var(--sage); }
+    .habitacion-check-label { font-weight: 600; font-size: 0.9rem; }
+    .habitacion-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
+
+    /* Toggle cambiar menú */
+    .menu-toggle {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+    .menu-toggle input { width: 18px; height: 18px; accent-color: var(--sage); }
+    .menu-toggle-label { font-weight: 600; font-size: 0.9rem; }
+    .menu-cambio { margin-top: 12px; }
+    .menu-cambio.hidden { display: none; }
+
+    /* Items lista (menaje, compras, tareas) */
     .item-card {
       display: flex;
       align-items: flex-start;
@@ -148,8 +173,8 @@
       margin-bottom: 10px;
       border-left: 3px solid var(--sage);
     }
-    .item-card.evento { border-left-color: var(--terracotta); }
-    .item-card.mensaje { border-left-color: var(--mayordomo); }
+    .item-card.compra { border-left-color: var(--terracotta); }
+    .item-card.tarea { border-left-color: var(--mayordomo); }
     .item-icon { font-size: 1.2rem; }
     .item-content { flex: 1; }
     .item-titulo { font-weight: 600; font-size: 0.9rem; }
@@ -185,6 +210,21 @@
       cursor: pointer;
     }
     .add-btn:hover { border-color: var(--sage); color: var(--sage); background: var(--sage-muted); }
+
+    /* Notas textarea */
+    .notas-textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+      resize: vertical;
+    }
+    .notas-textarea:focus { outline: none; border-color: var(--sage); }
+
+    .empty-state { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
 
     /* Footer acciones */
     .footer-actions {
@@ -243,12 +283,11 @@
     .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
     .form-textarea { resize: vertical; min-height: 80px; }
 
-    .empty-state { text-align: center; padding: 30px; color: var(--text-muted); }
-
     @media (max-width: 600px) {
-      .main { padding: 16px; padding-bottom: 100px; }
+      .main { padding: 16px; }
       .form-row { grid-template-columns: 1fr; }
       .semana-nav { flex-wrap: wrap; }
+      .habitacion-grid { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
@@ -278,32 +317,79 @@
         <button class="semana-nav-btn" id="btn-semana-siguiente" onclick="cambiarSemana(1)">▶</button>
       </div>
 
-      <!-- Alerta deadline -->
-      <div class="deadline-alert hidden" id="deadline-alert">
-        <span>⏰</span>
-        <span id="deadline-texto">Recuerda: Esta preparación debe estar lista el martes por la noche</span>
-      </div>
-
-      <!-- Sección: Eventos/Llegadas -->
+      <!-- 1. Habitaciones a preparar -->
       <div class="seccion">
-        <div class="seccion-header" onclick="toggleSeccion('eventos')">
+        <div class="seccion-header" onclick="toggleSeccion('habitaciones')">
           <div class="seccion-titulo">
-            <span>📅</span> Eventos y llegadas
-            <span class="seccion-count" id="count-eventos">0</span>
+            <span>🛏️</span> Habitaciones a preparar
+            <span class="seccion-count" id="count-habitaciones">0</span>
           </div>
           <span class="seccion-toggle">▼</span>
         </div>
-        <div class="seccion-body" id="body-eventos">
-          <div id="lista-eventos"></div>
-          <button class="add-btn" onclick="abrirModalEvento()">+ Añadir evento</button>
+        <div class="seccion-body" id="body-habitaciones">
+          <div class="habitacion-grid" id="habitaciones-grid">
+            <!-- Habitaciones dinámicas -->
+          </div>
         </div>
       </div>
 
-      <!-- Sección: Tareas extra -->
+      <!-- 2. Cambiar menú -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('menu')">
+          <div class="seccion-titulo">
+            <span>🍽️</span> Cambiar menú
+          </div>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body" id="body-menu">
+          <label class="menu-toggle">
+            <input type="checkbox" id="menu-cambiar" onchange="toggleCambioMenu()">
+            <span class="menu-toggle-label">Quiero cambiar el menú programado</span>
+          </label>
+          <div class="menu-cambio hidden" id="menu-cambio-container">
+            <div class="form-group">
+              <label class="form-label">Describe el menú deseado</label>
+              <textarea class="form-textarea" id="menu-descripcion" placeholder="Ej: Preferimos pescado en lugar de carne, postre sin lactosa..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Menaje especial -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('menaje')">
+          <div class="seccion-titulo">
+            <span>🍷</span> Menaje especial
+            <span class="seccion-count" id="count-menaje">0</span>
+          </div>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body" id="body-menaje">
+          <div id="lista-menaje"></div>
+          <button class="add-btn" onclick="abrirModalMenaje()">+ Añadir menaje</button>
+        </div>
+      </div>
+
+      <!-- 4. Compras y encargos especiales -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('compras')">
+          <div class="seccion-titulo">
+            <span>🛒</span> Compras y encargos especiales
+            <span class="seccion-count" id="count-compras">0</span>
+          </div>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body" id="body-compras">
+          <div id="lista-compras"></div>
+          <button class="add-btn" onclick="abrirModalCompra()">+ Añadir compra/encargo</button>
+        </div>
+      </div>
+
+      <!-- 5. Otras tareas no programadas -->
       <div class="seccion">
         <div class="seccion-header" onclick="toggleSeccion('tareas')">
           <div class="seccion-titulo">
-            <span>✅</span> Tareas extra
+            <span>✅</span> Otras tareas no programadas
             <span class="seccion-count" id="count-tareas">0</span>
           </div>
           <span class="seccion-toggle">▼</span>
@@ -314,18 +400,16 @@
         </div>
       </div>
 
-      <!-- Sección: Mensajes/Notas -->
+      <!-- 6. Notas -->
       <div class="seccion">
-        <div class="seccion-header" onclick="toggleSeccion('mensajes')">
+        <div class="seccion-header" onclick="toggleSeccion('notas')">
           <div class="seccion-titulo">
-            <span>💬</span> Notas para el externo
-            <span class="seccion-count" id="count-mensajes">0</span>
+            <span>📝</span> Notas
           </div>
           <span class="seccion-toggle">▼</span>
         </div>
-        <div class="seccion-body" id="body-mensajes">
-          <div id="lista-mensajes"></div>
-          <button class="add-btn" onclick="abrirModalMensaje()">+ Añadir nota</button>
+        <div class="seccion-body" id="body-notas">
+          <textarea class="notas-textarea" id="notas-general" placeholder="Cualquier otra información relevante para esta semana..."></textarea>
         </div>
       </div>
     </div>
@@ -336,50 +420,65 @@
     <button class="btn btn-mayordomo" onclick="enviarPreparacion()">📤 Enviar al externo</button>
   </div>
 
-  <!-- Modal Evento -->
-  <div class="modal-overlay" id="modal-evento">
+  <!-- Modal Menaje -->
+  <div class="modal-overlay" id="modal-menaje">
     <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title" id="modal-evento-titulo">📅 Nuevo evento</h3>
+        <h3 class="modal-title" id="modal-menaje-titulo">🍷 Añadir menaje</h3>
         <button class="modal-close" onclick="cerrarModales()">×</button>
       </div>
-      <form id="form-evento">
+      <form id="form-menaje">
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Título *</label>
-            <input type="text" class="form-input" id="evento-titulo" placeholder="Ej: Check-in familia García" required>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Día</label>
-              <select class="form-select" id="evento-dia">
-                <option value="1">Lunes</option>
-                <option value="2">Martes</option>
-                <option value="3">Miércoles</option>
-                <option value="4">Jueves</option>
-                <option value="5">Viernes</option>
-                <option value="6">Sábado</option>
-                <option value="0">Domingo</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Hora</label>
-              <input type="time" class="form-input" id="evento-hora" value="12:00">
-            </div>
+            <label class="form-label">Artículo *</label>
+            <input type="text" class="form-input" id="menaje-articulo" placeholder="Ej: Copas de vino, Mantel especial..." required>
           </div>
           <div class="form-group">
-            <label class="form-label">Tipo</label>
-            <select class="form-select" id="evento-tipo">
-              <option value="checkin">🛬 Check-in</option>
-              <option value="checkout">🛫 Check-out</option>
-              <option value="visita">👥 Visita</option>
-              <option value="entrega">📦 Entrega</option>
-              <option value="otro">📌 Otro</option>
-            </select>
+            <label class="form-label">Cantidad</label>
+            <input type="number" class="form-input" id="menaje-cantidad" value="1" min="1">
           </div>
           <div class="form-group">
             <label class="form-label">Notas</label>
-            <textarea class="form-textarea" id="evento-notas" placeholder="Detalles adicionales..."></textarea>
+            <textarea class="form-textarea" id="menaje-notas" placeholder="Detalles adicionales..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Compra -->
+  <div class="modal-overlay" id="modal-compra">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-compra-titulo">🛒 Añadir compra/encargo</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-compra">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Artículo o encargo *</label>
+            <input type="text" class="form-input" id="compra-articulo" placeholder="Ej: Flores frescas, Vino reserva..." required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Cantidad</label>
+              <input type="text" class="form-input" id="compra-cantidad" placeholder="Ej: 2, 1kg...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Urgencia</label>
+              <select class="form-select" id="compra-urgencia">
+                <option value="normal">Normal</option>
+                <option value="urgente">⚠️ Urgente</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-textarea" id="compra-notas" placeholder="Detalles, dónde comprarlo..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -401,83 +500,30 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Tarea *</label>
-            <input type="text" class="form-input" id="tarea-titulo" placeholder="Ej: Revisar caldera antes del miércoles" required>
+            <input type="text" class="form-input" id="tarea-titulo" placeholder="Ej: Revisar caldera, Podar seto..." required>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Día límite</label>
+              <label class="form-label">Día preferente</label>
               <select class="form-select" id="tarea-dia">
-                <option value="">Sin día específico</option>
-                <option value="1">Lunes</option>
-                <option value="2">Martes</option>
-                <option value="3">Miércoles</option>
-                <option value="4">Jueves</option>
-                <option value="5">Viernes</option>
-                <option value="6">Sábado</option>
-                <option value="0">Domingo</option>
+                <option value="">Sin preferencia</option>
+                <option value="antes">Antes de la llegada</option>
+                <option value="durante">Durante la estancia</option>
+                <option value="despues">Después de la salida</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Tiempo estimado</label>
-              <select class="form-select" id="tarea-tiempo">
-                <option value="15">15 min</option>
-                <option value="30">30 min</option>
-                <option value="60">1 hora</option>
-                <option value="120">2 horas</option>
-                <option value="0">Variable</option>
+              <label class="form-label">Prioridad</label>
+              <select class="form-select" id="tarea-prioridad">
+                <option value="normal">Normal</option>
+                <option value="alta">⚠️ Alta</option>
+                <option value="urgente">🔴 Urgente</option>
               </select>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Prioridad</label>
-            <select class="form-select" id="tarea-prioridad">
-              <option value="normal">Normal</option>
-              <option value="alta">⚠️ Alta</option>
-              <option value="urgente">🔴 Urgente</option>
-            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Notas</label>
             <textarea class="form-textarea" id="tarea-notas" placeholder="Instrucciones adicionales..."></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Guardar</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Modal Mensaje -->
-  <div class="modal-overlay" id="modal-mensaje">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 class="modal-title">💬 Nueva nota</h3>
-        <button class="modal-close" onclick="cerrarModales()">×</button>
-      </div>
-      <form id="form-mensaje">
-        <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Destinatario *</label>
-            <select class="form-select" id="mensaje-destinatario" required>
-              <option value="todos">👥 Todos los externos</option>
-              <option value="casero">🏠 Solo Casero</option>
-              <option value="hoster">🏨 Solo Hoster</option>
-              <option value="guarda">🌿 Solo Guarda</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Mensaje *</label>
-            <textarea class="form-textarea" id="mensaje-texto" rows="4" placeholder="Información importante..." required></textarea>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Tipo</label>
-            <select class="form-select" id="mensaje-tipo">
-              <option value="info">ℹ️ Información</option>
-              <option value="recordatorio">🔔 Recordatorio</option>
-              <option value="importante">⚠️ Importante</option>
-            </select>
           </div>
         </div>
         <div class="modal-footer">
@@ -497,18 +543,25 @@
     let currentUser = null;
     let bienId = null;
     let bienData = null;
-    let semanaActual = null; // Fecha del lunes de la semana
-    let preparacionData = { eventos: [], tareas: [], mensajes: [], estado: 'pendiente' };
+    let habitacionesData = [];
+    let semanaActual = null;
+    let preparacionData = {
+      habitaciones: [],      // IDs de habitaciones seleccionadas
+      cambiarMenu: false,
+      menuDescripcion: '',
+      menaje: [],            // {articulo, cantidad, notas}
+      compras: [],           // {articulo, cantidad, urgencia, notas}
+      tareas: [],            // {titulo, dia, prioridad, notas}
+      notas: '',
+      estado: 'pendiente'
+    };
     let editingIdx = null;
+    let editingType = null;
 
-    const diasLabels = { '0': 'Domingo', '1': 'Lunes', '2': 'Martes', '3': 'Miércoles', '4': 'Jueves', '5': 'Viernes', '6': 'Sábado' };
-    const diasCortos = { '0': 'Dom', '1': 'Lun', '2': 'Mar', '3': 'Mié', '4': 'Jue', '5': 'Vie', '6': 'Sáb' };
-    const tipoEventoIcons = { checkin: '🛬', checkout: '🛫', visita: '👥', entrega: '📦', otro: '📌' };
-    const tipoMensajeIcons = { info: 'ℹ️', recordatorio: '🔔', importante: '⚠️' };
+    const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
     const urlParams = new URLSearchParams(window.location.search);
     bienId = urlParams.get('id');
-    const origen = urlParams.get('origen') || 'bien';
     document.getElementById('btn-volver').href = `bien.html?id=${bienId}`;
 
     if (!bienId) window.location.href = 'lo-comun.html';
@@ -526,7 +579,9 @@
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
-        // Iniciar en la semana actual (próximo lunes si ya pasó el martes)
+        // Cargar habitaciones del bien
+        await cargarHabitaciones();
+        
         inicializarSemana();
         await cargarPreparacion();
 
@@ -538,81 +593,63 @@
       }
     }
 
+    async function cargarHabitaciones() {
+      // Intentar cargar de subcolección habitaciones o del array en bienData
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
+        if (!snap.empty) {
+          habitacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } else if (bienData.habitaciones && Array.isArray(bienData.habitaciones)) {
+          habitacionesData = bienData.habitaciones.map((h, i) => ({
+            id: h.id || `hab-${i}`,
+            nombre: h.nombre || h,
+            tipo: h.tipo || 'dormitorio'
+          }));
+        } else {
+          // Habitaciones por defecto
+          habitacionesData = [
+            { id: 'hab-1', nombre: 'Habitación 1', tipo: 'dormitorio' },
+            { id: 'hab-2', nombre: 'Habitación 2', tipo: 'dormitorio' },
+            { id: 'hab-3', nombre: 'Habitación 3', tipo: 'dormitorio' }
+          ];
+        }
+      } catch (e) {
+        console.error('Error cargando habitaciones:', e);
+        habitacionesData = [];
+      }
+    }
+
     function inicializarSemana() {
       const hoy = new Date();
       const diaHoy = hoy.getDay();
-      
-      // Calcular el lunes de esta semana
       const lunes = new Date(hoy);
       const diff = diaHoy === 0 ? -6 : 1 - diaHoy;
       lunes.setDate(hoy.getDate() + diff);
       lunes.setHours(0, 0, 0, 0);
-      
-      // Si ya es miércoles o después, mostrar la semana siguiente por defecto
-      if (diaHoy >= 3) {
-        lunes.setDate(lunes.getDate() + 7);
-      }
-      
       semanaActual = lunes;
       actualizarVisualizacionSemana();
     }
 
-    function getSemanaKey() {
-      return semanaActual.toISOString().split('T')[0];
-    }
-
     function actualizarVisualizacionSemana() {
-      const lunes = new Date(semanaActual);
-      const domingo = new Date(lunes);
+      const domingo = new Date(semanaActual);
       domingo.setDate(domingo.getDate() + 6);
-
-      const numSemana = getNumeroSemana(lunes);
+      
+      const numSemana = getNumeroSemana(semanaActual);
       document.getElementById('semana-titulo').textContent = `Semana ${numSemana}`;
       document.getElementById('semana-fechas').textContent = 
-        `${formatFecha(lunes)} → ${formatFecha(domingo)}`;
-
-      // Comprobar deadline (martes noche)
-      const hoy = new Date();
-      const martes = new Date(lunes);
-      martes.setDate(martes.getDate() + 1);
-      martes.setHours(23, 59, 59);
-
-      const alertEl = document.getElementById('deadline-alert');
-      if (hoy > martes && preparacionData.estado === 'pendiente') {
-        alertEl.classList.remove('hidden');
-        alertEl.classList.add('pasado');
-        document.getElementById('deadline-texto').textContent = '⚠️ El plazo de preparación ha pasado';
-      } else if (hoy <= martes && hoy >= lunes) {
-        alertEl.classList.remove('hidden', 'pasado');
-        document.getElementById('deadline-texto').textContent = 'Recuerda: Esta preparación debe estar lista el martes por la noche';
-      } else {
-        alertEl.classList.add('hidden');
-      }
-
-      // Deshabilitar navegación hacia atrás si es semana pasada
-      const hoyLunes = new Date();
-      hoyLunes.setDate(hoyLunes.getDate() - (hoyLunes.getDay() === 0 ? 6 : hoyLunes.getDay() - 1));
-      hoyLunes.setHours(0, 0, 0, 0);
-      document.getElementById('btn-semana-anterior').disabled = semanaActual <= hoyLunes;
+        `Lun ${semanaActual.getDate()} ${mesesCortos[semanaActual.getMonth()]} → Dom ${domingo.getDate()} ${mesesCortos[domingo.getMonth()]}`;
+      
+      actualizarEstado();
     }
 
     function getNumeroSemana(fecha) {
       const inicio = new Date(fecha.getFullYear(), 0, 1);
       const dias = Math.floor((fecha - inicio) / (24 * 60 * 60 * 1000));
-      return Math.ceil((dias + inicio.getDay() + 1) / 7);
+      return Math.ceil((fecha.getDay() + 1 + dias) / 7);
     }
 
-    function formatFecha(fecha) {
-      return fecha.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
-    }
-
-    async function cambiarSemana(direccion) {
-      // Guardar antes de cambiar
-      await guardarBorrador(true);
-      
-      semanaActual.setDate(semanaActual.getDate() + (direccion * 7));
-      actualizarVisualizacionSemana();
-      await cargarPreparacion();
+    function getSemanaKey() {
+      return `${semanaActual.getFullYear()}-W${String(getNumeroSemana(semanaActual)).padStart(2, '0')}`;
     }
 
     async function cargarPreparacion() {
@@ -622,105 +659,226 @@
           .collection('preparacionSemanal').doc(semanaKey).get();
         
         if (doc.exists) {
-          preparacionData = doc.data();
+          const data = doc.data();
+          preparacionData = {
+            habitaciones: data.habitaciones || [],
+            cambiarMenu: data.cambiarMenu || false,
+            menuDescripcion: data.menuDescripcion || '',
+            menaje: data.menaje || [],
+            compras: data.compras || [],
+            tareas: data.tareas || [],
+            notas: data.notas || '',
+            estado: data.estado || 'pendiente'
+          };
         } else {
-          preparacionData = { eventos: [], tareas: [], mensajes: [], estado: 'pendiente' };
+          preparacionData = {
+            habitaciones: [],
+            cambiarMenu: false,
+            menuDescripcion: '',
+            menaje: [],
+            compras: [],
+            tareas: [],
+            notas: '',
+            estado: 'pendiente'
+          };
         }
-        
-        actualizarEstado();
-        renderEventos();
-        renderTareas();
-        renderMensajes();
       } catch (e) {
-        console.error(e);
-        preparacionData = { eventos: [], tareas: [], mensajes: [], estado: 'pendiente' };
+        console.error('Error cargando preparación:', e);
       }
+
+      renderAll();
     }
 
-    function actualizarEstado() {
-      const estadoEl = document.getElementById('semana-estado');
-      estadoEl.className = 'semana-estado';
-      
-      if (preparacionData.estado === 'enviado') {
-        estadoEl.classList.add('estado-enviado');
-        estadoEl.textContent = '✅ Enviado';
-      } else if (preparacionData.eventos.length > 0 || preparacionData.tareas.length > 0 || preparacionData.mensajes.length > 0) {
-        estadoEl.classList.add('estado-preparado');
-        estadoEl.textContent = '📝 Borrador';
-        preparacionData.estado = 'borrador';
-      } else {
-        estadoEl.classList.add('estado-pendiente');
-        estadoEl.textContent = '⏳ Pendiente';
-      }
+    function renderAll() {
+      renderHabitaciones();
+      renderMenu();
+      renderMenaje();
+      renderCompras();
+      renderTareas();
+      renderNotas();
+      actualizarEstado();
     }
 
-    // ========== EVENTOS ==========
-    function renderEventos() {
-      const container = document.getElementById('lista-eventos');
-      document.getElementById('count-eventos').textContent = preparacionData.eventos.length;
+    // ========== HABITACIONES ==========
+    function renderHabitaciones() {
+      const container = document.getElementById('habitaciones-grid');
+      const count = preparacionData.habitaciones.length;
+      document.getElementById('count-habitaciones').textContent = count;
 
-      if (preparacionData.eventos.length === 0) {
-        container.innerHTML = '<div class="empty-state">Sin eventos programados</div>';
+      if (habitacionesData.length === 0) {
+        container.innerHTML = '<div class="habitacion-empty">No hay habitaciones configuradas</div>';
         return;
       }
 
-      container.innerHTML = preparacionData.eventos.map((e, idx) => `
-        <div class="item-card evento">
-          <span class="item-icon">${tipoEventoIcons[e.tipo] || '📌'}</span>
+      container.innerHTML = habitacionesData.map(h => {
+        const selected = preparacionData.habitaciones.includes(h.id);
+        return `
+          <label class="habitacion-check ${selected ? 'selected' : ''}" onclick="toggleHabitacion('${h.id}', event)">
+            <input type="checkbox" ${selected ? 'checked' : ''}>
+            <span class="habitacion-check-label">🛏️ ${h.nombre}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function toggleHabitacion(id, e) {
+      e.preventDefault();
+      const idx = preparacionData.habitaciones.indexOf(id);
+      if (idx >= 0) {
+        preparacionData.habitaciones.splice(idx, 1);
+      } else {
+        preparacionData.habitaciones.push(id);
+      }
+      renderHabitaciones();
+      actualizarEstado();
+    }
+
+    // ========== MENÚ ==========
+    function renderMenu() {
+      document.getElementById('menu-cambiar').checked = preparacionData.cambiarMenu;
+      document.getElementById('menu-descripcion').value = preparacionData.menuDescripcion;
+      toggleCambioMenu();
+    }
+
+    function toggleCambioMenu() {
+      const cambiar = document.getElementById('menu-cambiar').checked;
+      preparacionData.cambiarMenu = cambiar;
+      document.getElementById('menu-cambio-container').classList.toggle('hidden', !cambiar);
+    }
+
+    // ========== MENAJE ==========
+    function renderMenaje() {
+      const container = document.getElementById('lista-menaje');
+      document.getElementById('count-menaje').textContent = preparacionData.menaje.length;
+
+      if (preparacionData.menaje.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin menaje especial</div>';
+        return;
+      }
+
+      container.innerHTML = preparacionData.menaje.map((m, idx) => `
+        <div class="item-card">
+          <span class="item-icon">🍷</span>
           <div class="item-content">
-            <div class="item-titulo">${e.titulo}</div>
-            <div class="item-meta">${diasLabels[e.dia]} ${e.hora || ''}</div>
-            ${e.notas ? `<div class="item-descripcion">${e.notas}</div>` : ''}
+            <div class="item-titulo">${m.articulo}</div>
+            <div class="item-meta">Cantidad: ${m.cantidad || 1}</div>
+            ${m.notas ? `<div class="item-descripcion">${m.notas}</div>` : ''}
           </div>
           <div class="item-actions">
-            <button class="item-btn" onclick="editarEvento(${idx})">✏️</button>
-            <button class="item-btn delete" onclick="eliminarEvento(${idx})">🗑️</button>
+            <button class="item-btn" onclick="editarMenaje(${idx})">✏️</button>
+            <button class="item-btn delete" onclick="eliminarMenaje(${idx})">🗑️</button>
           </div>
         </div>
       `).join('');
     }
 
-    function abrirModalEvento(idx = null) {
+    function abrirModalMenaje(idx = null) {
       editingIdx = idx;
-      const e = idx !== null ? preparacionData.eventos[idx] : null;
+      editingType = 'menaje';
+      const m = idx !== null ? preparacionData.menaje[idx] : null;
       
-      document.getElementById('modal-evento-titulo').textContent = e ? '✏️ Editar evento' : '📅 Nuevo evento';
-      document.getElementById('evento-titulo').value = e?.titulo || '';
-      document.getElementById('evento-dia').value = e?.dia || '1';
-      document.getElementById('evento-hora').value = e?.hora || '12:00';
-      document.getElementById('evento-tipo').value = e?.tipo || 'otro';
-      document.getElementById('evento-notas').value = e?.notas || '';
+      document.getElementById('modal-menaje-titulo').textContent = m ? '✏️ Editar menaje' : '🍷 Añadir menaje';
+      document.getElementById('menaje-articulo').value = m?.articulo || '';
+      document.getElementById('menaje-cantidad').value = m?.cantidad || 1;
+      document.getElementById('menaje-notas').value = m?.notas || '';
       
-      document.getElementById('modal-evento').classList.add('active');
+      document.getElementById('modal-menaje').classList.add('active');
     }
 
-    function editarEvento(idx) { abrirModalEvento(idx); }
+    function editarMenaje(idx) { abrirModalMenaje(idx); }
 
-    function eliminarEvento(idx) {
-      if (!confirm('¿Eliminar este evento?')) return;
-      preparacionData.eventos.splice(idx, 1);
-      renderEventos();
+    function eliminarMenaje(idx) {
+      if (!confirm('¿Eliminar este menaje?')) return;
+      preparacionData.menaje.splice(idx, 1);
+      renderMenaje();
       actualizarEstado();
     }
 
-    document.getElementById('form-evento').addEventListener('submit', (e) => {
+    document.getElementById('form-menaje').addEventListener('submit', (e) => {
       e.preventDefault();
       const data = {
-        titulo: document.getElementById('evento-titulo').value,
-        dia: document.getElementById('evento-dia').value,
-        hora: document.getElementById('evento-hora').value,
-        tipo: document.getElementById('evento-tipo').value,
-        notas: document.getElementById('evento-notas').value
+        articulo: document.getElementById('menaje-articulo').value,
+        cantidad: parseInt(document.getElementById('menaje-cantidad').value) || 1,
+        notas: document.getElementById('menaje-notas').value
       };
 
       if (editingIdx !== null) {
-        preparacionData.eventos[editingIdx] = data;
+        preparacionData.menaje[editingIdx] = data;
       } else {
-        preparacionData.eventos.push(data);
+        preparacionData.menaje.push(data);
       }
 
       cerrarModales();
-      renderEventos();
+      renderMenaje();
+      actualizarEstado();
+    });
+
+    // ========== COMPRAS ==========
+    function renderCompras() {
+      const container = document.getElementById('lista-compras');
+      document.getElementById('count-compras').textContent = preparacionData.compras.length;
+
+      if (preparacionData.compras.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin compras ni encargos</div>';
+        return;
+      }
+
+      container.innerHTML = preparacionData.compras.map((c, idx) => `
+        <div class="item-card compra">
+          <span class="item-icon">${c.urgencia === 'urgente' ? '⚠️' : '🛒'}</span>
+          <div class="item-content">
+            <div class="item-titulo">${c.articulo}</div>
+            <div class="item-meta">${c.cantidad ? `Cantidad: ${c.cantidad}` : ''} ${c.urgencia === 'urgente' ? '• URGENTE' : ''}</div>
+            ${c.notas ? `<div class="item-descripcion">${c.notas}</div>` : ''}
+          </div>
+          <div class="item-actions">
+            <button class="item-btn" onclick="editarCompra(${idx})">✏️</button>
+            <button class="item-btn delete" onclick="eliminarCompra(${idx})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function abrirModalCompra(idx = null) {
+      editingIdx = idx;
+      editingType = 'compra';
+      const c = idx !== null ? preparacionData.compras[idx] : null;
+      
+      document.getElementById('modal-compra-titulo').textContent = c ? '✏️ Editar compra' : '🛒 Añadir compra/encargo';
+      document.getElementById('compra-articulo').value = c?.articulo || '';
+      document.getElementById('compra-cantidad').value = c?.cantidad || '';
+      document.getElementById('compra-urgencia').value = c?.urgencia || 'normal';
+      document.getElementById('compra-notas').value = c?.notas || '';
+      
+      document.getElementById('modal-compra').classList.add('active');
+    }
+
+    function editarCompra(idx) { abrirModalCompra(idx); }
+
+    function eliminarCompra(idx) {
+      if (!confirm('¿Eliminar esta compra?')) return;
+      preparacionData.compras.splice(idx, 1);
+      renderCompras();
+      actualizarEstado();
+    }
+
+    document.getElementById('form-compra').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = {
+        articulo: document.getElementById('compra-articulo').value,
+        cantidad: document.getElementById('compra-cantidad').value,
+        urgencia: document.getElementById('compra-urgencia').value,
+        notas: document.getElementById('compra-notas').value
+      };
+
+      if (editingIdx !== null) {
+        preparacionData.compras[editingIdx] = data;
+      } else {
+        preparacionData.compras.push(data);
+      }
+
+      cerrarModales();
+      renderCompras();
       actualizarEstado();
     });
 
@@ -730,18 +888,20 @@
       document.getElementById('count-tareas').textContent = preparacionData.tareas.length;
 
       if (preparacionData.tareas.length === 0) {
-        container.innerHTML = '<div class="empty-state">Sin tareas extra</div>';
+        container.innerHTML = '<div class="empty-state">Sin tareas adicionales</div>';
         return;
       }
 
+      const diaLabels = { antes: 'Antes de llegada', durante: 'Durante estancia', despues: 'Después de salida' };
+
       container.innerHTML = preparacionData.tareas.map((t, idx) => {
-        const prioClass = t.prioridad === 'urgente' ? 'color:var(--error)' : t.prioridad === 'alta' ? 'color:var(--warning)' : '';
+        const prioIcon = t.prioridad === 'urgente' ? '🔴 ' : t.prioridad === 'alta' ? '⚠️ ' : '';
         return `
-          <div class="item-card">
+          <div class="item-card tarea">
             <span class="item-icon">✅</span>
             <div class="item-content">
-              <div class="item-titulo" style="${prioClass}">${t.prioridad === 'urgente' ? '🔴 ' : t.prioridad === 'alta' ? '⚠️ ' : ''}${t.titulo}</div>
-              <div class="item-meta">${t.dia ? diasLabels[t.dia] : 'Sin día'} · ${t.tiempo > 0 ? t.tiempo + ' min' : 'Variable'}</div>
+              <div class="item-titulo">${prioIcon}${t.titulo}</div>
+              <div class="item-meta">${t.dia ? diaLabels[t.dia] || t.dia : 'Sin preferencia'}</div>
               ${t.notas ? `<div class="item-descripcion">${t.notas}</div>` : ''}
             </div>
             <div class="item-actions">
@@ -755,12 +915,12 @@
 
     function abrirModalTarea(idx = null) {
       editingIdx = idx;
+      editingType = 'tarea';
       const t = idx !== null ? preparacionData.tareas[idx] : null;
       
       document.getElementById('modal-tarea-titulo').textContent = t ? '✏️ Editar tarea' : '✅ Nueva tarea';
       document.getElementById('tarea-titulo').value = t?.titulo || '';
       document.getElementById('tarea-dia').value = t?.dia || '';
-      document.getElementById('tarea-tiempo').value = t?.tiempo || '30';
       document.getElementById('tarea-prioridad').value = t?.prioridad || 'normal';
       document.getElementById('tarea-notas').value = t?.notas || '';
       
@@ -781,7 +941,6 @@
       const data = {
         titulo: document.getElementById('tarea-titulo').value,
         dia: document.getElementById('tarea-dia').value,
-        tiempo: parseInt(document.getElementById('tarea-tiempo').value) || 0,
         prioridad: document.getElementById('tarea-prioridad').value,
         notas: document.getElementById('tarea-notas').value
       };
@@ -797,79 +956,50 @@
       actualizarEstado();
     });
 
-    // ========== MENSAJES ==========
-    const destinatarioLabels = {
-      todos: '👥 Todos',
-      casero: '🏠 Casero',
-      hoster: '🏨 Hoster',
-      guarda: '🌿 Guarda'
-    };
-
-    function renderMensajes() {
-      const container = document.getElementById('lista-mensajes');
-      document.getElementById('count-mensajes').textContent = preparacionData.mensajes.length;
-
-      if (preparacionData.mensajes.length === 0) {
-        container.innerHTML = '<div class="empty-state">Sin notas</div>';
-        return;
-      }
-
-      container.innerHTML = preparacionData.mensajes.map((m, idx) => `
-        <div class="item-card mensaje">
-          <span class="item-icon">${tipoMensajeIcons[m.tipo] || 'ℹ️'}</span>
-          <div class="item-content">
-            <div class="item-titulo">${destinatarioLabels[m.destinatario] || '👥 Todos'}</div>
-            <div class="item-descripcion">${m.texto}</div>
-          </div>
-          <div class="item-actions">
-            <button class="item-btn" onclick="editarMensaje(${idx})">✏️</button>
-            <button class="item-btn delete" onclick="eliminarMensaje(${idx})">🗑️</button>
-          </div>
-        </div>
-      `).join('');
+    // ========== NOTAS ==========
+    function renderNotas() {
+      document.getElementById('notas-general').value = preparacionData.notas || '';
     }
 
-    function abrirModalMensaje(idx = null) {
-      editingIdx = idx;
-      const m = idx !== null ? preparacionData.mensajes[idx] : null;
+    // ========== ESTADO ==========
+    function actualizarEstado() {
+      const el = document.getElementById('semana-estado');
+      el.className = 'semana-estado';
       
-      document.getElementById('mensaje-destinatario').value = m?.destinatario || 'todos';
-      document.getElementById('mensaje-texto').value = m?.texto || '';
-      document.getElementById('mensaje-tipo').value = m?.tipo || 'info';
-      
-      document.getElementById('modal-mensaje').classList.add('active');
-    }
-
-    function editarMensaje(idx) { abrirModalMensaje(idx); }
-
-    function eliminarMensaje(idx) {
-      if (!confirm('¿Eliminar esta nota?')) return;
-      preparacionData.mensajes.splice(idx, 1);
-      renderMensajes();
-      actualizarEstado();
-    }
-
-    document.getElementById('form-mensaje').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const data = {
-        destinatario: document.getElementById('mensaje-destinatario').value,
-        texto: document.getElementById('mensaje-texto').value,
-        tipo: document.getElementById('mensaje-tipo').value
-      };
-
-      if (editingIdx !== null) {
-        preparacionData.mensajes[editingIdx] = data;
+      if (preparacionData.estado === 'enviado') {
+        el.classList.add('estado-enviado');
+        el.textContent = '📤 Enviado';
+      } else if (tieneContenido()) {
+        el.classList.add('estado-preparado');
+        el.textContent = '📝 Borrador';
       } else {
-        preparacionData.mensajes.push(data);
+        el.classList.add('estado-pendiente');
+        el.textContent = 'Pendiente';
       }
+    }
 
-      cerrarModales();
-      renderMensajes();
-      actualizarEstado();
-    });
+    function tieneContenido() {
+      return preparacionData.habitaciones.length > 0 ||
+             preparacionData.cambiarMenu ||
+             preparacionData.menaje.length > 0 ||
+             preparacionData.compras.length > 0 ||
+             preparacionData.tareas.length > 0 ||
+             preparacionData.notas.trim() !== '';
+    }
+
+    // ========== NAVEGACIÓN SEMANA ==========
+    function cambiarSemana(dir) {
+      semanaActual.setDate(semanaActual.getDate() + (dir * 7));
+      actualizarVisualizacionSemana();
+      cargarPreparacion();
+    }
 
     // ========== GUARDAR / ENVIAR ==========
     async function guardarBorrador(silencioso = false) {
+      // Actualizar datos desde los inputs
+      preparacionData.menuDescripcion = document.getElementById('menu-descripcion').value;
+      preparacionData.notas = document.getElementById('notas-general').value;
+
       const semanaKey = getSemanaKey();
       try {
         await db.collection('bienes').doc(bienId)
@@ -883,6 +1013,7 @@
         if (!silencioso) {
           alert('✅ Borrador guardado');
         }
+        actualizarEstado();
       } catch (e) {
         console.error(e);
         if (!silencioso) alert('Error al guardar');
@@ -890,12 +1021,16 @@
     }
 
     async function enviarPreparacion() {
-      if (preparacionData.eventos.length === 0 && preparacionData.tareas.length === 0 && preparacionData.mensajes.length === 0) {
-        alert('Añade al menos un evento, tarea o nota antes de enviar');
+      if (!tieneContenido()) {
+        alert('Añade al menos algo de información antes de enviar');
         return;
       }
 
-      if (!confirm('¿Enviar esta preparación al externo? Podrá ver los eventos, tareas y notas en su portal.')) return;
+      if (!confirm('¿Enviar esta preparación al externo?')) return;
+
+      // Actualizar datos desde los inputs
+      preparacionData.menuDescripcion = document.getElementById('menu-descripcion').value;
+      preparacionData.notas = document.getElementById('notas-general').value;
 
       const semanaKey = getSemanaKey();
       try {
@@ -924,6 +1059,7 @@
     function cerrarModales() {
       document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
       editingIdx = null;
+      editingType = null;
     }
 
     document.querySelectorAll('.modal-overlay').forEach(modal => {
