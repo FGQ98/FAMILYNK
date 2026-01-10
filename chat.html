@@ -900,23 +900,38 @@
 
       currentUser = user;
 
-      // Cargar datos usuario
-      const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      if (!userDoc.exists || !userDoc.data().familiaId) {
-        alert('No tienes una estirpe asignada');
-        window.location.href = 'app.html';
-        return;
-      }
+      try {
+        // Cargar datos usuario
+        const userDoc = await db.collection('usuarios').doc(user.uid).get();
+        
+        if (!userDoc.exists) {
+          console.error('Usuario no existe en BD:', user.uid);
+          alert('Tu cuenta no está configurada correctamente. Contacta al administrador.');
+          window.location.href = 'cgi.html';
+          return;
+        }
 
-      userData = userDoc.data();
-      await cargarMiembrosEstirpe();
-      cargarConversaciones();
+        userData = userDoc.data();
 
-      // Abrir conversación si viene en la URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const convId = urlParams.get('conv');
-      if (convId) {
-        setTimeout(() => abrirConversacion(convId), 1000);
+        if (!userData.familiaId) {
+          console.error('Usuario sin familiaId:', user.uid);
+          alert('No tienes una familia asignada. Contacta al administrador.');
+          window.location.href = 'cgi.html';
+          return;
+        }
+
+        await cargarMiembrosEstirpe();
+        cargarConversaciones();
+
+        // Abrir conversación si viene en la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const convId = urlParams.get('conv');
+        if (convId) {
+          setTimeout(() => abrirConversacion(convId), 1000);
+        }
+      } catch (error) {
+        console.error('Error inicializando chat:', error);
+        alert('Error al cargar el chat: ' + error.message);
       }
     });
 
