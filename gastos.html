@@ -149,45 +149,71 @@
 
     /* Panel Registro */
     .filtros-container {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .filtros-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      margin-bottom: 20px;
+      gap: 12px;
       flex-wrap: wrap;
+      margin-bottom: 12px;
     }
+
+    .filtros-row:last-child { margin-bottom: 0; }
 
     .periodo-selector {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
     }
 
-    .anio-selector {
+    .filtro-group {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
-    .anio-selector label {
-      font-size: 0.85rem;
+    .filtro-group label {
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--text-muted);
+      white-space: nowrap;
     }
 
-    .anio-select {
-      padding: 8px 16px;
+    .filtro-select {
+      padding: 6px 12px;
       border: 2px solid var(--cream-dark);
       background: var(--white);
-      border-radius: var(--radius-full);
+      border-radius: var(--radius-md);
       font-family: 'Nunito', sans-serif;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: var(--text);
       cursor: pointer;
+      min-width: 120px;
     }
 
-    .anio-select:focus { outline: none; border-color: var(--terracotta); }
+    .filtro-select:focus { outline: none; border-color: var(--terracotta); }
+
+    .filtro-select.active { border-color: var(--terracotta); background: var(--terracotta-muted); }
+
+    .btn-limpiar-filtros {
+      padding: 6px 12px;
+      border: none;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .btn-limpiar-filtros:hover { background: var(--cream-dark); color: var(--text); }
 
     .periodo-btn {
       padding: 8px 16px;
@@ -563,10 +589,42 @@
       <!-- Panel Registro -->
       <div class="tab-panel active" id="panel-registro">
         <div class="filtros-container">
-          <div class="periodo-selector" id="periodo-selector"></div>
-          <div class="anio-selector">
-            <label>📅 Año:</label>
-            <select class="anio-select" id="anio-select" onchange="cambiarAnio()"></select>
+          <div class="filtros-row">
+            <div class="periodo-selector" id="periodo-selector"></div>
+            <div class="filtro-group">
+              <label>📅</label>
+              <select class="filtro-select" id="filtro-anio" onchange="aplicarFiltros()"></select>
+            </div>
+          </div>
+          <div class="filtros-row">
+            <div class="filtro-group">
+              <label>Tipo:</label>
+              <select class="filtro-select" id="filtro-categoria" onchange="aplicarFiltros()">
+                <option value="">Todos</option>
+                <option value="suministros">💡 Suministros</option>
+                <option value="comunidad">🏢 Comunidad</option>
+                <option value="seguro">🛡️ Seguro</option>
+                <option value="mantenimiento">🔧 Mantenimiento</option>
+                <option value="limpieza">🧹 Limpieza</option>
+                <option value="compras">🛒 Compras</option>
+                <option value="impuestos">📋 Impuestos</option>
+                <option value="otro">📦 Otro</option>
+              </select>
+            </div>
+            <div class="filtro-group">
+              <label>Pago:</label>
+              <select class="filtro-select" id="filtro-medioPago" onchange="aplicarFiltros()">
+                <option value="">Todos</option>
+                <option value="efectivo">💵 Efectivo</option>
+                <option value="tarjeta">💳 Tarjeta</option>
+                <option value="factura">📄 Factura</option>
+              </select>
+            </div>
+            <div class="filtro-group">
+              <label>Proveedor:</label>
+              <select class="filtro-select" id="filtro-proveedor" onchange="aplicarFiltros()"></select>
+            </div>
+            <button class="btn-limpiar-filtros" onclick="limpiarFiltros()">🔄 Limpiar</button>
           </div>
         </div>
         
@@ -691,8 +749,13 @@
     let nidosData = [];
     let repartoData = {};
     let editingId = null;
-    let periodoActual = 'mes';
-    let anioActual = new Date().getFullYear();
+    
+    // Filtros
+    let filtroAnio = new Date().getFullYear();
+    let filtroPeriodo = 'año';
+    let filtroCategoria = '';
+    let filtroMedioPago = '';
+    let filtroProveedor = '';
 
     const catIcons = {
       suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧',
@@ -756,8 +819,7 @@
     }
 
     function render() {
-      renderAnioSelector();
-      renderPeriodoSelector();
+      renderFiltros();
       renderResumen();
       renderCategorias();
       renderGastosList();
@@ -774,39 +836,63 @@
       document.getElementById(`panel-${tab}`).classList.add('active');
     }
 
-    function renderAnioSelector() {
-      const select = document.getElementById('anio-select');
+    function renderFiltros() {
+      // Selector de año
+      const selectAnio = document.getElementById('filtro-anio');
       const anioActualReal = new Date().getFullYear();
-      let opciones = '';
-      
+      let opcionesAnio = '';
       for (let anio = 2025; anio <= anioActualReal; anio++) {
-        opciones += `<option value="${anio}" ${anio === anioActual ? 'selected' : ''}>${anio}</option>`;
+        opcionesAnio += `<option value="${anio}" ${anio === filtroAnio ? 'selected' : ''}>${anio}</option>`;
       }
-      
-      select.innerHTML = opciones;
-    }
+      selectAnio.innerHTML = opcionesAnio;
 
-    function cambiarAnio() {
-      anioActual = parseInt(document.getElementById('anio-select').value);
-      render();
-    }
-
-    function renderPeriodoSelector() {
+      // Selector de periodo
       const container = document.getElementById('periodo-selector');
       const periodos = [
-        { key: 'mes', label: 'Este mes' },
-        { key: 'trimestre', label: 'Trimestre' },
-        { key: 'año', label: 'Este año' },
+        { key: 'mes', label: 'Mes' },
+        { key: 'trimestre', label: 'Trim.' },
+        { key: 'año', label: 'Año' },
         { key: 'todos', label: 'Todos' }
       ];
-
       container.innerHTML = periodos.map(p => `
-        <button class="periodo-btn ${periodoActual === p.key ? 'active' : ''}" onclick="cambiarPeriodo('${p.key}')">${p.label}</button>
+        <button class="periodo-btn ${filtroPeriodo === p.key ? 'active' : ''}" onclick="cambiarPeriodo('${p.key}')">${p.label}</button>
       `).join('');
+
+      // Selector de proveedor (dinámico)
+      const proveedores = [...new Set(gastosData.map(g => g.proveedor).filter(p => p && p.trim()))].sort();
+      const selectProveedor = document.getElementById('filtro-proveedor');
+      selectProveedor.innerHTML = '<option value="">Todos</option>' + 
+        proveedores.map(p => `<option value="${p}" ${filtroProveedor === p ? 'selected' : ''}>${p}</option>`).join('');
+
+      // Marcar selects activos
+      document.getElementById('filtro-categoria').value = filtroCategoria;
+      document.getElementById('filtro-medioPago').value = filtroMedioPago;
+      
+      // Estilo activo en selects con filtro aplicado
+      document.getElementById('filtro-categoria').classList.toggle('active', filtroCategoria !== '');
+      document.getElementById('filtro-medioPago').classList.toggle('active', filtroMedioPago !== '');
+      document.getElementById('filtro-proveedor').classList.toggle('active', filtroProveedor !== '');
     }
 
     function cambiarPeriodo(periodo) {
-      periodoActual = periodo;
+      filtroPeriodo = periodo;
+      render();
+    }
+
+    function aplicarFiltros() {
+      filtroAnio = parseInt(document.getElementById('filtro-anio').value);
+      filtroCategoria = document.getElementById('filtro-categoria').value;
+      filtroMedioPago = document.getElementById('filtro-medioPago').value;
+      filtroProveedor = document.getElementById('filtro-proveedor').value;
+      render();
+    }
+
+    function limpiarFiltros() {
+      filtroAnio = new Date().getFullYear();
+      filtroPeriodo = 'año';
+      filtroCategoria = '';
+      filtroMedioPago = '';
+      filtroProveedor = '';
       render();
     }
 
@@ -815,27 +901,40 @@
       const mesActual = hoy.getMonth();
       const trimestreActual = Math.floor(mesActual / 3);
       
-      // Usar el año seleccionado
-      const inicioMes = new Date(anioActual, mesActual, 1);
-      const inicioTrimestre = new Date(anioActual, trimestreActual * 3, 1);
-      const inicioAño = new Date(anioActual, 0, 1);
-      const finAño = new Date(anioActual, 11, 31, 23, 59, 59);
+      const inicioMes = new Date(filtroAnio, mesActual, 1);
+      const inicioTrimestre = new Date(filtroAnio, trimestreActual * 3, 1);
+      const inicioAño = new Date(filtroAnio, 0, 1);
+      const finAño = new Date(filtroAnio, 11, 31, 23, 59, 59);
 
       return gastosData.filter(g => {
         if (!g.fecha) return false;
         const fecha = new Date(g.fecha);
         
-        // Primero filtrar por año si no es "todos"
-        if (periodoActual !== 'todos' && fecha.getFullYear() !== anioActual) {
+        // Filtro por año
+        if (fecha.getFullYear() !== filtroAnio) {
           return false;
         }
         
-        switch (periodoActual) {
-          case 'mes': return fecha >= inicioMes && fecha.getFullYear() === anioActual;
-          case 'trimestre': return fecha >= inicioTrimestre && fecha.getFullYear() === anioActual;
-          case 'año': return fecha >= inicioAño && fecha <= finAño;
-          default: return fecha.getFullYear() === anioActual; // 'todos' del año seleccionado
+        // Filtro por periodo
+        let pasaPeriodo = true;
+        switch (filtroPeriodo) {
+          case 'mes': pasaPeriodo = fecha >= inicioMes; break;
+          case 'trimestre': pasaPeriodo = fecha >= inicioTrimestre; break;
+          case 'año': pasaPeriodo = fecha >= inicioAño && fecha <= finAño; break;
+          default: pasaPeriodo = true;
         }
+        if (!pasaPeriodo) return false;
+
+        // Filtro por categoría
+        if (filtroCategoria && g.categoria !== filtroCategoria) return false;
+
+        // Filtro por medio de pago
+        if (filtroMedioPago && g.medioPago !== filtroMedioPago) return false;
+
+        // Filtro por proveedor
+        if (filtroProveedor && g.proveedor !== filtroProveedor) return false;
+
+        return true;
       });
     }
 
@@ -845,16 +944,24 @@
       const total = gastos.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
 
       const labels = { 
-        mes: `Este mes (${anioActual})`, 
-        trimestre: `Trimestre (${anioActual})`, 
-        año: `Año ${anioActual}`, 
-        todos: `Total ${anioActual}` 
+        mes: `Mes (${filtroAnio})`, 
+        trimestre: `Trim. (${filtroAnio})`, 
+        año: `Año ${filtroAnio}`, 
+        todos: `Total ${filtroAnio}` 
       };
+
+      // Mostrar filtros activos
+      const filtrosActivos = [];
+      if (filtroCategoria) filtrosActivos.push(catLabels[filtroCategoria] || filtroCategoria);
+      if (filtroMedioPago) filtrosActivos.push(filtroMedioPago);
+      if (filtroProveedor) filtrosActivos.push(filtroProveedor);
+      const subtitulo = filtrosActivos.length > 0 ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:2px">${filtrosActivos.join(' · ')}</div>` : '';
 
       container.innerHTML = `
         <div class="resumen-card">
           <div class="resumen-valor">€${total.toFixed(2)}</div>
-          <div class="resumen-label">${labels[periodoActual]}</div>
+          <div class="resumen-label">${labels[filtroPeriodo]}</div>
+          ${subtitulo}
         </div>
         <div class="resumen-card">
           <div class="resumen-valor" style="color: var(--text)">${gastos.length}</div>
@@ -1006,7 +1113,7 @@
 
       const labels = { mes: 'este mes', trimestre: 'este trimestre', año: 'este año', todos: 'en total' };
 
-      let html = `<div class="desglose-title">Desglose ${labels[periodoActual]} (€${total.toFixed(2)})</div>`;
+      let html = `<div class="desglose-title">Desglose ${labels[filtroPeriodo]} (€${total.toFixed(2)})</div>`;
 
       nidosData.forEach((nido, i) => {
         const pct = repartoData[nido.id] || 0;
