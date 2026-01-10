@@ -341,10 +341,29 @@
           }
         });
 
+        // Contar generaciones (incluyendo HIJOS si existen)
         const generaciones = new Set();
         nidosData.forEach(n => {
           if (n.generacion) generaciones.add(normalizarGeneracion(n.generacion));
         });
+        
+        // Si hay hijos (miembros sin nido en gen3), añadir generación 4
+        const gen3 = nidosData.filter(n => normalizarGeneracion(n.generacion) === '3-padres');
+        const tieneHijos = gen3.some(nido => {
+          const miembros = nido.miembrosData || [];
+          return miembros.some(m => m.relacion === 'hijo' || m.relacion === 'descendiente');
+        });
+        if (tieneHijos) {
+          generaciones.add('4-hijos');
+        }
+        
+        // Si hay hijos en nidos de gen3, añadir generación 4
+        const gen3Nidos = nidosData.filter(n => normalizarGeneracion(n.generacion) === '3-padres');
+        const hayBisnietos = gen3Nidos.some(n => {
+          const miembros = n.miembrosData || [];
+          return miembros.some(m => m.relacion === 'hijo' || m.relacion === 'descendiente');
+        });
+        if (hayBisnietos) generaciones.add('4-hijos');
 
         // Calcular estirpes y numeración
         calcularEstirpesYNumeracion();

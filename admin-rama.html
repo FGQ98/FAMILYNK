@@ -867,13 +867,24 @@
       const estirpes = calcularEstirpes();
       document.getElementById('stat-estirpes').textContent = estirpes.length || 0;
       
-      // Generaciones: usar config de familia o calcular máximo
-      let numGeneraciones = familiaData.numGeneraciones || 4;
+      // Generaciones: contar reales incluyendo HIJOS si hay bisnietos
+      let numGeneraciones = 0;
       if (nidosData.length > 0) {
-        const generaciones = nidosData.map(n => parseInt(n.generacion) || 0).filter(g => !isNaN(g) && g > 0);
-        if (generaciones.length > 0) {
-          numGeneraciones = Math.max(...generaciones);
-        }
+        const generacionesSet = new Set();
+        nidosData.forEach(n => {
+          const genNum = getGenNum(n.generacion);
+          if (genNum > 0) generacionesSet.add(genNum);
+        });
+        
+        // Si hay hijos en nidos de gen3, añadir generación 4
+        const gen3Nidos = nidosData.filter(n => getGenNum(n.generacion) === 3);
+        const hayBisnietos = gen3Nidos.some(n => {
+          const miembros = n.miembrosData || [];
+          return miembros.some(m => m.relacion === 'hijo' || m.relacion === 'descendiente');
+        });
+        if (hayBisnietos) generacionesSet.add(4);
+        
+        numGeneraciones = generacionesSet.size;
       }
       document.getElementById('stat-generaciones').textContent = numGeneraciones;
 

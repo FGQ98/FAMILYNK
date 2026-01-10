@@ -554,6 +554,7 @@
     let familiaId = null;
     let miembrosData = [];
     let nidosData = {};
+    let nidosNumerados = {}; // {nidoId: "2.1.1"}
     let filtroActual = 'todos';
     let filtroEstadoActual = 'todos-estado';
     
@@ -731,13 +732,100 @@
         snap.docs.forEach(doc => {
           const data = doc.data();
           nidosData[doc.id] = {
+            id: doc.id,
             nombre: data.nombre || 'Sin nombre',
             miembrosData: data.miembrosData || [],
-            generacion: data.generacion || null
+            generacion: data.generacion || null,
+            nidoOrigen: data.nidoOrigen || null,
+            fechaFormacion: data.fechaFormacion || null,
+            fechaCreacion: data.fechaCreacion || null
           };
         });
+        
+        // Calcular numeración de nidos
+        calcularNumeracionNidos();
       } catch (error) {
         console.error('Error cargando nidos:', error);
+      }
+    }
+
+    // ============ NUMERACIÓN JERÁRQUICA DE NIDOS ============
+    function getGenNum(gen) {
+      const match = String(gen || '1').match(/^(\d+)/);
+      return match ? parseInt(match[1]) : 1;
+    }
+
+    function calcularNumeracionNidos() {
+      nidosNumerados = {};
+      const nidosArray = Object.values(nidosData);
+      
+      // Agrupar por generación
+      const porGeneracion = {};
+      nidosArray.forEach(n => {
+        const genNum = getGenNum(n.generacion);
+        if (!porGeneracion[genNum]) porGeneracion[genNum] = [];
+        porGeneracion[genNum].push(n);
+      });
+
+      // Ordenar cada generación por fechaFormacion o fechaCreacion
+      Object.keys(porGeneracion).forEach(gen => {
+        porGeneracion[gen].sort((a, b) => {
+          const fechaA = a.fechaFormacion || a.fechaCreacion?.seconds || 9999999999;
+          const fechaB = b.fechaFormacion || b.fechaCreacion?.seconds || 9999999999;
+          const dateA = typeof fechaA === 'number' ? fechaA : new Date(fechaA).getTime();
+          const dateB = typeof fechaB === 'number' ? fechaB : new Date(fechaB).getTime();
+          return dateA - dateB;
+        });
+      });
+
+      // Gen 1: Bisabuelos = "1"
+      if (porGeneracion[1]) {
+        porGeneracion[1].forEach((nido, idx) => {
+          nidosNumerados[nido.id] = '1';
+        });
+      }
+
+      // Gen 2: Abuelos = 2.1, 2.2, 2.3...
+      if (porGeneracion[2]) {
+        porGeneracion[2].forEach((nido, idx) => {
+          nidosNumerados[nido.id] = `2.${idx + 1}`;
+        });
+      }
+
+      // Gen 3: Padres = prefijo del padre + orden
+      if (porGeneracion[3]) {
+        const porPadre = {};
+        porGeneracion[3].forEach(nido => {
+          const padreId = nido.nidoOrigen || 'root';
+          if (!porPadre[padreId]) porPadre[padreId] = [];
+          porPadre[padreId].push(nido);
+        });
+
+        Object.keys(porPadre).forEach(padreId => {
+          const hijos = porPadre[padreId];
+          const prefijo = nidosNumerados[padreId] || '?';
+          hijos.forEach((nido, idx) => {
+            nidosNumerados[nido.id] = `${prefijo}.${idx + 1}`;
+          });
+        });
+      }
+
+      // Gen 4: Hijos = prefijo del padre + orden
+      if (porGeneracion[4]) {
+        const porPadre = {};
+        porGeneracion[4].forEach(nido => {
+          const padreId = nido.nidoOrigen || 'root';
+          if (!porPadre[padreId]) porPadre[padreId] = [];
+          porPadre[padreId].push(nido);
+        });
+
+        Object.keys(porPadre).forEach(padreId => {
+          const hijos = porPadre[padreId];
+          const prefijo = nidosNumerados[padreId] || '?';
+          hijos.forEach((nido, idx) => {
+            nidosNumerados[nido.id] = `${prefijo}.${idx + 1}`;
+          });
+        });
       }
     }
 
@@ -774,7 +862,7 @@
             }
             
             // *** CLAVE: Si tiene nido propio marcado, NO incluir aquí ***
-            if (m.tieneNidoPropio === true) {
+            if (m.nidoPropio && m.nidoPropio !== null && m.nidoPropio !== '') {
               return; // Ya se contará en su propio nido como progenitor
             }
             
@@ -850,11 +938,17 @@
       const rol = relacionLabels[m.relacion] || m.rol || 'Miembro';
 
       // Determinar generación del miembro basada en nido y relación
-      let generacion = nido.generacion || null;
-      if (m.relacion === 'descendiente') {
-        generacion = generacion ? generacion + 1 : 3;
+      let genNum = 0;
+      if (nido.generacion) {
+        const match = String(nido.generacion).match(/^(\d+)/);
+        genNum = match ? parseInt(match[1]) : 0;
+      }
+      
+      let generacion = genNum;
+      if (m.relacion === 'descendiente' || m.relacion === 'hijo') {
+        generacion = genNum + 1;
       } else if (m.relacion === 'ascendiente') {
-        generacion = generacion ? generacion - 1 : 1;
+        generacion = genNum - 1;
       }
 
       return {
@@ -869,6 +963,7 @@
         estadoCuenta: m.estadoCuenta || (m.email ? 'invitado' : 'validado'),
         nidoId: nidoId,
         nidoNombre: nido.nombre,
+        nidoNumero: nidosNumerados[nidoId] || '',
         fechaAlta: null,
         generacion: generacion,
         direccion: m.direccion || '',
@@ -1119,14 +1214,15 @@
             case 'rol':
               return `<td>${m.rol}</td>`;
             case 'nido':
-              return `<td>${m.nidoNombre}</td>`;
+              const nidoDisplay = m.nidoNumero ? `${m.nidoNumero} ${m.nidoNombre}` : m.nidoNombre;
+              return `<td>${nidoDisplay}</td>`;
             case 'fechaAlta':
               if (m.fechaAlta) {
                 return `<td>${m.fechaAlta.getDate()}/${m.fechaAlta.getMonth() + 1}/${m.fechaAlta.getFullYear()}</td>`;
               }
               return '<td>–</td>';
             case 'generacion':
-              const genLabels = { 1: '1ª (Abuelos)', 2: '2ª (Padres)', 3: '3ª (Hijos)', 4: '4ª (Nietos)' };
+              const genLabels = { 1: '1ª (Bisabuelos)', 2: '2ª (Abuelos)', 3: '3ª (Padres)', 4: '4ª (Hijos)' };
               return `<td>${genLabels[m.generacion] || m.generacion || '–'}</td>`;
             case 'direccion':
               return `<td>${m.direccion || '–'}</td>`;
