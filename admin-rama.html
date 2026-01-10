@@ -903,6 +903,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 
   <script>
     let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [], invitacionesData = [], solicitudesData = [];
@@ -1311,12 +1312,6 @@
       await guardarPerfilUsuario();
     }
 
-    async function reenviarInvitacion(invId) {
-      const inv = invitacionesData.find(i => i.id === invId);
-      if (!inv) return;
-      alert(`📤 Se reenviaría invitación a ${inv.email}\n(Funcionalidad de email pendiente)`);
-    }
-
     async function cancelarInvitacion(invId) {
       if (!confirm('¿Cancelar esta invitación?')) return;
       try {
@@ -1677,10 +1672,81 @@
       const nidoId = document.getElementById('invitar-nido').value;
       const rol = document.getElementById('invitar-rol').value;
       if (!email) { alert('Introduce un email'); return; }
-      await db.collection('invitaciones').add({ email, familiaId: familiaData.id, nidoId: nidoId || null, rol, invitadoPor: currentUser.uid, fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(), estado: 'pendiente' });
-      alert(`✅ Invitación enviada a ${email}`);
-      cerrarModal('modal-invitar');
-      document.getElementById('invitar-email').value = '';
+
+      // Generar contraseña temporal
+      const tempPassword = 'FLK' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      try {
+        // 1. Guardar invitación en Firebase
+        const invRef = await db.collection('invitaciones').add({ 
+          email, 
+          familiaId: familiaData.id, 
+          nidoId: nidoId || null, 
+          rol, 
+          invitadoPor: currentUser.uid, 
+          tempPassword,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(), 
+          estado: 'pendiente' 
+        });
+
+        // 2. Enviar email con EmailJS
+        emailjs.init('eWMtiJpUqrLsA5Nel');
+        
+        const nidoNombre = nidoId ? (nidosData.find(n => n.id === nidoId)?.nombre || 'tu nido') : 'la familia';
+        
+        await emailjs.send('service_fcfx5od', 'template_my2n26t', {
+          to_email: email,
+          to_name: email.split('@')[0],
+          familia_nombre: familiaData.nombre || 'tu familia',
+          nido_nombre: nidoNombre,
+          temp_password: tempPassword,
+          invitado_por: userData.nombre || userData.email || 'Un administrador',
+          link_acceso: 'https://www.familynk.es/login.html'
+        });
+
+        alert(`✅ Invitación enviada a ${email}\n\nContraseña temporal: ${tempPassword}\n\n(También se ha enviado por email)`);
+        cerrarModal('modal-invitar');
+        document.getElementById('invitar-email').value = '';
+        await cargarDatos();
+
+      } catch (error) {
+        console.error('Error enviando invitación:', error);
+        alert('⚠️ La invitación se guardó pero hubo un problema enviando el email.\n\nError: ' + error.message + '\n\nPuedes reenviarla desde la lista de invitaciones.');
+      }
+    }
+
+    async function reenviarInvitacion(invId) {
+      const inv = invitacionesData.find(i => i.id === invId);
+      if (!inv) return;
+
+      try {
+        // Generar nueva contraseña si no tiene
+        const tempPassword = inv.tempPassword || 'FLK' + Math.random().toString(36).substring(2, 8).toUpperCase();
+        
+        // Actualizar en Firebase
+        await db.collection('invitaciones').doc(invId).update({ tempPassword });
+
+        // Enviar email
+        emailjs.init('eWMtiJpUqrLsA5Nel');
+        
+        const nidoNombre = inv.nidoId ? (nidosData.find(n => n.id === inv.nidoId)?.nombre || 'tu nido') : 'la familia';
+        
+        await emailjs.send('service_fcfx5od', 'template_my2n26t', {
+          to_email: inv.email,
+          to_name: inv.email.split('@')[0],
+          familia_nombre: familiaData.nombre || 'tu familia',
+          nido_nombre: nidoNombre,
+          temp_password: tempPassword,
+          invitado_por: userData.nombre || userData.email || 'Un administrador',
+          link_acceso: 'https://www.familynk.es/login.html'
+        });
+
+        alert(`📤 Invitación reenviada a ${inv.email}\n\nContraseña temporal: ${tempPassword}`);
+
+      } catch (error) {
+        console.error('Error reenviando:', error);
+        alert('Error al reenviar: ' + error.message);
+      }
     }
 
     function exportarDatos() { alert('Próximamente: Exportar todos los datos de la estirpe'); }
