@@ -555,13 +555,48 @@
 
     function obtenerHijosPorEstirpe(porGeneracion) {
       const hijos = [];
+      const gen2 = porGeneracion['2-abuelos'] || [];
       const gen3 = porGeneracion['3-padres'] || [];
       
+      // IDs de nidos de gen3 para saber quién tiene nido
+      const nidosGen3Ids = new Set(gen3.map(n => n.id));
+      
+      // Hijos de ABUELOS (gen2) que NO tienen nido propio
+      gen2.forEach(nido => {
+        const estirpe = nidosEstirpe[nido.id] || 0;
+        const miembros = nido.miembrosData || [];
+        
+        const hijosNido = miembros.filter(m => 
+          m.relacion === 'hijo' || m.relacion === 'descendiente'
+        );
+        
+        hijosNido.forEach(hijo => {
+          // Verificar si este hijo tiene nido propio (está en gen3)
+          const tieneNidoPropio = gen3.some(n => {
+            const miembrosNido = n.miembrosData || [];
+            return miembrosNido.some(m => 
+              (m.uid && hijo.uid && m.uid === hijo.uid) ||
+              (m.nombre === hijo.nombre && m.esAdmin)
+            );
+          });
+          
+          if (!tieneNidoPropio) {
+            hijos.push({
+              nombre: hijo.nombre || hijo.iniciales || '?',
+              estirpe: estirpe,
+              nidoNombre: nido.nombre,
+              nidoNumero: nidosNumerados[nido.id] || '?',
+              generacionOrigen: 'abuelos'
+            });
+          }
+        });
+      });
+
+      // Hijos de PADRES (gen3)
       gen3.forEach(nido => {
         const estirpe = nidosEstirpe[nido.id] || 0;
         const miembros = nido.miembrosData || [];
         
-        // Filtrar solo los hijos
         const hijosNido = miembros.filter(m => 
           m.relacion === 'hijo' || m.relacion === 'descendiente'
         );
@@ -571,7 +606,8 @@
             nombre: hijo.nombre || hijo.iniciales || '?',
             estirpe: estirpe,
             nidoNombre: nido.nombre,
-            nidoNumero: nidosNumerados[nido.id] || '?'
+            nidoNumero: nidosNumerados[nido.id] || '?',
+            generacionOrigen: 'padres'
           });
         });
       });
