@@ -138,13 +138,30 @@
       margin-top: 8px;
     }
 
+    .hijos-row {
+      gap: 10px !important;
+    }
+
     .miembro-chip {
-      padding: 6px 12px;
+      padding: 8px 14px;
       border-radius: var(--radius-full);
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       font-weight: 600;
       color: white;
+      cursor: default;
+      transition: transform 0.2s;
     }
+
+    .miembro-chip:hover {
+      transform: scale(1.05);
+    }
+
+    .miembro-chip.estirpe-1 { background: var(--estirpe-1); }
+    .miembro-chip.estirpe-2 { background: var(--estirpe-2); }
+    .miembro-chip.estirpe-3 { background: var(--estirpe-3); }
+    .miembro-chip.estirpe-4 { background: var(--estirpe-4); color: var(--text); }
+    .miembro-chip.estirpe-5 { background: var(--estirpe-5); }
+    .miembro-chip.sin-estirpe { background: var(--sin-estirpe); }
 
     .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; text-decoration: none; transition: all 0.2s; }
     .btn-primary { background: linear-gradient(135deg, var(--sage), var(--sage-dark)); color: white; }
@@ -520,7 +537,61 @@
         `;
       });
 
+      // Añadir sección de HIJOS (miembros que son hijos en nidos de gen3)
+      const hijosData = obtenerHijosPorEstirpe(porGeneracion);
+      if (hijosData.length > 0) {
+        html += `
+          <div class="generacion" data-gen="hijos">
+            <div class="generacion-label">HIJOS</div>
+            <div class="nidos-row hijos-row">
+              ${hijosData.map(h => renderHijoChip(h)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
       container.innerHTML = html || '<p style="text-align:center;color:var(--text-muted);">Sin nidos registrados</p>';
+    }
+
+    function obtenerHijosPorEstirpe(porGeneracion) {
+      const hijos = [];
+      const gen3 = porGeneracion['3-padres'] || [];
+      
+      gen3.forEach(nido => {
+        const estirpe = nidosEstirpe[nido.id] || 0;
+        const miembros = nido.miembrosData || [];
+        
+        // Filtrar solo los hijos
+        const hijosNido = miembros.filter(m => 
+          m.relacion === 'hijo' || m.relacion === 'descendiente'
+        );
+        
+        hijosNido.forEach(hijo => {
+          hijos.push({
+            nombre: hijo.nombre || hijo.iniciales || '?',
+            estirpe: estirpe,
+            nidoNombre: nido.nombre,
+            nidoNumero: nidosNumerados[nido.id] || '?'
+          });
+        });
+      });
+
+      // Ordenar por estirpe y luego por nombre
+      hijos.sort((a, b) => {
+        if (a.estirpe !== b.estirpe) return a.estirpe - b.estirpe;
+        return a.nombre.localeCompare(b.nombre);
+      });
+
+      return hijos;
+    }
+
+    function renderHijoChip(hijo) {
+      const claseEstirpe = hijo.estirpe > 0 ? `estirpe-${hijo.estirpe}` : 'sin-estirpe';
+      return `
+        <span class="miembro-chip ${claseEstirpe}" title="Nido ${hijo.nidoNumero}: ${hijo.nidoNombre}">
+          ${hijo.nombre}
+        </span>
+      `;
     }
 
     function renderNidoCard(nido) {
