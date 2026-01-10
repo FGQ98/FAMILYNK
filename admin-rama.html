@@ -712,30 +712,77 @@
 
   <!-- Modal Editar Usuario -->
   <div class="modal-overlay" id="modal-editar-usuario">
-    <div class="modal">
+    <div class="modal" style="max-width:550px;">
       <div class="modal-header">
-        <h3 class="modal-title">✏️ Editar Usuario</h3>
+        <h3 class="modal-title">✏️ Editar Perfil</h3>
         <button class="modal-close" onclick="cerrarModal('modal-editar-usuario')">×</button>
       </div>
-      <div style="padding:20px;">
-        <p style="font-weight:600;margin-bottom:16px;" id="editar-usuario-nombre"></p>
+      <div style="padding:20px;max-height:70vh;overflow-y:auto;">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre *</label>
+            <input type="text" class="form-input" id="editar-usuario-nombre" placeholder="Nombre completo">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Apodo</label>
+            <input type="text" class="form-input" id="editar-usuario-apodo" placeholder="Cómo le llaman">
+          </div>
+        </div>
         <div class="form-group">
-          <label class="form-label">Rol del miembro</label>
-          <select class="form-input" id="editar-usuario-rol">
-            <option value="adminRama">👑 Admin Rama</option>
-            <option value="adminNido">🏠 Admin Nido</option>
-            <option value="adulto">👤 Adulto</option>
-            <option value="nino">👶 Niño</option>
-            <option value="novio">💕 Novio/a</option>
-            <option value="prometido">💍 Prometido/a</option>
-            <option value="separado">💔 Separado/a</option>
-            <option value="divorciado">📄 Divorciado/a</option>
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="editar-usuario-email" disabled style="background:var(--cream)">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="tel" class="form-input" id="editar-usuario-telefono" placeholder="+34 600 000 000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha nacimiento</label>
+            <input type="date" class="form-input" id="editar-usuario-nacimiento">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Rol del miembro</label>
+            <select class="form-input" id="editar-usuario-rol">
+              <option value="adminRama">👑 Admin Rama</option>
+              <option value="adminNido">🏠 Admin Nido</option>
+              <option value="adulto">👤 Adulto</option>
+              <option value="nino">👶 Niño</option>
+              <option value="novio">💕 Novio/a</option>
+              <option value="prometido">💍 Prometido/a</option>
+              <option value="separado">💔 Separado/a</option>
+              <option value="divorciado">📄 Divorciado/a</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nido asignado</label>
+            <select class="form-input" id="editar-usuario-nido"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Relación en su nido</label>
+          <select class="form-input" id="editar-usuario-relacion">
+            <option value="progenitor">Progenitor (padre/madre)</option>
+            <option value="descendiente">Descendiente (hijo/a)</option>
+            <option value="ascendiente">Ascendiente (abuelo/a)</option>
+            <option value="otro">Otro</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas internas</label>
+          <textarea class="form-input" id="editar-usuario-notas" rows="2" placeholder="Notas privadas del administrador..."></textarea>
+        </div>
+        <div style="border-top:1px solid var(--cream-dark);padding-top:16px;margin-top:8px;">
+          <label class="form-label" style="color:var(--text-muted)">🕊️ Fecha de defunción (si aplica)</label>
+          <input type="date" class="form-input" id="editar-usuario-defuncion" style="max-width:200px;">
+          <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Los miembros fallecidos aparecerán en gris en el árbol.</p>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModal('modal-editar-usuario')">Cancelar</button>
-        <button class="btn btn-primary" onclick="guardarRolUsuario()">Guardar</button>
+        <button class="btn btn-primary" onclick="guardarPerfilUsuario()">💾 Guardar</button>
       </div>
     </div>
   </div>
@@ -1103,22 +1150,64 @@
       const user = usuariosData.find(u => u.id === userId);
       if (!user) return;
       editandoUsuarioId = userId;
-      document.getElementById('editar-usuario-nombre').textContent = user.nombre || user.email;
+      
+      // Cargar datos en el formulario
+      document.getElementById('editar-usuario-nombre').value = user.nombre || '';
+      document.getElementById('editar-usuario-apodo').value = user.apodo || '';
+      document.getElementById('editar-usuario-email').value = user.email || '';
+      document.getElementById('editar-usuario-telefono').value = user.telefono || '';
+      document.getElementById('editar-usuario-nacimiento').value = user.fechaNacimiento || '';
       document.getElementById('editar-usuario-rol').value = user.rol || 'adulto';
+      document.getElementById('editar-usuario-relacion').value = user.relacion || 'progenitor';
+      document.getElementById('editar-usuario-notas').value = user.notasAdmin || '';
+      document.getElementById('editar-usuario-defuncion').value = user.fechaDefuncion || '';
+      
+      // Popular selector de nidos
+      const selectNido = document.getElementById('editar-usuario-nido');
+      selectNido.innerHTML = '<option value="">Sin asignar</option>' + 
+        nidosData.map(n => {
+          const codigo = nidosNumerados[n.id] || '';
+          return `<option value="${n.id}" ${user.nidoId === n.id ? 'selected' : ''}>${codigo} ${n.nombre || 'Nido'}</option>`;
+        }).join('');
+      
       document.getElementById('modal-editar-usuario').classList.add('active');
     }
 
-    async function guardarRolUsuario() {
+    async function guardarPerfilUsuario() {
       if (!editandoUsuarioId) return;
-      const nuevoRol = document.getElementById('editar-usuario-rol').value;
+      
+      const data = {
+        nombre: document.getElementById('editar-usuario-nombre').value.trim(),
+        apodo: document.getElementById('editar-usuario-apodo').value.trim(),
+        telefono: document.getElementById('editar-usuario-telefono').value.trim(),
+        fechaNacimiento: document.getElementById('editar-usuario-nacimiento').value || null,
+        rol: document.getElementById('editar-usuario-rol').value,
+        nidoId: document.getElementById('editar-usuario-nido').value || null,
+        relacion: document.getElementById('editar-usuario-relacion').value,
+        notasAdmin: document.getElementById('editar-usuario-notas').value.trim(),
+        fechaDefuncion: document.getElementById('editar-usuario-defuncion').value || null,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (!data.nombre) {
+        alert('El nombre es obligatorio');
+        return;
+      }
+
       try {
-        await db.collection('usuarios').doc(editandoUsuarioId).update({ rol: nuevoRol });
+        await db.collection('usuarios').doc(editandoUsuarioId).update(data);
         cerrarModal('modal-editar-usuario');
         await cargarDatos();
-        alert('✅ Rol actualizado');
+        alert('✅ Perfil actualizado');
       } catch (err) {
+        console.error(err);
         alert('Error: ' + err.message);
       }
+    }
+
+    // Mantener compatibilidad con función antigua
+    async function guardarRolUsuario() {
+      await guardarPerfilUsuario();
     }
 
     async function reenviarInvitacion(invId) {
