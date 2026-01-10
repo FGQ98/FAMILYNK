@@ -150,6 +150,10 @@
       color: white;
       cursor: default;
       transition: transform 0.2s;
+      display: flex;
+      align-items: center;
+      height: fit-content;
+      align-self: center;
     }
 
     .miembro-chip:hover {
@@ -527,17 +531,27 @@
       generacionesActivas.forEach(gen => {
         const nidos = porGeneracion[gen];
 
+        let extraChips = '';
+        // Si es la generación de PADRES, añadir chips de padres sin nido
+        if (gen === '3-padres') {
+          const padresSinNido = obtenerPadresSinNido(porGeneracion);
+          if (padresSinNido.length > 0) {
+            extraChips = padresSinNido.map(p => renderHijoChip(p)).join('');
+          }
+        }
+
         html += `
           <div class="generacion" data-gen="${gen}">
             <div class="generacion-label">${genLabels[gen] || gen}</div>
             <div class="nidos-row">
               ${nidos.map(n => renderNidoCard(n)).join('')}
+              ${extraChips}
             </div>
           </div>
         `;
       });
 
-      // Añadir sección de HIJOS (miembros que son hijos en nidos de gen3)
+      // Añadir sección de HIJOS (solo bisnietos - hijos de gen3)
       const hijosData = obtenerHijosPorEstirpe(porGeneracion);
       if (hijosData.length > 0) {
         html += `
@@ -553,15 +567,12 @@
       container.innerHTML = html || '<p style="text-align:center;color:var(--text-muted);">Sin nidos registrados</p>';
     }
 
-    function obtenerHijosPorEstirpe(porGeneracion) {
-      const hijos = [];
+    function obtenerPadresSinNido(porGeneracion) {
+      const padresSinNido = [];
       const gen2 = porGeneracion['2-abuelos'] || [];
       const gen3 = porGeneracion['3-padres'] || [];
       
-      // IDs de nidos de gen3 para saber quién tiene nido
-      const nidosGen3Ids = new Set(gen3.map(n => n.id));
-      
-      // Hijos de ABUELOS (gen2) que NO tienen nido propio
+      // Hijos de ABUELOS (gen2) que NO tienen nido propio = son PADRES sin nido
       gen2.forEach(nido => {
         const estirpe = nidosEstirpe[nido.id] || 0;
         const miembros = nido.miembrosData || [];
@@ -571,28 +582,41 @@
         );
         
         hijosNido.forEach(hijo => {
-          // Verificar si este hijo tiene nido propio (está en gen3)
+          // Verificar si este hijo tiene nido propio (es admin/progenitor en gen3)
           const tieneNidoPropio = gen3.some(n => {
             const miembrosNido = n.miembrosData || [];
             return miembrosNido.some(m => 
-              (m.uid && hijo.uid && m.uid === hijo.uid) ||
-              (m.nombre === hijo.nombre && m.esAdmin)
+              ((m.uid && hijo.uid && m.uid === hijo.uid) ||
+              (m.nombre === hijo.nombre)) && 
+              (m.esAdmin || m.relacion === 'progenitor' || m.relacion === 'consorte')
             );
           });
           
           if (!tieneNidoPropio) {
-            hijos.push({
+            padresSinNido.push({
               nombre: hijo.nombre || hijo.iniciales || '?',
               estirpe: estirpe,
               nidoNombre: nido.nombre,
-              nidoNumero: nidosNumerados[nido.id] || '?',
-              generacionOrigen: 'abuelos'
+              nidoNumero: nidosNumerados[nido.id] || '?'
             });
           }
         });
       });
 
-      // Hijos de PADRES (gen3)
+      // Ordenar por estirpe y luego por nombre
+      padresSinNido.sort((a, b) => {
+        if (a.estirpe !== b.estirpe) return a.estirpe - b.estirpe;
+        return a.nombre.localeCompare(b.nombre);
+      });
+
+      return padresSinNido;
+    }
+
+    function obtenerHijosPorEstirpe(porGeneracion) {
+      const hijos = [];
+      const gen3 = porGeneracion['3-padres'] || [];
+
+      // Solo hijos de PADRES (gen3) = bisnietos
       gen3.forEach(nido => {
         const estirpe = nidosEstirpe[nido.id] || 0;
         const miembros = nido.miembrosData || [];
@@ -606,8 +630,7 @@
             nombre: hijo.nombre || hijo.iniciales || '?',
             estirpe: estirpe,
             nidoNombre: nido.nombre,
-            nidoNumero: nidosNumerados[nido.id] || '?',
-            generacionOrigen: 'padres'
+            nidoNumero: nidosNumerados[nido.id] || '?'
           });
         });
       });
