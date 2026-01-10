@@ -863,13 +863,8 @@
       document.getElementById('stat-nidos').textContent = nidosData.length;
       document.getElementById('stat-bienes').textContent = bienesData.length;
       
-      // Estirpes: nidos de generación 2 (abuelos) SIN nidoOrigen (son cabezas de estirpe)
-      const estirpes = nidosData.filter(n => {
-        const gen = String(n.generacion || '');
-        const esGen2 = gen.startsWith('2') || gen.includes('abuelo');
-        const sinOrigen = !n.nidoOrigen || n.nidoOrigen === 'RAIZ' || n.nidoOrigen === '';
-        return esGen2 && sinOrigen;
-      });
+      // Estirpes: nidos de generación 2 que tienen descendientes con nidos
+      const estirpes = calcularEstirpes();
       document.getElementById('stat-estirpes').textContent = estirpes.length || 0;
       
       // Generaciones: usar config de familia o calcular máximo
@@ -897,84 +892,94 @@
     }
 
     // ============ NUMERACIÓN JERÁRQUICA DE NIDOS ============
+    function getGenNum(gen) {
+      const match = String(gen || '1').match(/^(\d+)/);
+      return match ? parseInt(match[1]) : 1;
+    }
+
+    function calcularEstirpes() {
+      // Una estirpe es un nido de gen2 que tiene descendientes con nidos
+      const porGeneracion = {};
+      nidosData.forEach(n => {
+        const genNum = getGenNum(n.generacion);
+        if (!porGeneracion[genNum]) porGeneracion[genNum] = [];
+        porGeneracion[genNum].push(n);
+      });
+
+      const gen2 = porGeneracion[2] || [];
+      const gen3 = porGeneracion[3] || [];
+
+      return gen2.filter(nido => {
+        // Verificar si tiene hijos directos en gen3
+        return gen3.some(n => n.nidoOrigen === nido.id);
+      });
+    }
+
     function calcularNumeracionNidos() {
       nidosNumerados = {};
       
-      // Extraer número de generación del string (ej: "2-abuelos" → 2)
-      function getGenNum(nido) {
-        const gen = String(nido.generacion || '1');
-        const match = gen.match(/^(\d+)/);
-        return match ? parseInt(match[1]) : 1;
-      }
-
-      // Agrupar nidos por generación
+      // Agrupar por generación
       const porGeneracion = {};
       nidosData.forEach(n => {
-        const gen = getGenNum(n);
-        if (!porGeneracion[gen]) porGeneracion[gen] = [];
-        porGeneracion[gen].push(n);
+        const genNum = getGenNum(n.generacion);
+        if (!porGeneracion[genNum]) porGeneracion[genNum] = [];
+        porGeneracion[genNum].push(n);
       });
 
-      // Ordenar cada generación por fechaFormacion
+      // Ordenar cada generación por fechaFormacion o fechaCreacion
       Object.keys(porGeneracion).forEach(gen => {
         porGeneracion[gen].sort((a, b) => {
-          const fechaA = a.fechaFormacion ? new Date(a.fechaFormacion) : new Date('2100-01-01');
-          const fechaB = b.fechaFormacion ? new Date(b.fechaFormacion) : new Date('2100-01-01');
-          return fechaA - fechaB;
+          const fechaA = a.fechaFormacion || a.fechaCreacion?.seconds || 9999999999;
+          const fechaB = b.fechaFormacion || b.fechaCreacion?.seconds || 9999999999;
+          const dateA = typeof fechaA === 'number' ? fechaA : new Date(fechaA).getTime();
+          const dateB = typeof fechaB === 'number' ? fechaB : new Date(fechaB).getTime();
+          return dateA - dateB;
         });
       });
 
-      // Generación 1 = "1"
+      // Gen 1: Bisabuelos = "1"
       if (porGeneracion[1]) {
         porGeneracion[1].forEach((nido, idx) => {
           nidosNumerados[nido.id] = '1';
         });
       }
 
-      // Generación 2 = estirpes principales "2", "3", "4"... o "1.1", "1.2"...
-      // Usamos formato simple: número de estirpe
+      // Gen 2: Abuelos = 2.1, 2.2, 2.3...
       if (porGeneracion[2]) {
-        let estirpeNum = 1;
-        porGeneracion[2].forEach((nido) => {
-          const sinOrigen = !nido.nidoOrigen || nido.nidoOrigen === '';
-          if (sinOrigen) {
-            // Estirpe principal
-            nidosNumerados[nido.id] = String(estirpeNum + 1); // 2, 3, 4...
-            estirpeNum++;
-          }
-        });
-        // Ahora los que tienen origen
-        porGeneracion[2].forEach((nido) => {
-          if (nido.nidoOrigen && nido.nidoOrigen !== '') {
-            const padreNum = nidosNumerados[nido.nidoOrigen] || '1';
-            const hermanosConMismoPadre = porGeneracion[2].filter(n => n.nidoOrigen === nido.nidoOrigen);
-            const idx = hermanosConMismoPadre.indexOf(nido) + 1;
-            nidosNumerados[nido.id] = `${padreNum}.${idx}`;
-          }
+        porGeneracion[2].forEach((nido, idx) => {
+          nidosNumerados[nido.id] = `2.${idx + 1}`;
         });
       }
 
-      // Generación 3+ = basado en nidoOrigen
-      for (let gen = 3; gen <= 4; gen++) {
-        if (!porGeneracion[gen]) continue;
-        
-        // Agrupar por nidoOrigen
+      // Gen 3: Padres = prefijo del padre + orden
+      if (porGeneracion[3]) {
         const porPadre = {};
-        porGeneracion[gen].forEach(nido => {
+        porGeneracion[3].forEach(nido => {
           const padreId = nido.nidoOrigen || 'root';
           if (!porPadre[padreId]) porPadre[padreId] = [];
           porPadre[padreId].push(nido);
         });
 
-        // Numerar cada grupo
         Object.keys(porPadre).forEach(padreId => {
           const hijos = porPadre[padreId];
-          hijos.sort((a, b) => {
-            const fechaA = a.fechaFormacion ? new Date(a.fechaFormacion) : new Date('2100-01-01');
-            const fechaB = b.fechaFormacion ? new Date(b.fechaFormacion) : new Date('2100-01-01');
-            return fechaA - fechaB;
+          const prefijo = nidosNumerados[padreId] || '?';
+          hijos.forEach((nido, idx) => {
+            nidosNumerados[nido.id] = `${prefijo}.${idx + 1}`;
           });
+        });
+      }
 
+      // Gen 4: Hijos = prefijo del padre + orden
+      if (porGeneracion[4]) {
+        const porPadre = {};
+        porGeneracion[4].forEach(nido => {
+          const padreId = nido.nidoOrigen || 'root';
+          if (!porPadre[padreId]) porPadre[padreId] = [];
+          porPadre[padreId].push(nido);
+        });
+
+        Object.keys(porPadre).forEach(padreId => {
+          const hijos = porPadre[padreId];
           const prefijo = nidosNumerados[padreId] || '?';
           hijos.forEach((nido, idx) => {
             nidosNumerados[nido.id] = `${prefijo}.${idx + 1}`;
