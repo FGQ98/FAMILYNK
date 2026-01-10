@@ -114,6 +114,52 @@
     .admin-tab:hover { background: var(--cream); }
     .admin-tab.active { background: var(--rojo); color: white; }
 
+    .badge-pendientes {
+      background: var(--warning);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      margin-left: 6px;
+      animation: pulse 2s infinite;
+    }
+    .admin-tab.active .badge-pendientes { background: white; color: var(--rojo); }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    /* Buzón solicitudes */
+    .solicitud-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--white);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      border-left: 4px solid var(--warning);
+      box-shadow: var(--shadow-soft);
+      transition: all 0.2s;
+    }
+    .solicitud-item:hover { transform: translateX(4px); }
+    .solicitud-item.aprobada { border-left-color: var(--success); opacity: 0.7; }
+    .solicitud-item.rechazada { border-left-color: var(--error); opacity: 0.5; text-decoration: line-through; }
+    .solicitud-icono { font-size: 2rem; min-width: 50px; text-align: center; }
+    .solicitud-info { flex: 1; min-width: 0; }
+    .solicitud-tipo { font-size: 0.7rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 2px; }
+    .solicitud-titulo { font-weight: 700; font-size: 1rem; margin-bottom: 4px; }
+    .solicitud-detalle { font-size: 0.85rem; color: var(--text-muted); }
+    .solicitud-meta { display: flex; gap: 16px; margin-top: 6px; font-size: 0.75rem; color: var(--text-muted); }
+    .solicitud-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .solicitud-empty { 
+      text-align: center; 
+      padding: 40px; 
+      color: var(--text-muted); 
+      background: var(--cream-medium);
+      border-radius: var(--radius-md);
+    }
+    .btn-aprobar { background: var(--success); color: white; }
+    .btn-rechazar { background: var(--error); color: white; }
+
     .admin-section { display: none; animation: fadeIn 0.3s ease; }
     .admin-section.active { display: block; }
 
@@ -428,6 +474,7 @@
 
     <div class="admin-tabs">
       <button class="admin-tab active" data-section="usuarios" onclick="cambiarSeccion('usuarios')"><span>👥</span> Usuarios</button>
+      <button class="admin-tab" data-section="buzon" onclick="cambiarSeccion('buzon')"><span>📬</span> Buzón <span class="badge-pendientes" id="badge-buzon" style="display:none">0</span></button>
       <button class="admin-tab" data-section="reservas" onclick="cambiarSeccion('reservas')"><span>📅</span> Reservas</button>
       <button class="admin-tab" data-section="gestion" onclick="cambiarSeccion('gestion')"><span>🎩</span> Gestión Activa</button>
       <button class="admin-tab" data-section="planes" onclick="cambiarSeccion('planes')"><span>📋</span> Planes</button>
@@ -446,6 +493,30 @@
           <thead><tr><th>Nº</th><th>Usuario</th><th>Nidos</th><th>Rol</th><th>Acciones</th></tr></thead>
           <tbody id="usuarios-tbody"></tbody>
         </table>
+      </div>
+    </section>
+
+    <!-- SECCIÓN BUZÓN -->
+    <section class="admin-section" id="section-buzon">
+      <div class="section-header">
+        <h2 class="section-title">📬 Buzón de Solicitudes</h2>
+        <div class="section-actions">
+          <select class="form-input" id="filtro-buzon" onchange="renderSolicitudes()" style="width:auto;padding:8px 12px;">
+            <option value="pendiente">🕐 Pendientes</option>
+            <option value="todas">📋 Todas</option>
+            <option value="aprobada">✅ Aprobadas</option>
+            <option value="rechazada">❌ Rechazadas</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div id="solicitudes-list">
+          <div class="solicitud-empty">
+            <p style="font-size:2rem;margin-bottom:8px;">📭</p>
+            <p>No hay solicitudes pendientes</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -834,7 +905,7 @@
   <script src="js/firebase-config.js"></script>
 
   <script>
-    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [], invitacionesData = [];
+    let currentUser = null, userData = null, familiaData = null, usuariosData = [], nidosData = [], bienesData = [], invitacionesData = [], solicitudesData = [];
     let nidosNumerados = {}; // Cache de numeración de nidos
     let bienSeleccionado = null;
     let tiposReservaData = [];
@@ -906,6 +977,35 @@
         invitacionesData = [];
       }
 
+      // Cargar solicitudes de todos los bienes de la familia
+      try {
+        solicitudesData = [];
+        for (const bien of bienesData) {
+          const solSnap = await db.collection('bienes').doc(bien.id).collection('solicitudes')
+            .orderBy('fechaCreacion', 'desc')
+            .limit(50)
+            .get();
+          solSnap.docs.forEach(d => {
+            solicitudesData.push({ 
+              id: d.id, 
+              bienId: bien.id, 
+              bienNombre: bien.nombre,
+              bienTipo: bien.tipo,
+              ...d.data() 
+            });
+          });
+        }
+        // Ordenar por fecha más reciente
+        solicitudesData.sort((a, b) => {
+          const fa = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fb = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fb - fa;
+        });
+      } catch (e) {
+        console.log('No se pudieron cargar solicitudes:', e.message);
+        solicitudesData = [];
+      }
+
       document.getElementById('stat-usuarios').textContent = usuariosData.length;
       document.getElementById('stat-nidos').textContent = nidosData.length;
       document.getElementById('stat-bienes').textContent = bienesData.length;
@@ -944,6 +1044,7 @@
       renderPermisos();
       renderConfigRama();
       renderPlanes();
+      renderSolicitudes();
       await cargarTiposReserva();
 
       document.getElementById('invitar-nido').innerHTML = '<option value="">Sin asignar</option>' + nidosData.map(n => `<option value="${n.id}">${nidosNumerados[n.id] || ''} ${n.nombre}</option>`).join('');
@@ -1740,6 +1841,166 @@
       } catch (error) {
         console.error('Error:', error);
         alert('Error al eliminar');
+      }
+    }
+
+    // ============ BUZÓN DE SOLICITUDES ============
+    const tipoSolicitudIconos = {
+      'estancia': '🏠',
+      'reserva': '📅',
+      'actividad': '🎯',
+      'default': '📋'
+    };
+
+    const tipoSolicitudLabels = {
+      'estancia': 'Estancia (Mayordomo)',
+      'reserva': 'Reserva (Gerente)',
+      'actividad': 'Actividad (Capataz)'
+    };
+
+    function renderSolicitudes() {
+      const filtro = document.getElementById('filtro-buzon')?.value || 'pendiente';
+      const container = document.getElementById('solicitudes-list');
+      
+      let solicitudesFiltradas = solicitudesData;
+      if (filtro !== 'todas') {
+        solicitudesFiltradas = solicitudesData.filter(s => s.estado === filtro);
+      }
+
+      // Actualizar badge
+      const pendientes = solicitudesData.filter(s => s.estado === 'pendiente').length;
+      const badge = document.getElementById('badge-buzon');
+      if (pendientes > 0) {
+        badge.textContent = pendientes;
+        badge.style.display = 'inline';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      if (solicitudesFiltradas.length === 0) {
+        const mensajes = {
+          'pendiente': 'No hay solicitudes pendientes',
+          'aprobada': 'No hay solicitudes aprobadas',
+          'rechazada': 'No hay solicitudes rechazadas',
+          'todas': 'No hay solicitudes'
+        };
+        container.innerHTML = `
+          <div class="solicitud-empty">
+            <p style="font-size:2rem;margin-bottom:8px;">📭</p>
+            <p>${mensajes[filtro]}</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = solicitudesFiltradas.map(sol => {
+        const icono = tipoSolicitudIconos[sol.tipoSolicitud] || tipoSolicitudIconos.default;
+        const tipoLabel = tipoSolicitudLabels[sol.tipoSolicitud] || sol.tipoSolicitud;
+        
+        // Formatear fechas
+        const fechaInicio = sol.fechaInicio?.toDate?.() || new Date(sol.fechaInicio);
+        const fechaFin = sol.fechaFin?.toDate?.() || new Date(sol.fechaFin);
+        const fechaCreacion = sol.fechaCreacion?.toDate?.() || new Date();
+        
+        const formatFecha = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+        const formatFechaCompleta = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+        // Buscar quien solicitó
+        const solicitante = usuariosData.find(u => u.id === sol.creadoPor);
+        const nombreSolicitante = solicitante?.nombre || solicitante?.email || 'Usuario';
+
+        const estadoClass = sol.estado || 'pendiente';
+        const acciones = sol.estado === 'pendiente' ? `
+          <button class="btn btn-sm btn-aprobar" onclick="aprobarSolicitud('${sol.bienId}', '${sol.id}')">✓ Aprobar</button>
+          <button class="btn btn-sm btn-rechazar" onclick="rechazarSolicitud('${sol.bienId}', '${sol.id}')">✗ Rechazar</button>
+        ` : `<span style="font-size:0.8rem;color:var(--text-muted)">${sol.estado === 'aprobada' ? '✅ Aprobada' : '❌ Rechazada'}</span>`;
+
+        return `
+          <div class="solicitud-item ${estadoClass}">
+            <div class="solicitud-icono">${icono}</div>
+            <div class="solicitud-info">
+              <div class="solicitud-tipo">${tipoLabel}</div>
+              <div class="solicitud-titulo">${sol.bienNombre} · ${sol.tipoNombre || sol.descripcion || 'Solicitud'}</div>
+              <div class="solicitud-detalle">
+                📅 ${formatFecha(fechaInicio)} - ${formatFecha(fechaFin)}
+                ${sol.notas ? ` · "${sol.notas}"` : ''}
+              </div>
+              <div class="solicitud-meta">
+                <span>👤 ${nombreSolicitante}</span>
+                <span>🕐 ${formatFechaCompleta(fechaCreacion)}</span>
+              </div>
+            </div>
+            <div class="solicitud-actions">
+              ${acciones}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function aprobarSolicitud(bienId, solicitudId) {
+      if (!confirm('¿Aprobar esta solicitud?')) return;
+
+      try {
+        const solRef = db.collection('bienes').doc(bienId).collection('solicitudes').doc(solicitudId);
+        const solDoc = await solRef.get();
+        
+        if (!solDoc.exists) {
+          alert('Solicitud no encontrada');
+          return;
+        }
+
+        const solData = solDoc.data();
+
+        // Crear la reserva real en la colección correspondiente
+        const reservaData = {
+          tipo: solData.tipo,
+          tipoNombre: solData.tipoNombre,
+          fechaInicio: solData.fechaInicio,
+          fechaFin: solData.fechaFin,
+          notas: solData.notas || '',
+          creadoPor: solData.creadoPor,
+          aprobadoPor: currentUser.uid,
+          fechaCreacion: solData.fechaCreacion,
+          fechaAprobacion: firebase.firestore.FieldValue.serverTimestamp(),
+          origenSolicitud: solicitudId
+        };
+
+        // Guardar en la colección de reservas del bien
+        await db.collection('bienes').doc(bienId).collection('reservas').add(reservaData);
+
+        // Actualizar estado de la solicitud
+        await solRef.update({ 
+          estado: 'aprobada',
+          aprobadoPor: currentUser.uid,
+          fechaAprobacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await cargarDatos();
+        alert('✅ Solicitud aprobada. La reserva está activa.');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al aprobar: ' + error.message);
+      }
+    }
+
+    async function rechazarSolicitud(bienId, solicitudId) {
+      const motivo = prompt('Motivo del rechazo (opcional):');
+      if (motivo === null) return; // Canceló el prompt
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('solicitudes').doc(solicitudId).update({
+          estado: 'rechazada',
+          rechazadoPor: currentUser.uid,
+          motivoRechazo: motivo,
+          fechaRechazo: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await cargarDatos();
+        alert('❌ Solicitud rechazada');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al rechazar: ' + error.message);
       }
     }
   </script>

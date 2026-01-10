@@ -713,23 +713,21 @@
         const estirpe = nidosEstirpe[nido.id] || 0;
         const miembros = nido.miembrosData || [];
         
-        const hijosNido = miembros.filter(m => 
-          m.relacion === 'hijo' || m.relacion === 'descendiente'
-        );
-        
-        hijosNido.forEach(hijo => {
-          // Usar el campo nidoPropio directamente
-          const tieneNidoPropio = hijo.nidoPropio && hijo.nidoPropio !== null && hijo.nidoPropio !== '';
-          
-          if (!tieneNidoPropio) {
-            padresSinNido.push({
-              nombre: hijo.nombre || hijo.iniciales || '?',
-              uid: hijo.uid || null,
-              nidoId: nido.id,
-              estirpe: estirpe,
-              nidoNombre: nido.nombre,
-              nidoNumero: nidosNumerados[nido.id] || '?'
-            });
+        miembros.forEach((m, idx) => {
+          if (m.relacion === 'hijo' || m.relacion === 'descendiente') {
+            const tieneNidoPropio = m.nidoPropio && m.nidoPropio !== null && m.nidoPropio !== '';
+            
+            if (!tieneNidoPropio) {
+              padresSinNido.push({
+                nombre: m.nombre || m.iniciales || '?',
+                uid: m.uid || null,
+                nidoId: nido.id,
+                miembroIdx: idx,
+                estirpe: estirpe,
+                nidoNombre: nido.nombre,
+                nidoNumero: nidosNumerados[nido.id] || '?'
+              });
+            }
           }
         });
       });
@@ -752,19 +750,18 @@
         const estirpe = nidosEstirpe[nido.id] || 0;
         const miembros = nido.miembrosData || [];
         
-        const hijosNido = miembros.filter(m => 
-          m.relacion === 'hijo' || m.relacion === 'descendiente'
-        );
-        
-        hijosNido.forEach(hijo => {
-          hijos.push({
-            nombre: hijo.nombre || hijo.iniciales || '?',
-            uid: hijo.uid || null,
-            nidoId: nido.id,
-            estirpe: estirpe,
-            nidoNombre: nido.nombre,
-            nidoNumero: nidosNumerados[nido.id] || '?'
-          });
+        miembros.forEach((m, idx) => {
+          if (m.relacion === 'hijo' || m.relacion === 'descendiente') {
+            hijos.push({
+              nombre: m.nombre || m.iniciales || '?',
+              uid: m.uid || null,
+              nidoId: nido.id,
+              miembroIdx: idx,
+              estirpe: estirpe,
+              nidoNombre: nido.nombre,
+              nidoNumero: nidosNumerados[nido.id] || '?'
+            });
+          }
         });
       });
 
@@ -779,9 +776,9 @@
 
     function renderHijoChip(hijo) {
       const claseEstirpe = hijo.estirpe > 0 ? `estirpe-${hijo.estirpe}` : 'sin-estirpe';
-      const editable = esAdmin && hijo.uid;
+      const editable = esAdmin;
       const claseEditable = editable ? 'editable' : '';
-      const onclick = editable ? `onclick="abrirModalMiembro('${hijo.uid}', '${hijo.nidoId}')"` : '';
+      const onclick = editable ? `onclick="abrirModalMiembro('${hijo.nidoId}', ${hijo.miembroIdx})"` : '';
       const editIcon = editable ? '<span class="edit-icon">✏️</span>' : '';
       
       return `
@@ -820,30 +817,30 @@
     }
 
     // ========== EDICIÓN DE MIEMBROS ==========
-    async function abrirModalMiembro(uid, nidoId) {
-      if (!uid || !esAdmin) return;
+    async function abrirModalMiembro(nidoId, miembroIdx) {
+      if (!esAdmin) return;
       
-      editandoMiembroUid = uid;
       editandoMiembroNidoId = nidoId;
+      editandoMiembroUid = miembroIdx; // Reusamos esta variable para el índice
 
       try {
-        // Cargar datos del usuario
-        const userDoc = await db.collection('usuarios').doc(uid).get();
-        if (!userDoc.exists) {
-          alert('Usuario no encontrado');
+        // Buscar el nido y el miembro
+        const nido = nidosData.find(n => n.id === nidoId);
+        if (!nido || !nido.miembrosData || !nido.miembrosData[miembroIdx]) {
+          alert('Miembro no encontrado');
           return;
         }
-        const user = userDoc.data();
+        const miembro = nido.miembrosData[miembroIdx];
 
         // Cargar datos en el formulario
-        document.getElementById('miembro-nombre').value = user.nombre || '';
-        document.getElementById('miembro-apodo').value = user.apodo || '';
-        document.getElementById('miembro-email').value = user.email || '';
-        document.getElementById('miembro-telefono').value = user.telefono || '';
-        document.getElementById('miembro-nacimiento').value = user.fechaNacimiento || '';
-        document.getElementById('miembro-rol').value = user.rol || 'adulto';
-        document.getElementById('miembro-relacion').value = user.relacion || 'progenitor';
-        document.getElementById('miembro-notas').value = user.notasAdmin || '';
+        document.getElementById('miembro-nombre').value = miembro.nombre || '';
+        document.getElementById('miembro-apodo').value = miembro.apodo || miembro.iniciales || '';
+        document.getElementById('miembro-email').value = miembro.email || '';
+        document.getElementById('miembro-telefono').value = miembro.telefono || '';
+        document.getElementById('miembro-nacimiento').value = miembro.fechaNacimiento || '';
+        document.getElementById('miembro-rol').value = miembro.rol || 'adulto';
+        document.getElementById('miembro-relacion').value = miembro.relacion || 'descendiente';
+        document.getElementById('miembro-notas').value = miembro.notas || '';
 
         document.getElementById('modal-editar-miembro').classList.add('active');
       } catch (e) {
@@ -859,46 +856,66 @@
     }
 
     async function guardarMiembro() {
-      if (!editandoMiembroUid) return;
+      if (editandoMiembroNidoId === null || editandoMiembroUid === null) return;
 
-      const data = {
+      const miembroIdx = editandoMiembroUid;
+      const nidoId = editandoMiembroNidoId;
+
+      const datosActualizados = {
         nombre: document.getElementById('miembro-nombre').value.trim(),
         apodo: document.getElementById('miembro-apodo').value.trim(),
+        email: document.getElementById('miembro-email').value.trim(),
         telefono: document.getElementById('miembro-telefono').value.trim(),
         fechaNacimiento: document.getElementById('miembro-nacimiento').value || null,
         rol: document.getElementById('miembro-rol').value,
         relacion: document.getElementById('miembro-relacion').value,
-        notasAdmin: document.getElementById('miembro-notas').value.trim(),
-        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+        notas: document.getElementById('miembro-notas').value.trim()
       };
 
-      if (!data.nombre) {
+      if (!datosActualizados.nombre) {
         alert('El nombre es obligatorio');
         return;
       }
 
       try {
-        // Actualizar en colección usuarios
-        await db.collection('usuarios').doc(editandoMiembroUid).update(data);
+        // Obtener el nido actual
+        const nidoRef = db.collection('nidos').doc(nidoId);
+        const nidoDoc = await nidoRef.get();
+        
+        if (!nidoDoc.exists) {
+          alert('Nido no encontrado');
+          return;
+        }
 
-        // Actualizar en miembrosData del nido si existe
-        if (editandoMiembroNidoId) {
-          const nidoRef = db.collection('nidos').doc(editandoMiembroNidoId);
-          const nidoDoc = await nidoRef.get();
-          if (nidoDoc.exists) {
-            const nidoData = nidoDoc.data();
-            const miembros = nidoData.miembrosData || [];
-            const idx = miembros.findIndex(m => m.uid === editandoMiembroUid);
-            if (idx !== -1) {
-              miembros[idx] = {
-                ...miembros[idx],
-                nombre: data.nombre,
-                apodo: data.apodo,
-                relacion: data.relacion
-              };
-              await nidoRef.update({ miembrosData: miembros });
-            }
-          }
+        const nidoData = nidoDoc.data();
+        const miembros = nidoData.miembrosData || [];
+
+        if (!miembros[miembroIdx]) {
+          alert('Miembro no encontrado en el nido');
+          return;
+        }
+
+        // Actualizar el miembro en el array
+        miembros[miembroIdx] = {
+          ...miembros[miembroIdx],
+          ...datosActualizados,
+          iniciales: datosActualizados.apodo || datosActualizados.nombre.split(' ').map(n => n[0]).join('')
+        };
+
+        // Guardar en Firebase
+        await nidoRef.update({ miembrosData: miembros });
+
+        // Si tiene uid, también actualizar en colección usuarios
+        const uid = miembros[miembroIdx].uid;
+        if (uid) {
+          await db.collection('usuarios').doc(uid).update({
+            nombre: datosActualizados.nombre,
+            apodo: datosActualizados.apodo,
+            telefono: datosActualizados.telefono,
+            fechaNacimiento: datosActualizados.fechaNacimiento,
+            rol: datosActualizados.rol,
+            relacion: datosActualizados.relacion
+          });
         }
 
         cerrarModalMiembro();

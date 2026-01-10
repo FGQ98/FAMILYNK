@@ -2020,6 +2020,7 @@
     let currentUser = null;
     let bienId = null;
     let bienData = null;
+    let esAdminRama = false;
 
     // ========== INIT ==========
     document.addEventListener('DOMContentLoaded', () => {
@@ -2052,6 +2053,13 @@
           bienData = doc.data();
           document.getElementById('nombre-bien').textContent = bienData.nombre || 'Sin nombre';
           document.getElementById('btn-volver').href = `bien.html?id=${bienId}`;
+          
+          // Verificar si es admin
+          const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+          if (userDoc.exists) {
+            const userData = userDoc.data();
+            esAdminRama = userData.rol === 'adminRama' || userData.rol === 'adminSistema';
+          }
         }
       } catch (error) {
         console.error('Error cargando bien:', error);
@@ -2092,6 +2100,59 @@
     function cerrarModales() {
       document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
     }
+
+    // ========== RESERVAS ==========
+    document.addEventListener('DOMContentLoaded', () => {
+      const formReserva = document.getElementById('form-reserva');
+      if (formReserva) {
+        formReserva.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = formReserva.querySelector('button[type="submit"]');
+          btn.disabled = true;
+          btn.textContent = 'Guardando...';
+
+          try {
+            const inputs = formReserva.querySelectorAll('input, select, textarea');
+            const titular = inputs[0]?.value || '';
+            const fechaEntrada = inputs[1]?.value || '';
+            const fechaSalida = inputs[2]?.value || '';
+            const tipoReserva = formReserva.querySelector('select')?.value || 'externa';
+            const notas = formReserva.querySelector('textarea')?.value || '';
+
+            const data = {
+              titular,
+              tipoNombre: tipoReserva === 'externa' ? 'Externa' : tipoReserva === 'nido50' ? 'Nido 50%' : 'Evento familiar',
+              fechaInicio: firebase.firestore.Timestamp.fromDate(new Date(fechaEntrada + 'T00:00:00')),
+              fechaFin: firebase.firestore.Timestamp.fromDate(new Date(fechaSalida + 'T23:59:59')),
+              notas,
+              creadoPor: currentUser.uid,
+              fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            // Si es admin, crear reserva directa
+            if (esAdminRama) {
+              await db.collection('bienes').doc(bienId).collection('reservas').add(data);
+              cerrarModales();
+              alert('✅ Reserva creada');
+            } 
+            // Si NO es admin, crear SOLICITUD pendiente
+            else {
+              data.estado = 'pendiente';
+              data.tipoSolicitud = 'reserva'; // Gerente = reservas comerciales
+              await db.collection('bienes').doc(bienId).collection('solicitudes').add(data);
+              cerrarModales();
+              alert('📬 Solicitud enviada. El administrador la revisará y te notificará cuando esté aprobada.');
+            }
+          } catch (error) {
+            console.error(error);
+            alert('Error al guardar');
+          }
+
+          btn.disabled = false;
+          btn.textContent = 'Crear reserva';
+        });
+      }
+    });
 
     // ========== GRUPOS PERSONALIZADOS ==========
     function guardarGrupoActividad(e) {
