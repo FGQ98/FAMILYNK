@@ -363,7 +363,15 @@
         }
         
         bienData = bienDoc.data();
-        nidoId = bienData.nidoId; // El nido que tiene el add-on activo
+        nidoId = bienData.nidoId || null; // Puede que el bien no tenga nidoId
+        
+        // Si el bien no tiene nidoId, usar el del usuario
+        if (!nidoId) {
+          const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+          if (userDoc.exists) {
+            nidoId = userDoc.data().nidoId || null;
+          }
+        }
         
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
@@ -601,10 +609,12 @@
         nombre,
         descripcion,
         grupo,
-        nidoId,
         actualizadoPor: currentUser.uid,
         fechaActualizacion: new Date().toISOString()
       };
+      
+      // Solo añadir nidoId si existe
+      if (nidoId) data.nidoId = nidoId;
 
       try {
         if (id) {
@@ -700,10 +710,12 @@
       const data = {
         nombre,
         platos: platosSeleccionados,
-        nidoId,
         actualizadoPor: currentUser.uid,
         fechaActualizacion: new Date().toISOString()
       };
+      
+      // Solo añadir nidoId si existe
+      if (nidoId) data.nidoId = nidoId;
 
       try {
         if (id) {
@@ -786,10 +798,12 @@
       const data = {
         fecha,
         tipo,
-        nidoId,
         creadoPor: currentUser.uid,
         fechaCreacion: new Date().toISOString()
       };
+      
+      // Solo añadir nidoId si existe
+      if (nidoId) data.nidoId = nidoId;
 
       if (tipoSeleccion === 'menu') {
         data.menuId = idSeleccion;
