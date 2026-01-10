@@ -152,13 +152,57 @@
       transition: transform 0.2s;
       display: flex;
       align-items: center;
+      gap: 6px;
       height: fit-content;
       align-self: center;
+    }
+
+    .miembro-chip.editable {
+      cursor: pointer;
     }
 
     .miembro-chip:hover {
       transform: scale(1.05);
     }
+
+    .miembro-chip .edit-icon {
+      opacity: 0;
+      font-size: 0.7rem;
+      transition: opacity 0.2s;
+    }
+
+    .miembro-chip.editable:hover .edit-icon {
+      opacity: 1;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center;
+      justify-content: center; z-index: 1000; opacity: 0; visibility: hidden;
+      transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg);
+      max-width: 500px; width: 90%; max-height: 85vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      padding: 20px; border-bottom: 1px solid var(--cream-dark);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: flex-end; gap: 12px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .form-input { width: 100%; padding: 10px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
+    .form-input:focus { outline: none; border-color: var(--sage); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
 
     .miembro-chip.estirpe-1 { background: var(--estirpe-1); }
     .miembro-chip.estirpe-2 { background: var(--estirpe-2); }
@@ -257,6 +301,74 @@
     </div>
   </main>
 
+  <!-- Modal Editar Miembro -->
+  <div class="modal-overlay" id="modal-editar-miembro">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">✏️ Editar Miembro</h3>
+        <button class="modal-close" onclick="cerrarModalMiembro()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nombre *</label>
+            <input type="text" class="form-input" id="miembro-nombre" placeholder="Nombre completo">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Apodo</label>
+            <input type="text" class="form-input" id="miembro-apodo" placeholder="Cómo le llaman">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" id="miembro-email" disabled style="background:var(--cream)">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Teléfono</label>
+            <input type="tel" class="form-input" id="miembro-telefono" placeholder="+34 600 000 000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha nacimiento</label>
+            <input type="date" class="form-input" id="miembro-nacimiento">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Rol</label>
+            <select class="form-input" id="miembro-rol">
+              <option value="adminRama">👑 Admin Rama</option>
+              <option value="adminNido">🏠 Admin Nido</option>
+              <option value="adulto">👤 Adulto</option>
+              <option value="nino">👶 Niño</option>
+              <option value="novio">💕 Novio/a</option>
+              <option value="prometido">💍 Prometido/a</option>
+              <option value="separado">💔 Separado/a</option>
+              <option value="divorciado">📄 Divorciado/a</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Relación en nido</label>
+            <select class="form-input" id="miembro-relacion">
+              <option value="progenitor">Progenitor</option>
+              <option value="descendiente">Descendiente</option>
+              <option value="ascendiente">Ascendiente</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-input" id="miembro-notas" rows="2" placeholder="Notas..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalMiembro()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarMiembro()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -267,6 +379,9 @@
     let nidosNumerados = {};  // {nidoId: "1.2.3"}
     let nidosEstirpe = {};    // {nidoId: 1} (número de estirpe o 0 si sin estirpe)
     let estirpesInfo = [];    // [{id, nombre, color}]
+    let esAdmin = false;      // Si el usuario puede editar miembros
+    let editandoMiembroUid = null;
+    let editandoMiembroNidoId = null;
 
     const genLabels = {
       '1-bisabuelos': 'BISABUELOS',
@@ -309,6 +424,9 @@
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       if (!userDoc.exists) return;
       userData = userDoc.data();
+
+      // Determinar si puede editar miembros
+      esAdmin = userData.rol === 'adminRama' || userData.rol === 'adminNido';
 
       const nombre = userData.nombre || user.email.split('@')[0];
       document.getElementById('user-name').textContent = nombre.split(' ')[0];
@@ -606,6 +724,8 @@
           if (!tieneNidoPropio) {
             padresSinNido.push({
               nombre: hijo.nombre || hijo.iniciales || '?',
+              uid: hijo.uid || null,
+              nidoId: nido.id,
               estirpe: estirpe,
               nidoNombre: nido.nombre,
               nidoNumero: nidosNumerados[nido.id] || '?'
@@ -639,6 +759,8 @@
         hijosNido.forEach(hijo => {
           hijos.push({
             nombre: hijo.nombre || hijo.iniciales || '?',
+            uid: hijo.uid || null,
+            nidoId: nido.id,
             estirpe: estirpe,
             nidoNombre: nido.nombre,
             nidoNumero: nidosNumerados[nido.id] || '?'
@@ -657,9 +779,14 @@
 
     function renderHijoChip(hijo) {
       const claseEstirpe = hijo.estirpe > 0 ? `estirpe-${hijo.estirpe}` : 'sin-estirpe';
+      const editable = esAdmin && hijo.uid;
+      const claseEditable = editable ? 'editable' : '';
+      const onclick = editable ? `onclick="abrirModalMiembro('${hijo.uid}', '${hijo.nidoId}')"` : '';
+      const editIcon = editable ? '<span class="edit-icon">✏️</span>' : '';
+      
       return `
-        <span class="miembro-chip ${claseEstirpe}" title="Nido ${hijo.nidoNumero}: ${hijo.nidoNombre}">
-          ${hijo.nombre}
+        <span class="miembro-chip ${claseEstirpe} ${claseEditable}" title="Nido ${hijo.nidoNumero}: ${hijo.nidoNombre}" ${onclick}>
+          ${hijo.nombre}${editIcon}
         </span>
       `;
     }
@@ -691,6 +818,102 @@
         </a>
       `;
     }
+
+    // ========== EDICIÓN DE MIEMBROS ==========
+    async function abrirModalMiembro(uid, nidoId) {
+      if (!uid || !esAdmin) return;
+      
+      editandoMiembroUid = uid;
+      editandoMiembroNidoId = nidoId;
+
+      try {
+        // Cargar datos del usuario
+        const userDoc = await db.collection('usuarios').doc(uid).get();
+        if (!userDoc.exists) {
+          alert('Usuario no encontrado');
+          return;
+        }
+        const user = userDoc.data();
+
+        // Cargar datos en el formulario
+        document.getElementById('miembro-nombre').value = user.nombre || '';
+        document.getElementById('miembro-apodo').value = user.apodo || '';
+        document.getElementById('miembro-email').value = user.email || '';
+        document.getElementById('miembro-telefono').value = user.telefono || '';
+        document.getElementById('miembro-nacimiento').value = user.fechaNacimiento || '';
+        document.getElementById('miembro-rol').value = user.rol || 'adulto';
+        document.getElementById('miembro-relacion').value = user.relacion || 'progenitor';
+        document.getElementById('miembro-notas').value = user.notasAdmin || '';
+
+        document.getElementById('modal-editar-miembro').classList.add('active');
+      } catch (e) {
+        console.error(e);
+        alert('Error al cargar datos');
+      }
+    }
+
+    function cerrarModalMiembro() {
+      document.getElementById('modal-editar-miembro').classList.remove('active');
+      editandoMiembroUid = null;
+      editandoMiembroNidoId = null;
+    }
+
+    async function guardarMiembro() {
+      if (!editandoMiembroUid) return;
+
+      const data = {
+        nombre: document.getElementById('miembro-nombre').value.trim(),
+        apodo: document.getElementById('miembro-apodo').value.trim(),
+        telefono: document.getElementById('miembro-telefono').value.trim(),
+        fechaNacimiento: document.getElementById('miembro-nacimiento').value || null,
+        rol: document.getElementById('miembro-rol').value,
+        relacion: document.getElementById('miembro-relacion').value,
+        notasAdmin: document.getElementById('miembro-notas').value.trim(),
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (!data.nombre) {
+        alert('El nombre es obligatorio');
+        return;
+      }
+
+      try {
+        // Actualizar en colección usuarios
+        await db.collection('usuarios').doc(editandoMiembroUid).update(data);
+
+        // Actualizar en miembrosData del nido si existe
+        if (editandoMiembroNidoId) {
+          const nidoRef = db.collection('nidos').doc(editandoMiembroNidoId);
+          const nidoDoc = await nidoRef.get();
+          if (nidoDoc.exists) {
+            const nidoData = nidoDoc.data();
+            const miembros = nidoData.miembrosData || [];
+            const idx = miembros.findIndex(m => m.uid === editandoMiembroUid);
+            if (idx !== -1) {
+              miembros[idx] = {
+                ...miembros[idx],
+                nombre: data.nombre,
+                apodo: data.apodo,
+                relacion: data.relacion
+              };
+              await nidoRef.update({ miembrosData: miembros });
+            }
+          }
+        }
+
+        cerrarModalMiembro();
+        await loadArbol();
+        alert('✅ Miembro actualizado');
+      } catch (e) {
+        console.error(e);
+        alert('Error: ' + e.message);
+      }
+    }
+
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('modal-editar-miembro').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) cerrarModalMiembro();
+    });
   </script>
 </body>
 </html>
