@@ -148,12 +148,46 @@
     .tab-panel.active { display: block; }
 
     /* Panel Registro */
-    .periodo-selector {
+    .filtros-container {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
       margin-bottom: 20px;
       flex-wrap: wrap;
     }
+
+    .periodo-selector {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .anio-selector {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .anio-selector label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .anio-select {
+      padding: 8px 16px;
+      border: 2px solid var(--cream-dark);
+      background: var(--white);
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .anio-select:focus { outline: none; border-color: var(--terracotta); }
 
     .periodo-btn {
       padding: 8px 16px;
@@ -528,7 +562,13 @@
 
       <!-- Panel Registro -->
       <div class="tab-panel active" id="panel-registro">
-        <div class="periodo-selector" id="periodo-selector"></div>
+        <div class="filtros-container">
+          <div class="periodo-selector" id="periodo-selector"></div>
+          <div class="anio-selector">
+            <label>📅 Año:</label>
+            <select class="anio-select" id="anio-select" onchange="cambiarAnio()"></select>
+          </div>
+        </div>
         
         <div class="resumen-grid" id="resumen-grid"></div>
         
@@ -652,6 +692,7 @@
     let repartoData = {};
     let editingId = null;
     let periodoActual = 'mes';
+    let anioActual = new Date().getFullYear();
 
     const catIcons = {
       suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧',
@@ -715,6 +756,7 @@
     }
 
     function render() {
+      renderAnioSelector();
       renderPeriodoSelector();
       renderResumen();
       renderCategorias();
@@ -730,6 +772,23 @@
       
       document.querySelector(`.main-tab:nth-child(${tab === 'registro' ? 1 : 2})`).classList.add('active');
       document.getElementById(`panel-${tab}`).classList.add('active');
+    }
+
+    function renderAnioSelector() {
+      const select = document.getElementById('anio-select');
+      const anioActualReal = new Date().getFullYear();
+      let opciones = '';
+      
+      for (let anio = 2025; anio <= anioActualReal; anio++) {
+        opciones += `<option value="${anio}" ${anio === anioActual ? 'selected' : ''}>${anio}</option>`;
+      }
+      
+      select.innerHTML = opciones;
+    }
+
+    function cambiarAnio() {
+      anioActual = parseInt(document.getElementById('anio-select').value);
+      render();
     }
 
     function renderPeriodoSelector() {
@@ -753,19 +812,29 @@
 
     function getGastosFiltrados() {
       const hoy = new Date();
-      const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-      const inicioTrimestre = new Date(hoy.getFullYear(), Math.floor(hoy.getMonth() / 3) * 3, 1);
-      const inicioAño = new Date(hoy.getFullYear(), 0, 1);
+      const mesActual = hoy.getMonth();
+      const trimestreActual = Math.floor(mesActual / 3);
+      
+      // Usar el año seleccionado
+      const inicioMes = new Date(anioActual, mesActual, 1);
+      const inicioTrimestre = new Date(anioActual, trimestreActual * 3, 1);
+      const inicioAño = new Date(anioActual, 0, 1);
+      const finAño = new Date(anioActual, 11, 31, 23, 59, 59);
 
       return gastosData.filter(g => {
         if (!g.fecha) return false;
         const fecha = new Date(g.fecha);
         
+        // Primero filtrar por año si no es "todos"
+        if (periodoActual !== 'todos' && fecha.getFullYear() !== anioActual) {
+          return false;
+        }
+        
         switch (periodoActual) {
-          case 'mes': return fecha >= inicioMes;
-          case 'trimestre': return fecha >= inicioTrimestre;
-          case 'año': return fecha >= inicioAño;
-          default: return true;
+          case 'mes': return fecha >= inicioMes && fecha.getFullYear() === anioActual;
+          case 'trimestre': return fecha >= inicioTrimestre && fecha.getFullYear() === anioActual;
+          case 'año': return fecha >= inicioAño && fecha <= finAño;
+          default: return fecha.getFullYear() === anioActual; // 'todos' del año seleccionado
         }
       });
     }
@@ -775,7 +844,12 @@
       const gastos = getGastosFiltrados();
       const total = gastos.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
 
-      const labels = { mes: 'Este mes', trimestre: 'Trimestre', año: 'Este año', todos: 'Total' };
+      const labels = { 
+        mes: `Este mes (${anioActual})`, 
+        trimestre: `Trimestre (${anioActual})`, 
+        año: `Año ${anioActual}`, 
+        todos: `Total ${anioActual}` 
+      };
 
       container.innerHTML = `
         <div class="resumen-card">
