@@ -248,6 +248,10 @@
     .item-value { font-weight: 600; font-size: 0.9rem; }
     .item-value.danger { color: var(--error); }
     .item-value.success { color: var(--success); }
+    .item-status { font-size: 0.7rem; margin-left: 8px; }
+    .item-status.success { color: var(--success); }
+    .item-status.warning { color: var(--warning); }
+    .item-status.danger { color: var(--error); }
 
     /* Botones */
     .btn {
@@ -820,6 +824,49 @@
     </div>
   </div>
 
+  <!-- Modal Reparación -->
+  <div class="modal-overlay" id="modal-reparacion">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-rep-titulo">🔩 Nueva Reparación</h3>
+        <button class="modal-close" onclick="cerrarModalReparacion()">×</button>
+      </div>
+      <form id="form-reparacion">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Título / Descripción *</label>
+            <input type="text" class="form-input" id="rep-titulo" placeholder="Ej: Grifo cocina gotea" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ubicación</label>
+            <input type="text" class="form-input" id="rep-ubicacion" placeholder="Ej: Cocina, Baño principal...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estado</label>
+            <select class="form-input" id="rep-estado">
+              <option value="pendiente">🔴 Pendiente</option>
+              <option value="en_proceso">🟡 En proceso</option>
+              <option value="completada">🟢 Completada</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="display:flex; align-items:center; gap:8px;">
+              <input type="checkbox" id="rep-urgente"> ⚠️ Urgente
+            </label>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas adicionales</label>
+            <textarea class="form-input" id="rep-notas" rows="2" placeholder="Detalles, observaciones..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalReparacion()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -835,6 +882,8 @@
       reservas: [],
       inventario: [],
       mantenimiento: [],
+      reparaciones: [],
+      herramientas: [],
       limpieza: [],
       gastos: [],
       documentos: [],
@@ -1024,6 +1073,35 @@
         }
       }
 
+      // Reparaciones (si tiene permiso de mantenimiento)
+      if (permisosActuales.mantenimiento?.ver) {
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('reparaciones').get();
+          datosModulos.reparaciones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          datosModulos.reparaciones.sort((a, b) => {
+            const fechaA = a.fecha?.toDate?.() || new Date(a.fecha || 0);
+            const fechaB = b.fecha?.toDate?.() || new Date(b.fecha || 0);
+            return fechaB - fechaA;
+          });
+          console.log('Reparaciones cargadas:', datosModulos.reparaciones.length);
+        } catch (e) {
+          console.log('Error cargando reparaciones:', e);
+          datosModulos.reparaciones = [];
+        }
+      }
+
+      // Herramientas (si tiene permiso de mantenimiento)
+      if (permisosActuales.mantenimiento?.ver) {
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('herramientas').get();
+          datosModulos.herramientas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('Herramientas cargadas:', datosModulos.herramientas.length);
+        } catch (e) {
+          console.log('Error cargando herramientas:', e);
+          datosModulos.herramientas = [];
+        }
+      }
+
       // Documentos (de la ficha del bien)
       if (permisosActuales.documentos?.ver) {
         datosModulos.documentos = bienActual.bien.documentos || [];
@@ -1080,6 +1158,16 @@
       // MANTENIMIENTO
       if (permisosActuales.mantenimiento?.ver) {
         html += renderModuloMantenimiento();
+      }
+
+      // REPARACIONES
+      if (permisosActuales.mantenimiento?.ver) {
+        html += renderModuloReparaciones();
+      }
+
+      // HERRAMIENTAS
+      if (permisosActuales.mantenimiento?.ver) {
+        html += renderModuloHerramientas();
       }
 
       // DOCUMENTOS
@@ -1528,6 +1616,88 @@
       `;
     }
 
+    // ========== REPARACIONES ==========
+    function renderModuloReparaciones() {
+      const p = permisosActuales.mantenimiento;
+      const estadoIcons = { pendiente: '🔴', en_proceso: '🟡', completada: '🟢' };
+      const estadoLabels = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
+
+      let itemsHtml = '';
+      // Filtrar solo no completadas por defecto
+      const reparacionesPendientes = datosModulos.reparaciones.filter(r => r.estado !== 'completada');
+      
+      if (reparacionesPendientes.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">No hay reparaciones pendientes</div>';
+      } else {
+        const items = reparacionesPendientes.slice(0, 5);
+        itemsHtml = '<div class="item-list">' + items.map(r => {
+          const fecha = r.fecha?.toDate?.() ? r.fecha.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : (r.fecha || '');
+          const estado = r.estado || 'pendiente';
+          return `
+            <div class="item-row ${p.editar ? '' : 'no-hover'}" ${p.editar ? `onclick="abrirModalReparacion('${r.id}')" style="cursor:pointer"` : ''}>
+              <span class="item-icon">${estadoIcons[estado] || '🔴'}</span>
+              <div class="item-content">
+                <div class="item-title">${r.titulo || r.descripcion || 'Sin título'}</div>
+                <div class="item-subtitle">${estadoLabels[estado]} · ${fecha}</div>
+              </div>
+              ${r.urgente ? '<span style="color:var(--error);font-weight:700;">⚠️</span>' : ''}
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🔩 Reparaciones</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+          ${p.crear ? `
+            <div class="modulo-card-footer">
+              <button class="btn btn-sm btn-primary" onclick="abrirModalReparacion()">+ Nueva reparación</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // ========== HERRAMIENTAS ==========
+    function renderModuloHerramientas() {
+      const p = permisosActuales.mantenimiento;
+      const catIcons = { manual: '🔧', electrica: '⚡', jardin: '🌱', limpieza: '🧹', medicion: '📏', seguridad: '🦺', otro: '🔨' };
+
+      let itemsHtml = '';
+      if (datosModulos.herramientas.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin herramientas registradas</div>';
+      } else {
+        const items = datosModulos.herramientas.slice(0, 6);
+        itemsHtml = '<div class="item-list">' + items.map(h => {
+          const estadoClass = h.estado === 'bueno' ? 'success' : h.estado === 'revisar' ? 'warning' : '';
+          return `
+            <div class="item-row no-hover">
+              <span class="item-icon">${catIcons[h.categoria] || '🔨'}</span>
+              <div class="item-content">
+                <div class="item-title">${h.nombre}</div>
+                <div class="item-subtitle">${h.ubicacion || ''} ${h.cantidad ? '· x' + h.cantidad : ''}</div>
+              </div>
+              ${estadoClass ? `<span class="item-status ${estadoClass}">●</span>` : ''}
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🛠️ Herramientas</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+        </div>
+      `;
+    }
+
     // ========== DOCUMENTOS ==========
     function renderModuloDocumentos() {
       const docIcons = { escritura: '📜', seguro: '🛡️', suministro: '💡', empleado: '👷', itv: '🚗', comunidad: '🏢', otro: '📄' };
@@ -1913,6 +2083,69 @@
       document.getElementById('modal-toma').classList.remove('active');
       tomaData = {};
     }
+
+    // ========== REPARACIONES ==========
+    let editingReparacionId = null;
+
+    function abrirModalReparacion(id = null) {
+      editingReparacionId = id;
+      
+      if (id) {
+        const rep = datosModulos.reparaciones.find(r => r.id === id);
+        if (rep) {
+          document.getElementById('modal-rep-titulo').textContent = '🔩 Editar Reparación';
+          document.getElementById('rep-titulo').value = rep.titulo || rep.descripcion || '';
+          document.getElementById('rep-ubicacion').value = rep.ubicacion || '';
+          document.getElementById('rep-estado').value = rep.estado || 'pendiente';
+          document.getElementById('rep-urgente').checked = rep.urgente || false;
+          document.getElementById('rep-notas').value = rep.notas || '';
+        }
+      } else {
+        document.getElementById('modal-rep-titulo').textContent = '🔩 Nueva Reparación';
+        document.getElementById('form-reparacion').reset();
+      }
+      
+      document.getElementById('modal-reparacion').classList.add('active');
+    }
+
+    function cerrarModalReparacion() {
+      document.getElementById('modal-reparacion').classList.remove('active');
+      editingReparacionId = null;
+    }
+
+    document.getElementById('form-reparacion').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        titulo: document.getElementById('rep-titulo').value.trim(),
+        ubicacion: document.getElementById('rep-ubicacion').value.trim(),
+        estado: document.getElementById('rep-estado').value,
+        urgente: document.getElementById('rep-urgente').checked,
+        notas: document.getElementById('rep-notas').value.trim(),
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        const ref = db.collection('bienes').doc(bienActual.bienId).collection('reparaciones');
+        
+        if (editingReparacionId) {
+          await ref.doc(editingReparacionId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fecha = firebase.firestore.FieldValue.serverTimestamp();
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarModalReparacion();
+        await cargarDatosModulos();
+        renderModulos();
+        
+      } catch (error) {
+        console.error('Error guardando reparación:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    });
   </script>
 </body>
 </html>
