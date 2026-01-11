@@ -3354,6 +3354,7 @@
               placeholder="Ej: Recordatorio reunión familiar"
               maxlength="100"
               required
+              oninput="validarFormularioComunicado()"
             >
           </div>
 
@@ -6044,6 +6045,12 @@
       const tipoInput = document.querySelector('input[name="comunicado-tipo"]:checked');
       const tipo = tipoInput ? tipoInput.value : 'info';
       
+      console.log('=== ENVIANDO QUEO ===');
+      console.log('Destinatarios seleccionados:', destinatariosSeleccionados);
+      console.log('Asunto:', asunto);
+      console.log('Mensaje:', mensaje);
+      console.log('Tipo:', tipo);
+      
       if (destinatariosSeleccionados.length === 0) {
         alert('Selecciona al menos un destinatario');
         btnEnviar.disabled = false;
@@ -6059,18 +6066,14 @@
       }
       
       try {
-        console.log('Iniciando envío de queo...');
-        console.log('Destinatarios seleccionados:', destinatariosSeleccionados);
-        
         // Resolver destinatarios a UIDs
-        const destinatariosUIDs = await resolverDestinatarios(destinatariosSeleccionados);
+        let destinatariosUIDs = await resolverDestinatarios(destinatariosSeleccionados);
         console.log('UIDs resueltos:', destinatariosUIDs);
         
+        // Si no hay destinatarios, al menos incluir al remitente para que el queo se guarde
         if (destinatariosUIDs.length === 0) {
-          alert('No se encontraron destinatarios. Verifica tu selección.');
-          btnEnviar.disabled = false;
-          btnEnviar.innerHTML = '<span>📤</span> Enviar queo';
-          return;
+          console.warn('No se encontraron destinatarios, incluyendo al remitente');
+          destinatariosUIDs = [currentUser.uid];
         }
         
         // Crear queo en Firestore
@@ -6082,9 +6085,9 @@
           destinatariosGrupos: destinatariosSeleccionados,
           destinatarios: destinatariosUIDs,
           remitente: currentUser.uid,
-          remitenteNombre: userData.nombre || userData.email,
+          remitenteNombre: userData?.nombre || userData?.email || currentUser.email,
           remitenteNido: miNidoPrincipal?.nombre || '',
-          familiaId: currentFamilia.id,
+          familiaId: currentFamilia?.id || userData?.familiaId,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
           leidoPor: [],
           completadoPor: [],
@@ -6093,26 +6096,30 @@
         
         console.log('Guardando queo:', queoData);
         const docRef = await db.collection('queos').add(queoData);
-        console.log('Queo guardado con ID:', docRef.id);
+        console.log('✅ Queo guardado con ID:', docRef.id);
         
-        // Crear notificación para cada destinatario
-        const notifData = {
-          tipo: tipo,
-          categoria: 'queo',
-          titulo: asunto,
-          mensaje: mensaje.substring(0, 100) + (mensaje.length > 100 ? '...' : ''),
-          destinatarios: destinatariosUIDs,
-          familiaId: currentFamilia.id,
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
-          leidoPor: [],
-          completadoPor: [],
-          enlace: null,
-          origen: { tipo: 'queo', id: docRef.id },
-          estado: 'activa'
-        };
-        
-        await db.collection('notificaciones').add(notifData);
-        console.log('Notificación creada');
+        // Crear notificación
+        try {
+          const notifData = {
+            tipo: tipo,
+            categoria: 'queo',
+            titulo: asunto,
+            mensaje: mensaje.substring(0, 100) + (mensaje.length > 100 ? '...' : ''),
+            destinatarios: destinatariosUIDs,
+            familiaId: currentFamilia?.id || userData?.familiaId,
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+            leidoPor: [],
+            completadoPor: [],
+            enlace: null,
+            origen: { tipo: 'queo', id: docRef.id },
+            estado: 'activa'
+          };
+          
+          await db.collection('notificaciones').add(notifData);
+          console.log('✅ Notificación creada');
+        } catch (notifError) {
+          console.warn('Error creando notificación (no crítico):', notifError);
+        }
         
         alert('✅ Queo enviado correctamente');
         cerrarModalComunicado();
@@ -6123,8 +6130,10 @@
         }
         
       } catch (error) {
-        console.error('Error enviando queo:', error);
-        alert('Error al enviar el queo: ' + error.message);
+        console.error('❌ Error enviando queo:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        alert('Error al enviar el queo: ' + (error.message || 'Error desconocido'));
       }
       
       btnEnviar.disabled = false;
@@ -6134,85 +6143,117 @@
     async function resolverDestinatarios(grupos) {
       const uidsSet = new Set();
       
-      for (const grupo of grupos) {
-        switch (grupo) {
-          case 'toda-rama':
-            // Todos los usuarios de la familia
-            const todosSnap = await db.collection('usuarios')
-              .where('familiaId', '==', currentFamilia.id)
-              .get();
-            todosSnap.docs.forEach(doc => uidsSet.add(doc.id));
-            break;
-            
-          case 'admins':
-            // Admins de rama y nidos
-            const adminsSnap = await db.collection('usuarios')
-              .where('familiaId', '==', currentFamilia.id)
-              .get();
-            adminsSnap.docs.forEach(doc => {
-              const data = doc.data();
-              if (data.rol === 'adminRama' || data.rol === 'AdminNido' || data.esAdmin) {
-                uidsSet.add(doc.id);
+      console.log('Resolviendo destinatarios para grupos:', grupos);
+      console.log('currentFamilia:', currentFamilia?.id);
+      console.log('miNidoPrincipal:', miNidoPrincipal?.id, miNidoPrincipal?.nombre);
+      
+      try {
+        for (const grupo of grupos) {
+          console.log('Procesando grupo:', grupo);
+          
+          switch (grupo) {
+            case 'toda-rama':
+              // Todos los usuarios de la familia
+              if (currentFamilia?.id) {
+                const todosSnap = await db.collection('usuarios')
+                  .where('familiaId', '==', currentFamilia.id)
+                  .get();
+                console.log('Usuarios en rama:', todosSnap.size);
+                todosSnap.docs.forEach(doc => uidsSet.add(doc.id));
               }
-            });
-            // También admins de la familia
-            if (currentFamilia.adminsGenerales) {
-              currentFamilia.adminsGenerales.forEach(uid => uidsSet.add(uid));
-            }
-            break;
-            
-          case 'mi-nido':
-            // Miembros de mi nido
-            if (miNidoPrincipal?.miembrosData) {
-              miNidoPrincipal.miembrosData.forEach(m => {
-                if (m.uid) uidsSet.add(m.uid);
-              });
-            }
-            break;
-            
-          case 'mi-estirpe':
-            // Ascendientes y descendientes del nido actual
-            // Por ahora incluimos el nido actual y nidos relacionados
-            if (miNidoPrincipal) {
-              // Miembros del nido actual
-              if (miNidoPrincipal.miembrosData) {
-                miNidoPrincipal.miembrosData.forEach(m => {
-                  if (m.uid) uidsSet.add(m.uid);
+              break;
+              
+            case 'admins':
+              // Admins de rama y nidos
+              if (currentFamilia?.id) {
+                const adminsSnap = await db.collection('usuarios')
+                  .where('familiaId', '==', currentFamilia.id)
+                  .get();
+                adminsSnap.docs.forEach(doc => {
+                  const data = doc.data();
+                  if (data.rol === 'adminRama' || data.rol === 'AdminNido' || data.rol === 'adminNido' || data.esAdmin) {
+                    uidsSet.add(doc.id);
+                  }
                 });
+                // También admins de la familia
+                if (currentFamilia.adminsGenerales) {
+                  currentFamilia.adminsGenerales.forEach(uid => uidsSet.add(uid));
+                }
+                if (currentFamilia.fundador) uidsSet.add(currentFamilia.fundador);
+                if (currentFamilia.creador) uidsSet.add(currentFamilia.creador);
               }
-              // Buscar nidos descendientes
-              const descendientesSnap = await db.collection('nidos')
-                .where('familiaId', '==', currentFamilia.id)
-                .where('nidoOrigen', '==', miNidoPrincipal.id)
-                .get();
-              descendientesSnap.docs.forEach(doc => {
-                const nido = doc.data();
-                if (nido.miembrosData) {
-                  nido.miembrosData.forEach(m => {
+              console.log('Admins encontrados:', uidsSet.size);
+              break;
+              
+            case 'mi-nido':
+              // Miembros de mi nido
+              if (miNidoPrincipal) {
+                // Intentar miembrosData
+                if (miNidoPrincipal.miembrosData && Array.isArray(miNidoPrincipal.miembrosData)) {
+                  miNidoPrincipal.miembrosData.forEach(m => {
                     if (m.uid) uidsSet.add(m.uid);
                   });
                 }
-              });
-              // Buscar nido ascendiente
-              if (miNidoPrincipal.nidoOrigen) {
-                const ascendienteDoc = await db.collection('nidos').doc(miNidoPrincipal.nidoOrigen).get();
-                if (ascendienteDoc.exists) {
-                  const nido = ascendienteDoc.data();
-                  if (nido.miembrosData) {
-                    nido.miembrosData.forEach(m => {
-                      if (m.uid) uidsSet.add(m.uid);
+                // Intentar miembros array
+                if (miNidoPrincipal.miembros && Array.isArray(miNidoPrincipal.miembros)) {
+                  miNidoPrincipal.miembros.forEach(uid => uidsSet.add(uid));
+                }
+                // Intentar admins del nido
+                if (miNidoPrincipal.admins && Array.isArray(miNidoPrincipal.admins)) {
+                  miNidoPrincipal.admins.forEach(uid => uidsSet.add(uid));
+                }
+              }
+              console.log('Miembros nido encontrados:', uidsSet.size);
+              break;
+              
+            case 'mi-estirpe':
+              // Por ahora, igual que mi-nido + descendientes
+              if (miNidoPrincipal) {
+                // Miembros del nido actual
+                if (miNidoPrincipal.miembrosData && Array.isArray(miNidoPrincipal.miembrosData)) {
+                  miNidoPrincipal.miembrosData.forEach(m => {
+                    if (m.uid) uidsSet.add(m.uid);
+                  });
+                }
+                if (miNidoPrincipal.miembros && Array.isArray(miNidoPrincipal.miembros)) {
+                  miNidoPrincipal.miembros.forEach(uid => uidsSet.add(uid));
+                }
+                
+                // Buscar nidos descendientes
+                if (currentFamilia?.id && miNidoPrincipal.id) {
+                  try {
+                    const descendientesSnap = await db.collection('nidos')
+                      .where('familiaId', '==', currentFamilia.id)
+                      .where('nidoOrigen', '==', miNidoPrincipal.id)
+                      .get();
+                    descendientesSnap.docs.forEach(doc => {
+                      const nido = doc.data();
+                      if (nido.miembrosData) {
+                        nido.miembrosData.forEach(m => {
+                          if (m.uid) uidsSet.add(m.uid);
+                        });
+                      }
+                      if (nido.miembros) {
+                        nido.miembros.forEach(uid => uidsSet.add(uid));
+                      }
                     });
+                  } catch (e) {
+                    console.warn('Error buscando descendientes:', e);
                   }
                 }
               }
-            }
-            break;
+              console.log('Miembros estirpe encontrados:', uidsSet.size);
+              break;
+          }
         }
+      } catch (error) {
+        console.error('Error en resolverDestinatarios:', error);
       }
       
       // Excluir al remitente
       uidsSet.delete(currentUser.uid);
       
+      console.log('UIDs finales:', Array.from(uidsSet));
       return Array.from(uidsSet);
     }
 
