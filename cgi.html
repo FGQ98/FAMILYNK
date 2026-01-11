@@ -3281,14 +3281,14 @@
     </div>
   </div>
 
-  <!-- Modal Comunicado -->
+  <!-- Modal Queo -->
   <div class="modal-overlay" id="modal-comunicado">
     <div class="modal modal-comunicado">
       <!-- Header -->
       <div class="modal-header">
         <div class="modal-logo">📣</div>
         <div class="modal-header-info">
-          <h2 class="modal-title">Nuevo Comunicado</h2>
+          <h2 class="modal-title">Nuevo Queo</h2>
           <p class="modal-subtitle">Envía una notificación a los miembros</p>
         </div>
         <button class="modal-close" onclick="cerrarModalComunicado()">×</button>
@@ -3394,9 +3394,9 @@
             <div class="preview-grid" id="comunicado-preview-grid"></div>
           </div>
 
-          <!-- Tipo de comunicado -->
+          <!-- Tipo de queo -->
           <div class="form-group">
-            <label class="form-label">Tipo de comunicado</label>
+            <label class="form-label">Tipo de queo</label>
             <div class="tipo-selector">
               <label class="tipo-option info selected" onclick="selectTipoComunicado(this, 'info')">
                 <input type="radio" name="comunicado-tipo" value="info" checked>
@@ -3420,7 +3420,7 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModalComunicado()">Cancelar</button>
         <button class="btn btn-primary" onclick="enviarComunicado()" id="btn-enviar-comunicado" disabled>
-          <span>📤</span> Enviar comunicado
+          <span>📤</span> Enviar queo
         </button>
       </div>
     </div>
@@ -3776,7 +3776,7 @@
 
       // 5. Botón COMUNICADO - Para admins de rama o nido
       if (isAdminRama || miNidoId) {
-        html += `<button class="admin-btn comunicado" onclick="abrirModalComunicado()"><span class="admin-btn-icon">📣</span><span class="admin-btn-text">Comunicado</span></button>`;
+        html += `<button class="admin-btn comunicado" onclick="abrirModalComunicado()"><span class="admin-btn-icon">📣</span><span class="admin-btn-text">Queo</span></button>`;
       }
 
       container.innerHTML = html;
@@ -6041,21 +6041,40 @@
       const destinatariosSeleccionados = Array.from(document.querySelectorAll('input[name="destinatarios"]:checked')).map(el => el.value);
       const asunto = document.getElementById('comunicado-asunto').value.trim();
       const mensaje = document.getElementById('comunicado-mensaje').value.trim();
-      const tipo = document.querySelector('input[name="comunicado-tipo"]:checked').value;
+      const tipoInput = document.querySelector('input[name="comunicado-tipo"]:checked');
+      const tipo = tipoInput ? tipoInput.value : 'info';
       
       if (destinatariosSeleccionados.length === 0) {
         alert('Selecciona al menos un destinatario');
         btnEnviar.disabled = false;
-        btnEnviar.innerHTML = '<span>📤</span> Enviar comunicado';
+        btnEnviar.innerHTML = '<span>📤</span> Enviar queo';
+        return;
+      }
+
+      if (!asunto || !mensaje) {
+        alert('Completa el asunto y el mensaje');
+        btnEnviar.disabled = false;
+        btnEnviar.innerHTML = '<span>📤</span> Enviar queo';
         return;
       }
       
       try {
+        console.log('Iniciando envío de queo...');
+        console.log('Destinatarios seleccionados:', destinatariosSeleccionados);
+        
         // Resolver destinatarios a UIDs
         const destinatariosUIDs = await resolverDestinatarios(destinatariosSeleccionados);
+        console.log('UIDs resueltos:', destinatariosUIDs);
         
-        // Crear comunicado en Firestore
-        const comunicadoData = {
+        if (destinatariosUIDs.length === 0) {
+          alert('No se encontraron destinatarios. Verifica tu selección.');
+          btnEnviar.disabled = false;
+          btnEnviar.innerHTML = '<span>📤</span> Enviar queo';
+          return;
+        }
+        
+        // Crear queo en Firestore
+        const queoData = {
           asunto,
           mensaje,
           tipo,
@@ -6072,12 +6091,14 @@
           estado: 'enviado'
         };
         
-        await db.collection('comunicados').add(comunicadoData);
+        console.log('Guardando queo:', queoData);
+        const docRef = await db.collection('queos').add(queoData);
+        console.log('Queo guardado con ID:', docRef.id);
         
         // Crear notificación para cada destinatario
         const notifData = {
           tipo: tipo,
-          categoria: 'comunicado',
+          categoria: 'queo',
           titulo: asunto,
           mensaje: mensaje.substring(0, 100) + (mensaje.length > 100 ? '...' : ''),
           destinatarios: destinatariosUIDs,
@@ -6086,13 +6107,14 @@
           leidoPor: [],
           completadoPor: [],
           enlace: null,
-          origen: { tipo: 'comunicado' },
+          origen: { tipo: 'queo', id: docRef.id },
           estado: 'activa'
         };
         
         await db.collection('notificaciones').add(notifData);
+        console.log('Notificación creada');
         
-        alert('✅ Comunicado enviado correctamente');
+        alert('✅ Queo enviado correctamente');
         cerrarModalComunicado();
         
         // Actualizar tablón si está visible
@@ -6101,12 +6123,12 @@
         }
         
       } catch (error) {
-        console.error('Error enviando comunicado:', error);
-        alert('Error al enviar el comunicado. Inténtalo de nuevo.');
+        console.error('Error enviando queo:', error);
+        alert('Error al enviar el queo: ' + error.message);
       }
       
       btnEnviar.disabled = false;
-      btnEnviar.innerHTML = '<span>📤</span> Enviar comunicado';
+      btnEnviar.innerHTML = '<span>📤</span> Enviar queo';
     }
 
     async function resolverDestinatarios(grupos) {
