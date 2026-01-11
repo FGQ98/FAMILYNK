@@ -317,18 +317,18 @@
         <button class="semana-nav-btn" id="btn-semana-siguiente" onclick="cambiarSemana(1)">▶</button>
       </div>
 
-      <!-- 1. Habitaciones a preparar -->
+      <!-- 1. Zonas a preparar -->
       <div class="seccion">
-        <div class="seccion-header" onclick="toggleSeccion('habitaciones')">
+        <div class="seccion-header" onclick="toggleSeccion('zonas')">
           <div class="seccion-titulo">
-            <span>🛏️</span> Habitaciones a preparar
-            <span class="seccion-count" id="count-habitaciones">0</span>
+            <span>🏠</span> Zonas a preparar
+            <span class="seccion-count" id="count-zonas">0</span>
           </div>
           <span class="seccion-toggle">▼</span>
         </div>
-        <div class="seccion-body" id="body-habitaciones">
-          <div class="habitacion-grid" id="habitaciones-grid">
-            <!-- Habitaciones dinámicas -->
+        <div class="seccion-body" id="body-zonas">
+          <div class="habitacion-grid" id="zonas-grid">
+            <!-- Zonas dinámicas desde zonasLimpieza -->
           </div>
         </div>
       </div>
@@ -543,10 +543,10 @@
     let currentUser = null;
     let bienId = null;
     let bienData = null;
-    let habitacionesData = [];
+    let zonasData = [];
     let semanaActual = null;
     let preparacionData = {
-      habitaciones: [],      // IDs de habitaciones seleccionadas
+      zonas: [],             // IDs de zonas seleccionadas (de zonasLimpieza)
       cambiarMenu: false,
       menuDescripcion: '',
       menaje: [],            // {articulo, cantidad, notas}
@@ -557,6 +557,13 @@
     };
     let editingIdx = null;
     let editingType = null;
+
+    // Iconos por tipo de zona/dependencia
+    const ZONA_ICONS = {
+      dormitorio: '🛏️', servicio: '🚿', aseo: '🚽', vestuario: '👔',
+      cocina: '🍳', salon: '🛋️', comedor: '🍽️', almacen: '📦',
+      camara: '❄️', taller: '🔧', instalacion: '⚡', porche: '🌿', otro: '🏠'
+    };
 
     const mesesCortos = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -579,8 +586,8 @@
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
-        // Cargar habitaciones del bien
-        await cargarHabitaciones();
+        // Cargar zonas del bien (de zonasLimpieza)
+        await cargarZonas();
         
         inicializarSemana();
         await cargarPreparacion();
@@ -593,29 +600,38 @@
       }
     }
 
-    async function cargarHabitaciones() {
-      // Intentar cargar de subcolección habitaciones o del array en bienData
+    async function cargarZonas() {
+      // Cargar zonas desde zonasLimpieza (la fuente de verdad)
       try {
-        const snap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
+        const snap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
         if (!snap.empty) {
-          habitacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        } else if (bienData.habitaciones && Array.isArray(bienData.habitaciones)) {
-          habitacionesData = bienData.habitaciones.map((h, i) => ({
-            id: h.id || `hab-${i}`,
-            nombre: h.nombre || h,
-            tipo: h.tipo || 'dormitorio'
-          }));
+          zonasData = snap.docs.map(doc => {
+            const data = doc.data();
+            // Determinar icono basado en las dependencias principales
+            const deps = data.dependencias || {};
+            let iconoPrincipal = '🏠';
+            // Buscar el tipo con más dependencias
+            let maxDeps = 0;
+            for (const [tipo, cantidad] of Object.entries(deps)) {
+              if (cantidad > maxDeps) {
+                maxDeps = cantidad;
+                iconoPrincipal = ZONA_ICONS[tipo] || '🏠';
+              }
+            }
+            return {
+              id: doc.id,
+              nombre: data.nombre || 'Sin nombre',
+              icono: iconoPrincipal,
+              dependencias: deps
+            };
+          });
         } else {
-          // Habitaciones por defecto
-          habitacionesData = [
-            { id: 'hab-1', nombre: 'Habitación 1', tipo: 'dormitorio' },
-            { id: 'hab-2', nombre: 'Habitación 2', tipo: 'dormitorio' },
-            { id: 'hab-3', nombre: 'Habitación 3', tipo: 'dormitorio' }
-          ];
+          // Sin zonas configuradas
+          zonasData = [];
         }
       } catch (e) {
-        console.error('Error cargando habitaciones:', e);
-        habitacionesData = [];
+        console.error('Error cargando zonas:', e);
+        zonasData = [];
       }
     }
 
@@ -661,7 +677,8 @@
         if (doc.exists) {
           const data = doc.data();
           preparacionData = {
-            habitaciones: data.habitaciones || [],
+            // Compatibilidad: leer zonas o habitaciones (migración)
+            zonas: data.zonas || data.habitaciones || [],
             cambiarMenu: data.cambiarMenu || false,
             menuDescripcion: data.menuDescripcion || '',
             menaje: data.menaje || [],
@@ -672,7 +689,7 @@
           };
         } else {
           preparacionData = {
-            habitaciones: [],
+            zonas: [],
             cambiarMenu: false,
             menuDescripcion: '',
             menaje: [],
@@ -690,7 +707,7 @@
     }
 
     function renderAll() {
-      renderHabitaciones();
+      renderZonas();
       renderMenu();
       renderMenaje();
       renderCompras();
@@ -699,37 +716,41 @@
       actualizarEstado();
     }
 
-    // ========== HABITACIONES ==========
-    function renderHabitaciones() {
-      const container = document.getElementById('habitaciones-grid');
-      const count = preparacionData.habitaciones.length;
-      document.getElementById('count-habitaciones').textContent = count;
+    // ========== ZONAS ==========
+    function renderZonas() {
+      const container = document.getElementById('zonas-grid');
+      const count = preparacionData.zonas.length;
+      document.getElementById('count-zonas').textContent = count;
 
-      if (habitacionesData.length === 0) {
-        container.innerHTML = '<div class="habitacion-empty">No hay habitaciones configuradas</div>';
+      if (zonasData.length === 0) {
+        container.innerHTML = `
+          <div class="habitacion-empty">
+            No hay zonas configuradas.<br>
+            <a href="zonas-tareas.html?id=${bienId}" style="color:var(--mayordomo);">Configura las zonas en Limpieza</a>
+          </div>`;
         return;
       }
 
-      container.innerHTML = habitacionesData.map(h => {
-        const selected = preparacionData.habitaciones.includes(h.id);
+      container.innerHTML = zonasData.map(z => {
+        const selected = preparacionData.zonas.includes(z.id);
         return `
-          <label class="habitacion-check ${selected ? 'selected' : ''}" onclick="toggleHabitacion('${h.id}', event)">
+          <label class="habitacion-check ${selected ? 'selected' : ''}" onclick="toggleZona('${z.id}', event)">
             <input type="checkbox" ${selected ? 'checked' : ''}>
-            <span class="habitacion-check-label">🛏️ ${h.nombre}</span>
+            <span class="habitacion-check-label">${z.icono} ${z.nombre}</span>
           </label>
         `;
       }).join('');
     }
 
-    function toggleHabitacion(id, e) {
+    function toggleZona(id, e) {
       e.preventDefault();
-      const idx = preparacionData.habitaciones.indexOf(id);
+      const idx = preparacionData.zonas.indexOf(id);
       if (idx >= 0) {
-        preparacionData.habitaciones.splice(idx, 1);
+        preparacionData.zonas.splice(idx, 1);
       } else {
-        preparacionData.habitaciones.push(id);
+        preparacionData.zonas.push(id);
       }
-      renderHabitaciones();
+      renderZonas();
       actualizarEstado();
     }
 
@@ -979,7 +1000,7 @@
     }
 
     function tieneContenido() {
-      return preparacionData.habitaciones.length > 0 ||
+      return preparacionData.zonas.length > 0 ||
              preparacionData.cambiarMenu ||
              preparacionData.menaje.length > 0 ||
              preparacionData.compras.length > 0 ||
