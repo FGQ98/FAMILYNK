@@ -956,32 +956,72 @@
 
       // Reservas
       if (permisosActuales.reservas?.ver) {
-        const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('fechaInicio', 'asc').get();
-        datosModulos.reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('fechaInicio', 'asc').get();
+          datosModulos.reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+          console.log('Error cargando reservas:', e);
+          const snap = await db.collection('bienes').doc(bienId).collection('reservas').get();
+          datosModulos.reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
       }
 
       // Inventario
       if (permisosActuales.inventario?.ver) {
-        const snap = await db.collection('bienes').doc(bienId).collection('inventario').orderBy('nombre', 'asc').get();
-        datosModulos.inventario = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('inventario').get();
+          datosModulos.inventario = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+          console.log('Error cargando inventario:', e);
+          datosModulos.inventario = [];
+        }
       }
 
-      // Gastos
+      // Gastos - SIN orderBy para evitar necesidad de índice
       if (permisosActuales.gastos?.ver) {
-        const snap = await db.collection('bienes').doc(bienId).collection('gastos').orderBy('fecha', 'desc').limit(20).get();
-        datosModulos.gastos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('gastos').get();
+          datosModulos.gastos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Ordenar en JavaScript por fecha descendente
+          datosModulos.gastos.sort((a, b) => {
+            const fechaA = a.fecha || '';
+            const fechaB = b.fecha || '';
+            return fechaB.localeCompare(fechaA);
+          });
+          datosModulos.gastos = datosModulos.gastos.slice(0, 20);
+          console.log('Gastos cargados:', datosModulos.gastos.length);
+        } catch (e) {
+          console.error('Error cargando gastos:', e);
+          datosModulos.gastos = [];
+        }
       }
 
       // Limpieza (checklist del bien)
       if (permisosActuales.limpieza?.ver) {
-        const snap = await db.collection('bienes').doc(bienId).collection('limpieza').orderBy('orden', 'asc').get();
-        datosModulos.limpieza = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('limpieza').get();
+          datosModulos.limpieza = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+          console.log('Error cargando limpieza:', e);
+          datosModulos.limpieza = [];
+        }
       }
 
       // Mantenimiento
       if (permisosActuales.mantenimiento?.ver) {
-        const snap = await db.collection('bienes').doc(bienId).collection('mantenimiento').orderBy('fecha', 'desc').get();
-        datosModulos.mantenimiento = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('mantenimiento').get();
+          datosModulos.mantenimiento = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Ordenar por fecha
+          datosModulos.mantenimiento.sort((a, b) => {
+            const fechaA = a.fecha?.toDate?.() || new Date(a.fecha || 0);
+            const fechaB = b.fecha?.toDate?.() || new Date(b.fecha || 0);
+            return fechaB - fechaA;
+          });
+        } catch (e) {
+          console.log('Error cargando mantenimiento:', e);
+          datosModulos.mantenimiento = [];
+        }
       }
 
       // Documentos (de la ficha del bien)
@@ -993,9 +1033,13 @@
       try {
         const snap = await db.collection('bienes').doc(bienId).collection('pedidos')
           .where('estado', 'in', ['pendiente', 'en_proceso'])
-          .orderBy('fechaCreacion', 'desc')
           .get();
         datosModulos.pedidos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        datosModulos.pedidos.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
       } catch (error) {
         console.log('Cargando pedidos sin índice:', error);
         // Fallback sin índice compuesto
