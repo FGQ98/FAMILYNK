@@ -299,37 +299,6 @@
       gap: 8px;
     }
 
-    .btn-action {
-      padding: 8px 16px;
-      background: var(--gerente);
-      color: white;
-      border: none;
-      border-radius: var(--radius-md);
-      font-family: 'Nunito', sans-serif;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn-action:hover { background: var(--gerente-dark); }
-
-    /* Items genéricos (gastos, etc) */
-    .item-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      background: var(--cream-medium);
-      border-radius: var(--radius-md);
-      margin-bottom: 8px;
-      transition: all 0.2s;
-    }
-    .item-row:hover { background: var(--cream-dark); }
-    .item-icon { font-size: 1.2rem; }
-    .item-info { flex: 1; min-width: 0; }
-    .item-titulo { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .item-meta { font-size: 0.75rem; color: var(--text-muted); }
-    .item-valor { font-weight: 700; color: var(--gerente); white-space: nowrap; }
-
     /* Reservas */
     .reserva-row {
       display: flex;
@@ -773,73 +742,6 @@
     </div>
   </div>
 
-  <!-- Modal Gasto -->
-  <div class="modal-overlay" id="modal-gasto">
-    <div class="modal">
-      <div class="modal-header">
-        <h3 class="modal-title" id="modal-gasto-title">💶 Nuevo gasto</h3>
-        <button class="modal-close" onclick="cerrarModales()">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Fecha *</label>
-            <input type="date" class="form-input" id="gasto-fecha" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Importe (€) *</label>
-            <input type="number" class="form-input" id="gasto-importe" step="0.01" min="0" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Concepto *</label>
-          <input type="text" class="form-input" id="gasto-concepto" placeholder="Ej: Taxi aeropuerto" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Categoría</label>
-          <select class="form-select" id="gasto-categoria">
-            <option value="transportes">🚐 Transportes</option>
-            <option value="catering">🍽️ Catering</option>
-            <option value="otros-servicios">🔌 Otros servicios</option>
-            <option value="suministros">💡 Suministros</option>
-            <option value="limpieza">🧹 Limpieza</option>
-            <option value="compras">🛒 Compras</option>
-            <option value="mantenimiento">🔧 Mantenimiento</option>
-            <option value="otro">📦 Otro</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Proveedor</label>
-          <input type="text" class="form-input" id="gasto-proveedor" placeholder="Ej: Taxi López">
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Nº Documento</label>
-            <input type="text" class="form-input" id="gasto-documento" placeholder="Ej: FAC-001">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Medio de pago</label>
-            <select class="form-select" id="gasto-medioPago">
-              <option value="">Sin especificar</option>
-              <option value="efectivo">💵 Efectivo</option>
-              <option value="tarjeta">💳 Tarjeta</option>
-              <option value="factura">📄 Factura</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Notas</label>
-          <textarea class="form-input" id="gasto-notas" rows="2" placeholder="Observaciones..."></textarea>
-        </div>
-        <button type="button" class="btn btn-danger hidden" id="btn-eliminar-gasto" onclick="eliminarGasto()" style="width:100%;margin-top:8px">🗑️ Eliminar gasto</button>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
-        <button class="btn btn-gerente" onclick="guardarGasto()">Guardar</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -857,8 +759,6 @@
     let huespedesData = [];
     let habitacionesData = [];
     let limpiezaData = [];
-    let gastosData = [];
-    let editingGasto = null;
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -950,43 +850,52 @@
       const bienRef = db.collection('bienes').doc(bienActual.id);
       const hoy = new Date().toISOString().split('T')[0];
 
+      // Reservas
       try {
-        // Reservas
-        const reservasSnap = await bienRef.collection('reservas')
-          .where('fechaEntrada', '>=', hoy)
-          .orderBy('fechaEntrada')
-          .limit(10)
-          .get();
+        const reservasSnap = await bienRef.collection('reservas').get();
         reservasData = reservasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Filtrar y ordenar en JS
+        reservasData = reservasData
+          .filter(r => r.fechaEntrada >= hoy)
+          .sort((a, b) => (a.fechaEntrada || '').localeCompare(b.fechaEntrada || ''))
+          .slice(0, 10);
+      } catch (e) {
+        console.error('Error cargando reservas:', e);
+        reservasData = [];
+      }
 
-        // Huéspedes
-        const huespedesSnap = await bienRef.collection('huespedes')
-          .where('estado', '==', 'alojado')
-          .get();
-        huespedesData = huespedesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Huéspedes
+      try {
+        const huespedesSnap = await bienRef.collection('huespedes').get();
+        huespedesData = huespedesSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(h => h.estado === 'alojado');
+      } catch (e) {
+        console.error('Error cargando huéspedes:', e);
+        huespedesData = [];
+      }
 
-        // Habitaciones
+      // Habitaciones
+      try {
         const habitacionesSnap = await bienRef.collection('habitaciones').get();
         habitacionesData = habitacionesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Limpieza
-        const limpiezaSnap = await bienRef.collection('limpieza')
-          .where('completada', '==', false)
-          .get();
-        limpiezaData = limpiezaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        // Gastos
-        const gastosSnap = await bienRef.collection('gastos')
-          .orderBy('fecha', 'desc')
-          .limit(20)
-          .get();
-        gastosData = gastosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-        actualizarStats();
-
-      } catch (error) {
-        console.error('Error cargando datos:', error);
+      } catch (e) {
+        console.error('Error cargando habitaciones:', e);
+        habitacionesData = [];
       }
+
+      // Limpieza
+      try {
+        const limpiezaSnap = await bienRef.collection('limpieza').get();
+        limpiezaData = limpiezaSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(l => l.completada === false);
+      } catch (e) {
+        console.error('Error cargando limpieza:', e);
+        limpiezaData = [];
+      }
+
+      actualizarStats();
     }
 
     function actualizarStats() {
@@ -1016,7 +925,6 @@
         ${renderModuloHuespedes()}
         ${renderModuloHabitaciones()}
         ${renderModuloLimpieza()}
-        ${renderModuloGastos()}
       `;
     }
 
@@ -1126,114 +1034,6 @@
           <div class="modulo-card-body">${items}</div>
         </div>
       `;
-    }
-
-    // ========== GASTOS ==========
-    function renderModuloGastos() {
-      const catIcons = { 
-        suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧', 
-        limpieza: '🧹', compras: '🛒', impuestos: '📋', otro: '📦',
-        transportes: '🚐', 'otros-servicios': '🔌', catering: '🍽️'
-      };
-      const medioPagoIcons = { efectivo: '💵', tarjeta: '💳', factura: '📄' };
-
-      let items = gastosData.length === 0
-        ? '<div class="modulo-card-empty">Sin gastos registrados</div>'
-        : gastosData.slice(0, 6).map(g => {
-            const fecha = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
-            const medioPago = g.medioPago ? medioPagoIcons[g.medioPago] || '' : '';
-            return `
-              <div class="item-row" onclick="abrirModalGasto(${JSON.stringify(g).replace(/"/g, '&quot;')})" style="cursor:pointer">
-                <span class="item-icon">${catIcons[g.categoria] || '📦'}</span>
-                <div class="item-info">
-                  <div class="item-titulo">${g.concepto}</div>
-                  <div class="item-meta">${fecha} ${g.proveedor ? '· ' + g.proveedor : ''} ${medioPago}</div>
-                </div>
-                <span class="item-valor">€${parseFloat(g.importe || 0).toFixed(2)}</span>
-              </div>
-            `;
-          }).join('');
-
-      return `
-        <div class="modulo-card">
-          <div class="modulo-card-header">
-            <div class="modulo-card-title">💶 Gastos</div>
-          </div>
-          <div class="modulo-card-body">${items}</div>
-          <div class="modulo-card-footer">
-            <button class="btn-action" onclick="abrirModalGasto()">+ Añadir gasto</button>
-          </div>
-        </div>
-      `;
-    }
-
-    function abrirModalGasto(gasto = null) {
-      editingGasto = gasto;
-      document.getElementById('modal-gasto-title').textContent = gasto ? '✏️ Editar gasto' : '💶 Nuevo gasto';
-      
-      document.getElementById('gasto-fecha').value = gasto?.fecha || new Date().toISOString().split('T')[0];
-      document.getElementById('gasto-importe').value = gasto?.importe || '';
-      document.getElementById('gasto-concepto').value = gasto?.concepto || '';
-      document.getElementById('gasto-categoria').value = gasto?.categoria || 'otro';
-      document.getElementById('gasto-proveedor').value = gasto?.proveedor || '';
-      document.getElementById('gasto-documento').value = gasto?.documento || '';
-      document.getElementById('gasto-medioPago').value = gasto?.medioPago || '';
-      document.getElementById('gasto-notas').value = gasto?.notas || '';
-      
-      document.getElementById('btn-eliminar-gasto').classList.toggle('hidden', !gasto);
-      document.getElementById('modal-gasto').classList.add('active');
-    }
-
-    async function guardarGasto() {
-      const data = {
-        fecha: document.getElementById('gasto-fecha').value,
-        importe: parseFloat(document.getElementById('gasto-importe').value) || 0,
-        concepto: document.getElementById('gasto-concepto').value,
-        categoria: document.getElementById('gasto-categoria').value,
-        proveedor: document.getElementById('gasto-proveedor').value,
-        documento: document.getElementById('gasto-documento').value,
-        medioPago: document.getElementById('gasto-medioPago').value,
-        notas: document.getElementById('gasto-notas').value,
-        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
-      };
-
-      if (!data.concepto || !data.importe) {
-        alert('Concepto e importe son obligatorios');
-        return;
-      }
-
-      try {
-        const ref = db.collection('bienes').doc(bienActual.id).collection('gastos');
-        
-        if (editingGasto) {
-          await ref.doc(editingGasto.id).update(data);
-        } else {
-          data.creadoPor = currentUser.uid;
-          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
-          await ref.add(data);
-        }
-
-        cerrarModales();
-        await cargarDatos();
-        renderModulos();
-      } catch (e) {
-        console.error(e);
-        alert('Error al guardar');
-      }
-    }
-
-    async function eliminarGasto() {
-      if (!editingGasto || !confirm('¿Eliminar este gasto?')) return;
-      
-      try {
-        await db.collection('bienes').doc(bienActual.id).collection('gastos').doc(editingGasto.id).delete();
-        cerrarModales();
-        await cargarDatos();
-        renderModulos();
-      } catch (e) {
-        console.error(e);
-        alert('Error al eliminar');
-      }
     }
 
     // ========== MODALES ==========
