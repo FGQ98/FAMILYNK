@@ -898,70 +898,101 @@
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
       document.getElementById('user-name').textContent = user.email;
+      console.log('Usuario logueado:', user.email);
       await verificarAccesoCasero();
     });
 
     async function verificarAccesoCasero() {
       try {
+        console.log('Buscando casero con email:', currentUser.email.toLowerCase());
+        
         // Buscar si este email tiene acceso como casero
         const caserosQuery = await db.collectionGroup('caseros')
           .where('email', '==', currentUser.email.toLowerCase())
           .where('activo', '==', true)
           .get();
 
+        console.log('Caseros encontrados:', caserosQuery.size);
+
         if (caserosQuery.empty) {
-          // No es casero, redirigir a app normal
-          window.location.href = 'app.html';
-          return;
-        }
-
-        // Recopilar todos los bienes a los que tiene acceso
-        bienesAcceso = [];
-        for (const doc of caserosQuery.docs) {
-          const casero = doc.data();
-          // El bienId viene del path: bienes/{bienId}/caseros/{caseroId}
-          const bienId = doc.ref.parent.parent.id;
+          // Intentar sin filtro de activo por si no existe el campo
+          console.log('Intentando sin filtro activo...');
+          const caserosQuery2 = await db.collectionGroup('caseros')
+            .where('email', '==', currentUser.email.toLowerCase())
+            .get();
           
-          console.log('Casero encontrado para bien:', bienId);
+          console.log('Caseros sin filtro activo:', caserosQuery2.size);
           
-          // Obtener datos del bien
-          const bienDoc = await db.collection('bienes').doc(bienId).get();
-          if (bienDoc.exists) {
-            bienesAcceso.push({
-              caseroId: doc.id,
-              bienId: bienId,
-              bien: bienDoc.data(),
-              permisos: casero.permisos || {}
-            });
+          if (caserosQuery2.empty) {
+            // No es casero, mostrar error
+            mostrarSinAcceso();
+            return;
           }
-        }
-
-        if (bienesAcceso.length === 0) {
-          mostrarSinAcceso();
+          
+          // Usar estos resultados
+          await procesarCaseros(caserosQuery2.docs);
           return;
         }
 
-        // Mostrar selector si tiene varios bienes
-        if (bienesAcceso.length > 1) {
-          const select = document.getElementById('select-bien');
-          select.innerHTML = bienesAcceso.map((b, i) => 
-            `<option value="${i}">${b.bien.nombre} - ${b.bien.ubicacion || ''}</option>`
-          ).join('');
-          document.getElementById('bien-selector').classList.remove('hidden');
-        } else {
-          document.getElementById('bien-selector').classList.add('hidden');
-        }
-
-        // Cargar primer bien
-        await cargarBien(0);
-
-        document.getElementById('page-loading').classList.add('hidden');
-        document.getElementById('page-content').classList.remove('hidden');
+        await procesarCaseros(caserosQuery.docs);
 
       } catch (error) {
-        console.error('Error:', error);
-        alert('Error al cargar datos');
+        console.error('Error verificando acceso:', error);
+        alert('Error al verificar acceso: ' + error.message);
       }
+    }
+
+    async function procesarCaseros(docs) {
+      // Recopilar todos los bienes a los que tiene acceso
+      bienesAcceso = [];
+      for (const doc of docs) {
+        const casero = doc.data();
+        console.log('Doc path:', doc.ref.path);
+        console.log('Casero data:', casero);
+        
+        // El bienId viene del path: bienes/{bienId}/caseros/{caseroId}
+        const bienId = doc.ref.parent.parent.id;
+        
+        console.log('BienId extraído del path:', bienId);
+        
+        // Obtener datos del bien
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        console.log('Bien existe:', bienDoc.exists);
+        
+        if (bienDoc.exists) {
+          bienesAcceso.push({
+            caseroId: doc.id,
+            bienId: bienId,
+            bien: bienDoc.data(),
+            permisos: casero.permisos || {}
+          });
+          console.log('Permisos del casero:', casero.permisos);
+        }
+      }
+
+      console.log('Total bienes con acceso:', bienesAcceso.length);
+
+      if (bienesAcceso.length === 0) {
+        mostrarSinAcceso();
+        return;
+      }
+
+      // Mostrar selector si tiene varios bienes
+      if (bienesAcceso.length > 1) {
+        const select = document.getElementById('select-bien');
+        select.innerHTML = bienesAcceso.map((b, i) => 
+          `<option value="${i}">${b.bien.nombre} - ${b.bien.ubicacion || ''}</option>`
+        ).join('');
+        document.getElementById('bien-selector').classList.remove('hidden');
+      } else {
+        document.getElementById('bien-selector').classList.add('hidden');
+      }
+
+      // Cargar primer bien
+      await cargarBien(0);
+
+      document.getElementById('page-loading').classList.add('hidden');
+      document.getElementById('page-content').classList.remove('hidden');
     }
 
     function mostrarSinAcceso() {
@@ -1829,25 +1860,11 @@
           <label class="form-label">Notas</label>
           <textarea class="form-input" id="add-notas" rows="2" placeholder="Observaciones...">${gasto?.notas || ''}</textarea>
         </div>
-        ${gasto ? `<button type="button" class="btn btn-danger" style="width:100%;margin-top:8px" onclick="eliminarGasto('${gasto.id}')">🗑️ Eliminar gasto</button>` : ''}
       `;
       modalAdd.classList.add('active');
     }
 
     let editingGasto = null;
-
-    async function eliminarGasto(id) {
-      if (!confirm('¿Eliminar este gasto?')) return;
-      try {
-        await db.collection('bienes').doc(bienActual.bienId).collection('gastos').doc(id).delete();
-        cerrarModal();
-        await cargarDatosModulos();
-        renderModulos();
-      } catch (e) {
-        console.error(e);
-        alert('Error al eliminar');
-      }
-    }
 
     function abrirModalMantenimiento() {
       modalTipo = 'mantenimiento';
