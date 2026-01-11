@@ -198,6 +198,15 @@
       gap: 8px;
     }
 
+    .count-badge {
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+    }
+
     .modulo-card-permisos {
       display: flex;
       gap: 4px;
@@ -864,6 +873,20 @@
           <button type="submit" class="btn btn-primary">Guardar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Ver Todos -->
+  <div class="modal-overlay" id="modal-ver-todos">
+    <div class="modal" style="max-width: 600px; max-height: 80vh;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-todos-titulo">Lista completa</h3>
+        <button class="modal-close" onclick="cerrarModalTodos()">×</button>
+      </div>
+      <div class="modal-body" id="modal-todos-body" style="max-height: 60vh; overflow-y: auto;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalTodos()">Cerrar</button>
+      </div>
     </div>
   </div>
 
@@ -1586,9 +1609,10 @@
       const p = permisosActuales.gastos;
       const catIcons = { suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧', limpieza: '🧹', compras: '🛒', impuestos: '📋', otro: '📦' };
       const medioPagoIcons = { efectivo: '💵', tarjeta: '💳', factura: '📄' };
+      const total = datosModulos.gastos.length;
 
       let itemsHtml = '';
-      if (datosModulos.gastos.length === 0) {
+      if (total === 0) {
         itemsHtml = '<div class="modulo-card-empty">Sin gastos registrados</div>';
       } else {
         const items = datosModulos.gastos.slice(0, 6);
@@ -1612,15 +1636,14 @@
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">💶 Gastos</div>
+            <div class="modulo-card-title">💶 Gastos <span class="count-badge">${total}</span></div>
             <div class="modulo-card-permisos">${renderPermisosBadges('gastos')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
-          ${p.crear ? `
-            <div class="modulo-card-footer">
-              <button class="btn btn-sm btn-primary" onclick="abrirModalGasto()">+ Añadir</button>
-            </div>
-          ` : ''}
+          <div class="modulo-card-footer">
+            ${total > 6 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('gastos')">Ver todos</button>` : ''}
+            ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalGasto()">+ Añadir</button>` : ''}
+          </div>
         </div>
       `;
     }
@@ -1667,11 +1690,13 @@
       const estadoIcons = { pendiente: '🔴', en_proceso: '🟡', completada: '🟢' };
       const estadoLabels = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
 
-      let itemsHtml = '';
       // Filtrar solo no completadas por defecto
       const reparacionesPendientes = datosModulos.reparaciones.filter(r => r.estado !== 'completada');
+      const total = reparacionesPendientes.length;
+      const totalAll = datosModulos.reparaciones.length;
       
-      if (reparacionesPendientes.length === 0) {
+      let itemsHtml = '';
+      if (total === 0) {
         itemsHtml = '<div class="modulo-card-empty">No hay reparaciones pendientes</div>';
       } else {
         const items = reparacionesPendientes.slice(0, 5);
@@ -1694,15 +1719,14 @@
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">🔩 Reparaciones</div>
+            <div class="modulo-card-title">🔩 Reparaciones <span class="count-badge">${total}</span></div>
             <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
-          ${p.crear ? `
-            <div class="modulo-card-footer">
-              <button class="btn btn-sm btn-primary" onclick="abrirModalReparacion()">+ Nueva reparación</button>
-            </div>
-          ` : ''}
+          <div class="modulo-card-footer">
+            ${totalAll > 5 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('reparaciones')">Ver todas</button>` : ''}
+            ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalReparacion()">+ Nueva</button>` : ''}
+          </div>
         </div>
       `;
     }
@@ -1711,9 +1735,10 @@
     function renderModuloHerramientas() {
       const p = permisosActuales.mantenimiento;
       const catIcons = { manual: '🔧', electrica: '⚡', jardin: '🌱', limpieza: '🧹', medicion: '📏', seguridad: '🦺', otro: '🔨' };
+      const total = datosModulos.herramientas.length;
 
       let itemsHtml = '';
-      if (datosModulos.herramientas.length === 0) {
+      if (total === 0) {
         itemsHtml = '<div class="modulo-card-empty">Sin herramientas registradas</div>';
       } else {
         const items = datosModulos.herramientas.slice(0, 6);
@@ -1735,10 +1760,15 @@
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">🛠️ Herramientas</div>
+            <div class="modulo-card-title">🛠️ Herramientas <span class="count-badge">${total}</span></div>
             <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
+          ${total > 6 ? `
+            <div class="modulo-card-footer">
+              <button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas</button>
+            </div>
+          ` : ''}
         </div>
       `;
     }
@@ -2177,6 +2207,82 @@
         alert('Error al guardar: ' + error.message);
       }
     });
+
+    // ========== VER TODOS ==========
+    function verTodos(tipo) {
+      const modal = document.getElementById('modal-ver-todos');
+      const titulo = document.getElementById('modal-todos-titulo');
+      const body = document.getElementById('modal-todos-body');
+      
+      const catIconsGastos = { suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧', limpieza: '🧹', compras: '🛒', impuestos: '📋', otro: '📦' };
+      const catIconsHerr = { manual: '🔧', electrica: '⚡', jardin: '🌱', limpieza: '🧹', medicion: '📏', seguridad: '🦺', otro: '🔨' };
+      const estadoIcons = { pendiente: '🔴', en_proceso: '🟡', completada: '🟢' };
+      const estadoLabels = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
+      const p = permisosActuales;
+
+      let html = '';
+
+      if (tipo === 'gastos') {
+        titulo.textContent = `💶 Todos los Gastos (${datosModulos.gastos.length})`;
+        html = '<div class="item-list">' + datosModulos.gastos.map(g => {
+          const fecha = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+          const clickable = p.gastos?.editar ? `onclick="cerrarModalTodos(); abrirModalGasto(${JSON.stringify(g).replace(/"/g, '&quot;')})" style="cursor:pointer"` : '';
+          return `
+            <div class="item-row" ${clickable}>
+              <span class="item-icon">${catIconsGastos[g.categoria] || '📦'}</span>
+              <div class="item-content">
+                <div class="item-title">${g.concepto}</div>
+                <div class="item-subtitle">${fecha} ${g.proveedor ? '· ' + g.proveedor : ''}</div>
+              </div>
+              <span class="item-value">€${parseFloat(g.importe).toFixed(2)}</span>
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+      
+      else if (tipo === 'reparaciones') {
+        titulo.textContent = `🔩 Todas las Reparaciones (${datosModulos.reparaciones.length})`;
+        html = '<div class="item-list">' + datosModulos.reparaciones.map(r => {
+          const fecha = r.fecha?.toDate?.() ? r.fecha.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : (r.fecha || '');
+          const estado = r.estado || 'pendiente';
+          const clickable = p.mantenimiento?.editar ? `onclick="cerrarModalTodos(); abrirModalReparacion('${r.id}')" style="cursor:pointer"` : '';
+          return `
+            <div class="item-row" ${clickable}>
+              <span class="item-icon">${estadoIcons[estado] || '🔴'}</span>
+              <div class="item-content">
+                <div class="item-title">${r.titulo || r.descripcion || 'Sin título'}</div>
+                <div class="item-subtitle">${estadoLabels[estado]} · ${fecha}</div>
+              </div>
+              ${r.urgente ? '<span style="color:var(--error);font-weight:700;">⚠️</span>' : ''}
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+      
+      else if (tipo === 'herramientas') {
+        titulo.textContent = `🛠️ Todas las Herramientas (${datosModulos.herramientas.length})`;
+        html = '<div class="item-list">' + datosModulos.herramientas.map(h => {
+          const estadoClass = h.estado === 'bueno' ? 'success' : h.estado === 'revisar' ? 'warning' : '';
+          return `
+            <div class="item-row no-hover">
+              <span class="item-icon">${catIconsHerr[h.categoria] || '🔨'}</span>
+              <div class="item-content">
+                <div class="item-title">${h.nombre}</div>
+                <div class="item-subtitle">${h.ubicacion || ''} ${h.cantidad ? '· x' + h.cantidad : ''}</div>
+              </div>
+              ${estadoClass ? `<span class="item-status ${estadoClass}">●</span>` : ''}
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+
+      body.innerHTML = html;
+      modal.classList.add('active');
+    }
+
+    function cerrarModalTodos() {
+      document.getElementById('modal-ver-todos').classList.remove('active');
+    }
   </script>
 </body>
 </html>
