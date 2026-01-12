@@ -4589,9 +4589,9 @@
 
       try {
         const ahora = new Date();
+        let todosAvisos = [];
         
-        // Cargar queos para este usuario
-        let queosDocs = [];
+        // 1. Cargar QUEOS para este usuario
         try {
           const queosSnap = await db.collection('queos')
             .where('familiaId', '==', currentFamilia.id)
@@ -4599,41 +4599,57 @@
             .orderBy('fechaCreacion', 'desc')
             .limit(10)
             .get();
-          queosDocs = queosSnap.docs;
+          
+          const queos = queosSnap.docs.map(doc => ({ 
+            id: doc.id, 
+            source: 'queo', 
+            categoria: 'queo', 
+            ...doc.data() 
+          }));
+          todosAvisos = todosAvisos.concat(queos);
+          console.log('Queos cargados:', queos.length);
         } catch (e) {
           console.warn('Error cargando queos:', e);
-          // Fallback sin ordenar
-          try {
-            const queosSnap2 = await db.collection('queos')
-              .where('destinatarios', 'array-contains', currentUser.uid)
-              .limit(10)
-              .get();
-            queosDocs = queosSnap2.docs;
-          } catch (e2) {
-            console.warn('Error fallback queos:', e2);
-          }
         }
 
-        // Procesar queos
-        notificacionesData = queosDocs.map(doc => ({ 
-          id: doc.id, 
-          source: 'queo', 
-          categoria: 'queo', 
-          ...doc.data() 
-        })).filter(n => {
+        // 2. Cargar NOTIFICACIONES del sistema para este usuario
+        try {
+          const notifSnap = await db.collection('notificaciones')
+            .where('familiaId', '==', currentFamilia.id)
+            .where('destinatarios', 'array-contains', currentUser.uid)
+            .where('estado', '==', 'activa')
+            .orderBy('fechaCreacion', 'desc')
+            .limit(10)
+            .get();
+          
+          const notifs = notifSnap.docs.map(doc => ({ 
+            id: doc.id, 
+            source: 'notificacion', 
+            ...doc.data() 
+          }));
+          todosAvisos = todosAvisos.concat(notifs);
+          console.log('Notificaciones cargadas:', notifs.length);
+        } catch (e) {
+          console.warn('Error cargando notificaciones:', e);
+        }
+
+        // Filtrar completadas/leídas
+        notificacionesData = todosAvisos.filter(n => {
           // Filtrar ya completadas por este usuario (tipo acción)
           if (n.tipo === 'accion' && n.completadoPor?.includes(currentUser.uid)) return false;
-          // Filtrar ya leídas (tipo info)
-          if (n.tipo === 'info' && n.leidoPor?.includes(currentUser.uid)) return false;
+          // Filtrar ya leídas (tipo info) - solo para queos
+          if (n.source === 'queo' && n.tipo === 'info' && n.leidoPor?.includes(currentUser.uid)) return false;
           return true;
         });
 
-        // Ordenar por fecha
+        // Ordenar por fecha (más recientes primero)
         notificacionesData.sort((a, b) => {
           const fechaA = a.fechaCreacion?.toDate ? a.fechaCreacion.toDate() : new Date(a.fechaCreacion || 0);
           const fechaB = b.fechaCreacion?.toDate ? b.fechaCreacion.toDate() : new Date(b.fechaCreacion || 0);
           return fechaB - fechaA;
         });
+
+        console.log('Total avisos para mostrar:', notificacionesData.length);
 
         // Renderizar
         let html = '';
@@ -4668,6 +4684,12 @@
       const tiempo = formatearTiempo(n.fechaCreacion);
       const iconos = {
         queo: '📣',
+        convocatoria: '✋',
+        reserva: '📅',
+        evento: '🎉',
+        iniciativa: '💡',
+        averia: '🔧',
+        tarea: '📋',
         mercadillo: '🏪',
         votacion: '🗳️',
         encuesta: '📊',
@@ -4675,13 +4697,29 @@
         'elegir-fecha': '📆',
         turnos: '🔄',
         porra: '🎯',
-        convocatoria: '✋',
+        solicitud: '📩',
+        mantenimiento: '🔧',
+        limpieza: '🧹',
+        inventario: '📦',
+        gastos: '💰',
         general: '📌'
       };
       const icono = iconos[n.categoria] || '📌';
       const tipoClass = n.tipo === 'accion' ? 'accion' : 'info-notif';
       const sourceId = n.source === 'queo' ? n.id : n.id;
       const sourceType = n.source || 'notificacion';
+
+      // Formatear nombre de categoría
+      const categoriaNombres = {
+        queo: 'Queo',
+        convocatoria: 'Convocatoria',
+        reserva: 'Reservas',
+        evento: 'Eventos',
+        iniciativa: 'Ideas',
+        averia: 'Averías',
+        solicitud: 'Solicitud'
+      };
+      const categoriaLabel = categoriaNombres[n.categoria] || n.categoria || 'Sistema';
 
       // Para queos, mostrar también el remitente
       const remitenteInfo = n.source === 'queo' && n.remitenteNombre ? 
@@ -4705,7 +4743,7 @@
           <div class="notif-titulo">${n.titulo || n.asunto || 'Sin título'}</div>
           ${n.mensaje ? `<div class="notif-texto">${n.mensaje.substring(0, 80)}${n.mensaje.length > 80 ? '...' : ''}</div>` : ''}
           ${remitenteInfo}
-          <div class="notif-origen">${icono} ${n.source === 'queo' ? 'Queo' : (n.categoria || 'General')}</div>
+          <div class="notif-origen">${icono} ${categoriaLabel}</div>
         </div>
       `;
     }
@@ -6642,13 +6680,33 @@
       select.innerHTML = '<option value="">Sin asociar a bien</option>';
       
       try {
-        const bienesSnap = await db.collection('bienes')
-          .where('familiaId', '==', currentFamilia.id)
-          .get();
+        await cargarBienesUsuario(); // Usar bienes ya filtrados por visibilidad
         
-        bienesSnap.docs.forEach(doc => {
-          const bien = doc.data();
-          select.innerHTML += `<option value="${doc.id}">${bien.icono || '🏠'} ${bien.nombre}</option>`;
+        if (bienesUsuario.length === 0) return;
+        
+        // Iconos por tipo de bien
+        const iconosTipo = {
+          'vivienda': '🏠',
+          'vehiculo': '🚗',
+          'terreno': '🌳',
+          'local': '🏪',
+          'garaje': '🅿️',
+          'trastero': '📦',
+          'otro': '📋'
+        };
+        
+        // Iconos de visibilidad
+        const iconosVisibilidad = {
+          'rama': '🌳',
+          'estirpe': '👥',
+          'nido': '🪺'
+        };
+        
+        bienesUsuario.forEach(bien => {
+          const iconoBien = iconosTipo[bien.tipo] || '🏠';
+          const iconoVis = iconosVisibilidad[bien.visibilidad] || '🌳';
+          const labelVis = bien.visibilidad === 'rama' ? 'Rama' : bien.visibilidad === 'estirpe' ? 'Estirpe' : 'Nido';
+          select.innerHTML += `<option value="${bien.id}">${iconoBien} ${bien.nombre} (${iconoVis} ${labelVis})</option>`;
         });
       } catch (e) {
         console.warn('Error cargando bienes:', e);
