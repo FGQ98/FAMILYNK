@@ -202,7 +202,7 @@
             <span class="filtro-label">Reservas</span>
             <span class="filtro-count" id="count-reserva">0</span>
           </label>
-          <div class="filtro-subtipos">🏠 Estancias · 📅 Reservas · 🎯 Actividades</div>
+          <div class="filtro-subtipos">🏠 Estancias · 🧹 Zafarrancho · 🌾 Recolección · 🎯 Actividades</div>
         </div>
         
         <div class="sidebar-card">
@@ -245,10 +245,16 @@
       'fiesta': '🎉',
       'reunion-familiar': '👨‍👩‍👧‍👦',
       'torneo': '🏆',
-      // Reservas
+      // Reservas - Estancias (Mayordomo)
       'estancia': '🏠',
+      'zafarrancho': '🧹',
+      // Reservas - Actividades (Capataz)
+      'monteria': '🦌',
+      'recoleccion': '🌾',
+      'actividad': '🎯',
+      // Otros
       'reserva': '📅',
-      'actividad': '🎯'
+      'nodisponible': '🚫'
     };
 
     auth.onAuthStateChanged(async (user) => {
@@ -446,23 +452,41 @@
               
               const fecha = new Date(fechaStr);
               
-              // Determinar subtipo de reserva
+              // Determinar subtipo e icono según el tipo de reserva
               let subtipo = 'reserva';
               let icono = '📅';
               
-              if (r.tipo === 'familia' || r.tipo === 'huespedes') {
+              const tipoReserva = (r.tipo || '').toLowerCase();
+              
+              // Estancias (Mayordomo)
+              if (tipoReserva.includes('estancia') || tipoReserva.includes('familia') || tipoReserva.includes('huespedes')) {
                 subtipo = 'estancia';
                 icono = '🏠';
-              } else if (r.tipo === 'actividad' || r.actividad) {
+              } else if (tipoReserva.includes('zafarrancho')) {
+                subtipo = 'zafarrancho';
+                icono = '🧹';
+              // Actividades (Capataz)
+              } else if (tipoReserva.includes('monteria') || tipoReserva.includes('caceria')) {
+                subtipo = 'monteria';
+                icono = '🦌';
+              } else if (tipoReserva.includes('recoleccion') || tipoReserva.includes('cosecha')) {
+                subtipo = 'recoleccion';
+                icono = '🌾';
+              } else if (tipoReserva.includes('actividad')) {
                 subtipo = 'actividad';
                 icono = '🎯';
+              } else if (tipoReserva.includes('nodisponible')) {
+                subtipo = 'nodisponible';
+                icono = '🚫';
               }
               
               let textoReserva = `${icono} ${bienNombre}`;
               if (r.quien) textoReserva += ` — ${r.quien}`;
               else if (r.motivo) textoReserva += ` — ${r.motivo}`;
-              else if (r.tipo === 'huespedes') textoReserva += ' — Huéspedes';
-              else if (r.tipo === 'nodisponible') textoReserva += ' — No disponible';
+              else if (tipoReserva.includes('huespedes')) textoReserva += ' — Huéspedes';
+              else if (tipoReserva.includes('nodisponible')) textoReserva += ' — No disponible';
+              else if (tipoReserva.includes('zafarrancho')) textoReserva += ' — Zafarrancho';
+              else if (tipoReserva.includes('recoleccion')) textoReserva += ' — Recolección';
               
               todosEventos.push({
                 tipo: 'reserva',
