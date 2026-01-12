@@ -925,6 +925,12 @@
 
     .card-body { padding: 10px 14px; }
 
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
     .card-action {
       font-size: 0.7rem;
       color: var(--sage);
@@ -933,6 +939,24 @@
     }
 
     .card-action:hover { text-decoration: underline; }
+
+    .card-action-btn {
+      font-size: 0.7rem;
+      color: white;
+      background: var(--calendario);
+      border: none;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'Nunito', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .card-action-btn:hover {
+      background: #4A6A92;
+      transform: translateY(-1px);
+    }
 
     /* ============ MI NIDO ============ */
     .nido-col { grid-row: 1 / 3; }
@@ -2526,6 +2550,86 @@
       background: var(--cream);
     }
 
+    /* Modal Hito */
+    .modal-hito {
+      max-width: 500px;
+    }
+
+    .modal-hito .modal-header {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: none;
+    }
+
+    .modal-hito .modal-logo {
+      width: 48px;
+      height: 48px;
+      background: rgba(255,255,255,0.2);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .modal-hito .modal-header-info { flex: 1; }
+
+    .modal-hito .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 2px;
+    }
+
+    .modal-hito .modal-subtitle {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.85);
+    }
+
+    .modal-hito .modal-close {
+      width: 36px;
+      height: 36px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: white;
+      font-size: 1.3rem;
+      cursor: pointer;
+    }
+
+    .modal-hito .modal-close:hover {
+      background: rgba(255,255,255,0.25);
+    }
+
+    .modal-hito .modal-body {
+      padding: 24px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .modal-hito .form-group { margin-bottom: 16px; }
+
+    .modal-hito .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .modal-hito .form-label-hint {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .modal-hito .modal-footer {
+      background: var(--cream);
+    }
+
     @media (max-width: 540px) {
       .destinatarios-grid { grid-template-columns: 1fr; }
       .tipo-selector { grid-template-columns: 1fr; }
@@ -2823,7 +2927,10 @@
           <div class="card">
             <div class="card-header">
               <span class="card-title">📅 <span id="mes-actual">Diciembre</span></span>
-              <a href="activacion.html" class="card-action">Ver todo →</a>
+              <div class="card-actions">
+                <button class="card-action-btn" onclick="abrirModalHito()" title="Crear hito">+ Hito</button>
+                <a href="activacion.html" class="card-action">Ver más →</a>
+              </div>
             </div>
             <div class="card-body">
               <div class="calendario-mini" id="calendario-mini"></div>
@@ -3428,6 +3535,115 @@
     </div>
   </div>
 
+  <!-- Modal Crear Hito -->
+  <div class="modal-overlay" id="modal-hito">
+    <div class="modal modal-hito">
+      <!-- Header -->
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--calendario) 0%, #4A6A92 100%);">
+        <div class="modal-logo">📅</div>
+        <div class="modal-header-info">
+          <h2 class="modal-title">Crear Hito</h2>
+          <p class="modal-subtitle">Añade un evento al calendario</p>
+        </div>
+        <button class="modal-close" onclick="cerrarModalHito()">×</button>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <form id="form-hito">
+          
+          <!-- 1. Visibilidad -->
+          <div class="form-group">
+            <label class="form-label">Visibilidad</label>
+            <select class="form-select" id="hito-visibilidad" required>
+              <option value="rama">🌳 Toda la Rama</option>
+              <option value="estirpe">👨‍👩‍👧‍👦 Mi Estirpe</option>
+              <option value="nido">🪺 Solo mi Nido</option>
+            </select>
+          </div>
+
+          <!-- 2. Bien asociado -->
+          <div class="form-group">
+            <label class="form-label">Bien asociado <span class="form-label-hint">(opcional)</span></label>
+            <select class="form-select" id="hito-bien">
+              <option value="">Sin asociar a bien</option>
+              <!-- Se carga dinámicamente -->
+            </select>
+          </div>
+
+          <!-- 3. Tipo de hito -->
+          <div class="form-group">
+            <label class="form-label">Tipo de hito</label>
+            <select class="form-select" id="hito-tipo" required onchange="cambiarTipoHito()">
+              <option value="diaEspecial">🎉 Día Especial</option>
+              <option value="cita">📋 Cita</option>
+              <option value="evento">🎊 Evento</option>
+            </select>
+          </div>
+
+          <!-- Subtipo según tipo seleccionado -->
+          <div class="form-group" id="hito-subtipo-group">
+            <label class="form-label">Categoría</label>
+            <select class="form-select" id="hito-subtipo">
+              <!-- Se carga según tipo -->
+            </select>
+          </div>
+
+          <!-- Título -->
+          <div class="form-group">
+            <label class="form-label">Título</label>
+            <input type="text" class="form-input" id="hito-titulo" placeholder="Ej: Aniversario de boda" required>
+          </div>
+
+          <!-- 4. Fechas -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Fecha inicio</label>
+              <input type="date" class="form-input" id="hito-fecha-inicio" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fecha fin <span class="form-label-hint">(opcional)</span></label>
+              <input type="date" class="form-input" id="hito-fecha-fin">
+            </div>
+          </div>
+
+          <!-- 5. Horas -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Hora inicio <span class="form-label-hint">(opcional)</span></label>
+              <input type="time" class="form-input" id="hito-hora-inicio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hora fin <span class="form-label-hint">(opcional)</span></label>
+              <input type="time" class="form-input" id="hito-hora-fin">
+            </div>
+          </div>
+
+          <!-- 6. Descripción -->
+          <div class="form-group">
+            <label class="form-label">Descripción</label>
+            <textarea class="form-input" id="hito-descripcion" placeholder="Descripción del hito..." rows="2"></textarea>
+          </div>
+
+          <!-- 7. Notas -->
+          <div class="form-group">
+            <label class="form-label">Notas <span class="form-label-hint">(privadas)</span></label>
+            <textarea class="form-input" id="hito-notas" placeholder="Notas adicionales..." rows="2"></textarea>
+          </div>
+
+        </form>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalHito()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarHito()" id="btn-guardar-hito" style="background: var(--calendario);">
+          <span>💾</span> Guardar hito
+        </button>
+      </div>
+    </div>
+  </div>
+
   <footer class="app-footer">
     <a href="planes.html">Planes</a>
     <a href="#">Privacidad</a>
@@ -4015,7 +4231,7 @@
           nidosMap[doc.id] = { id: doc.id, ...doc.data() };
         });
 
-        // 1. CUMPLEAÑOS desde miembros de nidos (solo de nidos visibles según estirpe)
+        // CUMPLEAÑOS desde miembros de nidos (solo de nidos visibles según estirpe)
         nidosSnap.docs.forEach(doc => {
           const nido = { id: doc.id, ...doc.data() };
           // Verificar si este nido es visible (usando visibilidad 'estirpe')
@@ -4035,60 +4251,76 @@
           });
         });
 
-        // 2. DÍAS ESPECIALES (filtrar por visibilidad)
-        const diasSnap = await db.collection('diasEspeciales').where('familiaId', '==', currentFamilia.id).get();
-        diasSnap.docs.forEach(doc => {
-          const d = { id: doc.id, ...doc.data() };
-          if (!esVisibleParaUsuario(d, nidosMap)) return;
-          
-          [añoActual, añoActual+1].forEach(y => {
-            eventosCalendario.push({ 
-              tipo: d.tipo === 'cumple' ? 'cumple' : 'especial', 
-              titulo: d.nombre, 
-              fecha: `${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` 
+        // DÍAS ESPECIALES
+        try {
+          const diasSnap = await db.collection('diasEspeciales').where('familiaId', '==', currentFamilia.id).get();
+          diasSnap.docs.forEach(doc => {
+            const d = { id: doc.id, ...doc.data() };
+            if (!esVisibleParaUsuario(d, nidosMap)) return;
+            
+            [añoActual, añoActual+1].forEach(y => {
+              eventosCalendario.push({ 
+                tipo: 'especial', 
+                titulo: `🎉 ${d.nombre}`, 
+                fecha: `${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` 
+              });
             });
           });
-        });
+        } catch (e) {
+          console.warn('Error cargando días especiales (ignorado)');
+        }
 
-        // 3. EVENTOS (filtrar por visibilidad)
-        const eventosSnap = await db.collection('eventos').where('familiaId', '==', currentFamilia.id).get();
-        eventosSnap.docs.forEach(doc => {
-          const e = { id: doc.id, ...doc.data() };
-          if (!esVisibleParaUsuario(e, nidosMap)) return;
-          
-          if (e.fecha) eventosCalendario.push({ tipo:'evento', titulo: e.nombre, fecha: e.fecha, hora: e.hora });
-        });
-
-        // 4. CITAS (filtrar por visibilidad)
-        const citasSnap = await db.collection('citas').where('familiaId', '==', currentFamilia.id).get();
-        citasSnap.docs.forEach(doc => {
-          const c = { id: doc.id, ...doc.data() };
-          if (!esVisibleParaUsuario(c, nidosMap)) return;
-          
-          if (c.fecha) eventosCalendario.push({ tipo:'cita', titulo: c.titulo, fecha: c.fecha, hora: c.hora });
-        });
-
-        // 5. RESERVAS de bienes (filtrar por visibilidad)
-        const bienesSnap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
-        for (const bienDoc of bienesSnap.docs) {
-          const bien = bienDoc.data();
-          const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
-          reservasSnap.docs.forEach(resDoc => {
-            const r = { id: resDoc.id, ...resDoc.data() };
-            if (!esVisibleParaUsuario(r, nidosMap)) return;
+        // EVENTOS
+        try {
+          const eventosSnap = await db.collection('eventos').where('familiaId', '==', currentFamilia.id).get();
+          eventosSnap.docs.forEach(doc => {
+            const e = { id: doc.id, ...doc.data() };
+            if (!esVisibleParaUsuario(e, nidosMap)) return;
             
-            if (r.entrada) {
-              eventosCalendario.push({ 
-                tipo: 'reserva', 
-                titulo: `🏠 ${bien.nombre || 'Reserva'}`, 
-                fecha: r.entrada,
-                fechaFin: r.salida
-              });
-            }
+            if (e.fecha) eventosCalendario.push({ tipo:'evento', titulo: `🎊 ${e.nombre}`, fecha: e.fecha, hora: e.hora });
           });
+        } catch (e) {
+          console.warn('Error cargando eventos (ignorado)');
+        }
+
+        // CITAS
+        try {
+          const citasSnap = await db.collection('citas').where('familiaId', '==', currentFamilia.id).get();
+          citasSnap.docs.forEach(doc => {
+            const c = { id: doc.id, ...doc.data() };
+            if (!esVisibleParaUsuario(c, nidosMap)) return;
+            
+            if (c.fecha) eventosCalendario.push({ tipo:'cita', titulo: `📋 ${c.titulo}`, fecha: c.fecha, hora: c.hora });
+          });
+        } catch (e) {
+          console.warn('Error cargando citas (ignorado)');
+        }
+
+        // RESERVAS de bienes
+        try {
+          const bienesSnap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
+          for (const bienDoc of bienesSnap.docs) {
+            const bien = bienDoc.data();
+            const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+            reservasSnap.docs.forEach(resDoc => {
+              const r = { id: resDoc.id, ...resDoc.data() };
+              if (!esVisibleParaUsuario(r, nidosMap)) return;
+              
+              if (r.entrada) {
+                eventosCalendario.push({ 
+                  tipo: 'reserva', 
+                  titulo: `🏠 ${bien.nombre || 'Reserva'}`, 
+                  fecha: r.entrada,
+                  fechaFin: r.salida
+                });
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('Error cargando reservas (ignorado)');
         }
       } catch (error) {
-        console.error('Error cargando eventos calendario:', error);
+        console.warn('Error cargando calendario (ignorado):', error);
       }
     }
 
@@ -4336,59 +4568,41 @@
       try {
         const ahora = new Date();
         
-        // 1. Cargar notificaciones de herramientas (para este usuario)
-        let notifDocs = [];
-        try {
-          const notifSnap = await db.collection('notificaciones')
-            .where('familiaId', '==', currentFamilia.id)
-            .where('destinatarios', 'array-contains', currentUser.uid)
-            .where('estado', '==', 'activa')
-            .orderBy('fechaCreacion', 'desc')
-            .limit(5)
-            .get();
-          notifDocs = notifSnap.docs;
-        } catch (e) {
-          console.warn('Error cargando notificaciones (puede requerir índice):', e);
-        }
-
-        // 2. Cargar queos directamente
+        // Cargar queos para este usuario
         let queosDocs = [];
         try {
           const queosSnap = await db.collection('queos')
             .where('familiaId', '==', currentFamilia.id)
             .where('destinatarios', 'array-contains', currentUser.uid)
             .orderBy('fechaCreacion', 'desc')
-            .limit(5)
+            .limit(10)
             .get();
           queosDocs = queosSnap.docs;
         } catch (e) {
-          console.warn('Error cargando queos (puede requerir índice):', e);
-          // Intentar sin ordenar
+          console.warn('Error cargando queos:', e);
+          // Fallback sin ordenar
           try {
             const queosSnap2 = await db.collection('queos')
               .where('destinatarios', 'array-contains', currentUser.uid)
-              .limit(5)
+              .limit(10)
               .get();
             queosDocs = queosSnap2.docs;
           } catch (e2) {
-            console.warn('Error cargando queos (fallback):', e2);
+            console.warn('Error fallback queos:', e2);
           }
         }
 
-        // Combinar y procesar
-        notificacionesData = [
-          ...notifDocs.map(doc => ({ id: doc.id, source: 'notificacion', ...doc.data() })),
-          ...queosDocs.map(doc => ({ id: doc.id, source: 'queo', categoria: 'queo', ...doc.data() }))
-        ].filter(n => {
-          // Filtrar expiradas
-          if (n.fechaExpiracion) {
-            const expira = n.fechaExpiracion.toDate ? n.fechaExpiracion.toDate() : new Date(n.fechaExpiracion);
-            if (expira < ahora) return false;
-          }
-          // Filtrar ya completadas por este usuario
+        // Procesar queos
+        notificacionesData = queosDocs.map(doc => ({ 
+          id: doc.id, 
+          source: 'queo', 
+          categoria: 'queo', 
+          ...doc.data() 
+        })).filter(n => {
+          // Filtrar ya completadas por este usuario (tipo acción)
           if (n.tipo === 'accion' && n.completadoPor?.includes(currentUser.uid)) return false;
-          // Filtrar ya leídas (para queos de tipo info)
-          if (n.source === 'queo' && n.tipo === 'info' && n.leidoPor?.includes(currentUser.uid)) return false;
+          // Filtrar ya leídas (tipo info)
+          if (n.tipo === 'info' && n.leidoPor?.includes(currentUser.uid)) return false;
           return true;
         });
 
@@ -4399,26 +4613,11 @@
           return fechaB - fechaA;
         });
 
-        // 3. Cargar anuncios generales
-        let anunciosData = [];
-        try {
-          const anunciosSnap = await db.collection('anuncios')
-            .where('familiaId', '==', currentFamilia.id)
-            .where('activo', '==', true)
-            .orderBy('fechaCreacion', 'desc')
-            .limit(3)
-            .get();
-          anunciosData = anunciosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        } catch (e) {
-          console.warn('Error cargando anuncios (ignorado):', e);
-        }
-
-        // 4. Renderizar
+        // Renderizar
         let html = '';
 
-        // Notificaciones de acción primero (más urgentes)
         const acciones = notificacionesData.filter(n => n.tipo === 'accion');
-        const infos = notificacionesData.filter(n => n.tipo === 'info' || n.tipo !== 'accion');
+        const infos = notificacionesData.filter(n => n.tipo !== 'accion');
 
         if (acciones.length > 0) {
           html += '<div class="tablon-separator">⚡ Requiere tu acción</div>';
@@ -4428,25 +4627,6 @@
         if (infos.length > 0) {
           html += '<div class="tablon-separator">ℹ️ Información</div>';
           html += infos.map(n => renderNotificacion(n)).join('');
-        }
-
-        if (anunciosData.length > 0) {
-          if (acciones.length > 0 || infos.length > 0) {
-            html += '<div class="tablon-separator">📢 Anuncios</div>';
-          }
-          html += anunciosData.map(a => {
-            const tiempo = formatearTiempo(a.fechaCreacion);
-            return `
-              <div class="anuncio-item">
-                <div class="anuncio-header">
-                  <span class="anuncio-tipo ${a.tipo}">${a.tipo === 'convocatoria' ? '📣' : a.tipo === 'urgente' ? '🚨' : 'ℹ️'} ${a.tipo}</span>
-                  <span class="anuncio-fecha">${tiempo}</span>
-                </div>
-                <div class="anuncio-titulo">${a.titulo}</div>
-                <div class="anuncio-texto">${a.contenido?.substring(0, 60) || ''}${a.contenido?.length > 60 ? '...' : ''}</div>
-              </div>
-            `;
-          }).join('');
         }
 
         if (html === '') {
@@ -6318,6 +6498,181 @@
       
       console.log('UIDs finales:', Array.from(uidsSet));
       return Array.from(uidsSet);
+    }
+
+    // ============ MODAL CREAR HITO ============
+    const subtiposHito = {
+      diaEspecial: [
+        { value: 'aniversario', label: '💍 Aniversario' },
+        { value: 'cumpleanos', label: '🎂 Cumpleaños' },
+        { value: 'conmemoracion', label: '🕯️ Conmemoración' },
+        { value: 'festivo', label: '🎊 Festivo' },
+        { value: 'tradicion', label: '🎄 Tradición familiar' },
+        { value: 'otro', label: '📌 Otro' }
+      ],
+      cita: [
+        { value: 'medica', label: '🏥 Médica' },
+        { value: 'administrativa', label: '🏛️ Administrativa' },
+        { value: 'escolar', label: '🏫 Escolar' },
+        { value: 'trabajo', label: '💼 Trabajo' },
+        { value: 'personal', label: '👤 Personal' },
+        { value: 'otro', label: '📌 Otra' }
+      ],
+      evento: [
+        { value: 'reunion', label: '👥 Reunión familiar' },
+        { value: 'celebracion', label: '🎉 Celebración' },
+        { value: 'viaje', label: '✈️ Viaje' },
+        { value: 'actividad', label: '🎯 Actividad' },
+        { value: 'mantenimiento', label: '🔧 Mantenimiento' },
+        { value: 'otro', label: '📌 Otro' }
+      ]
+    };
+
+    function abrirModalHito() {
+      document.getElementById('modal-hito').classList.add('active');
+      cargarBienesParaHito();
+      cambiarTipoHito();
+      // Fecha por defecto: hoy
+      document.getElementById('hito-fecha-inicio').value = new Date().toISOString().split('T')[0];
+    }
+
+    function cerrarModalHito() {
+      document.getElementById('modal-hito').classList.remove('active');
+      document.getElementById('form-hito').reset();
+    }
+
+    async function cargarBienesParaHito() {
+      const select = document.getElementById('hito-bien');
+      select.innerHTML = '<option value="">Sin asociar a bien</option>';
+      
+      try {
+        const bienesSnap = await db.collection('bienes')
+          .where('familiaId', '==', currentFamilia.id)
+          .get();
+        
+        bienesSnap.docs.forEach(doc => {
+          const bien = doc.data();
+          select.innerHTML += `<option value="${doc.id}">${bien.icono || '🏠'} ${bien.nombre}</option>`;
+        });
+      } catch (e) {
+        console.warn('Error cargando bienes:', e);
+      }
+    }
+
+    function cambiarTipoHito() {
+      const tipo = document.getElementById('hito-tipo').value;
+      const subtipoSelect = document.getElementById('hito-subtipo');
+      const subtipos = subtiposHito[tipo] || [];
+      
+      subtipoSelect.innerHTML = subtipos.map(s => 
+        `<option value="${s.value}">${s.label}</option>`
+      ).join('');
+    }
+
+    async function guardarHito() {
+      const btn = document.getElementById('btn-guardar-hito');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Guardando...';
+
+      const tipo = document.getElementById('hito-tipo').value;
+      const visibilidad = document.getElementById('hito-visibilidad').value;
+      const bienId = document.getElementById('hito-bien').value;
+      const subtipo = document.getElementById('hito-subtipo').value;
+      const titulo = document.getElementById('hito-titulo').value.trim();
+      const fechaInicio = document.getElementById('hito-fecha-inicio').value;
+      const fechaFin = document.getElementById('hito-fecha-fin').value;
+      const horaInicio = document.getElementById('hito-hora-inicio').value;
+      const horaFin = document.getElementById('hito-hora-fin').value;
+      const descripcion = document.getElementById('hito-descripcion').value.trim();
+      const notas = document.getElementById('hito-notas').value.trim();
+
+      if (!titulo || !fechaInicio) {
+        alert('Completa el título y la fecha de inicio');
+        btn.disabled = false;
+        btn.innerHTML = '<span>💾</span> Guardar hito';
+        return;
+      }
+
+      try {
+        // Determinar colección según tipo
+        let coleccion = '';
+        let datos = {};
+
+        const datosComunes = {
+          familiaId: currentFamilia.id,
+          visibilidad,
+          bienId: bienId || null,
+          nidoId: miNidoPrincipal?.id || null,
+          creadoPor: currentUser.uid,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        switch (tipo) {
+          case 'diaEspecial':
+            coleccion = 'diasEspeciales';
+            const partesFecha = fechaInicio.split('-');
+            datos = {
+              ...datosComunes,
+              nombre: titulo,
+              tipo: subtipo,
+              mes: parseInt(partesFecha[1]),
+              dia: parseInt(partesFecha[2]),
+              anual: true, // Se repite cada año
+              descripcion,
+              notas
+            };
+            break;
+
+          case 'cita':
+            coleccion = 'citas';
+            datos = {
+              ...datosComunes,
+              titulo,
+              categoria: subtipo,
+              fecha: fechaInicio,
+              fechaFin: fechaFin || null,
+              hora: horaInicio || null,
+              horaFin: horaFin || null,
+              descripcion,
+              notas,
+              estado: 'pendiente'
+            };
+            break;
+
+          case 'evento':
+            coleccion = 'eventos';
+            datos = {
+              ...datosComunes,
+              nombre: titulo,
+              tipo: subtipo,
+              fecha: fechaInicio,
+              fechaFin: fechaFin || null,
+              hora: horaInicio || null,
+              horaFin: horaFin || null,
+              descripcion,
+              notas,
+              estado: 'programado'
+            };
+            break;
+        }
+
+        console.log('Guardando en', coleccion, ':', datos);
+        await db.collection(coleccion).add(datos);
+
+        alert('✅ Hito creado correctamente');
+        cerrarModalHito();
+
+        // Refrescar calendario
+        await cargarEventosCalendario();
+        renderCalendario();
+
+      } catch (error) {
+        console.error('Error guardando hito:', error);
+        alert('Error al guardar el hito: ' + error.message);
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<span>💾</span> Guardar hito';
     }
 
     // ============ PRIMEROS PASOS ============
