@@ -4323,7 +4323,6 @@
     }
 
     // ============ TABLÓN (REAL) ============
-    let anunciosData = [];
     let notificacionesData = [];
 
     async function renderTablon() {
@@ -4401,14 +4400,18 @@
         });
 
         // 3. Cargar anuncios generales
-        const anunciosSnap = await db.collection('anuncios')
-          .where('familiaId', '==', currentFamilia.id)
-          .where('activo', '==', true)
-          .orderBy('fechaCreacion', 'desc')
-          .limit(3)
-          .get();
-
-        anunciosData = anunciosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let anunciosData = [];
+        try {
+          const anunciosSnap = await db.collection('anuncios')
+            .where('familiaId', '==', currentFamilia.id)
+            .where('activo', '==', true)
+            .orderBy('fechaCreacion', 'desc')
+            .limit(3)
+            .get();
+          anunciosData = anunciosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {
+          console.warn('Error cargando anuncios (ignorado):', e);
+        }
 
         // 4. Renderizar
         let html = '';
