@@ -1146,6 +1146,7 @@
     .notif-titulo { font-weight: 600; font-size: 0.8rem; margin-bottom: 2px; }
     .notif-texto { font-size: 0.7rem; color: var(--text-light); }
     .notif-origen { font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+    .notif-remitente { font-size: 0.65rem; color: var(--sage-dark); font-style: italic; margin-top: 2px; }
 
     .notif-marcar {
       position: absolute;
@@ -4334,29 +4335,72 @@
       }
 
       try {
-        // 1. Cargar notificaciones de herramientas (para este usuario)
         const ahora = new Date();
-        const notifSnap = await db.collection('notificaciones')
-          .where('familiaId', '==', currentFamilia.id)
-          .where('destinatarios', 'array-contains', currentUser.uid)
-          .where('estado', '==', 'activa')
-          .orderBy('fechaCreacion', 'desc')
-          .limit(5)
-          .get();
+        
+        // 1. Cargar notificaciones de herramientas (para este usuario)
+        let notifDocs = [];
+        try {
+          const notifSnap = await db.collection('notificaciones')
+            .where('familiaId', '==', currentFamilia.id)
+            .where('destinatarios', 'array-contains', currentUser.uid)
+            .where('estado', '==', 'activa')
+            .orderBy('fechaCreacion', 'desc')
+            .limit(5)
+            .get();
+          notifDocs = notifSnap.docs;
+        } catch (e) {
+          console.warn('Error cargando notificaciones (puede requerir índice):', e);
+        }
 
-        notificacionesData = notifSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(n => {
-            // Filtrar expiradas
-            if (n.fechaExpiracion) {
-              const expira = n.fechaExpiracion.toDate ? n.fechaExpiracion.toDate() : new Date(n.fechaExpiracion);
-              if (expira < ahora) return false;
-            }
-            // Filtrar ya completadas por este usuario
-            if (n.tipo === 'accion' && n.completadoPor?.includes(currentUser.uid)) return false;
-            return true;
-          });
+        // 2. Cargar queos directamente
+        let queosDocs = [];
+        try {
+          const queosSnap = await db.collection('queos')
+            .where('familiaId', '==', currentFamilia.id)
+            .where('destinatarios', 'array-contains', currentUser.uid)
+            .orderBy('fechaCreacion', 'desc')
+            .limit(5)
+            .get();
+          queosDocs = queosSnap.docs;
+        } catch (e) {
+          console.warn('Error cargando queos (puede requerir índice):', e);
+          // Intentar sin ordenar
+          try {
+            const queosSnap2 = await db.collection('queos')
+              .where('destinatarios', 'array-contains', currentUser.uid)
+              .limit(5)
+              .get();
+            queosDocs = queosSnap2.docs;
+          } catch (e2) {
+            console.warn('Error cargando queos (fallback):', e2);
+          }
+        }
 
-        // 2. Cargar anuncios generales
+        // Combinar y procesar
+        notificacionesData = [
+          ...notifDocs.map(doc => ({ id: doc.id, source: 'notificacion', ...doc.data() })),
+          ...queosDocs.map(doc => ({ id: doc.id, source: 'queo', categoria: 'queo', ...doc.data() }))
+        ].filter(n => {
+          // Filtrar expiradas
+          if (n.fechaExpiracion) {
+            const expira = n.fechaExpiracion.toDate ? n.fechaExpiracion.toDate() : new Date(n.fechaExpiracion);
+            if (expira < ahora) return false;
+          }
+          // Filtrar ya completadas por este usuario
+          if (n.tipo === 'accion' && n.completadoPor?.includes(currentUser.uid)) return false;
+          // Filtrar ya leídas (para queos de tipo info)
+          if (n.source === 'queo' && n.tipo === 'info' && n.leidoPor?.includes(currentUser.uid)) return false;
+          return true;
+        });
+
+        // Ordenar por fecha
+        notificacionesData.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate ? a.fechaCreacion.toDate() : new Date(a.fechaCreacion || 0);
+          const fechaB = b.fechaCreacion?.toDate ? b.fechaCreacion.toDate() : new Date(b.fechaCreacion || 0);
+          return fechaB - fechaA;
+        });
+
+        // 3. Cargar anuncios generales
         const anunciosSnap = await db.collection('anuncios')
           .where('familiaId', '==', currentFamilia.id)
           .where('activo', '==', true)
@@ -4366,12 +4410,12 @@
 
         anunciosData = anunciosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // 3. Renderizar
+        // 4. Renderizar
         let html = '';
 
         // Notificaciones de acción primero (más urgentes)
         const acciones = notificacionesData.filter(n => n.tipo === 'accion');
-        const infos = notificacionesData.filter(n => n.tipo === 'info');
+        const infos = notificacionesData.filter(n => n.tipo === 'info' || n.tipo !== 'accion');
 
         if (acciones.length > 0) {
           html += '<div class="tablon-separator">⚡ Requiere tu acción</div>';
@@ -4418,6 +4462,7 @@
     function renderNotificacion(n) {
       const tiempo = formatearTiempo(n.fechaCreacion);
       const iconos = {
+        queo: '📣',
         mercadillo: '🏪',
         votacion: '🗳️',
         encuesta: '📊',
@@ -4430,28 +4475,38 @@
       };
       const icono = iconos[n.categoria] || '📌';
       const tipoClass = n.tipo === 'accion' ? 'accion' : 'info-notif';
+      const sourceId = n.source === 'queo' ? n.id : n.id;
+      const sourceType = n.source || 'notificacion';
+
+      // Para queos, mostrar también el remitente
+      const remitenteInfo = n.source === 'queo' && n.remitenteNombre ? 
+        `<div class="notif-remitente">De: ${n.remitenteNombre}</div>` : '';
 
       return `
-        <div class="notif-item ${tipoClass}" onclick="abrirNotificacion('${n.id}', '${n.enlace || ''}')">
-          <button class="notif-marcar" onclick="event.stopPropagation(); marcarNotificacion('${n.id}', '${n.tipo}')" title="${n.tipo === 'accion' ? 'Marcar como hecho' : 'Descartar'}">✓</button>
+        <div class="notif-item ${tipoClass}" onclick="abrirNotificacion('${sourceId}', '${n.enlace || ''}', '${sourceType}')">
+          <button class="notif-marcar" onclick="event.stopPropagation(); marcarNotificacion('${sourceId}', '${n.tipo}', '${sourceType}')" title="${n.tipo === 'accion' ? 'Marcar como hecho' : 'Descartar'}">✓</button>
           <div class="notif-header">
             <span class="notif-badge ${tipoClass}">${n.tipo === 'accion' ? '⚡ Acción' : 'ℹ️ Info'}</span>
             <span class="notif-tiempo">${tiempo}</span>
           </div>
-          <div class="notif-titulo">${n.titulo}</div>
+          <div class="notif-titulo">${n.titulo || n.asunto || 'Sin título'}</div>
           ${n.mensaje ? `<div class="notif-texto">${n.mensaje.substring(0, 80)}${n.mensaje.length > 80 ? '...' : ''}</div>` : ''}
-          <div class="notif-origen">${icono} ${n.categoria || 'General'}</div>
+          ${remitenteInfo}
+          <div class="notif-origen">${icono} ${n.source === 'queo' ? 'Queo' : (n.categoria || 'General')}</div>
         </div>
       `;
     }
 
-    async function abrirNotificacion(notifId, enlace) {
+    async function abrirNotificacion(notifId, enlace, sourceType = 'notificacion') {
       // Marcar como leída
       try {
-        await db.collection('notificaciones').doc(notifId).update({
+        const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
+        await db.collection(collection).doc(notifId).update({
           leidoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
         });
-      } catch(e) {}
+      } catch(e) {
+        console.warn('Error marcando como leída:', e);
+      }
 
       // Navegar si hay enlace
       if (enlace) {
@@ -4459,23 +4514,28 @@
       }
     }
 
-    async function marcarNotificacion(notifId, tipo) {
+    async function marcarNotificacion(notifId, tipo, sourceType = 'notificacion') {
       try {
+        const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
+        
         if (tipo === 'accion') {
           // Marcar como completada
-          await db.collection('notificaciones').doc(notifId).update({
+          await db.collection(collection).doc(notifId).update({
             completadoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
           });
         } else {
           // Para info, marcar como leída (la ocultará)
-          await db.collection('notificaciones').doc(notifId).update({
-            leidoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-            // Si todos los destinatarios la han leído, marcar como completada
+          await db.collection(collection).doc(notifId).update({
+            leidoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
           });
         }
         
         // Refrescar tablón
         await renderTablon();
+        // Refrescar buzón móvil
+        if (typeof renderBuzonUnificado === 'function') {
+          await renderBuzonUnificado();
+        }
       } catch (error) {
         console.error('Error marcando notificación:', error);
       }
