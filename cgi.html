@@ -3834,11 +3834,11 @@
       
       await cargarEventosCalendario();
       renderCalendario();
-      renderMensajes();
-      renderTablon();
+      await renderMensajes();
+      await renderTablon();
       // Renderizar buzón unificado después de mensajes y tablón
-      setTimeout(() => renderBuzonUnificado(), 500);
-      renderMisBienes();
+      setTimeout(() => renderBuzonUnificado(), 800);
+      await renderMisBienes();
       cargarBadgeChat();
       renderPlan();
     }
@@ -4484,12 +4484,19 @@
     async function renderMensajes() {
       const container = document.getElementById('mensajes-list');
       
+      if (!container) {
+        console.warn('renderMensajes: Container no encontrado');
+        return;
+      }
+      
       if (!currentUser || !currentFamilia) {
+        console.warn('renderMensajes: No hay usuario o familia');
         container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">💬</div>Sin conversaciones</div>';
         return;
       }
 
       try {
+        console.log('Cargando conversaciones para:', currentUser.uid);
         // Cargar conversaciones del chat
         const snap = await db.collection('conversaciones')
           .where('participantes', 'array-contains', currentUser.uid)
@@ -4497,6 +4504,7 @@
           .get();
 
         let conversaciones = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('Conversaciones encontradas:', conversaciones.length);
         
         // Ordenar por último mensaje
         conversaciones.sort((a, b) => {
@@ -4565,9 +4573,16 @@
     let notificacionesData = [];
 
     async function renderTablon() {
+      console.log('Ejecutando renderTablon');
       const container = document.getElementById('tablon-list');
       
+      if (!container) {
+        console.warn('renderTablon: Container no encontrado');
+        return;
+      }
+      
       if (!currentFamilia) {
+        console.warn('renderTablon: No hay familia activa');
         container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
         return;
       }
@@ -5535,9 +5550,15 @@
     // Cargar bienes filtrados por visibilidad del usuario
     async function cargarBienesUsuario() {
       if (bienesUsuario.length > 0) return;
+      if (!currentFamilia?.id) {
+        console.warn('cargarBienesUsuario: No hay familia activa');
+        return;
+      }
       try {
+        console.log('Cargando bienes para familia:', currentFamilia.id);
         const snap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
         const todosBienes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('Bienes encontrados:', todosBienes.length);
         
         // Cargar mapa de nidos para verificar visibilidad
         const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
@@ -5550,7 +5571,18 @@
         bienesUsuario = todosBienes.filter(bien => {
           return esVisibleParaUsuario(bien, nidosMap);
         });
-      } catch (e) { console.error('Error cargando bienes:', e); }
+        console.log('Bienes visibles para usuario:', bienesUsuario.length);
+      } catch (e) { 
+        console.error('Error cargando bienes:', e); 
+        // Fallback: cargar todos los bienes sin filtro de visibilidad
+        try {
+          const snap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
+          bienesUsuario = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('Bienes (fallback):', bienesUsuario.length);
+        } catch (e2) {
+          console.error('Error fallback bienes:', e2);
+        }
+      }
     }
 
     // Cargar bienes que tienen add-on de gestión activo (Mayordomo, Gerente o Capataz)
@@ -5580,14 +5612,6 @@
           const gestion = b.mayordomoActivo ? '🎩' : b.gerenteActivo ? '💼' : '🚜';
           return `<option value="${b.id}">${gestion} ${b.nombre}</option>`;
         }).join('');
-    }
-
-    async function cargarBienesUsuario() {
-      if (bienesUsuario.length > 0) return;
-      try {
-        const snap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
-        bienesUsuario = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } catch (e) { console.error('Error cargando bienes:', e); }
     }
 
     async function cargarAdminsEstirpe() {
@@ -6040,22 +6064,30 @@
     }
 
     async function renderBuzonUnificado() {
+      console.log('Ejecutando renderBuzonUnificado');
       // Renderizar mensajes en buzón móvil
       const chatContainer = document.getElementById('buzon-mensajes-list');
       const tablonContainer = document.getElementById('buzon-tablon-list');
       
-      if (!chatContainer || !tablonContainer) return;
+      if (!chatContainer || !tablonContainer) {
+        console.warn('renderBuzonUnificado: Contenedores no encontrados');
+        return;
+      }
       
       // Copiar contenido de mensajes desktop
       const mensajesDesktop = document.getElementById('mensajes-list');
-      if (mensajesDesktop) {
+      if (mensajesDesktop && mensajesDesktop.innerHTML) {
         chatContainer.innerHTML = mensajesDesktop.innerHTML;
+      } else {
+        chatContainer.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">💬</div>Sin conversaciones</div>';
       }
       
       // Copiar contenido de tablón desktop
       const tablonDesktop = document.getElementById('tablon-list');
-      if (tablonDesktop) {
+      if (tablonDesktop && tablonDesktop.innerHTML) {
         tablonContainer.innerHTML = tablonDesktop.innerHTML;
+      } else {
+        tablonContainer.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
       }
       
       // Actualizar badges
@@ -6075,73 +6107,92 @@
         notifBadge.textContent = notifAccion;
         notifBadge.style.display = notifAccion > 0 ? 'inline-block' : 'none';
       }
+      
+      console.log('Buzón renderizado - Mensajes:', mensajesNoLeidos, 'Notifs:', notifAccion);
     }
 
     // ============ MIS BIENES (MÓVIL) ============
     async function renderMisBienes() {
+      console.log('Ejecutando renderMisBienes');
       const container = document.getElementById('mis-bienes-list');
-      if (!container) return;
-      
-      await cargarBienesUsuario();
-      
-      if (bienesUsuario.length === 0) {
-        container.innerHTML = `
-          <div style="text-align: center; padding: 20px; color: var(--text-muted);">
-            <div style="font-size: 2rem; margin-bottom: 8px;">🏠</div>
-            <div>No tienes bienes asignados</div>
-          </div>
-        `;
+      if (!container) {
+        console.warn('renderMisBienes: Container no encontrado');
         return;
       }
       
-      // Mapeo de iconos para tipos de bienes
-      const iconosTipo = {
-        'vivienda': '🏠',
-        'vehiculo': '🚗',
-        'terreno': '🌳',
-        'local': '🏪',
-        'garaje': '🅿️',
-        'trastero': '📦',
-        'otro': '📋'
-      };
-      
-      container.innerHTML = bienesUsuario.map(bien => {
-        // Determinar el add-on activo y la URL de destino
-        let addon = '';
-        let addonClass = '';
-        let addonLabel = '';
-        let urlDestino = `lo-comun.html?bien=${bien.id}`; // Por defecto
+      try {
+        await cargarBienesUsuario();
+        console.log('Bienes cargados:', bienesUsuario.length);
         
-        if (bien.mayordomoActivo) {
-          addon = '🎩';
-          addonClass = 'mayordomo';
-          addonLabel = 'Mayordomo';
-          urlDestino = `mayordomo.html?id=${bien.id}`;
-        } else if (bien.gerenteActivo) {
-          addon = '💼';
-          addonClass = 'gerente';
-          addonLabel = 'Gerente';
-          urlDestino = `gerente.html?id=${bien.id}`;
-        } else if (bien.capatazActivo) {
-          addon = '🚜';
-          addonClass = 'capataz';
-          addonLabel = 'Capataz';
-          urlDestino = `capataz.html?id=${bien.id}`;
+        if (bienesUsuario.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+              <div style="font-size: 2rem; margin-bottom: 8px;">🏠</div>
+              <div>No tienes bienes asignados</div>
+            </div>
+          `;
+          return;
         }
         
-        const iconoBien = iconosTipo[bien.tipo] || '🏠';
+        // Mapeo de iconos para tipos de bienes
+        const iconosTipo = {
+          'vivienda': '🏠',
+          'vehiculo': '🚗',
+          'terreno': '🌳',
+          'local': '🏪',
+          'garaje': '🅿️',
+          'trastero': '📦',
+          'otro': '📋'
+        };
         
-        return `
-          <a href="${urlDestino}" class="bien-card ${addonClass}">
-            <div class="bien-icon">${iconoBien}</div>
-            <div class="bien-info">
-              <div class="bien-nombre">${bien.nombre || 'Sin nombre'}</div>
-              ${addon ? `<div class="bien-addon">${addon} ${addonLabel}</div>` : '<div class="bien-addon">Sin gestión activa</div>'}
-            </div>
-            <span class="bien-arrow">›</span>
-          </a>
+        container.innerHTML = bienesUsuario.map(bien => {
+          // Determinar el add-on activo y la URL de destino
+          let addon = '';
+          let addonClass = '';
+          let addonLabel = '';
+          let urlDestino = `lo-comun.html?bien=${bien.id}`; // Por defecto
+          
+          if (bien.mayordomoActivo) {
+            addon = '🎩';
+            addonClass = 'mayordomo';
+            addonLabel = 'Mayordomo';
+            urlDestino = `mayordomo.html?id=${bien.id}`;
+          } else if (bien.gerenteActivo) {
+            addon = '💼';
+            addonClass = 'gerente';
+            addonLabel = 'Gerente';
+            urlDestino = `gerente.html?id=${bien.id}`;
+          } else if (bien.capatazActivo) {
+            addon = '🚜';
+            addonClass = 'capataz';
+            addonLabel = 'Capataz';
+            urlDestino = `capataz.html?id=${bien.id}`;
+          }
+          
+          const iconoBien = iconosTipo[bien.tipo] || '🏠';
+          
+          return `
+            <a href="${urlDestino}" class="bien-card ${addonClass}">
+              <div class="bien-icon">${iconoBien}</div>
+              <div class="bien-info">
+                <div class="bien-nombre">${bien.nombre || 'Sin nombre'}</div>
+                ${addon ? `<div class="bien-addon">${addon} ${addonLabel}</div>` : '<div class="bien-addon">Sin gestión activa</div>'}
+              </div>
+              <span class="bien-arrow">›</span>
+            </a>
+          `;
+        }).join('');
+        
+        console.log('Mis bienes renderizados');
+      } catch (error) {
+        console.error('Error en renderMisBienes:', error);
+        container.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: var(--text-muted);">
+            <div style="font-size: 2rem; margin-bottom: 8px;">⚠️</div>
+            <div>Error cargando bienes</div>
+          </div>
         `;
-      }).join('');
+      }
     }
 
     // ============ PRIMEROS PASOS ============

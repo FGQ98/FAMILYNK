@@ -305,7 +305,6 @@
         <button class="filtro-btn" onclick="filtrar('accion')">⚡ Requiere acción</button>
         <button class="filtro-btn" onclick="filtrar('queos')">📣 Queos</button>
         <button class="filtro-btn" onclick="filtrar('info')">ℹ️ Información</button>
-        <button class="filtro-btn" onclick="filtrar('anuncios')">📢 Anuncios</button>
       </div>
 
       <!-- Lista de avisos -->
@@ -331,7 +330,6 @@
     let userData = null;
     let currentFamilia = null;
     let notificaciones = [];
-    let anuncios = [];
     let queos = [];
     let filtroActual = 'todos';
 
@@ -383,11 +381,12 @@
         const ahora = new Date();
         const familiaId = currentFamilia?.id || userData.familiaId;
 
-        // 1. Cargar notificaciones para este usuario
+        // 1. Cargar notificaciones para este usuario (usando índice con estado)
         try {
           const notifSnap = await db.collection('notificaciones')
             .where('familiaId', '==', familiaId)
             .where('destinatarios', 'array-contains', currentUser.uid)
+            .where('estado', '==', 'activa')
             .orderBy('fechaCreacion', 'desc')
             .limit(50)
             .get();
@@ -418,21 +417,6 @@
         } catch (e) {
           console.warn('Error cargando queos:', e);
           queos = [];
-        }
-
-        // 3. Cargar anuncios generales
-        try {
-          const anunciosSnap = await db.collection('anuncios')
-            .where('familiaId', '==', familiaId)
-            .where('activo', '==', true)
-            .orderBy('fechaCreacion', 'desc')
-            .limit(20)
-            .get();
-
-          anuncios = anunciosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        } catch (e) {
-          console.warn('Error cargando anuncios:', e);
-          anuncios = [];
         }
 
         renderAvisos();
@@ -467,19 +451,13 @@
 
       // Filtrar según tipo
       let avisosFiltrados = todosAvisos;
-      let anunciosFiltrados = anuncios;
 
       if (filtroActual === 'accion') {
         avisosFiltrados = todosAvisos.filter(n => n.tipo === 'accion');
-        anunciosFiltrados = [];
       } else if (filtroActual === 'info') {
         avisosFiltrados = todosAvisos.filter(n => n.tipo === 'info');
-        anunciosFiltrados = [];
-      } else if (filtroActual === 'anuncios') {
-        avisosFiltrados = [];
       } else if (filtroActual === 'queos') {
         avisosFiltrados = queos;
-        anunciosFiltrados = [];
       }
 
       // Sección: Requiere acción
@@ -514,7 +492,7 @@
         `;
       }
 
-      // Sección: Información (notificaciones no-queo)
+      // Sección: Información (notificaciones del sistema)
       const infos = avisosFiltrados.filter(n => n.source !== 'queo' && (n.tipo === 'info' || n.tipo !== 'accion'));
       if (infos.length > 0 && filtroActual !== 'accion') {
         hayAvisos = true;
@@ -526,21 +504,6 @@
               <span class="seccion-count">${infos.length}</span>
             </div>
             ${infos.map(n => renderAviso(n, 'info')).join('')}
-          </div>
-        `;
-      }
-
-      // Sección: Anuncios
-      if (anunciosFiltrados.length > 0 && filtroActual !== 'accion' && filtroActual !== 'info') {
-        hayAvisos = true;
-        html += `
-          <div class="seccion">
-            <div class="seccion-header">
-              <span class="seccion-icon">📢</span>
-              <span class="seccion-title">Anuncios</span>
-              <span class="seccion-count">${anunciosFiltrados.length}</span>
-            </div>
-            ${anunciosFiltrados.map(a => renderAnuncio(a)).join('')}
           </div>
         `;
       }
@@ -590,25 +553,6 @@
             <div class="aviso-titulo">${n.titulo || n.asunto || 'Notificación'}</div>
             ${n.mensaje ? `<div class="aviso-mensaje">${n.mensaje}</div>` : ''}
             ${accionesHtml}
-          </div>
-        </div>
-      `;
-    }
-
-    function renderAnuncio(a) {
-      const fecha = formatFecha(a.fechaCreacion);
-      const autorNombre = a.autorNombre || 'Admin';
-
-      return `
-        <div class="aviso" data-id="${a.id}">
-          <div class="aviso-icon info">📢</div>
-          <div class="aviso-content">
-            <div class="aviso-header">
-              <span class="aviso-origen">${autorNombre}</span>
-              <span class="aviso-fecha">${fecha}</span>
-            </div>
-            <div class="aviso-titulo">${a.titulo || 'Anuncio'}</div>
-            ${a.contenido ? `<div class="aviso-mensaje">${a.contenido}</div>` : ''}
           </div>
         </div>
       `;
