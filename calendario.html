@@ -88,7 +88,6 @@
     
     .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
     .day-number { font-weight: 600; font-size: 0.9rem; }
-    .day-count { font-size: 0.65rem; color: var(--text-muted); background: var(--cream); padding: 1px 5px; border-radius: 8px; }
 
     /* Eventos dentro de la celda */
     .day-events { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 2px; }
@@ -102,17 +101,30 @@
       text-overflow: ellipsis;
       color: white;
       font-weight: 500;
+      cursor: pointer;
     }
     .day-event.hito { background: var(--hito); }
     .day-event.cita { background: var(--cita); }
     .day-event.evento { background: var(--evento); }
     .day-event.reserva { background: var(--reserva); }
     
-    .day-event-more {
+    /* Botón Ver más */
+    .btn-ver-mas {
       font-size: 0.65rem;
-      color: var(--text-muted);
-      padding: 2px 0;
+      color: var(--white);
+      background: var(--sage);
+      padding: 3px 8px;
+      border-radius: 4px;
       text-align: center;
+      cursor: pointer;
+      border: none;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      margin-top: 2px;
+      transition: background 0.15s;
+    }
+    .btn-ver-mas:hover {
+      background: var(--sage-dark);
     }
 
     /* Leyenda compacta */
@@ -158,6 +170,9 @@
       border-radius: var(--radius-md);
       margin-bottom: 8px;
     }
+    .mobile-event-item.highlighted {
+      box-shadow: 0 0 0 2px var(--terracotta);
+    }
     .mobile-event-color {
       width: 4px;
       border-radius: 2px;
@@ -184,18 +199,25 @@
       
       .calendar-day { min-height: 50px; padding: 4px; }
       .day-number { font-size: 0.8rem; }
-      .day-count { display: none; }
       
-      /* En móvil, solo mostrar puntos, no texto */
-      .day-events { flex-direction: row; flex-wrap: wrap; gap: 3px; justify-content: center; align-items: flex-start; }
+      /* En móvil, solo mostrar puntos clicables */
+      .day-events { 
+        flex-direction: row; 
+        flex-wrap: wrap; 
+        gap: 4px; 
+        justify-content: center; 
+        align-items: flex-start; 
+      }
       .day-event { 
-        width: 8px; height: 8px; 
+        width: 10px; 
+        height: 10px; 
         padding: 0; 
         border-radius: 50%; 
         font-size: 0;
         flex-shrink: 0;
+        cursor: pointer;
       }
-      .day-event-more { display: none; }
+      .btn-ver-mas { display: none; }
       
       .mobile-panel { display: block; }
       .leyenda { display: none; }
@@ -248,7 +270,7 @@
       <div class="mobile-panel" id="mobile-panel">
         <div class="mobile-panel-title" id="mobile-panel-title">📋 Selecciona un día</div>
         <div id="mobile-events">
-          <div class="mobile-event-empty">Selecciona un día para ver sus eventos</div>
+          <div class="mobile-event-empty">Toca un punto de color para ver detalles</div>
         </div>
       </div>
     </div>
@@ -268,32 +290,6 @@
     let fechaActual = new Date();
     let fechaSeleccionada = new Date();
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-    // Iconos por subtipo
-    const iconosSubtipo = {
-      // Hitos
-      'cumpleaños': '🎂',
-      'aniversario': '💍',
-      'defuncion': '🕯️',
-      // Citas
-      'reunion': '📋',
-      'asistencia-tecnica': '🔧',
-      'visita': '👥',
-      // Eventos
-      'fiesta': '🎉',
-      'reunion-familiar': '👨‍👩‍👧‍👦',
-      'torneo': '🏆',
-      // Reservas - Estancias (Mayordomo)
-      'estancia': '🏠',
-      'zafarrancho': '🧹',
-      // Reservas - Actividades (Capataz)
-      'monteria': '🦌',
-      'recoleccion': '🌾',
-      'actividad': '🎯',
-      // Otros
-      'reserva': '📅',
-      'nodisponible': '🚫'
-    };
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -317,7 +313,6 @@
 
         await cargarTodosEventos();
         renderCalendario();
-        mostrarEventosDia(fechaSeleccionada);
 
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
@@ -352,8 +347,8 @@
             todosEventos.push({
               tipo: 'hito',
               subtipo: 'aniversario',
-              titulo: `💍 ${nido.nombre}`,
-              textoCorto: `💍 Aniv.`,
+              titulo: `Aniversario ${nido.nombre}`,
+              textoCorto: `Aniv. ${(nido.nombre || '').substring(0, 8)}`,
               anual: true,
               mesNum: parseInt(mes),
               diaNum: parseInt(dia),
@@ -368,11 +363,12 @@
             // Cumpleaños
             if (m.fechaNacimiento) {
               const [anio, mes, dia] = m.fechaNacimiento.split('-');
+              const nombreCorto = m.nombre.split(' ')[0];
               todosEventos.push({
                 tipo: 'hito',
                 subtipo: 'cumpleaños',
-                titulo: `🎂 ${m.nombre}`,
-                textoCorto: `🎂 ${m.nombre.split(' ')[0]}`,
+                titulo: `Cumpleaños de ${m.nombre}`,
+                textoCorto: nombreCorto,
                 anual: true,
                 mesNum: parseInt(mes),
                 diaNum: parseInt(dia),
@@ -384,11 +380,12 @@
             // Aniversario de defunción
             if (m.fechaDefuncion) {
               const [anio, mes, dia] = m.fechaDefuncion.split('-');
+              const nombreCorto = m.nombre.split(' ')[0];
               todosEventos.push({
                 tipo: 'hito',
                 subtipo: 'defuncion',
-                titulo: `🕯️ ${m.nombre}`,
-                textoCorto: `🕯️ ${m.nombre.split(' ')[0]}`,
+                titulo: `Recordatorio ${m.nombre}`,
+                textoCorto: nombreCorto,
                 anual: true,
                 mesNum: parseInt(mes),
                 diaNum: parseInt(dia),
@@ -412,14 +409,13 @@
           if (!c.fecha) return;
           
           const fecha = new Date(c.fecha);
-          const subtipo = c.subtipo || c.categoria || 'reunion';
-          const icono = iconosSubtipo[subtipo] || '📋';
+          const titulo = c.titulo || 'Cita';
           
           todosEventos.push({
             tipo: 'cita',
-            subtipo: subtipo,
-            titulo: `${icono} ${c.titulo || 'Cita'}`,
-            textoCorto: `${icono} ${(c.titulo || 'Cita').substring(0, 12)}`,
+            subtipo: c.subtipo || c.categoria || 'reunion',
+            titulo: titulo,
+            textoCorto: titulo.substring(0, 15),
             fecha: c.fecha,
             mesNum: fecha.getMonth() + 1,
             diaNum: fecha.getDate(),
@@ -444,14 +440,13 @@
           if (!e.fecha) return;
           
           const fecha = new Date(e.fecha);
-          const subtipo = e.subtipo || e.tipo || 'fiesta';
-          const icono = iconosSubtipo[subtipo] || '🎉';
+          const nombre = e.nombre || e.titulo || 'Evento';
           
           todosEventos.push({
             tipo: 'evento',
-            subtipo: subtipo,
-            titulo: `${icono} ${e.nombre || e.titulo || 'Evento'}`,
-            textoCorto: `${icono} ${(e.nombre || e.titulo || 'Evento').substring(0, 12)}`,
+            subtipo: e.subtipo || e.tipo || 'fiesta',
+            titulo: nombre,
+            textoCorto: nombre.substring(0, 15),
             fecha: e.fecha,
             mesNum: fecha.getMonth() + 1,
             diaNum: fecha.getDate(),
@@ -489,35 +484,22 @@
               if (!fechaStr) return;
               
               const fecha = new Date(fechaStr);
-              
-              // Determinar subtipo e icono según el tipo de reserva
-              let subtipo = 'reserva';
-              let icono = '📅';
-              
               const tipoReserva = (r.tipo || '').toLowerCase();
               
+              let subtipo = 'reserva';
               if (tipoReserva.includes('estancia') || tipoReserva.includes('familia') || tipoReserva.includes('huespedes')) {
                 subtipo = 'estancia';
-                icono = '🏠';
               } else if (tipoReserva.includes('zafarrancho')) {
                 subtipo = 'zafarrancho';
-                icono = '🧹';
               } else if (tipoReserva.includes('monteria') || tipoReserva.includes('caceria')) {
                 subtipo = 'monteria';
-                icono = '🦌';
               } else if (tipoReserva.includes('recoleccion') || tipoReserva.includes('cosecha')) {
                 subtipo = 'recoleccion';
-                icono = '🌾';
               } else if (tipoReserva.includes('actividad')) {
                 subtipo = 'actividad';
-                icono = '🎯';
-              } else if (tipoReserva.includes('nodisponible')) {
-                subtipo = 'nodisponible';
-                icono = '🚫';
               }
               
-              let textoCorto = `${icono} ${bienNombre.substring(0, 10)}`;
-              let textoLargo = `${icono} ${bienNombre}`;
+              let textoLargo = bienNombre;
               if (r.quien) textoLargo += ` — ${r.quien}`;
               else if (r.motivo) textoLargo += ` — ${r.motivo}`;
               
@@ -525,7 +507,7 @@
                 tipo: 'reserva',
                 subtipo: subtipo,
                 titulo: textoLargo,
-                textoCorto: textoCorto,
+                textoCorto: bienNombre.substring(0, 12),
                 fecha: fechaStr,
                 fechaFin: r.salida || r.fechaFin,
                 mesNum: fecha.getMonth() + 1,
@@ -573,27 +555,33 @@
         if (fecha===hoyStr) div.classList.add('today');
         if (fecha===formatFecha(fechaSeleccionada)) div.classList.add('selected');
         
-        // Header con número y contador
-        const countBadge = eventosDelDia.length > 0 ? `<span class="day-count">${eventosDelDia.length}</span>` : '';
-        
-        // Eventos en la celda (máximo 4 visibles)
-        const maxVisibles = 4;
+        // Eventos en la celda (máximo 3 visibles + botón ver más)
+        const maxVisibles = 3;
         let eventsHtml = '';
-        eventosDelDia.slice(0, maxVisibles).forEach(e => {
-          eventsHtml += `<div class="day-event ${e.tipo}" title="${e.titulo}">${e.textoCorto}</div>`;
+        
+        eventosDelDia.slice(0, maxVisibles).forEach((e, idx) => {
+          // Solo texto, sin iconos
+          eventsHtml += `<div class="day-event ${e.tipo}" title="${e.titulo}" data-dia="${dia}" data-idx="${idx}">${e.textoCorto}</div>`;
         });
+        
         if (eventosDelDia.length > maxVisibles) {
-          eventsHtml += `<div class="day-event-more">+${eventosDelDia.length - maxVisibles} más</div>`;
+          eventsHtml += `<button class="btn-ver-mas" data-dia="${dia}">Ver más (${eventosDelDia.length - maxVisibles})</button>`;
         }
         
         div.innerHTML = `
           <div class="day-header">
             <span class="day-number">${dia}</span>
-            ${countBadge}
           </div>
           <div class="day-events">${eventsHtml}</div>
         `;
-        div.onclick = () => seleccionarDia(new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia));
+        
+        // Click en la celda (no en eventos)
+        div.onclick = (e) => {
+          if (!e.target.classList.contains('day-event') && !e.target.classList.contains('btn-ver-mas')) {
+            seleccionarDia(new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia));
+          }
+        };
+        
         grid.appendChild(div);
       }
 
@@ -604,6 +592,26 @@
         div.innerHTML = `<div class="day-header"><span class="day-number">${i}</span></div><div class="day-events"></div>`;
         grid.appendChild(div);
       }
+
+      // Añadir listeners a los puntos/eventos y botones
+      grid.querySelectorAll('.day-event').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const dia = parseInt(el.dataset.dia);
+          const idx = parseInt(el.dataset.idx);
+          mostrarEventoEspecifico(dia, idx);
+        });
+      });
+
+      grid.querySelectorAll('.btn-ver-mas').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const dia = parseInt(btn.dataset.dia);
+          const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia);
+          seleccionarDia(fecha);
+          mostrarEventosDia(fecha);
+        });
+      });
     }
 
     function getEventosDelDia(dia, mes, anio) {
@@ -627,10 +635,25 @@
     function formatFecha(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
     function mesAnterior() { fechaActual.setMonth(fechaActual.getMonth()-1); renderCalendario(); }
     function mesSiguiente() { fechaActual.setMonth(fechaActual.getMonth()+1); renderCalendario(); }
-    function irAHoy() { fechaActual=new Date(); fechaSeleccionada=new Date(); renderCalendario(); mostrarEventosDia(new Date()); }
-    function seleccionarDia(f) { fechaSeleccionada=f; renderCalendario(); mostrarEventosDia(f); }
+    function irAHoy() { fechaActual=new Date(); fechaSeleccionada=new Date(); renderCalendario(); }
+    
+    function seleccionarDia(f) { 
+      fechaSeleccionada = f; 
+      renderCalendario(); 
+    }
 
-    function mostrarEventosDia(fecha) {
+    // Mostrar evento específico al tocar punto en móvil
+    function mostrarEventoEspecifico(dia, idx) {
+      const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia);
+      mostrarEventosDia(fecha, idx);
+      
+      // En móvil, scroll al panel
+      if (window.innerWidth <= 768) {
+        document.getElementById('mobile-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function mostrarEventosDia(fecha, highlightIdx = null) {
       const dia = fecha.getDate();
       const mes = fecha.getMonth() + 1;
       const anio = fecha.getFullYear();
@@ -656,8 +679,8 @@
         return 0;
       });
       
-      container.innerHTML = eventos.map(e => `
-        <div class="mobile-event-item"> 
+      container.innerHTML = eventos.map((e, idx) => `
+        <div class="mobile-event-item ${highlightIdx === idx ? 'highlighted' : ''}"> 
           <div class="mobile-event-color ${e.tipo}"></div>
           <div class="mobile-event-info">
             <div class="mobile-event-titulo">${e.titulo}</div>
