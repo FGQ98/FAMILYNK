@@ -2775,6 +2775,7 @@
     async function guardarReparacion(e) {
       e.preventDefault();
       const id = document.getElementById('reparacion-id').value;
+      const esNueva = !id;
       const data = {
         titulo: document.getElementById('reparacion-titulo').value.trim(),
         descripcion: document.getElementById('reparacion-descripcion').value.trim(),
@@ -2787,12 +2788,63 @@
       };
       try {
         const ref = db.collection('bienes').doc(bienId).collection('reparaciones');
-        if (id) { await ref.doc(id).update(data); }
-        else { data.creado = firebase.firestore.FieldValue.serverTimestamp(); data.creadoPor = currentUser.uid; await ref.add(data); }
+        if (id) { 
+          await ref.doc(id).update(data); 
+        } else { 
+          data.creado = firebase.firestore.FieldValue.serverTimestamp(); 
+          data.creadoPor = currentUser.uid; 
+          await ref.add(data);
+          
+          // Notificar a admins si es nueva y urgente o alta prioridad
+          if (data.prioridad === 'urgente' || data.prioridad === 'alta') {
+            await notificarAveriaAdmins(data);
+          }
+        }
         cerrarModales();
         mantCargado = false;
         await cargarDatosMantenimiento();
       } catch (error) { console.error(error); alert('Error al guardar'); }
+    }
+
+    async function notificarAveriaAdmins(reparacion) {
+      try {
+        // Cargar admins de la familia
+        const usuariosSnap = await db.collection('usuarios')
+          .where('familiaId', '==', familiaId)
+          .get();
+        
+        const admins = usuariosSnap.docs
+          .map(d => ({ uid: d.id, ...d.data() }))
+          .filter(u => u.rol === 'AdminRama' || u.rol === 'AdminNido' || u.esAdmin);
+        
+        const destinatarios = admins
+          .filter(admin => admin.uid !== currentUser.uid)
+          .map(admin => admin.uid);
+
+        if (destinatarios.length === 0) return;
+
+        const remitente = userData?.nombre || currentUser.email.split('@')[0];
+        const prioridadEmoji = reparacion.prioridad === 'urgente' ? '🚨' : '⚠️';
+        const nombreBien = bienData?.nombre || 'Bien';
+
+        await db.collection('notificaciones').add({
+          tipo: 'accion',
+          categoria: 'averia',
+          titulo: `${prioridadEmoji} Avería en ${nombreBien}: ${reparacion.titulo}`,
+          mensaje: `Reportada por ${remitente}. Prioridad: ${reparacion.prioridad}`,
+          familiaId: familiaId,
+          destinatarios: destinatarios,
+          leidoPor: [],
+          completadoPor: [],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          enlace: `mayordomo.html?id=${bienId}&seccion=mantenimiento`,
+          origen: { tipo: 'reparacion', bienId: bienId },
+          estado: 'activa'
+        });
+      } catch (error) {
+        console.warn('Error enviando notificación de avería:', error);
+      }
     }
 
     async function eliminarReparacion() {

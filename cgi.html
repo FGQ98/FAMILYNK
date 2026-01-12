@@ -5638,7 +5638,7 @@
       const remitente = userData.nombre || userData.email;
       
       const solicitud = {
-        tipo, // 'iniciativa', 'evento', 'reserva'
+        tipo, // 'iniciativa', 'evento', 'reserva', 'averia'
         ...datos,
         estado: 'pendiente', // pendiente (amarillo) -> respondido (verde)
         solicitadoPor: currentUser.uid,
@@ -5654,18 +5654,28 @@
       // Guardar solicitud en colección central
       const solicitudRef = await db.collection('solicitudes').add(solicitud);
 
-      // Crear notificación para cada admin
-      for (const admin of admins) {
-        if (admin.uid === currentUser.uid) continue; // No notificar al propio usuario
-        
-        await db.collection('usuarios').doc(admin.uid).collection('notificaciones').add({
-          tipo: 'solicitud',
-          subtipo: tipo,
-          solicitudId: solicitudRef.id,
+      // Obtener UIDs de admins (excluyendo al propio usuario)
+      const destinatarios = admins
+        .filter(admin => admin.uid !== currentUser.uid)
+        .map(admin => admin.uid);
+
+      // Crear UNA notificación en la colección central (la que lee el tablón)
+      if (destinatarios.length > 0) {
+        await db.collection('notificaciones').add({
+          tipo: 'accion',
+          categoria: tipo,
           titulo: getTituloNotificacion(tipo, datos),
           mensaje: `${remitente} ha enviado una solicitud`,
-          leido: false,
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          familiaId: currentFamilia.id,
+          nidoId: miNidoPrincipal?.id || null,
+          destinatarios: destinatarios,
+          leidoPor: [],
+          completadoPor: [],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+          enlace: `solicitudes.html?id=${solicitudRef.id}`,
+          origen: { tipo: 'solicitud', subtipo: tipo, id: solicitudRef.id },
+          estado: 'activa'
         });
       }
 
@@ -5674,10 +5684,11 @@
 
     function getTituloNotificacion(tipo, datos) {
       switch(tipo) {
-        case 'iniciativa': return `💡 Nueva propuesta: ${datos.titulo}`;
-        case 'evento': return `🎉 Solicitud de evento: ${datos.nombre}`;
-        case 'reserva': return `📅 Solicitud de reserva`;
-        default: return 'Nueva solicitud';
+        case 'iniciativa': return `💡 Nueva propuesta: ${datos.titulo || 'Sin título'}`;
+        case 'evento': return `🎉 Solicitud de evento: ${datos.nombre || 'Sin nombre'}`;
+        case 'reserva': return `📅 Solicitud de reserva: ${datos.bienNombre || 'Bien'}`;
+        case 'averia': return `🔧 Avería reportada: ${datos.titulo || datos.descripcion?.substring(0, 30) || 'Ver detalle'}`;
+        default: return '📌 Nueva solicitud';
       }
     }
 
