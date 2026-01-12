@@ -1172,17 +1172,22 @@
     .notif-origen { font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
     .notif-remitente { font-size: 0.65rem; color: var(--sage-dark); font-style: italic; margin-top: 2px; }
 
-    .notif-marcar {
+    .notif-actions {
       position: absolute;
       top: 8px;
       right: 8px;
+      display: flex;
+      gap: 4px;
+    }
+
+    .notif-marcar, .notif-eliminar {
       width: 18px;
       height: 18px;
       border-radius: 50%;
       border: 2px solid var(--text-muted);
       background: transparent;
       cursor: pointer;
-      font-size: 0.6rem;
+      font-size: 0.55rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1190,6 +1195,7 @@
       transition: all 0.2s;
     }
     .notif-marcar:hover { opacity: 1; border-color: var(--sage); background: var(--sage); color: white; }
+    .notif-eliminar:hover { opacity: 1; border-color: var(--terracotta); background: var(--terracotta); }
 
     .tablon-separator {
       font-size: 0.65rem;
@@ -4665,9 +4671,17 @@
       const remitenteInfo = n.source === 'queo' && n.remitenteNombre ? 
         `<div class="notif-remitente">De: ${n.remitenteNombre}</div>` : '';
 
+      // Botón eliminar solo para el creador o admins
+      const puedeEliminar = n.remitente === currentUser.uid || n.creadoPor === currentUser.uid || userData?.rol === 'admin-rama';
+      const btnEliminar = puedeEliminar ? 
+        `<button class="notif-eliminar" onclick="event.stopPropagation(); eliminarNotificacion('${sourceId}', '${sourceType}')" title="Eliminar">🗑️</button>` : '';
+
       return `
         <div class="notif-item ${tipoClass}" onclick="abrirNotificacion('${sourceId}', '${n.enlace || ''}', '${sourceType}')">
-          <button class="notif-marcar" onclick="event.stopPropagation(); marcarNotificacion('${sourceId}', '${n.tipo}', '${sourceType}')" title="${n.tipo === 'accion' ? 'Marcar como hecho' : 'Descartar'}">✓</button>
+          <div class="notif-actions">
+            <button class="notif-marcar" onclick="event.stopPropagation(); marcarNotificacion('${sourceId}', '${n.tipo}', '${sourceType}')" title="${n.tipo === 'accion' ? 'Marcar como hecho' : 'Descartar'}">✓</button>
+            ${btnEliminar}
+          </div>
           <div class="notif-header">
             <span class="notif-badge ${tipoClass}">${n.tipo === 'accion' ? '⚡ Acción' : 'ℹ️ Info'}</span>
             <span class="notif-tiempo">${tiempo}</span>
@@ -4721,6 +4735,25 @@
         }
       } catch (error) {
         console.error('Error marcando notificación:', error);
+      }
+    }
+
+    async function eliminarNotificacion(notifId, sourceType = 'notificacion') {
+      if (!confirm('¿Eliminar este aviso para todos?')) return;
+      
+      try {
+        const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
+        await db.collection(collection).doc(notifId).delete();
+        
+        // Refrescar tablón
+        await renderTablon();
+        // Refrescar buzón móvil
+        if (typeof renderBuzonUnificado === 'function') {
+          await renderBuzonUnificado();
+        }
+      } catch (error) {
+        console.error('Error eliminando notificación:', error);
+        alert('No tienes permisos para eliminar este aviso');
       }
     }
 
