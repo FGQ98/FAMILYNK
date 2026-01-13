@@ -334,18 +334,29 @@
     let filtroActual = 'todos';
 
     const iconosPorOrigen = {
+      'convocatoria': '✋',
+      'reserva': '📅',
       'reservas': '📅',
+      'evento': '🎉',
+      'eventos': '🎉',
+      'iniciativa': '💡',
+      'averia': '🔧',
+      'tarea': '📋',
       'tareas': '📋',
       'calendario': '🗓️',
       'gastos': '💰',
       'inventario': '📦',
       'mantenimiento': '🔧',
+      'limpieza': '🧹',
+      'votacion': '🗳️',
+      'mercadillo': '🛒',
       'documentos': '📄',
       'miembros': '👥',
       'nido': '🪺',
       'arbol': '🌳',
       'sistema': '⚙️',
       'admin': '🛡️',
+      'queo': '📣',
       'default': '📌'
     };
 
@@ -518,11 +529,19 @@
     }
 
     function renderAviso(n, tipo) {
-      const icono = n.source === 'queo' ? '📣' : (iconosPorOrigen[n.origen] || iconosPorOrigen['default']);
+      // origen puede ser objeto {tipo, id} o string - usar categoria para el texto
+      const categoriaTexto = n.categoria || (typeof n.origen === 'string' ? n.origen : n.origen?.tipo) || 'Sistema';
+      const icono = iconosPorOrigen[categoriaTexto] || iconosPorOrigen['default'];
       const fecha = formatFecha(n.fechaCreacion);
       const leido = n.leidoPor?.includes(currentUser.uid) ? 'leido' : '';
       const tipoClass = tipo === 'accion' ? 'accion' : '';
       const sourceType = n.source || 'notificacion';
+      
+      // Verificar si puede eliminar
+      const esAdminRama = userData?.rol === 'adminRama' || userData?.rol === 'AdminRama' || userData?.rol === 'admin-rama' || userData?.esAdmin;
+      const puedeEliminar = n.creadoPor === currentUser.uid || n.remitente === currentUser.uid || esAdminRama;
+      const btnEliminar = puedeEliminar ? 
+        `<button class="aviso-btn secondary" onclick="eliminarNotificacion('${n.id}', '${sourceType}')" style="color: var(--error);">🗑️</button>` : '';
       
       let accionesHtml = '';
       if (n.enlace) {
@@ -530,17 +549,26 @@
           <div class="aviso-acciones">
             <a href="${n.enlace}" class="aviso-btn primary">Ver detalle →</a>
             ${tipo === 'accion' ? `<button class="aviso-btn secondary" onclick="marcarCompletado('${n.id}', '${sourceType}')">✓ Hecho</button>` : ''}
+            ${btnEliminar}
           </div>
         `;
       } else if (tipo === 'accion') {
         accionesHtml = `
           <div class="aviso-acciones">
             <button class="aviso-btn primary" onclick="marcarCompletado('${n.id}', '${sourceType}')">✓ Marcar como hecho</button>
+            ${btnEliminar}
+          </div>
+        `;
+      } else {
+        accionesHtml = `
+          <div class="aviso-acciones">
+            ${btnEliminar}
           </div>
         `;
       }
 
-      const origenText = n.source === 'queo' ? `De: ${n.remitenteNombre || 'Familia'}` : (n.origen || 'Sistema');
+      // Mostrar categoría formateada
+      const origenText = n.source === 'queo' ? `De: ${n.remitenteNombre || 'Familia'}` : formatearCategoria(categoriaTexto);
 
       return `
         <div class="aviso ${tipoClass} ${leido}" data-id="${n.id}">
@@ -558,11 +586,31 @@
       `;
     }
 
+    function formatearCategoria(cat) {
+      const nombres = {
+        'convocatoria': '✋ Convocatoria',
+        'reserva': '📅 Reservas',
+        'evento': '🎉 Eventos',
+        'iniciativa': '💡 Ideas',
+        'averia': '🔧 Averías',
+        'tarea': '📋 Tareas',
+        'inventario': '📦 Inventario',
+        'gastos': '💰 Gastos',
+        'mantenimiento': '🔧 Mantenimiento',
+        'limpieza': '🧹 Limpieza',
+        'votacion': '🗳️ Votaciones',
+        'mercadillo': '🛒 Mercadillo',
+        'default': '📌 Sistema'
+      };
+      return nombres[cat] || nombres['default'];
+    }
+
     function renderQueo(q) {
       const fecha = formatFecha(q.fechaCreacion);
       const leido = q.leidoPor?.includes(currentUser.uid) ? 'leido' : '';
       const tipoClass = q.tipo === 'accion' ? 'accion' : '';
-      const puedeEliminar = q.remitente === currentUser.uid || userData?.rol === 'admin-rama';
+      const esAdminRama = userData?.rol === 'adminRama' || userData?.rol === 'AdminRama' || userData?.rol === 'admin-rama' || userData?.esAdmin;
+      const puedeEliminar = q.remitente === currentUser.uid || esAdminRama;
 
       let accionesHtml = `
         <div class="aviso-acciones">
@@ -617,6 +665,27 @@
       } catch (error) {
         console.error('Error:', error);
         alert('No tienes permisos para eliminar este queo');
+      }
+    }
+
+    async function eliminarNotificacion(notifId, sourceType = 'notificacion') {
+      if (!confirm('¿Eliminar este aviso para todos?')) return;
+      
+      try {
+        const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
+        await db.collection(collection).doc(notifId).delete();
+        
+        // Actualizar arrays locales
+        if (sourceType === 'queo') {
+          queos = queos.filter(q => q.id !== notifId);
+        } else {
+          notificaciones = notificaciones.filter(n => n.id !== notifId);
+        }
+        
+        renderAvisos();
+      } catch (error) {
+        console.error('Error:', error);
+        alert('No tienes permisos para eliminar este aviso');
       }
     }
 
