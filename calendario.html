@@ -337,6 +337,9 @@
       todosEventos = [];
       if (!currentFamilia) return;
 
+      // Set para deduplicar hitos (persona puede estar en varios nidos)
+      const hitosUnicos = new Set();
+
       // ========================================
       // 1. HITOS (automáticos desde nidos)
       // ========================================
@@ -350,31 +353,14 @@
           // 1a. Aniversario de unión del nido (fechaFormacion)
           if (nido.fechaFormacion) {
             const [anio, mes, dia] = nido.fechaFormacion.split('-');
-            todosEventos.push({
-              tipo: 'hito',
-              subtipo: 'aniversario',
-              titulo: `Aniversario ${nido.nombre}`,
-              textoCorto: `Aniv. ${(nido.nombre || '').substring(0, 8)}`,
-              anual: true,
-              mesNum: parseInt(mes),
-              diaNum: parseInt(dia),
-              origen: nido.nombre,
-              nidoId: nidoDoc.id
-            });
-          }
-          
-          // 1b. Cumpleaños y defunciones de miembros
-          const miembros = nido.miembrosData || [];
-          miembros.forEach(m => {
-            // Cumpleaños
-            if (m.fechaNacimiento) {
-              const [anio, mes, dia] = m.fechaNacimiento.split('-');
-              const nombreCorto = m.nombre.split(' ')[0];
+            const claveUnica = `aniv-${nido.nombre}-${mes}-${dia}`;
+            if (!hitosUnicos.has(claveUnica)) {
+              hitosUnicos.add(claveUnica);
               todosEventos.push({
                 tipo: 'hito',
-                subtipo: 'cumpleaños',
-                titulo: `Cumpleaños de ${m.nombre}`,
-                textoCorto: nombreCorto,
+                subtipo: 'aniversario',
+                titulo: `Aniversario ${nido.nombre}`,
+                textoCorto: `Aniv. ${(nido.nombre || '').substring(0, 8)}`,
                 anual: true,
                 mesNum: parseInt(mes),
                 diaNum: parseInt(dia),
@@ -382,22 +368,53 @@
                 nidoId: nidoDoc.id
               });
             }
+          }
+          
+          // 1b. Cumpleaños y defunciones de miembros
+          const miembros = nido.miembrosData || [];
+          miembros.forEach(m => {
+            // Cumpleaños - DEDUPLICAR por nombre+fecha
+            if (m.fechaNacimiento) {
+              const [anio, mes, dia] = m.fechaNacimiento.split('-');
+              const nombreCorto = m.nombre.split(' ')[0];
+              const claveUnica = `cumple-${m.nombre}-${mes}-${dia}`;
+              
+              if (!hitosUnicos.has(claveUnica)) {
+                hitosUnicos.add(claveUnica);
+                todosEventos.push({
+                  tipo: 'hito',
+                  subtipo: 'cumpleaños',
+                  titulo: `Cumpleaños de ${m.nombre}`,
+                  textoCorto: `Cumple ${nombreCorto}`,
+                  anual: true,
+                  mesNum: parseInt(mes),
+                  diaNum: parseInt(dia),
+                  origen: nido.nombre,
+                  nidoId: nidoDoc.id
+                });
+              }
+            }
             
-            // Aniversario de defunción
+            // Aniversario de defunción - DEDUPLICAR
             if (m.fechaDefuncion) {
               const [anio, mes, dia] = m.fechaDefuncion.split('-');
               const nombreCorto = m.nombre.split(' ')[0];
-              todosEventos.push({
-                tipo: 'hito',
-                subtipo: 'defuncion',
-                titulo: `Recordatorio ${m.nombre}`,
-                textoCorto: nombreCorto,
-                anual: true,
-                mesNum: parseInt(mes),
-                diaNum: parseInt(dia),
-                origen: nido.nombre,
-                nidoId: nidoDoc.id
-              });
+              const claveUnica = `defun-${m.nombre}-${mes}-${dia}`;
+              
+              if (!hitosUnicos.has(claveUnica)) {
+                hitosUnicos.add(claveUnica);
+                todosEventos.push({
+                  tipo: 'hito',
+                  subtipo: 'defuncion',
+                  titulo: `Recordatorio ${m.nombre}`,
+                  textoCorto: `Rec. ${nombreCorto}`,
+                  anual: true,
+                  mesNum: parseInt(mes),
+                  diaNum: parseInt(dia),
+                  origen: nido.nombre,
+                  nidoId: nidoDoc.id
+                });
+              }
             }
           });
         });
@@ -599,25 +616,47 @@
         grid.appendChild(div);
       }
 
-      // Añadir listeners a los puntos/eventos y botones
-      grid.querySelectorAll('.day-event').forEach(el => {
-        el.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const dia = parseInt(el.dataset.dia);
-          const idx = parseInt(el.dataset.idx);
-          mostrarEventoEspecifico(dia, idx);
+      // Delegación de eventos se inicializa una sola vez
+      if (!grid.dataset.listenersInit) {
+        grid.dataset.listenersInit = 'true';
+        
+        // Click para desktop y móvil
+        grid.addEventListener('click', (e) => {
+          const target = e.target;
+          
+          // Click en evento/punto
+          if (target.classList.contains('day-event')) {
+            e.stopPropagation();
+            const dia = parseInt(target.dataset.dia);
+            const idx = parseInt(target.dataset.idx);
+            mostrarEventoEspecifico(dia, idx);
+            return;
+          }
+          
+          // Click en botón Ver más
+          if (target.classList.contains('btn-ver-mas')) {
+            e.stopPropagation();
+            const dia = parseInt(target.dataset.dia);
+            const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia);
+            seleccionarDia(fecha);
+            mostrarEventosDia(fecha);
+            return;
+          }
         });
-      });
-
-      grid.querySelectorAll('.btn-ver-mas').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const dia = parseInt(btn.dataset.dia);
-          const fecha = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), dia);
-          seleccionarDia(fecha);
-          mostrarEventosDia(fecha);
-        });
-      });
+        
+        // Touch para móvil (más responsivo)
+        grid.addEventListener('touchend', (e) => {
+          const target = e.target;
+          
+          if (target.classList.contains('day-event')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const dia = parseInt(target.dataset.dia);
+            const idx = parseInt(target.dataset.idx);
+            mostrarEventoEspecifico(dia, idx);
+          }
+        }, { passive: false });
+      }
     }
 
     function getEventosDelDia(dia, mes, anio) {
