@@ -4625,9 +4625,12 @@
             ...doc.data() 
           }));
           todosAvisos = todosAvisos.concat(queos);
-          console.log('Queos cargados:', queos.length);
+          console.log('✅ Queos cargados:', queos.length);
         } catch (e) {
-          console.warn('Error cargando queos:', e);
+          console.error('❌ Error cargando queos:', e);
+          if (e.message && e.message.includes('index')) {
+            console.error('⚠️ FALTA ÍNDICE. Haz clic en el enlace del error para crearlo.');
+          }
         }
 
         // 2. Cargar NOTIFICACIONES del sistema para este usuario
@@ -4646,9 +4649,12 @@
             ...doc.data() 
           }));
           todosAvisos = todosAvisos.concat(notifs);
-          console.log('Notificaciones cargadas:', notifs.length);
+          console.log('✅ Notificaciones cargadas:', notifs.length);
         } catch (e) {
-          console.warn('Error cargando notificaciones:', e);
+          console.error('❌ Error cargando notificaciones:', e);
+          if (e.message && e.message.includes('index')) {
+            console.error('⚠️ FALTA ÍNDICE. Haz clic en el enlace del error para crearlo.');
+          }
         }
 
         // Filtrar completadas/leídas
@@ -6542,6 +6548,10 @@
       console.log('Resolviendo destinatarios para grupos:', grupos);
       console.log('currentFamilia:', currentFamilia?.id);
       console.log('miNidoPrincipal:', miNidoPrincipal?.id, miNidoPrincipal?.nombre);
+      console.log('Mi propio UID:', currentUser.uid);
+      
+      // SIEMPRE incluir al remitente para que pueda ver su propio queo
+      uidsSet.add(currentUser.uid);
       
       try {
         for (const grupo of grupos) {
@@ -6555,7 +6565,13 @@
                   .where('familiaId', '==', currentFamilia.id)
                   .get();
                 console.log('Usuarios en rama:', todosSnap.size);
-                todosSnap.docs.forEach(doc => uidsSet.add(doc.id));
+                todosSnap.docs.forEach(doc => {
+                  // Usar doc.id como UID (es el estándar en FAMILYNK)
+                  uidsSet.add(doc.id);
+                  // También verificar si hay campo uid explícito
+                  const data = doc.data();
+                  if (data.uid) uidsSet.add(data.uid);
+                });
               }
               break;
               
