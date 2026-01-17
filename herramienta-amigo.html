@@ -682,6 +682,7 @@
     let userData = null;
     let familiaId = null;
     let familiaData = null;
+    let isAdminRama = false; // Solo el admin de rama puede ver los emparejamientos
 
     let miembrosData = []; // Todos los miembros
     let nidosData = [];
@@ -699,6 +700,9 @@
       if (!userDoc.exists) return;
       userData = userDoc.data();
       familiaId = userData.familiaId;
+      
+      // Verificar si es Admin de Rama
+      isAdminRama = userData.rol === 'AdminRama' || userData.rol === 'AdminSistema' || userData.superAdmin === true;
 
       if (familiaId) {
         const familiaDoc = await db.collection('familias').doc(familiaId).get();
@@ -1094,30 +1098,44 @@
           ? fechaRegalo.toLocaleDateString('es', { day: 'numeric', month: 'long' })
           : '';
 
-        // Crear notificaciones internas para cada participante
+        // Crear notificaciones para cada participante (compatible con CGI)
         let creadas = 0;
         for (const asig of asignaciones) {
           document.getElementById('loading-text').textContent = `Notificando ${++creadas}/${asignaciones.length}...`;
           
-          // Crear notificación interna
+          // Construir mensaje con presupuesto
+          let mensajeNotif = `Te ha tocado regalar a **${asig.para.nombre}**`;
+          mensajeNotif += `\n💶 Presupuesto: ${presupuesto}€`;
+          if (fechaTexto) {
+            mensajeNotif += `\n📅 Fecha de entrega: ${fechaTexto}`;
+          }
+          
+          // Crear notificación interna (formato compatible con CGI)
           await db.collection('notificaciones').add({
-            usuarioId: asig.de.id,
+            // Campos para el CGI
+            destinatarios: [asig.de.id],
             familiaId: familiaId,
-            tipo: 'amigo-invisible',
-            icono: '🎁',
-            titulo: nombreSorteo ? `🎁 ${nombreSorteo}` : '¡Amigo Invisible!',
-            mensaje: fechaTexto 
-              ? `Te ha tocado regalar a ${asig.para.nombre} (${fechaTexto})`
-              : `Te ha tocado regalar a ${asig.para.nombre}`,
+            tipo: 'info',
+            categoria: 'amigo-invisible',
+            titulo: nombreSorteo ? `🎁 ${nombreSorteo}` : '🎁 ¡Amigo Invisible!',
+            mensaje: mensajeNotif,
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+            estado: 'activa',
+            leidoPor: [],
+            completadoPor: [],
+            enlace: null,
+            origen: { 
+              tipo: 'amigo-invisible', 
+              id: sorteoRef.id 
+            },
+            // Datos adicionales
             datos: {
               sorteoId: sorteoRef.id,
               asignadoA: asig.para.nombre,
               asignadoId: asig.para.id,
               presupuesto: parseInt(presupuesto),
               fechaRegalo: fechaRegalo ? fechaRegalo.toISOString() : null
-            },
-            leido: false,
-            fecha: firebase.firestore.FieldValue.serverTimestamp()
+            }
           });
         }
 
@@ -1171,15 +1189,23 @@
       document.getElementById('step-resultado').classList.add('active');
       document.getElementById('wizard-steps').classList.add('hidden');
 
-      // Mostrar lista de asignaciones para el admin
-      const lista = document.getElementById('lista-asignaciones');
-      lista.innerHTML = asignaciones.map(a => `
-        <div class="asignacion-row">
-          <span>${a.de.nombre}</span>
-          <span class="asignacion-flecha">→</span>
-          <span>${a.para.nombre}</span>
-        </div>
-      `).join('');
+      // Mostrar lista de asignaciones SOLO para Admin de Rama
+      const seccionAsignaciones = document.querySelector('.asignaciones-admin');
+      
+      if (isAdminRama) {
+        seccionAsignaciones.classList.remove('hidden');
+        const lista = document.getElementById('lista-asignaciones');
+        lista.innerHTML = asignaciones.map(a => `
+          <div class="asignacion-row">
+            <span>${a.de.nombre}</span>
+            <span class="asignacion-flecha">→</span>
+            <span>${a.para.nombre}</span>
+          </div>
+        `).join('');
+      } else {
+        // Ocultar la sección completa para usuarios no admin
+        seccionAsignaciones.classList.add('hidden');
+      }
 
       cargarHistorial();
     }
