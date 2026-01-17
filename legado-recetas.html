@@ -553,7 +553,16 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
     document.getElementById('form-receta').addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const visibilidadSeleccionada = document.querySelector('input[name="receta-visibilidad"]:checked').value;
+      const btnGuardar = e.target.querySelector('button[type="submit"]');
+      const textoOriginal = btnGuardar.innerHTML;
+      
+      // Validar que tenemos los datos necesarios
+      if (!userData || !userData.familiaId) {
+        alert('Error: No se pudo identificar tu familia. Recarga la página e inténtalo de nuevo.');
+        return;
+      }
+      
+      const visibilidadSeleccionada = document.querySelector('input[name="receta-visibilidad"]:checked')?.value || 'rama';
       
       const data = {
         nombre: document.getElementById('receta-nombre').value.trim(),
@@ -576,12 +585,16 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
         return;
       }
       
+      // Deshabilitar botón y mostrar estado de carga
+      btnGuardar.disabled = true;
+      btnGuardar.innerHTML = '⏳ Guardando...';
+      
       try {
         if (recetaEditandoId) {
           await db.collection('recetas').doc(recetaEditandoId).update(data);
         } else {
           data.creadoPor = currentUser.uid;
-          data.nidoCreadorId = userNidoId;
+          data.nidoCreadorId = userNidoId || null;
           data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           await db.collection('recetas').add(data);
         }
@@ -591,7 +604,20 @@ Truco: dejar reposar 5 min antes de servir"></textarea>
         alert('✅ Receta guardada');
       } catch (error) {
         console.error('Error guardando receta:', error);
-        alert('Error al guardar la receta');
+        // Mostrar el mensaje de error real para poder diagnosticar
+        let mensajeError = 'Error al guardar la receta';
+        if (error.code === 'permission-denied') {
+          mensajeError = 'No tienes permisos para guardar recetas. Contacta con el administrador de tu familia.';
+        } else if (error.code === 'unavailable') {
+          mensajeError = 'No hay conexión. Verifica tu conexión a internet e inténtalo de nuevo.';
+        } else if (error.message) {
+          mensajeError = 'Error: ' + error.message;
+        }
+        alert(mensajeError);
+      } finally {
+        // Restaurar botón
+        btnGuardar.disabled = false;
+        btnGuardar.innerHTML = textoOriginal;
       }
     });
 
