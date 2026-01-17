@@ -499,6 +499,7 @@
   <main class="main">
     <div class="stats-row">
       <div class="stat-card"><div class="stat-value" id="stat-usuarios">0</div><div class="stat-label">Usuarios</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-invitaciones" style="color:var(--terracotta)">0</div><div class="stat-label">Invitaciones</div></div>
       <div class="stat-card"><div class="stat-value" id="stat-nidos">0</div><div class="stat-label">Nidos</div></div>
       <div class="stat-card"><div class="stat-value" id="stat-estirpes">0</div><div class="stat-label">Estirpes</div></div>
       <div class="stat-card"><div class="stat-value" id="stat-bienes">0</div><div class="stat-label">Bienes</div></div>
@@ -1036,7 +1037,7 @@
       if (!familiaDoc.exists) { window.location.href = 'cgi.html'; return; }
       familiaData = { id: familiaDoc.id, ...familiaDoc.data() };
 
-      const isAdmin = userData.rol === 'adminSistema' || familiaData.adminsGenerales?.includes(user.uid) || familiaData.fundador === user.uid || familiaData.creador === user.uid;
+      const isAdmin = userData.rol === 'adminRama' || familiaData.adminsGenerales?.includes(user.uid) || familiaData.fundador === user.uid || familiaData.creador === user.uid;
       if (!isAdmin) { alert('No tienes permisos de administrador'); window.location.href = 'cgi.html'; return; }
 
       document.getElementById('estirpe-nombre').textContent = familiaData.nombre || 'Mi Rama';
@@ -1053,15 +1054,20 @@
       const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
       bienesData = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Cargar invitaciones pendientes (try-catch por si no hay permisos)
+      // Cargar invitaciones pendientes (try-catch por si no hay permisos o índice)
       try {
         const invitacionesSnap = await db.collection('invitaciones')
           .where('familiaId', '==', familiaData.id)
           .where('estado', '==', 'pendiente')
           .get();
         invitacionesData = invitacionesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('✅ Invitaciones cargadas:', invitacionesData.length);
       } catch (e) {
-        console.log('No se pudieron cargar invitaciones:', e.message);
+        console.error('❌ Error cargando invitaciones:', e);
+        // Si el error menciona "index", es que falta el índice compuesto
+        if (e.message && e.message.includes('index')) {
+          console.error('⚠️ FALTA ÍNDICE EN FIRESTORE. Haz clic en el enlace del error de arriba para crearlo.');
+        }
         invitacionesData = [];
       }
 
@@ -1095,6 +1101,7 @@
       }
 
       document.getElementById('stat-usuarios').textContent = usuariosData.length;
+      document.getElementById('stat-invitaciones').textContent = invitacionesData.length;
       document.getElementById('stat-nidos').textContent = nidosData.length;
       document.getElementById('stat-bienes').textContent = bienesData.length;
       
@@ -1851,6 +1858,7 @@
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(), 
           estado: 'pendiente' 
         });
+        console.log('✅ Invitación guardada con ID:', invRef.id, 'familiaId:', familiaData.id);
 
         // 2. Enviar email con EmailJS
         emailjs.init('eWMtiJpUqrLsA5Nel');
