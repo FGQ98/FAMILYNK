@@ -4610,6 +4610,10 @@
         let todosAvisos = [];
         
         // 1. Cargar QUEOS para este usuario
+        // ⚠️ ÍNDICE REQUERIDO en Firestore:
+        // Colección: queos
+        // Campos: familiaId (Ascending), destinatarios (Arrays), fechaCreacion (Descending)
+        // Si ves error de índice en consola, haz clic en el enlace para crearlo automáticamente
         try {
           const queosSnap = await db.collection('queos')
             .where('familiaId', '==', currentFamilia.id)
@@ -6472,10 +6476,15 @@
         let destinatariosUIDs = await resolverDestinatarios(destinatariosSeleccionados);
         console.log('UIDs resueltos:', destinatariosUIDs);
         
-        // Si no hay destinatarios, al menos incluir al remitente para que el queo se guarde
-        if (destinatariosUIDs.length === 0) {
-          console.warn('No se encontraron destinatarios, incluyendo al remitente');
-          destinatariosUIDs = [currentUser.uid];
+        // IMPORTANTE: El remitente también debe poder ver su propio queo
+        // Añadirlo al final de la lista si no está ya
+        if (!destinatariosUIDs.includes(currentUser.uid)) {
+          destinatariosUIDs.push(currentUser.uid);
+        }
+        
+        // Si SOLO está el remitente, avisar pero continuar
+        if (destinatariosUIDs.length === 1 && destinatariosUIDs[0] === currentUser.uid) {
+          console.warn('⚠️ No se encontraron otros destinatarios. El queo solo será visible para ti.');
         }
         
         // Crear queo en Firestore
@@ -6545,116 +6554,156 @@
     async function resolverDestinatarios(grupos) {
       const uidsSet = new Set();
       
-      console.log('Resolviendo destinatarios para grupos:', grupos);
-      console.log('currentFamilia:', currentFamilia?.id);
-      console.log('miNidoPrincipal:', miNidoPrincipal?.id, miNidoPrincipal?.nombre);
-      console.log('Mi propio UID:', currentUser.uid);
+      console.log('=== RESOLVIENDO DESTINATARIOS ===');
+      console.log('Grupos seleccionados:', grupos);
+      console.log('Familia ID:', currentFamilia?.id);
+      console.log('Nido principal:', miNidoPrincipal?.id, miNidoPrincipal?.nombre);
       
-      // SIEMPRE incluir al remitente para que pueda ver su propio queo
-      uidsSet.add(currentUser.uid);
+      if (!currentFamilia?.id) {
+        console.error('No hay familia activa');
+        return [];
+      }
       
       try {
+        // Cargar TODOS los usuarios de la familia una vez (más eficiente)
+        const todosUsuariosSnap = await db.collection('usuarios')
+          .where('familiaId', '==', currentFamilia.id)
+          .get();
+        
+        // Crear mapas para búsqueda rápida
+        const usuariosPorUid = new Map();
+        const usuariosPorEmail = new Map();
+        const usuariosPorNido = new Map();
+        
+        todosUsuariosSnap.docs.forEach(doc => {
+          const data = doc.data();
+          const uid = doc.id;
+          
+          usuariosPorUid.set(uid, { uid, ...data });
+          
+          if (data.email) {
+            usuariosPorEmail.set(data.email.toLowerCase(), uid);
+          }
+          
+          if (data.nidoId) {
+            if (!usuariosPorNido.has(data.nidoId)) {
+              usuariosPorNido.set(data.nidoId, []);
+            }
+            usuariosPorNido.get(data.nidoId).push(uid);
+          }
+        });
+        
+        console.log('Usuarios cargados:', todosUsuariosSnap.size);
+        console.log('Emails mapeados:', usuariosPorEmail.size);
+        
         for (const grupo of grupos) {
           console.log('Procesando grupo:', grupo);
           
           switch (grupo) {
             case 'toda-rama':
               // Todos los usuarios de la familia
-              if (currentFamilia?.id) {
-                const todosSnap = await db.collection('usuarios')
-                  .where('familiaId', '==', currentFamilia.id)
-                  .get();
-                console.log('Usuarios en rama:', todosSnap.size);
-                todosSnap.docs.forEach(doc => {
-                  // Usar doc.id como UID (es el estándar en FAMILYNK)
-                  uidsSet.add(doc.id);
-                  // También verificar si hay campo uid explícito
-                  const data = doc.data();
-                  if (data.uid) uidsSet.add(data.uid);
-                });
-              }
+              todosUsuariosSnap.docs.forEach(doc => {
+                uidsSet.add(doc.id);
+              });
+              console.log('→ Toda rama:', uidsSet.size, 'usuarios');
               break;
               
             case 'admins':
               // Admins de rama y nidos
-              if (currentFamilia?.id) {
-                const adminsSnap = await db.collection('usuarios')
-                  .where('familiaId', '==', currentFamilia.id)
-                  .get();
-                adminsSnap.docs.forEach(doc => {
-                  const data = doc.data();
-                  if (data.rol === 'adminRama' || data.rol === 'AdminNido' || data.rol === 'adminNido' || data.esAdmin) {
-                    uidsSet.add(doc.id);
-                  }
-                });
-                // También admins de la familia
-                if (currentFamilia.adminsGenerales) {
-                  currentFamilia.adminsGenerales.forEach(uid => uidsSet.add(uid));
+              todosUsuariosSnap.docs.forEach(doc => {
+                const data = doc.data();
+                if (data.rol === 'adminRama' || data.rol === 'adminNido' || data.rol === 'AdminNido' || data.esAdmin) {
+                  uidsSet.add(doc.id);
                 }
-                if (currentFamilia.fundador) uidsSet.add(currentFamilia.fundador);
-                if (currentFamilia.creador) uidsSet.add(currentFamilia.creador);
+              });
+              // También admins explícitos de la familia
+              if (currentFamilia.adminsGenerales) {
+                currentFamilia.adminsGenerales.forEach(uid => uidsSet.add(uid));
               }
-              console.log('Admins encontrados:', uidsSet.size);
+              if (currentFamilia.fundador) uidsSet.add(currentFamilia.fundador);
+              if (currentFamilia.creador) uidsSet.add(currentFamilia.creador);
+              console.log('→ Admins:', uidsSet.size, 'usuarios');
               break;
               
             case 'mi-nido':
-              // Miembros de mi nido
-              if (miNidoPrincipal) {
-                // Intentar miembrosData
+              // Miembros de mi nido (usuarios registrados con nidoId = miNidoPrincipal.id)
+              if (miNidoPrincipal?.id) {
+                // Método 1: Usuarios con nidoId igual a mi nido
+                const miembrosNido = usuariosPorNido.get(miNidoPrincipal.id) || [];
+                miembrosNido.forEach(uid => uidsSet.add(uid));
+                
+                // Método 2: Si hay miembrosData, buscar por email
                 if (miNidoPrincipal.miembrosData && Array.isArray(miNidoPrincipal.miembrosData)) {
                   miNidoPrincipal.miembrosData.forEach(m => {
-                    if (m.uid) uidsSet.add(m.uid);
+                    // Si tiene uid directo, usarlo
+                    if (m.uid) {
+                      uidsSet.add(m.uid);
+                    }
+                    // Si tiene email, buscar el uid del usuario
+                    if (m.email) {
+                      const uid = usuariosPorEmail.get(m.email.toLowerCase());
+                      if (uid) uidsSet.add(uid);
+                    }
                   });
                 }
-                // Intentar miembros array
+                
+                // Método 3: Array miembros legacy
                 if (miNidoPrincipal.miembros && Array.isArray(miNidoPrincipal.miembros)) {
                   miNidoPrincipal.miembros.forEach(uid => uidsSet.add(uid));
                 }
-                // Intentar admins del nido
-                if (miNidoPrincipal.admins && Array.isArray(miNidoPrincipal.admins)) {
-                  miNidoPrincipal.admins.forEach(uid => uidsSet.add(uid));
-                }
               }
-              console.log('Miembros nido encontrados:', uidsSet.size);
+              console.log('→ Mi nido:', uidsSet.size, 'usuarios');
               break;
               
             case 'mi-estirpe':
-              // Por ahora, igual que mi-nido + descendientes
-              if (miNidoPrincipal) {
-                // Miembros del nido actual
+              // Mi nido + nidos descendientes
+              if (miNidoPrincipal?.id) {
+                // Primero, añadir mi nido (igual que arriba)
+                const miembrosNido = usuariosPorNido.get(miNidoPrincipal.id) || [];
+                miembrosNido.forEach(uid => uidsSet.add(uid));
+                
                 if (miNidoPrincipal.miembrosData && Array.isArray(miNidoPrincipal.miembrosData)) {
                   miNidoPrincipal.miembrosData.forEach(m => {
                     if (m.uid) uidsSet.add(m.uid);
+                    if (m.email) {
+                      const uid = usuariosPorEmail.get(m.email.toLowerCase());
+                      if (uid) uidsSet.add(uid);
+                    }
                   });
                 }
-                if (miNidoPrincipal.miembros && Array.isArray(miNidoPrincipal.miembros)) {
-                  miNidoPrincipal.miembros.forEach(uid => uidsSet.add(uid));
-                }
                 
-                // Buscar nidos descendientes
-                if (currentFamilia?.id && miNidoPrincipal.id) {
-                  try {
-                    const descendientesSnap = await db.collection('nidos')
-                      .where('familiaId', '==', currentFamilia.id)
-                      .where('nidoOrigen', '==', miNidoPrincipal.id)
-                      .get();
-                    descendientesSnap.docs.forEach(doc => {
-                      const nido = doc.data();
-                      if (nido.miembrosData) {
-                        nido.miembrosData.forEach(m => {
-                          if (m.uid) uidsSet.add(m.uid);
-                        });
-                      }
-                      if (nido.miembros) {
-                        nido.miembros.forEach(uid => uidsSet.add(uid));
-                      }
-                    });
-                  } catch (e) {
-                    console.warn('Error buscando descendientes:', e);
-                  }
+                // Buscar nidos descendientes (donde nidoOrigen = mi nido)
+                try {
+                  const descendientesSnap = await db.collection('nidos')
+                    .where('familiaId', '==', currentFamilia.id)
+                    .where('nidoOrigen', '==', miNidoPrincipal.id)
+                    .get();
+                  
+                  descendientesSnap.docs.forEach(docNido => {
+                    const nidoDesc = docNido.data();
+                    const nidoDescId = docNido.id;
+                    
+                    // Usuarios con nidoId = nido descendiente
+                    const miembrosDesc = usuariosPorNido.get(nidoDescId) || [];
+                    miembrosDesc.forEach(uid => uidsSet.add(uid));
+                    
+                    // También por miembrosData
+                    if (nidoDesc.miembrosData && Array.isArray(nidoDesc.miembrosData)) {
+                      nidoDesc.miembrosData.forEach(m => {
+                        if (m.uid) uidsSet.add(m.uid);
+                        if (m.email) {
+                          const uid = usuariosPorEmail.get(m.email.toLowerCase());
+                          if (uid) uidsSet.add(uid);
+                        }
+                      });
+                    }
+                  });
+                  console.log('→ Nidos descendientes encontrados:', descendientesSnap.size);
+                } catch (e) {
+                  console.warn('Error buscando descendientes:', e);
                 }
               }
-              console.log('Miembros estirpe encontrados:', uidsSet.size);
+              console.log('→ Mi estirpe:', uidsSet.size, 'usuarios');
               break;
           }
         }
@@ -6662,11 +6711,15 @@
         console.error('Error en resolverDestinatarios:', error);
       }
       
-      // Excluir al remitente
+      // Excluir al remitente (para que no se envíe a sí mismo)
       uidsSet.delete(currentUser.uid);
       
-      console.log('UIDs finales:', Array.from(uidsSet));
-      return Array.from(uidsSet);
+      const destinatariosFinales = Array.from(uidsSet);
+      console.log('=== DESTINATARIOS FINALES ===');
+      console.log('Total:', destinatariosFinales.length);
+      console.log('UIDs:', destinatariosFinales);
+      
+      return destinatariosFinales;
     }
 
     // ============ MODAL CREAR HITO ============
