@@ -367,6 +367,18 @@
       color: white;
     }
 
+    .icon-btn.reenviar {
+      background: #FFF3E0;
+    }
+    .icon-btn.reenviar:hover {
+      background: #E65100;
+      color: white;
+    }
+    .icon-btn.reenviar:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
     /* Empty state */
     .empty-state {
       background: var(--white);
@@ -1575,6 +1587,11 @@
         badgeInvitacion = '<span class="member-validar-badge" title="Ha aceptado pero no ha validado contraseña">🔑 Validar</span>';
       }
 
+      // Botón de reenviar invitación si está pendiente
+      const botonReenviar = estadoInvitacion === 'pendiente' 
+        ? `<button class="icon-btn reenviar" onclick="event.stopPropagation(); reenviarInvitacion(${index})" title="Reenviar invitación">📨</button>`
+        : '';
+
       return `
         <div class="member-card ${estadoClase}" data-index="${index}">
           <div class="member-avatar ${estadoClase}">${miembro.iniciales}</div>
@@ -1592,6 +1609,7 @@
             </div>
           </div>
           <div class="member-actions">
+            ${botonReenviar}
             ${tieneNidoPropio ? `<a href="nido.html?id=${miembro.nidoPropio}" class="icon-btn" title="Ver su nido">🪺</a>` : ''}
             <button class="icon-btn" onclick="editMember(${index})" title="Editar">✏️</button>
             <button class="icon-btn delete" onclick="deleteMember(${index})" title="Eliminar">🗑️</button>
@@ -1816,6 +1834,120 @@
         alert('Error al enviar la invitación: ' + (error.text || error.message || 'Inténtalo de nuevo'));
         btn.disabled = false;
         btn.textContent = 'Enviar invitación';
+      }
+    }
+
+    // ============ REENVIAR INVITACIÓN ============
+    async function reenviarInvitacion(index) {
+      const miembros = nidoData.miembrosData || [];
+      const miembro = miembros[index];
+      
+      if (!miembro || !miembro.email) {
+        alert('Este miembro no tiene email registrado');
+        return;
+      }
+
+      const email = miembro.email;
+      const nombre = miembro.nombre || miembro.iniciales;
+
+      if (!confirm(`¿Reenviar invitación a ${nombre} (${email})?\n\nSe generará una nueva contraseña temporal.`)) {
+        return;
+      }
+
+      // Mostrar indicador de carga en el botón
+      const card = document.querySelector(`.member-card[data-index="${index}"]`);
+      const btnReenviar = card?.querySelector('.icon-btn.reenviar');
+      if (btnReenviar) {
+        btnReenviar.textContent = '⏳';
+        btnReenviar.disabled = true;
+      }
+
+      try {
+        // Generar nueva contraseña provisional
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+        let passwordProvisional = '';
+        for (let i = 0; i < 8; i++) {
+          passwordProvisional += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        // Obtener nombre de la familia
+        let familiaNombre = 'Tu familia';
+        if (nidoData?.familiaId) {
+          try {
+            const familiaDoc = await db.collection('familias').doc(nidoData.familiaId).get();
+            if (familiaDoc.exists) {
+              familiaNombre = familiaDoc.data().nombre || familiaNombre;
+            }
+          } catch(e) {}
+        }
+
+        // Preparar parámetros para EmailJS
+        const templateParams = {
+          email: email.toLowerCase(),
+          passcode: passwordProvisional,
+          familia_nombre: familiaNombre,
+          admin_nombre: userData?.nombre || currentUser.email.split('@')[0]
+        };
+
+        console.log('Reenviando invitación:', templateParams);
+
+        // Enviar email con EmailJS
+        const emailResult = await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, templateParams);
+        console.log('EmailJS response:', emailResult);
+
+        // Marcar invitaciones anteriores como caducadas
+        const invitacionesAnteriores = await db.collection('invitaciones-email')
+          .where('email', '==', email.toLowerCase())
+          .where('estado', '==', 'pendiente')
+          .get();
+        
+        const batch = db.batch();
+        invitacionesAnteriores.docs.forEach(doc => {
+          batch.update(doc.ref, { estado: 'reenviada' });
+        });
+        await batch.commit();
+
+        // Crear nueva invitación en Firestore
+        const fechaExpiracion = new Date();
+        fechaExpiracion.setDate(fechaExpiracion.getDate() + 7);
+
+        await db.collection('invitaciones-email').add({
+          email: email.toLowerCase(),
+          nombre: nombre,
+          familiaId: nidoData.familiaId,
+          nidoId: nidoId,
+          passwordProvisional: passwordProvisional,
+          estado: 'pendiente',
+          fechaEnvio: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaExpiracion: fechaExpiracion,
+          invitadoPor: currentUser.uid,
+          invitadoPorNombre: userData?.nombre || currentUser.email,
+          esReenvio: true
+        });
+
+        // Éxito
+        alert(`✅ Invitación reenviada a ${email}\n\nSe ha generado una nueva contraseña temporal.`);
+
+        // Restaurar botón con check
+        if (btnReenviar) {
+          btnReenviar.textContent = '✓';
+          btnReenviar.title = 'Invitación reenviada';
+          setTimeout(() => {
+            btnReenviar.textContent = '📨';
+            btnReenviar.disabled = false;
+            btnReenviar.title = 'Reenviar invitación';
+          }, 3000);
+        }
+
+      } catch (error) {
+        console.error('Error reenviando invitación:', error);
+        alert('Error al reenviar la invitación: ' + (error.text || error.message || 'Inténtalo de nuevo'));
+        
+        // Restaurar botón
+        if (btnReenviar) {
+          btnReenviar.textContent = '📨';
+          btnReenviar.disabled = false;
+        }
       }
     }
 
