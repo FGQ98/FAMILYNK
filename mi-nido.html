@@ -201,6 +201,7 @@
     }
     .miembro-fallecido { opacity: 0.5; }
     .miembro-badge.pendiente { background: #FFF3E0; color: #E65100; }
+    .miembro-badge.validar { background: #E3F2FD; color: #1565C0; }
 
     /* Estados vinculares */
     .miembro-separado .miembro-avatar { 
@@ -679,9 +680,25 @@
         if (relacion === 'hijo') relacion = 'descendiente';
         const edad = m.fechaNacimiento ? calcularEdad(m.fechaNacimiento) : '';
         
+        // Estados de cuenta (según racional usuarios FAMILYNK)
+        const tieneEmail = m.email ? true : false;
+        const tieneUid = m.uid ? true : false;
+        const cuentaActiva = m.estadoCuenta === 'activo';
+        
+        // Determinar estado de invitación
+        let estadoInvitacion = 'sin-email';
+        if (tieneEmail && !tieneUid) {
+          estadoInvitacion = 'pendiente'; // Invitado pero nunca aceptó
+        } else if (tieneEmail && tieneUid && !cuentaActiva) {
+          estadoInvitacion = 'validar'; // Aceptó pero no ha validado contraseña
+        } else if (tieneEmail && tieneUid && cuentaActiva) {
+          estadoInvitacion = 'activo';
+        }
+        
+        const esInvitado = estadoInvitacion === 'pendiente' || estadoInvitacion === 'validar';
+        
         // Determinar estado visual (prioridad: fallecido > vincular > invitado)
         const esFallecido = m.fechaDefuncion ? true : false;
-        const esInvitado = m.email && m.estadoCuenta === 'invitado';
         const esComprometido = m.estadoVincular === 'comprometido';
         const esSeparado = m.estadoVincular === 'separado';
         const esDivorciado = m.estadoVincular === 'divorciado';
@@ -699,6 +716,14 @@
         else if (esSeparado) badgeVincular = '<span class="miembro-badge separado">Separado</span>';
         else if (esDivorciado) badgeVincular = '<span class="miembro-badge divorciado">Divorciado</span>';
 
+        // Badge de estado de cuenta/invitación
+        let badgeInvitacion = '';
+        if (estadoInvitacion === 'pendiente') {
+          badgeInvitacion = '<span class="miembro-badge pendiente" title="Invitado pero no ha aceptado">📩 Pendiente</span>';
+        } else if (estadoInvitacion === 'validar') {
+          badgeInvitacion = '<span class="miembro-badge validar" title="Ha aceptado pero no ha validado contraseña">🔑 Validar</span>';
+        }
+
         return `
           <div class="miembro-row ${esYo ? 'es-yo' : ''} ${estadoClase}" onclick="${esYo ? 'editarMiPerfil()' : ''}">
             <div class="miembro-avatar">${m.iniciales || '?'}</div>
@@ -708,7 +733,7 @@
                 ${esYo ? '<span class="miembro-badge yo">Tú</span>' : ''}
                 ${m.esAdmin ? '<span class="miembro-badge admin">Admin</span>' : ''}
                 ${badgeVincular}
-                ${esInvitado ? '<span class="miembro-badge pendiente">Pendiente</span>' : ''}
+                ${badgeInvitacion}
               </div>
               <div class="miembro-meta">${edad}</div>
             </div>
