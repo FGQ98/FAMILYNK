@@ -693,6 +693,14 @@
         </div>
       </div>
       
+      <!-- Resumen de facturación -->
+      <div class="card">
+        <div class="card-title">💳 Resumen de facturación mensual</div>
+        <div id="resumen-facturacion">
+          <!-- Se genera dinámicamente -->
+        </div>
+      </div>
+      
       <!-- Desglose por nido -->
       <div class="card">
         <div class="card-title">Planes y add-ons por nido</div>
@@ -1703,11 +1711,28 @@
         premium: { nombre: 'Premium', icono: '🌳', descripcion: 'Sin límites para tu familia', precio: 9.99, usuarios: 999, bienes: 999, storage: 50 }
       };
       
+      // Descuentos aplicados (desde admin-sistema)
+      const descuentoPlan = familiaData.descuentoPlan || 0;
+      const descuentoAddon = familiaData.descuentoAddon || 0;
+      
       const planInfo = planesInfo[plan] || planesInfo.free;
+      const precioPlanOriginal = planInfo.precio;
+      const precioPlanFinal = precioPlanOriginal * (1 - descuentoPlan / 100);
+      
       document.getElementById('plan-icono').textContent = planInfo.icono;
       document.getElementById('plan-nombre').textContent = planInfo.nombre;
       document.getElementById('plan-descripcion').textContent = planInfo.descripcion;
-      document.getElementById('plan-precio').textContent = planInfo.precio + '€';
+      
+      // Mostrar precio con descuento si aplica
+      if (descuentoPlan > 0 && precioPlanOriginal > 0) {
+        document.getElementById('plan-precio').innerHTML = `
+          <span style="text-decoration: line-through; color: var(--text-muted); font-size: 1rem;">${precioPlanOriginal.toFixed(2)}€</span>
+          <span style="color: var(--success);">${precioPlanFinal.toFixed(2)}€</span>
+          <span style="font-size: 0.7rem; background: var(--success); color: white; padding: 2px 6px; border-radius: 4px; margin-left: 6px;">-${descuentoPlan}%</span>
+        `;
+      } else {
+        document.getElementById('plan-precio').textContent = precioPlanOriginal + '€';
+      }
       
       // Uso actual
       document.getElementById('uso-usuarios').textContent = usuariosData.length;
@@ -1724,7 +1749,8 @@
       const addonsInfo = {
         mayordomo: { icono: '🎩', nombre: 'Mayordomo', precio: 4.99 },
         gerente: { icono: '🏨', nombre: 'Gerente', precio: 9.99 },
-        capataz: { icono: '🌾', nombre: 'Capataz', precio: 9.99 }
+        capataz: { icono: '🌾', nombre: 'Capataz', precio: 9.99 },
+        crearRama: { icono: '🌳', nombre: 'Crear Rama', precio: 9.99 }
       };
       
       if (addonsRama.length === 0) {
@@ -1737,17 +1763,132 @@
       } else {
         addonsRamaContainer.innerHTML = addonsRama.map(addon => {
           const info = addonsInfo[addon] || { icono: '📦', nombre: addon, precio: 0 };
+          const precioOriginal = info.precio;
+          const precioFinal = precioOriginal * (1 - descuentoAddon / 100);
+          
+          let precioHtml = `${precioOriginal.toFixed(2)}€/mes`;
+          if (descuentoAddon > 0) {
+            precioHtml = `
+              <span style="text-decoration: line-through; color: var(--text-muted);">${precioOriginal.toFixed(2)}€</span>
+              <span style="color: var(--success); font-weight: 600;">${precioFinal.toFixed(2)}€/mes</span>
+              <span style="font-size: 0.65rem; background: var(--success); color: white; padding: 1px 4px; border-radius: 3px;">-${descuentoAddon}%</span>
+            `;
+          }
+          
           return `
             <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--cream); border-radius: 8px; margin-bottom: 8px;">
               <span style="font-size: 1.5rem;">${info.icono}</span>
               <div style="flex: 1;">
                 <div style="font-weight: 600;">${info.nombre}</div>
-                <div style="font-size: 0.8rem; color: var(--text-muted);">${info.precio}€/mes</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">${precioHtml}</div>
               </div>
               <span style="color: var(--success);">✓ Activo</span>
             </div>
           `;
         }).join('');
+      }
+      
+      // ========== RESUMEN DE FACTURACIÓN ==========
+      const resumenContainer = document.getElementById('resumen-facturacion');
+      let lineas = [];
+      let totalOriginal = 0;
+      let totalFinal = 0;
+      
+      // Plan base
+      if (precioPlanOriginal > 0) {
+        totalOriginal += precioPlanOriginal;
+        totalFinal += precioPlanFinal;
+        
+        if (descuentoPlan > 0) {
+          lineas.push({
+            concepto: `${planInfo.icono} Plan ${planInfo.nombre}`,
+            original: precioPlanOriginal,
+            final: precioPlanFinal,
+            descuento: descuentoPlan
+          });
+        } else {
+          lineas.push({
+            concepto: `${planInfo.icono} Plan ${planInfo.nombre}`,
+            original: precioPlanOriginal,
+            final: precioPlanOriginal,
+            descuento: 0
+          });
+        }
+      }
+      
+      // Add-ons
+      addonsRama.forEach(addon => {
+        const info = addonsInfo[addon] || { icono: '📦', nombre: addon, precio: 0 };
+        const precioOriginal = info.precio;
+        const precioFinal = precioOriginal * (1 - descuentoAddon / 100);
+        
+        totalOriginal += precioOriginal;
+        totalFinal += precioFinal;
+        
+        lineas.push({
+          concepto: `${info.icono} ${info.nombre}`,
+          original: precioOriginal,
+          final: precioFinal,
+          descuento: descuentoAddon
+        });
+      });
+      
+      // Generar HTML del resumen
+      if (lineas.length === 0) {
+        resumenContainer.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: var(--text-muted);">
+            <span style="font-size: 2rem;">🆓</span>
+            <p style="margin-top: 8px;">Plan gratuito activo - Sin cargos</p>
+          </div>
+        `;
+      } else {
+        let html = '<div style="font-family: monospace; font-size: 0.85rem;">';
+        
+        lineas.forEach(l => {
+          const descuentoBadge = l.descuento > 0 
+            ? `<span style="font-size: 0.7rem; background: var(--success); color: white; padding: 1px 5px; border-radius: 3px; margin-left: 4px;">-${l.descuento}%</span>`
+            : '';
+          
+          if (l.descuento > 0) {
+            html += `
+              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--cream-dark);">
+                <span>${l.concepto}${descuentoBadge}</span>
+                <span>
+                  <span style="text-decoration: line-through; color: var(--text-muted);">${l.original.toFixed(2)}€</span>
+                  <span style="color: var(--success); font-weight: 600; margin-left: 6px;">${l.final.toFixed(2)}€</span>
+                </span>
+              </div>
+            `;
+          } else {
+            html += `
+              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--cream-dark);">
+                <span>${l.concepto}</span>
+                <span>${l.original.toFixed(2)}€</span>
+              </div>
+            `;
+          }
+        });
+        
+        // Total
+        const ahorro = totalOriginal - totalFinal;
+        html += `
+          <div style="display: flex; justify-content: space-between; padding: 12px 0; margin-top: 8px; border-top: 2px solid var(--sage); font-weight: 700;">
+            <span>TOTAL MENSUAL</span>
+            <span style="font-size: 1.1rem; color: var(--sage);">${totalFinal.toFixed(2)}€</span>
+          </div>
+        `;
+        
+        if (ahorro > 0) {
+          html += `
+            <div style="text-align: right; padding: 8px 12px; background: rgba(72, 187, 120, 0.1); border-radius: 6px; margin-top: 8px;">
+              <span style="color: var(--success); font-weight: 600;">💰 Ahorras ${ahorro.toFixed(2)}€/mes</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">Gracias a tus descuentos aplicados</span>
+            </div>
+          `;
+        }
+        
+        html += '</div>';
+        resumenContainer.innerHTML = html;
       }
       
       // Desglose por nido
