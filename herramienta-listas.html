@@ -555,6 +555,7 @@
     let miembrosData = [];
     let nidosData = {};
     let nidosNumerados = {}; // {nidoId: "2.1.1"}
+    let usuariosPorEmail = {}; // Mapa email -> datos de usuario para sincronizar estado
     let filtroActual = 'todos';
     let filtroEstadoActual = 'todos-estado';
     
@@ -834,6 +835,28 @@
         miembrosData = [];
         const miembrosYaIncluidos = new Map();
         
+        // SINCRONIZACIÓN: Cargar usuarios de la familia para cruzar por email
+        try {
+          const usuariosSnap = await db.collection('usuarios')
+            .where('familiaId', '==', familiaId)
+            .get();
+          
+          usuariosPorEmail = {};
+          usuariosSnap.docs.forEach(doc => {
+            const u = doc.data();
+            if (u.email) {
+              usuariosPorEmail[u.email.toLowerCase()] = { 
+                uid: doc.id, 
+                estadoCuenta: 'activo', // Si existe en usuarios, está activo
+                ...u 
+              };
+            }
+          });
+          console.log('✅ Usuarios sincronizados:', Object.keys(usuariosPorEmail).length);
+        } catch (e) {
+          console.warn('No se pudieron cargar usuarios para sincronización:', e);
+        }
+        
         // PASO 1: Primero, añadir TODOS los que son "cabezas" de nido (progenitor/consorte)
         Object.entries(nidosData).forEach(([nidoId, nido]) => {
           const miembrosNido = nido.miembrosData || [];
@@ -951,8 +974,21 @@
         generacion = genNum - 1;
       }
 
+      // SINCRONIZACIÓN: Cruzar con colección usuarios por email
+      const emailNormalizado = (m.email || '').toLowerCase();
+      const usuarioReal = emailNormalizado ? usuariosPorEmail[emailNormalizado] : null;
+      
+      // Estado de cuenta REAL (sincronizado)
+      // - Si existe en colección usuarios → activo
+      // - Si tiene email pero no existe en usuarios → invitado (pendiente)
+      // - Si no tiene email → validado (niños, históricos)
+      let estadoCuenta = 'validado';
+      if (m.email) {
+        estadoCuenta = usuarioReal ? 'activo' : 'invitado';
+      }
+
       return {
-        id: m.uid || `${nidoId}_${index}`,
+        id: usuarioReal?.uid || m.uid || `${nidoId}_${index}`,
         nombre: m.nombre || m.iniciales || 'Sin nombre',
         email: m.email || '',
         telefono: m.telefono || '',
@@ -960,7 +996,7 @@
         fechaNacimiento: fechaNacimiento,
         rol: rol,
         relacion: m.relacion || '',
-        estadoCuenta: m.estadoCuenta || (m.email ? 'invitado' : 'validado'),
+        estadoCuenta: estadoCuenta,
         nidoId: nidoId,
         nidoNombre: nido.nombre,
         nidoNumero: nidosNumerados[nidoId] || '',
@@ -1040,7 +1076,8 @@
             miembrosFiltrados = miembrosFiltrados.filter(m => m.email && m.estadoCuenta === 'invitado');
             break;
           case 'validados':
-            miembrosFiltrados = miembrosFiltrados.filter(m => m.estadoCuenta === 'validado' || !m.email);
+            // Activos = los que tienen cuenta o no tienen email (niños)
+            miembrosFiltrados = miembrosFiltrados.filter(m => m.estadoCuenta === 'activo' || m.estadoCuenta === 'validado' || !m.email);
             break;
           case 'con-email':
             miembrosFiltrados = miembrosFiltrados.filter(m => m.email);
@@ -1253,7 +1290,7 @@
       const conEmail = miembros.filter(m => m.email && !m.fallecido).length;
       const sinEmail = miembros.filter(m => !m.email && !m.fallecido).length;
       const invitados = miembros.filter(m => m.email && m.estadoCuenta === 'invitado' && !m.fallecido).length;
-      const validados = miembros.filter(m => (m.estadoCuenta === 'validado' || !m.email) && !m.fallecido).length;
+      const activos = miembros.filter(m => (m.estadoCuenta === 'activo' || m.estadoCuenta === 'validado' || !m.email) && !m.fallecido).length;
 
       statsEl.innerHTML = `
         <div class="stat-item">
@@ -1299,8 +1336,8 @@
           </div>
         ` : ''}
         <div class="stat-item">
-          <div class="stat-value" style="color: var(--sage-dark);">${validados}</div>
-          <div class="stat-label">Validados</div>
+          <div class="stat-value" style="color: var(--sage-dark);">${activos}</div>
+          <div class="stat-label">Activos</div>
         </div>
       `;
 

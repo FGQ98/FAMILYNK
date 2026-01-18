@@ -1359,6 +1359,7 @@
     let nidoId = null;
     let nidoData = null;
     let editingCasaIndex = null;
+    let usuariosPorEmail = {}; // Mapa email -> datos de usuario para sincronizar estado de activación
 
     // Get nido ID from URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -1468,8 +1469,8 @@
           document.getElementById('btn-editar-nido').classList.remove('hidden');
         }
 
-        // Load members
-        loadMembers();
+        // Load members (async para sincronizar con usuarios)
+        await loadMembers();
 
         // Load casas
         renderCasas();
@@ -1487,10 +1488,34 @@
       }
     }
 
-    function loadMembers() {
+    async function loadMembers() {
       const miembrosData = nidoData.miembrosData || [];
       const listEl = document.getElementById('members-list');
       const emptyEl = document.getElementById('members-empty');
+
+      // SINCRONIZACIÓN: Cargar usuarios de la familia para cruzar por email
+      try {
+        if (nidoData.familiaId) {
+          const usuariosSnap = await db.collection('usuarios')
+            .where('familiaId', '==', nidoData.familiaId)
+            .get();
+          
+          usuariosPorEmail = {};
+          usuariosSnap.docs.forEach(doc => {
+            const u = doc.data();
+            if (u.email) {
+              usuariosPorEmail[u.email.toLowerCase()] = { 
+                uid: doc.id, 
+                estadoCuenta: u.estadoCuenta || 'activo', // Si existe en usuarios, está activo por defecto
+                ...u 
+              };
+            }
+          });
+          console.log('✅ Usuarios sincronizados:', Object.keys(usuariosPorEmail).length);
+        }
+      } catch (e) {
+        console.warn('No se pudieron cargar usuarios para sincronización:', e);
+      }
 
       // Update stats
       const vivos = miembrosData.filter(m => !m.fechaDefuncion).length;
@@ -1536,26 +1561,27 @@
       const index = miembro.originalIndex;
       const fallecido = miembro.fechaDefuncion ? true : false;
       
+      // SINCRONIZACIÓN: Cruzar con colección usuarios por email
+      // Esto resuelve el problema de que miembrosData no se actualiza al aceptar invitación
+      const emailNormalizado = miembro.email?.toLowerCase();
+      const usuarioReal = emailNormalizado ? usuariosPorEmail[emailNormalizado] : null;
+      
       // Estados de cuenta (según racional usuarios FAMILYNK)
       // - Sin email: no se puede invitar (niño o registro histórico)
-      // - Con email pero sin uid: invitado pero nunca aceptó → "Pendiente"
-      // - Con email y uid pero estadoCuenta !== 'activo': aceptó pero no validó → "Validar"
-      // - Con email y uid y estadoCuenta === 'activo': usuario activo
+      // - Con email pero sin usuario en colección: invitado pero nunca aceptó → "Pendiente"
+      // - Con email y usuario en colección: usuario activo
       const tieneEmail = miembro.email ? true : false;
-      const tieneUid = miembro.uid ? true : false;
-      const cuentaActiva = miembro.estadoCuenta === 'activo';
+      const tieneUsuarioReal = usuarioReal ? true : false;
       
-      // Determinar estado de invitación
+      // Determinar estado de invitación REAL (sincronizado)
       let estadoInvitacion = 'sin-email'; // Por defecto
-      if (tieneEmail && !tieneUid) {
-        estadoInvitacion = 'pendiente'; // Invitado pero nunca aceptó
-      } else if (tieneEmail && tieneUid && !cuentaActiva) {
-        estadoInvitacion = 'validar'; // Aceptó pero no ha validado contraseña
-      } else if (tieneEmail && tieneUid && cuentaActiva) {
-        estadoInvitacion = 'activo'; // Usuario activo
+      if (tieneEmail && !tieneUsuarioReal) {
+        estadoInvitacion = 'pendiente'; // Invitado pero nunca aceptó (no existe en colección usuarios)
+      } else if (tieneEmail && tieneUsuarioReal) {
+        estadoInvitacion = 'activo'; // Tiene cuenta en Firebase = activo
       }
       
-      const esInvitado = estadoInvitacion === 'pendiente' || estadoInvitacion === 'validar';
+      const esInvitado = estadoInvitacion === 'pendiente';
       const esComprometido = miembro.estadoVincular === 'comprometido';
       const esSeparado = miembro.estadoVincular === 'separado';
       const esDivorciado = miembro.estadoVincular === 'divorciado';
@@ -1579,12 +1605,10 @@
       else if (esSeparado) badgeVincular = '<span class="member-separado-badge">Separado</span>';
       else if (esDivorciado) badgeVincular = '<span class="member-divorciado-badge">Divorciado</span>';
 
-      // Badge de estado de cuenta/invitación
+      // Badge de estado de cuenta/invitación (solo pendiente, activos no llevan badge)
       let badgeInvitacion = '';
       if (estadoInvitacion === 'pendiente') {
         badgeInvitacion = '<span class="member-pendiente-badge" title="Invitado pero no ha aceptado. Reenviar invitación.">📩 Pendiente</span>';
-      } else if (estadoInvitacion === 'validar') {
-        badgeInvitacion = '<span class="member-validar-badge" title="Ha aceptado pero no ha validado contraseña">🔑 Validar</span>';
       }
 
       // Botón de reenviar invitación si está pendiente
