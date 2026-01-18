@@ -1284,7 +1284,9 @@
         return nombreA.localeCompare(nombreB);
       });
 
-      // Función para obtener nidos de un usuario (solo su nidoId principal)
+      // Función para obtener nidos de un usuario
+      // Un usuario aparece en su nido principal (donde es progenitor/consorte)
+      // Los descendientes sin nido propio aparecen en el nido de sus padres
       function getNidosUsuario(userId, email, userNidoId) {
         let nidosDelUsuario = [];
         
@@ -1292,15 +1294,13 @@
         if (userNidoId) {
           const nidoPrincipal = nidosData.find(n => n.id === userNidoId);
           if (nidoPrincipal) {
-            nidosDelUsuario.push({ nido: nidoPrincipal, esAdmin: false });
-            
-            // Si el nido tiene nidoOrigen, también incluirlo (nido de sus padres)
-            if (nidoPrincipal.nidoOrigen) {
-              const nidoPadre = nidosData.find(n => n.id === nidoPrincipal.nidoOrigen);
-              if (nidoPadre) {
-                nidosDelUsuario.push({ nido: nidoPadre, esAdmin: false });
-              }
-            }
+            // Determinar si es progenitor/consorte o descendiente en este nido
+            const miembro = (nidoPrincipal.miembrosData || []).find(m => 
+              (m.email && email && m.email.toLowerCase() === email.toLowerCase()) ||
+              (m.uid && m.uid === userId)
+            );
+            const esProgenitor = miembro && (miembro.relacion === 'progenitor' || miembro.relacion === 'consorte');
+            nidosDelUsuario.push({ nido: nidoPrincipal, esAdmin: esProgenitor });
           }
         }
 
