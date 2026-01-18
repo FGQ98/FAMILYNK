@@ -1284,25 +1284,35 @@
         return nombreA.localeCompare(nombreB);
       });
 
-      // Función para obtener nidos de un usuario
-      // Un usuario aparece en su nido principal (donde es progenitor/consorte)
-      // Los descendientes sin nido propio aparecen en el nido de sus padres
+      // Función para obtener TODOS los nidos donde aparece un usuario
+      // Esto permite identificar quién está en 2 nidos (ej: hijo en uno, progenitor en otro)
       function getNidosUsuario(userId, email, userNidoId) {
         let nidosDelUsuario = [];
         
-        // Solo el nido principal del usuario
-        if (userNidoId) {
-          const nidoPrincipal = nidosData.find(n => n.id === userNidoId);
-          if (nidoPrincipal) {
-            // Determinar si es progenitor/consorte o descendiente en este nido
-            const miembro = (nidoPrincipal.miembrosData || []).find(m => 
-              (m.email && email && m.email.toLowerCase() === email.toLowerCase()) ||
-              (m.uid && m.uid === userId)
-            );
-            const esProgenitor = miembro && (miembro.relacion === 'progenitor' || miembro.relacion === 'consorte');
-            nidosDelUsuario.push({ nido: nidoPrincipal, esAdmin: esProgenitor });
+        // Buscar en TODOS los nidos donde aparece este usuario
+        nidosData.forEach(nido => {
+          const miembrosNido = nido.miembrosData || [];
+          const miembro = miembrosNido.find(m => 
+            (m.email && email && m.email.toLowerCase() === email.toLowerCase()) ||
+            (m.uid && m.uid === userId)
+          );
+          
+          if (miembro) {
+            const esProgenitor = miembro.relacion === 'progenitor' || miembro.relacion === 'consorte';
+            nidosDelUsuario.push({ 
+              nido: nido, 
+              esProgenitor: esProgenitor,
+              relacion: miembro.relacion
+            });
           }
-        }
+        });
+        
+        // Ordenar: primero donde es progenitor, luego descendiente
+        nidosDelUsuario.sort((a, b) => {
+          if (a.esProgenitor && !b.esProgenitor) return -1;
+          if (!a.esProgenitor && b.esProgenitor) return 1;
+          return 0;
+        });
 
         return nidosDelUsuario;
       }
@@ -1316,16 +1326,16 @@
                         (['novio','prometido','separado','divorciado'].includes(u.rol)) ? 'especial' : 'miembro';
         const rolLabel = ROLES_LABELS[u.rol] || u.rol || 'Adulto';
         
-        // Mostrar códigos de nido (máximo 2)
+        // Mostrar códigos de nido (todos los que tenga)
         let nidosHtml = '';
         if (nidosDelUsuario.length > 0) {
-          nidosHtml = nidosDelUsuario.slice(0, 2).map(item => {
+          nidosHtml = nidosDelUsuario.slice(0, 3).map(item => {
             const codigo = nidosNumerados[item.nido.id] || '?';
-            const icono = item.esAdmin ? '👨‍👩‍👧' : '👶';
-            return `<span class="nido-badge" title="${item.nido.nombre || 'Nido'}">${icono} ${codigo}</span>`;
+            const icono = item.esProgenitor ? '👨‍👩‍👧' : '👶';
+            return `<span class="nido-badge" title="${item.nido.nombre || 'Nido'} (${item.relacion || 'miembro'})">${icono} ${codigo}</span>`;
           }).join('');
-          if (nidosDelUsuario.length > 2) {
-            nidosHtml += `<span class="nido-badge" style="background:var(--text-muted);color:white">+${nidosDelUsuario.length - 2}</span>`;
+          if (nidosDelUsuario.length > 3) {
+            nidosHtml += `<span class="nido-badge" style="background:var(--text-muted);color:white">+${nidosDelUsuario.length - 3}</span>`;
           }
         } else {
           nidosHtml = '<span style="color:var(--text-muted)">—</span>';
