@@ -758,7 +758,7 @@
         <h1 class="page-title">🏠 Lo Común</h1>
         <p class="page-subtitle">Bienes de disfrute compartido de la familia</p>
       </div>
-      <button class="btn btn-primary" onclick="abrirModalBien()">
+      <button class="btn btn-primary" id="btn-nuevo-bien" onclick="abrirModalBien()">
         <span>+</span> Nuevo bien
       </button>
     </div>
@@ -784,8 +784,8 @@
     <div id="empty-state" class="empty-state hidden">
       <div class="empty-icon">🏠</div>
       <h3 class="empty-title">Sin bienes registrados</h3>
-      <p class="empty-text">Añade el primer bien común: casas, terrenos, vehículos o enseres especiales.</p>
-      <button class="btn btn-primary" onclick="abrirModalBien()">+ Añadir primer bien</button>
+      <p class="empty-text" id="empty-text">Añade el primer bien común: casas, terrenos, vehículos o enseres especiales.</p>
+      <button class="btn btn-primary" id="btn-añadir-primer-bien" onclick="abrirModalBien()">+ Añadir primer bien</button>
     </div>
   </main>
 
@@ -1148,9 +1148,24 @@
       const optRama = document.getElementById('vis-option-rama');
       const optEstirpe = document.getElementById('vis-option-estirpe');
       const optNido = document.getElementById('vis-option-nido');
+      const btnNuevoBien = document.getElementById('btn-nuevo-bien');
+      const btnAñadirPrimer = document.getElementById('btn-añadir-primer-bien');
+      const emptyText = document.getElementById('empty-text');
+
+      // Solo admins pueden crear bienes
+      const puedeCrear = esAdmin || esAdminNido;
+      
+      if (btnNuevoBien) btnNuevoBien.style.display = puedeCrear ? '' : 'none';
+      if (btnAñadirPrimer) btnAñadirPrimer.style.display = puedeCrear ? '' : 'none';
+      
+      // Cambiar texto del empty state si no puede crear
+      if (!puedeCrear && emptyText) {
+        emptyText.textContent = 'No hay bienes compartidos disponibles para ti.';
+      }
 
       // Admin-rama: todo disponible
       if (esAdmin) {
+        console.log('👑 Admin-rama: puede crear bienes con cualquier visibilidad');
         return;
       }
 
@@ -1160,7 +1175,7 @@
         // Seleccionar estirpe por defecto
         const radioEstirpe = document.querySelector('input[name="bien-visibilidad"][value="estirpe"]');
         if (radioEstirpe) radioEstirpe.checked = true;
-        console.log('🏠 Admin-nido creador de estirpe: opciones estirpe y nido');
+        console.log('🏠 Admin-nido creador de estirpe: puede crear con visibilidad estirpe o nido');
         return;
       }
 
@@ -1171,16 +1186,15 @@
         // Seleccionar nido por defecto
         const radioNido = document.querySelector('input[name="bien-visibilidad"][value="nido"]');
         if (radioNido) radioNido.checked = true;
-        console.log('🏠 Admin-nido: solo opción nido');
+        console.log('🏠 Admin-nido: puede crear solo con visibilidad nido');
         return;
       }
 
-      // Usuario normal sin rol admin: solo nido
+      // Usuario normal sin rol admin: no puede crear bienes
       if (optRama) optRama.style.display = 'none';
       if (optEstirpe) optEstirpe.style.display = 'none';
-      const radioNido = document.querySelector('input[name="bien-visibilidad"][value="nido"]');
-      if (radioNido) radioNido.checked = true;
-      console.log('👤 Usuario normal: solo opción nido');
+      if (optNido) optNido.style.display = 'none';
+      console.log('👤 Usuario normal: no puede crear bienes');
     }
 
     // ========== CARGAR CONFIG TIPOS ==========
