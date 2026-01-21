@@ -764,12 +764,12 @@
     </div>
 
     <!-- Filtros -->
-    <div class="filters">
-      <button class="filter-btn active" onclick="filtrarBienes('todos')">📋 Todos</button>
-      <button class="filter-btn" onclick="filtrarBienes('inmueble')">🏠 Inmuebles</button>
-      <button class="filter-btn" onclick="filtrarBienes('terreno')">🌳 Terrenos</button>
-      <button class="filter-btn" onclick="filtrarBienes('vehiculo')">🚗 Vehículos</button>
-      <button class="filter-btn" onclick="filtrarBienes('ajuar')">🪑 Ajuar</button>
+    <div class="filters" id="filters-container">
+      <button class="filter-btn active" id="filter-todos" onclick="filtrarBienes('todos')">📋 Todos</button>
+      <button class="filter-btn" id="filter-inmueble" onclick="filtrarBienes('inmueble')">🏠 Inmuebles</button>
+      <button class="filter-btn" id="filter-terreno" onclick="filtrarBienes('terreno')">🌳 Terrenos</button>
+      <button class="filter-btn" id="filter-vehiculo" onclick="filtrarBienes('vehiculo')">🚗 Vehículos</button>
+      <button class="filter-btn" id="filter-ajuar" onclick="filtrarBienes('ajuar')">🪑 Ajuar</button>
     </div>
 
     <!-- Loading -->
@@ -1012,6 +1012,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/seccion-guard.js"></script>
   <script src="js/eventos-tracker.js"></script>
 
   <script>
@@ -1023,6 +1024,8 @@
     let editingBienId = null;
     let userNidoId = null;
     let cadenaAncestros = []; // IDs de nidos ancestros del usuario (para filtrar estirpe)
+    let esAdmin = false;
+    let tiposActivos = { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true }; // Config de tipos
 
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
     const visibilidadLabels = { rama: '🌳 Rama', estirpe: '👨‍👩‍👧‍👦 Estirpe', nido: '🏠 Nido' };
@@ -1032,11 +1035,15 @@
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
 
+      // Verificar acceso a la sección Lo Común
+      const puedeAcceder = await SeccionGuard.verificar('locomun');
+      if (!puedeAcceder) return; // Ya redirigió
+
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       if (!userDoc.exists) { window.location.href = 'login.html'; return; }
       
       userData = userDoc.data();
-      familiaId = userData.familiaId;
+      familiaId = userData.familiaId || localStorage.getItem('estirpeActiva');
       userNidoId = userData.nidoId || null;
 
       if (!familiaId) {
@@ -1044,6 +1051,9 @@
         document.getElementById('empty-state').classList.remove('hidden');
         return;
       }
+
+      // Cargar configuración de tipos de bienes
+      await cargarConfigTipos();
 
       // Construir cadena de ancestros (para filtrar estirpe)
       if (userNidoId) {
@@ -1056,6 +1066,59 @@
 
       await loadBienes();
     });
+
+    // ========== CARGAR CONFIG TIPOS ==========
+    async function cargarConfigTipos() {
+      try {
+        const familiaDoc = await db.collection('familias').doc(familiaId).get();
+        if (familiaDoc.exists) {
+          const familia = familiaDoc.data();
+          esAdmin = await SeccionGuard.esAdminRama(currentUser.uid, familiaId);
+          
+          // Si NO es admin, aplicar filtros
+          if (!esAdmin) {
+            const config = familia.configSecciones || {};
+            tiposActivos = config.locomun || { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true };
+            
+            console.log('⚙️ Tipos de bienes activos:', tiposActivos);
+            aplicarFiltrosTipos();
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando config tipos:', error);
+      }
+    }
+
+    // ========== APLICAR FILTROS TIPOS ==========
+    function aplicarFiltrosTipos() {
+      // Mapa de tipo singular a plural (como está en config)
+      const tipoMap = {
+        inmueble: 'inmuebles',
+        terreno: 'terrenos',
+        vehiculo: 'vehiculos',
+        ajuar: 'ajuar'
+      };
+
+      // Ocultar botones de filtro desactivados
+      Object.keys(tipoMap).forEach(tipo => {
+        const configKey = tipoMap[tipo];
+        const activo = tiposActivos[configKey] !== false;
+        const btn = document.getElementById('filter-' + tipo);
+        if (btn) {
+          btn.style.display = activo ? '' : 'none';
+        }
+      });
+
+      // Si solo hay un tipo activo, ocultamos el botón "Todos" y filtramos directo
+      const tiposActivosArray = Object.keys(tipoMap).filter(t => tiposActivos[tipoMap[t]] !== false);
+      if (tiposActivosArray.length === 1) {
+        document.getElementById('filter-todos').style.display = 'none';
+        filtroActual = tiposActivosArray[0];
+      } else if (tiposActivosArray.length === 0) {
+        // No hay tipos activos
+        document.getElementById('filters-container').style.display = 'none';
+      }
+    }
 
     // ========== CONSTRUIR CADENA ANCESTROS ==========
     async function construirCadenaAncestros(nidoId) {
@@ -1144,9 +1207,27 @@
       const grid = document.getElementById('bienes-grid');
       const empty = document.getElementById('empty-state');
 
+      // Mapa de tipo singular a plural (como está en config)
+      const tipoMap = {
+        inmueble: 'inmuebles',
+        terreno: 'terrenos',
+        vehiculo: 'vehiculos',
+        ajuar: 'ajuar'
+      };
+
       let bienesFiltrados = bienesData;
+      
+      // Filtrar por tipos activos (si no es admin)
+      if (!esAdmin) {
+        bienesFiltrados = bienesFiltrados.filter(b => {
+          const configKey = tipoMap[b.tipo] || b.tipo;
+          return tiposActivos[configKey] !== false;
+        });
+      }
+      
+      // Filtrar por tipo seleccionado en UI
       if (filtroActual !== 'todos') {
-        bienesFiltrados = bienesData.filter(b => b.tipo === filtroActual);
+        bienesFiltrados = bienesFiltrados.filter(b => b.tipo === filtroActual);
       }
 
       if (bienesFiltrados.length === 0) {

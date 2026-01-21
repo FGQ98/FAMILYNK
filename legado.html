@@ -499,9 +499,9 @@
     </div>
 
     <!-- Grid de secciones -->
-    <div class="legado-grid">
+    <div class="legado-grid" id="legado-grid">
       <!-- Valores -->
-      <a href="legado-valores.html" class="legado-card-link">
+      <a href="legado-valores.html" class="legado-card-link" id="card-valores">
         <div class="legado-card valores">
           <div class="legado-icon valores">💎</div>
           <div class="legado-title">Valores</div>
@@ -515,7 +515,7 @@
       </a>
 
       <!-- Anécdotas (antes Historia) -->
-      <a href="legado-anecdotas.html" class="legado-card-link">
+      <a href="legado-anecdotas.html" class="legado-card-link" id="card-anecdotas">
         <div class="legado-card historia">
           <div class="legado-icon historia">😄</div>
           <div class="legado-title">Anécdotas</div>
@@ -529,7 +529,7 @@
       </a>
 
       <!-- Tradiciones -->
-      <a href="legado-tradiciones.html" class="legado-card-link">
+      <a href="legado-tradiciones.html" class="legado-card-link" id="card-tradiciones">
         <div class="legado-card tradiciones">
           <div class="legado-icon tradiciones">🎄</div>
           <div class="legado-title">Tradiciones</div>
@@ -543,7 +543,7 @@
       </a>
 
       <!-- Sabiduría (antes Cultura) -->
-      <a href="legado-sabiduria.html" class="legado-card-link">
+      <a href="legado-sabiduria.html" class="legado-card-link" id="card-sabiduria">
         <div class="legado-card cultura">
           <div class="legado-icon cultura">🧓</div>
           <div class="legado-title">Sabiduría</div>
@@ -557,7 +557,7 @@
       </a>
 
       <!-- Fotos -->
-      <a href="legado-fotos.html" class="legado-card-link">
+      <a href="legado-fotos.html" class="legado-card-link" id="card-fotos">
         <div class="legado-card fotos">
           <div class="legado-icon fotos">📷</div>
           <div class="legado-title">Fotos</div>
@@ -571,7 +571,7 @@
       </a>
 
       <!-- Historias -->
-      <a href="legado-historias.html" class="legado-card-link">
+      <a href="legado-historias.html" class="legado-card-link" id="card-historias">
         <div class="legado-card historias">
           <div class="legado-icon historias">✍️</div>
           <div class="legado-title">Historias</div>
@@ -585,7 +585,7 @@
       </a>
 
       <!-- Recetas -->
-      <a href="legado-recetas.html" class="legado-card-link">
+      <a href="legado-recetas.html" class="legado-card-link" id="card-recetas">
         <div class="legado-card recetas">
           <div class="legado-icon recetas">👨‍🍳</div>
           <div class="legado-title">Recetas</div>
@@ -619,11 +619,14 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/seccion-guard.js"></script>
   <script src="js/eventos-tracker.js"></script>
 
   <script>
     let currentUser = null;
     let userData = null;
+    let currentFamilia = null;
+    let esAdmin = false;
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -633,6 +636,10 @@
       currentUser = user;
 
       try {
+        // Verificar acceso a la sección Legado
+        const puedeAcceder = await SeccionGuard.verificar('legado');
+        if (!puedeAcceder) return; // Ya redirigió
+
         const userDoc = await db.collection('usuarios').doc(user.uid).get();
         if (userDoc.exists) {
           userData = userDoc.data();
@@ -642,10 +649,66 @@
           const iniciales = userData.nombre ? userData.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '👤';
           avatar.textContent = iniciales;
         }
+
+        // Cargar familia y aplicar filtros de subsecciones
+        const familiaId = localStorage.getItem('estirpeActiva');
+        if (familiaId) {
+          const familiaDoc = await db.collection('familias').doc(familiaId).get();
+          if (familiaDoc.exists) {
+            currentFamilia = { id: familiaDoc.id, ...familiaDoc.data() };
+            
+            // Verificar si es admin-rama
+            esAdmin = await SeccionGuard.esAdminRama(user.uid, familiaId);
+            
+            // Aplicar filtros de subsecciones (solo si no es admin)
+            if (!esAdmin) {
+              aplicarFiltrosLegado();
+            }
+          }
+        }
       } catch (error) {
         console.error('Error:', error);
       }
     });
+
+    function aplicarFiltrosLegado() {
+      const config = currentFamilia?.configSecciones || {};
+      const legadoConfig = config.legado || {
+        recetas: true, fotos: false, historias: false, 
+        valores: false, tradiciones: false, anecdotas: false, sabiduria: false
+      };
+
+      console.log('⚙️ Aplicando filtros Legado:', legadoConfig);
+
+      // Mapa de IDs de cards
+      const cardsMap = {
+        recetas: 'card-recetas',
+        fotos: 'card-fotos',
+        historias: 'card-historias',
+        valores: 'card-valores',
+        tradiciones: 'card-tradiciones',
+        anecdotas: 'card-anecdotas',
+        sabiduria: 'card-sabiduria'
+      };
+
+      // Ocultar cards desactivadas
+      Object.keys(cardsMap).forEach(seccion => {
+        const activa = legadoConfig[seccion] === true;
+        const card = document.getElementById(cardsMap[seccion]);
+        if (card) {
+          card.style.display = activa ? '' : 'none';
+        }
+      });
+
+      // Verificar si hay al menos una sección visible
+      const hayAlgunaVisible = Object.keys(legadoConfig).some(k => legadoConfig[k] === true);
+      if (!hayAlgunaVisible) {
+        const grid = document.getElementById('legado-grid');
+        if (grid) {
+          grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">No hay secciones de Legado activas actualmente.</div>';
+        }
+      }
+    }
   </script>
 </body>
 </html>

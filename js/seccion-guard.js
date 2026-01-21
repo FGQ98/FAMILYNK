@@ -20,6 +20,21 @@ const SeccionGuard = {
       legado: false,
       activacion: true,
       chat: false
+    },
+    legado: {
+      recetas: true,
+      fotos: false,
+      historias: false,
+      valores: false,
+      tradiciones: false,
+      anecdotas: false,
+      sabiduria: false
+    },
+    locomun: {
+      inmuebles: true,
+      terrenos: true,
+      vehiculos: true,
+      ajuar: true
     }
   },
 
