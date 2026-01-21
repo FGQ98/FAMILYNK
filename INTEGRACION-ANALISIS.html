@@ -1,0 +1,261 @@
+<!--
+  ============================================================
+  GUÍA DE INTEGRACIÓN: Módulo de Análisis en Admin-Sistema
+  ============================================================
+  
+  ARCHIVOS NECESARIOS:
+  1. js/eventos-tracker.js   (actualizado con verificación de expiración)
+  2. js/analisis-module.js   (módulo de dashboard)
+  3. css/analisis-module.css (estilos del dashboard)
+  4. firestore.rules          (actualizado con variantes de rol)
+  
+  ESTRUCTURA DE DATOS EN FIRESTORE:
+  familias/{familiaId}:
+    - trackingActivo: boolean     // Si está activo
+    - trackingDesde: timestamp    // Cuándo se activó
+    - trackingHasta: timestamp    // Cuándo expira
+    - trackingDuracionDias: number // 7, 30, 90...
+    - trackingExpirado: boolean   // Si expiró automáticamente
+    - trackingModificadoPor: string // UID de quien lo modificó
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- ... tus otros tags ... -->
+  
+  <!-- Añadir CSS del módulo de análisis -->
+  <link rel="stylesheet" href="css/analisis-module.css">
+</head>
+<body>
+
+  <!-- ... tu contenido existente ... -->
+
+  <!--
+    ============================================================
+    EJEMPLO: Ficha de familia con tracking y dashboard
+    ============================================================
+    Dentro de tu modal o página de detalle de familia, añade:
+  -->
+  
+  <div class="familia-detalle">
+    <h2>Familia: <span id="familia-nombre"></span></h2>
+    
+    <!-- Control de tracking -->
+    <div id="tracking-control-container"></div>
+    
+    <!-- Dashboard de análisis (solo visible si tracking activo) -->
+    <div id="analisis-dashboard-container"></div>
+  </div>
+
+  <!-- Scripts de Firebase (los que ya tienes) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  
+  <!-- Módulo de análisis -->
+  <script src="js/analisis-module.js"></script>
+  
+  <script>
+    // Tu configuración de Firebase existente...
+    
+    /**
+     * Cargar y mostrar ficha de familia con análisis
+     * Llama a esta función cuando abras el detalle de una familia
+     */
+    async function mostrarFichaFamilia(familiaId) {
+      try {
+        // Cargar datos de la familia
+        const familiaDoc = await db.collection('familias').doc(familiaId).get();
+        if (!familiaDoc.exists) {
+          alert('Familia no encontrada');
+          return;
+        }
+        
+        const familia = { id: familiaDoc.id, ...familiaDoc.data() };
+        
+        // Mostrar nombre
+        document.getElementById('familia-nombre').textContent = familia.nombre || familia.id;
+        
+        // Renderizar control de tracking
+        AnalisisModule.renderTrackingControl('tracking-control-container', familia);
+        
+        // Si tiene tracking activo, mostrar dashboard con comparativas
+        if (familia.trackingActivo) {
+          await AnalisisModule.renderDashboard(
+            'analisis-dashboard-container',
+            familiaId,
+            true  // mostrarComparativas = true (para admin-sistema)
+          );
+        } else {
+          document.getElementById('analisis-dashboard-container').innerHTML = `
+            <div class="analisis-empty">
+              <p>📊 Activa el tracking para ver métricas de uso</p>
+            </div>
+          `;
+        }
+        
+      } catch (error) {
+        console.error('Error cargando familia:', error);
+        alert('Error: ' + error.message);
+      }
+    }
+    
+    /**
+     * ALTERNATIVA: Listado de familias con toggle inline
+     * Si prefieres mostrar el toggle directamente en la lista
+     */
+    async function renderListadoFamilias() {
+      const container = document.getElementById('familias-lista');
+      const familiasSnap = await db.collection('familias').get();
+      
+      let html = '';
+      
+      familiasSnap.docs.forEach(doc => {
+        const f = { id: doc.id, ...doc.data() };
+        
+        const trackingActivo = f.trackingActivo === true;
+        const hasta = f.trackingHasta ? AnalisisModule.formatearFecha(f.trackingHasta) : null;
+        
+        html += `
+          <div class="familia-row">
+            <div class="familia-info">
+              <strong>${f.nombre || f.id}</strong>
+              <small>${f.miembros || '?'} miembros</small>
+            </div>
+            
+            <div class="familia-tracking">
+              ${trackingActivo ? `
+                <span class="tracking-badge activo">● Activo</span>
+                ${hasta ? `<small>hasta ${hasta}</small>` : ''}
+                <button class="btn-mini" onclick="AnalisisModule.desactivarTracking('${f.id}')">
+                  Desactivar
+                </button>
+              ` : `
+                <span class="tracking-badge inactivo">○ Inactivo</span>
+                <select id="dur-${f.id}" class="tracking-select-mini">
+                  <option value="7">1 sem</option>
+                  <option value="30">1 mes</option>
+                </select>
+                <button class="btn-mini activar" onclick="activarTrackingDesdeListado('${f.id}')">
+                  Activar
+                </button>
+              `}
+            </div>
+            
+            <button class="btn-ver" onclick="mostrarFichaFamilia('${f.id}')">
+              Ver análisis →
+            </button>
+          </div>
+        `;
+      });
+      
+      container.innerHTML = html || '<p>No hay familias</p>';
+    }
+    
+    async function activarTrackingDesdeListado(familiaId) {
+      const dias = parseInt(document.getElementById(`dur-${familiaId}`).value) || 30;
+      const hasta = new Date();
+      hasta.setDate(hasta.getDate() + dias);
+      
+      await db.collection('familias').doc(familiaId).update({
+        trackingActivo: true,
+        trackingDesde: firebase.firestore.FieldValue.serverTimestamp(),
+        trackingHasta: firebase.firestore.Timestamp.fromDate(hasta),
+        trackingDuracionDias: dias,
+        trackingExpirado: false
+      });
+      
+      renderListadoFamilias();
+    }
+  </script>
+
+</body>
+</html>
+
+<!--
+  ============================================================
+  CSS ADICIONAL PARA EL LISTADO (añadir a tu <style>)
+  ============================================================
+-->
+<style>
+  .familia-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--white);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  
+  .familia-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  
+  .familia-tracking {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .tracking-select-mini {
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.75rem;
+  }
+  
+  .btn-mini {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    background: #eee;
+  }
+  
+  .btn-mini.activar {
+    background: var(--sage);
+    color: white;
+  }
+  
+  .btn-ver {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    background: var(--cream);
+    cursor: pointer;
+    font-weight: 600;
+  }
+  
+  .btn-ver:hover {
+    background: var(--cream-dark);
+  }
+</style>
+
+<!--
+  ============================================================
+  RESUMEN DE FLUJO
+  ============================================================
+  
+  1. LISTADO DE FAMILIAS (admin-sistema)
+     - Muestra toggle de tracking con selector de duración
+     - Botón "Ver análisis" para abrir ficha
+  
+  2. FICHA DE FAMILIA (modal o página)
+     - Control de tracking (activar/desactivar con duración)
+     - Dashboard completo con métricas
+     - Comparativas con medias de otras familias
+  
+  3. EXPIRACIÓN AUTOMÁTICA
+     - El tracker verifica trackingHasta al iniciar
+     - Si expiró, desactiva automáticamente y marca trackingExpirado
+     - El admin ve "Expiró el período anterior" y puede reactivar
+  
+  ============================================================
+-->

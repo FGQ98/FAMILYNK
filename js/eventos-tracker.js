@@ -114,8 +114,28 @@ const EventosTracker = {
       
       if (familiaDoc.exists) {
         const data = familiaDoc.data();
-        // Por defecto false si no existe el campo
-        this.state.trackingActivo = data.trackingActivo === true;
+        
+        // Verificar si está activo Y no ha expirado
+        if (data.trackingActivo === true) {
+          // Si hay fecha de expiración, verificar que no haya pasado
+          if (data.trackingHasta) {
+            const hasta = data.trackingHasta.toDate ? data.trackingHasta.toDate() : new Date(data.trackingHasta);
+            this.state.trackingActivo = new Date() <= hasta;
+            
+            // Si expiró, desactivar automáticamente en Firestore
+            if (!this.state.trackingActivo) {
+              db.collection('familias').doc(this.state.ramaId).update({
+                trackingActivo: false,
+                trackingExpirado: true
+              }).catch(e => console.warn('[Tracker] Error desactivando tracking expirado:', e));
+            }
+          } else {
+            // Sin fecha de expiración = activo indefinidamente
+            this.state.trackingActivo = true;
+          }
+        } else {
+          this.state.trackingActivo = false;
+        }
       } else {
         this.state.trackingActivo = false;
       }
