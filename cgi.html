@@ -2823,12 +2823,13 @@
       </div>
 
       <nav class="header-nav">
-        <a href="mi-nido.html" class="nav-link">Mi Nido</a>
-        <a href="arbol.html" class="nav-link">Árbol</a>
-        <a href="lo-comun.html" class="nav-link">Lo Común</a>
-        <a href="legado.html" class="nav-link">Legado</a>
+        <a href="mi-nido.html" class="nav-link" id="nav-minido-desktop">Mi Nido</a>
+        <a href="arbol.html" class="nav-link" id="nav-arbol-desktop">Árbol</a>
+        <a href="lo-comun.html" class="nav-link" id="nav-locomun-desktop">Lo Común</a>
+        <a href="legado.html" class="nav-link" id="nav-legado-desktop">Legado</a>
         <a href="cerebro.html" class="nav-link" id="nav-cerebro-desktop">Cerebro</a>
-        <a href="activacion.html" class="nav-link">Activación</a>
+        <a href="activacion.html" class="nav-link" id="nav-activacion-desktop">Activación</a>
+        <a href="chat.html" class="nav-link" id="nav-chat-desktop">Chat</a>
       </nav>
     </div>
 
@@ -2887,12 +2888,13 @@
     <div class="nav-section">
       <div class="nav-section-title">📖 Explorar</div>
       <div class="mobile-nav-links">
-        <a href="mi-nido.html" class="mobile-nav-link"><span>🪺</span>Mi Nido</a>
-        <a href="arbol.html" class="mobile-nav-link"><span>🌳</span>Árbol</a>
-        <a href="lo-comun.html" class="mobile-nav-link"><span>🏠</span>Lo Común</a>
-        <a href="legado.html" class="mobile-nav-link"><span>📜</span>Legado</a>
+        <a href="mi-nido.html" class="mobile-nav-link" id="nav-minido-mobile"><span>🪺</span>Mi Nido</a>
+        <a href="arbol.html" class="mobile-nav-link" id="nav-arbol-mobile"><span>🌳</span>Árbol</a>
+        <a href="lo-comun.html" class="mobile-nav-link" id="nav-locomun-mobile"><span>🏠</span>Lo Común</a>
+        <a href="legado.html" class="mobile-nav-link" id="nav-legado-mobile"><span>📜</span>Legado</a>
         <a href="cerebro.html" class="mobile-nav-link" id="nav-cerebro-mobile"><span>🧠</span>Cerebro</a>
-        <a href="activacion.html" class="mobile-nav-link"><span>🎯</span>Activación</a>
+        <a href="activacion.html" class="mobile-nav-link" id="nav-activacion-mobile"><span>🎯</span>Activación</a>
+        <a href="chat.html" class="mobile-nav-link" id="nav-chat-mobile"><span>💬</span>Chat</a>
       </div>
     </div>
 
@@ -3013,28 +3015,28 @@
       </div>
 
       <!-- Acciones Rápidas (CTAs) -->
-      <div class="acciones-rapidas">
-        <button class="cta-btn cta-averia" onclick="abrirModalAveria()">
+      <div class="acciones-rapidas" id="ctas-container">
+        <button class="cta-btn cta-averia" id="cta-averia" onclick="abrirModalAveria()">
           <span class="cta-icon">🔧</span>
           <span class="cta-label">Avisar avería</span>
         </button>
-        <button class="cta-btn cta-iniciativa" onclick="abrirModalIniciativa()">
+        <button class="cta-btn cta-iniciativa" id="cta-iniciativa" onclick="abrirModalIniciativa()">
           <span class="cta-icon">💡</span>
           <span class="cta-label">Proponer idea</span>
         </button>
-        <button class="cta-btn cta-evento" onclick="abrirModalSolicitarEvento()">
+        <button class="cta-btn cta-evento" id="cta-evento" onclick="abrirModalSolicitarEvento()">
           <span class="cta-icon">🎉</span>
           <span class="cta-label">Solicitar evento</span>
         </button>
-        <button class="cta-btn cta-reserva" onclick="abrirModalSolicitarReserva()">
+        <button class="cta-btn cta-reserva" id="cta-reserva" onclick="abrirModalSolicitarReserva()">
           <span class="cta-icon">📅</span>
           <span class="cta-label">Solicitar reserva</span>
         </button>
-        <button class="cta-btn cta-queo" onclick="abrirModalComunicado()">
+        <button class="cta-btn cta-queo" id="cta-queo" onclick="abrirModalComunicado()">
           <span class="cta-icon">📣</span>
           <span class="cta-label">Enviar queo</span>
         </button>
-        <button class="cta-btn cta-asistencia" onclick="abrirModalConvocatoria()">
+        <button class="cta-btn cta-convocar" id="cta-convocar" onclick="abrirModalConvocatoria()">
           <span class="cta-icon">✋</span>
           <span class="cta-label">Convocar</span>
         </button>
@@ -3815,6 +3817,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="js/seccion-guard.js"></script>
   <script src="js/eventos-tracker.js"></script>
 
   <script>
@@ -4161,11 +4164,66 @@
         adminSection.style.display = html ? 'block' : 'none';
       }
 
-      // Mostrar/ocultar Cerebro solo para admin-rama
-      const cerebroDesktop = document.getElementById('nav-cerebro-desktop');
-      const cerebroMobile = document.getElementById('nav-cerebro-mobile');
-      if (cerebroDesktop) cerebroDesktop.style.display = (isAdminRama || isSuperAdmin) ? '' : 'none';
-      if (cerebroMobile) cerebroMobile.style.display = (isAdminRama || isSuperAdmin) ? '' : 'none';
+      // Aplicar configuración de secciones (menú + CTAs)
+      aplicarConfigSecciones(isAdminRama || isSuperAdmin);
+    }
+
+    // ============ APLICAR CONFIG SECCIONES ============
+    function aplicarConfigSecciones(esAdmin) {
+      // Si es admin, mostrar todo
+      if (esAdmin) {
+        console.log('👑 Admin detectado: mostrando todas las secciones');
+        return;
+      }
+
+      // Obtener configuración (con defaults)
+      const config = currentFamilia?.configSecciones || {};
+      const seccionesConfig = config.secciones || {
+        miNido: true, arbol: false, cerebro: false, locomun: true, 
+        legado: false, activacion: true, chat: false
+      };
+      const ctasConfig = config.ctas || {
+        averia: true, iniciativa: true, evento: true, 
+        reserva: true, queo: true, convocar: true
+      };
+
+      console.log('⚙️ Aplicando configSecciones:', seccionesConfig);
+      console.log('⚙️ Aplicando configCTAs:', ctasConfig);
+
+      // Ocultar secciones de navegación
+      const seccionesMap = {
+        miNido: ['nav-minido-desktop', 'nav-minido-mobile'],
+        arbol: ['nav-arbol-desktop', 'nav-arbol-mobile'],
+        cerebro: ['nav-cerebro-desktop', 'nav-cerebro-mobile'],
+        locomun: ['nav-locomun-desktop', 'nav-locomun-mobile'],
+        legado: ['nav-legado-desktop', 'nav-legado-mobile'],
+        activacion: ['nav-activacion-desktop', 'nav-activacion-mobile'],
+        chat: ['nav-chat-desktop', 'nav-chat-mobile']
+      };
+
+      Object.keys(seccionesMap).forEach(seccion => {
+        const activa = seccionesConfig[seccion] !== false;
+        seccionesMap[seccion].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = activa ? '' : 'none';
+        });
+      });
+
+      // Ocultar CTAs
+      const ctasMap = {
+        averia: 'cta-averia',
+        iniciativa: 'cta-iniciativa',
+        evento: 'cta-evento',
+        reserva: 'cta-reserva',
+        queo: 'cta-queo',
+        convocar: 'cta-convocar'
+      };
+
+      Object.keys(ctasMap).forEach(cta => {
+        const activo = ctasConfig[cta] !== false;
+        const el = document.getElementById(ctasMap[cta]);
+        if (el) el.style.display = activo ? '' : 'none';
+      });
     }
 
     // ============ LOAD NIDOS ============
