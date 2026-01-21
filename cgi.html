@@ -4399,6 +4399,9 @@
 
     // Helper para verificar visibilidad de un elemento
     function esVisibleParaUsuario(item, nidosMap) {
+      // Admin-rama ve TODOS los items
+      if (esAdminRama) return true;
+      
       const visibilidad = item.visibilidad || 'rama';
       
       // Rama: visible para todos
@@ -5932,9 +5935,22 @@
           nidosMap[doc.id] = { id: doc.id, ...doc.data() };
         });
         
-        // Filtrar bienes por visibilidad
+        // Obtener configuración de tipos activos
+        const config = currentFamilia.configSecciones || {};
+        const tiposConfig = config.locomun || { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true };
+        const tipoMap = { inmueble: 'inmuebles', terreno: 'terrenos', vehiculo: 'vehiculos', ajuar: 'ajuar' };
+        
+        // Filtrar bienes por visibilidad Y por tipos activos (solo si no es admin)
         bienesUsuario = todosBienes.filter(bien => {
-          return esVisibleParaUsuario(bien, nidosMap);
+          // 1. Verificar visibilidad
+          if (!esVisibleParaUsuario(bien, nidosMap)) return false;
+          
+          // 2. Si es admin, no filtrar por tipos
+          if (esAdminRama) return true;
+          
+          // 3. Verificar si el tipo está activo
+          const tipoConfigKey = tipoMap[bien.tipo] || bien.tipo;
+          return tiposConfig[tipoConfigKey] !== false;
         });
         console.log('Bienes visibles para usuario:', bienesUsuario.length);
       } catch (e) { 
