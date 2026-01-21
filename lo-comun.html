@@ -1055,6 +1055,9 @@
 
       // Verificar si es admin-rama (siempre puede acceder)
       esAdmin = await SeccionGuard.esAdminRama(user.uid, familiaId);
+      console.log('🔑 SeccionGuard.esAdminRama resultado:', esAdmin);
+      console.log('🔑 user.uid:', user.uid);
+      console.log('🔑 familiaId:', familiaId);
       
       // Si NO es admin, verificar si la sección está activa
       if (!esAdmin) {
@@ -1307,8 +1310,21 @@
 
         let bienes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
+        console.log('📦 Bienes cargados de Firestore:', bienes.length);
+        console.log('📦 Detalle de bienes:', bienes.map(b => ({ 
+          id: b.id, 
+          nombre: b.nombre, 
+          visibilidad: b.visibilidad || 'rama',
+          tipo: b.tipo,
+          nidoCreadorId: b.nidoCreadorId
+        })));
+        console.log('🔐 esAdmin:', esAdmin);
+        console.log('🔐 esAdminNido:', esAdminNido);
+        console.log('🏠 userNidoId:', userNidoId);
+        
         // Admin-rama ve TODOS los bienes sin filtro de visibilidad
         if (!esAdmin) {
+          console.log('⚠️ NO es admin-rama, aplicando filtro de visibilidad...');
           // Filtrar por visibilidad solo para usuarios normales
           bienes = bienes.filter(bien => {
             const visibilidad = bien.visibilidad || 'rama'; // Por defecto rama (compatibilidad)
@@ -1318,21 +1334,26 @@
             }
             
             if (visibilidad === 'nido') {
-              return bien.nidoCreadorId === userNidoId; // Solo si es mi nido
+              const puedeVer = bien.nidoCreadorId === userNidoId;
+              console.log(`  - ${bien.nombre} (nido): nidoCreadorId=${bien.nidoCreadorId}, userNidoId=${userNidoId}, puedeVer=${puedeVer}`);
+              return puedeVer;
             }
             
             if (visibilidad === 'estirpe') {
-              // Puedo ver si el nido creador está en mi cadena de ancestros
-              return cadenaAncestros.includes(bien.nidoCreadorId);
+              const puedeVer = cadenaAncestros.includes(bien.nidoCreadorId);
+              console.log(`  - ${bien.nombre} (estirpe): nidoCreadorId=${bien.nidoCreadorId}, cadenaAncestros=${cadenaAncestros}, puedeVer=${puedeVer}`);
+              return puedeVer;
             }
             
             return true; // Fallback
           });
+          console.log('📦 Bienes después de filtro visibilidad:', bienes.length);
         } else {
           console.log('👑 Admin-rama: mostrando TODOS los bienes sin filtro de visibilidad');
         }
 
         bienesData = bienes;
+        console.log('📦 bienesData final:', bienesData.length);
         
         bienesData.sort((a, b) => {
           const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);

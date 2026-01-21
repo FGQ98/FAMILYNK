@@ -128,7 +128,22 @@ const SeccionGuard = {
       // Usar db si está disponible, sino firebase.firestore()
       const firestore = (typeof db !== 'undefined') ? db : firebase.firestore();
       
-      // Buscar en nidos
+      // PRIMERO: Verificar en documento de usuario
+      try {
+        const userDoc = await firestore.collection('usuarios').doc(uid).get();
+        if (userDoc.exists) {
+          const userData = userDoc.data();
+          const userRol = userData.rol || userData.credencial || '';
+          if (['adminRama', 'AdminRama', 'admin-rama'].includes(userRol) || userData.esAdmin === true) {
+            console.log('👑 esAdminRama: Detectado en userData.rol');
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('Error verificando userData:', e);
+      }
+      
+      // SEGUNDO: Buscar en nidos
       const nidosSnap = await firestore
         .collection('nidos')
         .where('familiaId', '==', familiaId)
@@ -140,13 +155,16 @@ const SeccionGuard = {
           const miembro = nido.miembrosData.find(m => m.uid === uid);
           if (miembro) {
             const rol = miembro.rol || miembro.credencial || '';
+            console.log(`  Miembro encontrado en nido ${nido.nombre}: rol=${rol}, esAdmin=${miembro.esAdmin}`);
             if (['adminRama', 'AdminRama', 'admin-rama'].includes(rol) || 
                 miembro.esAdmin === true) {
+              console.log('👑 esAdminRama: Detectado en miembrosData de nido');
               return true;
             }
           }
         }
       }
+      console.log('⚠️ esAdminRama: No se detectó rol de admin');
       return false;
     } catch (error) {
       console.error('Error verificando admin:', error);
