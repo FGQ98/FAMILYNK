@@ -4585,7 +4585,7 @@
         const fecha = new Date(hoy);
         fecha.setDate(hoy.getDate() + i);
         
-        const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`;
+        const fechaStr = fecha.getFullYear() + '-' + String(fecha.getMonth()+1).padStart(2,'0') + '-' + String(fecha.getDate()).padStart(2,'0');
         const eventosDelDia = eventosPorFecha[fechaStr] || [];
         
         // Label del día
@@ -4595,77 +4595,67 @@
         else label = 'Pasado';
         
         // Fecha formateada
-        const fechaFormateada = `${diasSemana[fecha.getDay()]} ${fecha.getDate()} ${meses[fecha.getMonth()]}`;
+        const fechaFormateada = diasSemana[fecha.getDay()] + ' ' + fecha.getDate() + ' ' + meses[fecha.getMonth()];
         
-        html += `
-          <div class="dia-grupo ${i === 0 ? 'hoy' : ''}">
-            <div class="dia-header">
-              <span class="dia-label">${label}</span>
-              <span class="dia-fecha">${fechaFormateada}</span>
-            </div>
-            <div class="dia-eventos">
-        `;
+        html += '<div class="dia-grupo ' + (i === 0 ? 'hoy' : '') + '">';
+        html += '<div class="dia-header">';
+        html += '<span class="dia-label">' + label + '</span>';
+        html += '<span class="dia-fecha">' + fechaFormateada + '</span>';
+        html += '</div>';
+        html += '<div class="dia-eventos">';
         
         if (eventosDelDia.length === 0) {
-          html += `<div class="dia-vacio">Sin eventos</div>`;
+          html += '<div class="dia-vacio">Sin eventos</div>';
         } else {
           // Mostrar hasta 3 eventos
           const eventosAMostrar = eventosDelDia.slice(0, 3);
           
-          eventosAMostrar.forEach(evento => {
+          eventosAMostrar.forEach(function(evento) {
             const icono = iconos[evento.tipo] || iconos.default;
-            // Limpiar el título (quitar emoji si ya tiene)
-            const tituloLimpio = evento.titulo.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '');
+            // Usar título tal cual viene (ya formateado)
+            var tituloLimpio = evento.titulo || 'Sin título';
             
-            html += `
-              <div class="hito-item" onclick="verDetalleHito('${evento.id || ''}', '${evento.tipo}', '${fechaStr}')" title="${tituloLimpio}">
-                <span class="hito-icono">${icono}</span>
-                <div class="hito-info">
-                  <div class="hito-titulo">${tituloLimpio}</div>
-                  <div class="hito-meta">
-                    ${evento.hora ? `<span class="hito-hora">${evento.hora}</span>` : ''}
-                    ${evento.lugar ? `<span>${evento.lugar}</span>` : ''}
-                  </div>
-                </div>
-              </div>
-            `;
+            html += '<div class="hito-item" onclick="verDetalleHito(\'' + (evento.id || '') + '\', \'' + evento.tipo + '\', \'' + fechaStr + '\')" title="' + tituloLimpio + '">';
+            html += '<span class="hito-icono">' + icono + '</span>';
+            html += '<div class="hito-info">';
+            html += '<div class="hito-titulo">' + tituloLimpio + '</div>';
+            html += '<div class="hito-meta">';
+            if (evento.hora) {
+              html += '<span class="hito-hora">' + evento.hora + '</span>';
+            }
+            if (evento.lugar) {
+              html += '<span>' + evento.lugar + '</span>';
+            }
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
           });
           
           // Si hay más de 3
           if (eventosDelDia.length > 3) {
-            html += `<div class="dia-mas" onclick="window.location.href='calendario.html'">+${eventosDelDia.length - 3} más</div>`;
+            html += '<div class="dia-mas" onclick="window.location.href=\'calendario.html\'">+' + (eventosDelDia.length - 3) + ' más</div>';
           }
         }
         
-        html += `
-            </div>
-          </div>
-        `;
+        html += '</div>';
+        html += '</div>';
       }
       
       // Botón ver más
-      html += `
-        </div>
-        <div class="calendario-ver-mas">
-          <button class="btn-ver-calendario" onclick="window.location.href='calendario.html'">
-            <span>📆</span> Ver semana completa
-          </button>
-        </div>
-      `;
+      html += '</div>';
+      html += '<div class="calendario-ver-mas">';
+      html += '<button class="btn-ver-calendario" onclick="window.location.href=\'calendario.html\'">';
+      html += '<span>📆</span> Ver semana completa';
+      html += '</button>';
+      html += '</div>';
       
       container.innerHTML = html;
     }
     
     // Función para ver detalle de un hito (abre modal o navega)
     function verDetalleHito(id, tipo, fecha) {
-      // Si tiene ID, podría abrir un modal de detalle
-      // Por ahora, navega al calendario con la fecha seleccionada
-      if (id) {
-        // Podría implementarse un modal de detalle aquí
-        console.log('Ver detalle:', id, tipo, fecha);
-      }
-      // Navegar al calendario
-      window.location.href = `calendario.html?fecha=${fecha}`;
+      // Navegar al calendario con la fecha seleccionada
+      window.location.href = 'calendario.html?fecha=' + fecha;
     }
     }
 
