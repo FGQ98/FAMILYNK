@@ -1035,10 +1035,6 @@
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
 
-      // Verificar acceso a la sección Lo Común
-      const puedeAcceder = await SeccionGuard.verificar('locomun');
-      if (!puedeAcceder) return; // Ya redirigió
-
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
       if (!userDoc.exists) { window.location.href = 'login.html'; return; }
       
@@ -1052,8 +1048,31 @@
         return;
       }
 
-      // Cargar configuración de tipos de bienes
-      await cargarConfigTipos();
+      // Guardar familiaId en localStorage para que SeccionGuard lo use
+      localStorage.setItem('estirpeActiva', familiaId);
+
+      // Verificar si es admin-rama (siempre puede acceder)
+      esAdmin = await SeccionGuard.esAdminRama(user.uid, familiaId);
+      
+      // Si NO es admin, verificar si la sección está activa
+      if (!esAdmin) {
+        const familiaDoc = await db.collection('familias').doc(familiaId).get();
+        if (familiaDoc.exists) {
+          const config = familiaDoc.data().configSecciones || {};
+          const seccionesConfig = config.secciones || {};
+          
+          // Si Lo Común está desactivado, redirigir
+          if (seccionesConfig.locomun === false) {
+            sessionStorage.setItem('seccionGuardMsg', 'La sección "Lo Común" no está disponible actualmente.');
+            window.location.href = 'cgi.html';
+            return;
+          }
+          
+          // Cargar config de tipos
+          tiposActivos = config.locomun || { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true };
+          aplicarFiltrosTipos();
+        }
+      }
 
       // Construir cadena de ancestros (para filtrar estirpe)
       if (userNidoId) {

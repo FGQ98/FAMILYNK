@@ -75,8 +75,11 @@ const SeccionGuard = {
         return true;
       }
 
+      // Usar db si está disponible, sino firebase.firestore()
+      const firestore = (typeof db !== 'undefined') ? db : firebase.firestore();
+
       // Obtener configuración de secciones
-      const familiaDoc = await firebase.firestore()
+      const familiaDoc = await firestore
         .collection('familias')
         .doc(familiaId)
         .get();
@@ -122,8 +125,11 @@ const SeccionGuard = {
    */
   async esAdminRama(uid, familiaId) {
     try {
+      // Usar db si está disponible, sino firebase.firestore()
+      const firestore = (typeof db !== 'undefined') ? db : firebase.firestore();
+      
       // Buscar en nidos
-      const nidosSnap = await firebase.firestore()
+      const nidosSnap = await firestore
         .collection('nidos')
         .where('familiaId', '==', familiaId)
         .get();
