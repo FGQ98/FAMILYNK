@@ -1304,6 +1304,62 @@
     
     .ajuar-btn-add:hover { background: var(--sage); color: white; border-style: solid; }
 
+    /* Buscador Ajuar */
+    .ajuar-search {
+      position: relative;
+      margin-bottom: 12px;
+    }
+    .ajuar-search-input {
+      width: 100%;
+      padding: 10px 14px 10px 38px;
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      background: var(--white);
+      transition: border-color 0.2s;
+    }
+    .ajuar-search-input:focus {
+      outline: none;
+      border-color: var(--sage);
+    }
+    .ajuar-search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    .ajuar-search-clear {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--cream-dark);
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+    }
+    .ajuar-search-clear:hover { background: var(--sage-muted); color: var(--text); }
+    .ajuar-search-input:not(:placeholder-shown) + .ajuar-search-clear { display: flex; }
+    .ajuar-search-results {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      display: none;
+    }
+    .ajuar-articulo.hidden { display: none; }
+    .ajuar-grupo.no-results .ajuar-grupo-header { opacity: 0.5; }
+    .ajuar-highlight { background: var(--warning); padding: 0 2px; border-radius: 2px; }
+
     /* Inventario mejorado */
     .inventario-categorias {
       display: flex;
@@ -1687,6 +1743,15 @@
             </div>
             <div class="collapsible-body">
               <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px;">Grupos y artículos del ajuar familiar</p>
+              
+              <!-- Buscador Ajuar -->
+              <div class="ajuar-search">
+                <span class="ajuar-search-icon">🔍</span>
+                <input type="text" class="ajuar-search-input" id="ajuar-search-input" placeholder="Buscar artículo..." oninput="filtrarAjuar(this.value)">
+                <button class="ajuar-search-clear" onclick="limpiarBusquedaAjuar()">✕</button>
+              </div>
+              <div class="ajuar-search-results" id="ajuar-search-results"></div>
+              
               <div class="ajuar-grupos" id="lista-grupos-ajuar">
                 <div class="empty-mini">Sin grupos creados</div>
               </div>
@@ -5093,6 +5158,66 @@
     function toggleGrupoAjuar(grupoId) {
       const el = document.getElementById('grupo-' + grupoId);
       if (el) el.classList.toggle('open');
+    }
+
+    // Buscador de Ajuar
+    function filtrarAjuar(query) {
+      query = query.toLowerCase().trim();
+      const resultsEl = document.getElementById('ajuar-search-results');
+      let totalEncontrados = 0;
+      let gruposConResultados = 0;
+      
+      gruposAjuar.forEach(grupo => {
+        const grupoEl = document.getElementById('grupo-' + grupo.id);
+        if (!grupoEl) return;
+        
+        let articulosVisibles = 0;
+        const articulos = grupoEl.querySelectorAll('.ajuar-articulo');
+        
+        articulos.forEach(artEl => {
+          const nombre = artEl.querySelector('.ajuar-articulo-nombre')?.textContent.toLowerCase() || '';
+          const desc = artEl.querySelector('.ajuar-articulo-desc')?.textContent.toLowerCase() || '';
+          
+          if (query === '' || nombre.includes(query) || desc.includes(query)) {
+            artEl.classList.remove('hidden');
+            articulosVisibles++;
+            totalEncontrados++;
+          } else {
+            artEl.classList.add('hidden');
+          }
+        });
+        
+        // Abrir/cerrar grupo según resultados
+        if (query !== '') {
+          if (articulosVisibles > 0) {
+            grupoEl.classList.add('open');
+            grupoEl.classList.remove('no-results');
+            gruposConResultados++;
+          } else {
+            grupoEl.classList.remove('open');
+            grupoEl.classList.add('no-results');
+          }
+        } else {
+          grupoEl.classList.remove('no-results');
+        }
+      });
+      
+      // Mostrar contador de resultados
+      if (query !== '') {
+        resultsEl.style.display = 'block';
+        resultsEl.textContent = totalEncontrados === 0 
+          ? 'Sin resultados para "' + query + '"'
+          : totalEncontrados + ' artículo' + (totalEncontrados !== 1 ? 's' : '') + ' en ' + gruposConResultados + ' grupo' + (gruposConResultados !== 1 ? 's' : '');
+      } else {
+        resultsEl.style.display = 'none';
+      }
+    }
+
+    function limpiarBusquedaAjuar() {
+      const input = document.getElementById('ajuar-search-input');
+      input.value = '';
+      filtrarAjuar('');
+      input.focus();
     }
 
     // Modal Grupo
