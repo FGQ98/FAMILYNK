@@ -1002,6 +1002,12 @@
 
     @media (max-width: 768px) {
       .rama-stats-mobile { display: flex; }
+      
+      /* Calendario: ocultar desktop, mostrar móvil */
+      .desktop-only { display: none !important; }
+      .mobile-only { display: inline !important; }
+      .calendario-desktop { display: none !important; }
+      .calendario-movil { display: block !important; }
     }
 
     .nido-header {
@@ -1106,6 +1112,129 @@
     .evento-dot.evento { background: #FF9800; }
     .evento-dot.cita { background: #2196F3; }
     .evento-dot.reserva { background: #9C27B0; }
+
+    /* Mostrar/Ocultar según dispositivo */
+    .desktop-only { display: inline; }
+    .mobile-only { display: none; }
+    .calendario-desktop { display: block; }
+    .calendario-movil { display: none; }
+
+    /* ============ CALENDARIO MÓVIL (Próximos 3 días) ============ */
+    .proximos-dias { display: flex; flex-direction: column; gap: 12px; }
+    
+    .dia-grupo {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      padding: 12px;
+    }
+    
+    .dia-grupo.hoy {
+      background: linear-gradient(135deg, rgba(122,158,126,0.15) 0%, rgba(122,158,126,0.05) 100%);
+      border-left: 3px solid var(--sage);
+    }
+    
+    .dia-header {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    
+    .dia-label {
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--sage-dark);
+      text-transform: uppercase;
+    }
+    
+    .dia-grupo.hoy .dia-label { color: var(--sage); }
+    
+    .dia-fecha {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    
+    .dia-eventos { display: flex; flex-direction: column; gap: 6px; }
+    
+    .hito-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--white);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .hito-item:hover { transform: translateX(4px); box-shadow: var(--shadow-soft); }
+    .hito-item:active { transform: scale(0.98); }
+    
+    .hito-icono { font-size: 1rem; flex-shrink: 0; }
+    
+    .hito-info { flex: 1; min-width: 0; }
+    
+    .hito-titulo {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .hito-meta {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      display: flex;
+      gap: 6px;
+    }
+    
+    .hito-hora { color: var(--sage-dark); font-weight: 600; }
+    
+    .dia-vacio {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 4px 0;
+    }
+    
+    .dia-mas {
+      font-size: 0.7rem;
+      color: var(--sage-dark);
+      text-align: center;
+      padding: 4px;
+      cursor: pointer;
+    }
+    
+    .dia-mas:hover { text-decoration: underline; }
+    
+    .calendario-ver-mas {
+      display: flex;
+      justify-content: center;
+      margin-top: 12px;
+    }
+    
+    .btn-ver-calendario {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 20px;
+      background: var(--white);
+      border: 1px solid var(--sage-light);
+      border-radius: var(--radius-full);
+      color: var(--sage-dark);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-ver-calendario:hover {
+      background: var(--sage);
+      color: white;
+      border-color: var(--sage);
+    }
 
     /* ============ TABLÓN ============ */
     .tablon-card { border-left: 4px solid var(--sage); }
@@ -2944,15 +3073,20 @@
         <div class="calendario-col">
           <div class="card">
             <div class="card-header">
-              <span class="card-title">📅 <span id="mes-actual">Diciembre</span></span>
+              <span class="card-title">📅 <span id="mes-actual" class="desktop-only">Diciembre</span><span class="mobile-only">Próximos días</span></span>
               <div class="card-actions">
                 <button class="card-action-btn" onclick="abrirModalHito()" title="Crear cita o evento">+ Nuevo</button>
-                <a href="calendario.html" class="card-action">Ver más →</a>
+                <a href="calendario.html" class="card-action desktop-only">Ver más →</a>
               </div>
             </div>
             <div class="card-body">
-              <div class="calendario-mini" id="calendario-mini"></div>
-              <div class="eventos-hoy" id="eventos-hoy"></div>
+              <!-- Vista Desktop: Calendario cuadrícula -->
+              <div class="calendario-desktop">
+                <div class="calendario-mini" id="calendario-mini"></div>
+                <div class="eventos-hoy" id="eventos-hoy"></div>
+              </div>
+              <!-- Vista Móvil: Próximos 3 días -->
+              <div class="calendario-movil" id="calendario-movil"></div>
             </div>
           </div>
         </div>
@@ -4394,6 +4528,9 @@
 
       // Mostrar eventos de hoy
       renderEventosHoy(hoy);
+      
+      // Renderizar versión móvil
+      renderCalendarioMovil();
     }
 
     function renderEventosHoy(fecha) {
@@ -4413,6 +4550,123 @@
           <span>${e.titulo}${e.hora ? ` · ${e.hora}` : ''}</span>
         </div>
       `).join('') + (eventosHoy.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted);text-align:center;">+${eventosHoy.length - 3} más</div>` : '');
+    }
+
+    function renderCalendarioMovil() {
+      const container = document.getElementById('calendario-movil');
+      if (!container) return;
+      
+      const hoy = new Date();
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      
+      // Iconos según tipo de evento
+      const iconos = {
+        'cumple': '🎂',
+        'especial': '⭐',
+        'evento': '🎉',
+        'cita': '📋',
+        'reserva': '🏠',
+        'mantenimiento': '🔧',
+        'default': '📌'
+      };
+      
+      // Agrupar eventos por fecha
+      const eventosPorFecha = {};
+      eventosCalendario.forEach(e => {
+        if (!eventosPorFecha[e.fecha]) eventosPorFecha[e.fecha] = [];
+        eventosPorFecha[e.fecha].push(e);
+      });
+      
+      // Generar HTML para HOY, MAÑANA, PASADO
+      let html = '<div class="proximos-dias">';
+      
+      for (let i = 0; i < 3; i++) {
+        const fecha = new Date(hoy);
+        fecha.setDate(hoy.getDate() + i);
+        
+        const fechaStr = `${fecha.getFullYear()}-${String(fecha.getMonth()+1).padStart(2,'0')}-${String(fecha.getDate()).padStart(2,'0')}`;
+        const eventosDelDia = eventosPorFecha[fechaStr] || [];
+        
+        // Label del día
+        let label = '';
+        if (i === 0) label = 'Hoy';
+        else if (i === 1) label = 'Mañana';
+        else label = 'Pasado';
+        
+        // Fecha formateada
+        const fechaFormateada = `${diasSemana[fecha.getDay()]} ${fecha.getDate()} ${meses[fecha.getMonth()]}`;
+        
+        html += `
+          <div class="dia-grupo ${i === 0 ? 'hoy' : ''}">
+            <div class="dia-header">
+              <span class="dia-label">${label}</span>
+              <span class="dia-fecha">${fechaFormateada}</span>
+            </div>
+            <div class="dia-eventos">
+        `;
+        
+        if (eventosDelDia.length === 0) {
+          html += `<div class="dia-vacio">Sin eventos</div>`;
+        } else {
+          // Mostrar hasta 3 eventos
+          const eventosAMostrar = eventosDelDia.slice(0, 3);
+          
+          eventosAMostrar.forEach(evento => {
+            const icono = iconos[evento.tipo] || iconos.default;
+            // Limpiar el título (quitar emoji si ya tiene)
+            const tituloLimpio = evento.titulo.replace(/^[\u{1F300}-\u{1F9FF}]\s*/u, '');
+            
+            html += `
+              <div class="hito-item" onclick="verDetalleHito('${evento.id || ''}', '${evento.tipo}', '${fechaStr}')" title="${tituloLimpio}">
+                <span class="hito-icono">${icono}</span>
+                <div class="hito-info">
+                  <div class="hito-titulo">${tituloLimpio}</div>
+                  <div class="hito-meta">
+                    ${evento.hora ? `<span class="hito-hora">${evento.hora}</span>` : ''}
+                    ${evento.lugar ? `<span>${evento.lugar}</span>` : ''}
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          
+          // Si hay más de 3
+          if (eventosDelDia.length > 3) {
+            html += `<div class="dia-mas" onclick="window.location.href='calendario.html'">+${eventosDelDia.length - 3} más</div>`;
+          }
+        }
+        
+        html += `
+            </div>
+          </div>
+        `;
+      }
+      
+      // Botón ver más
+      html += `
+        </div>
+        <div class="calendario-ver-mas">
+          <button class="btn-ver-calendario" onclick="window.location.href='calendario.html'">
+            <span>📆</span> Ver semana completa
+          </button>
+        </div>
+      `;
+      
+      container.innerHTML = html;
+    }
+    
+    // Función para ver detalle de un hito (abre modal o navega)
+    function verDetalleHito(id, tipo, fecha) {
+      // Si tiene ID, podría abrir un modal de detalle
+      // Por ahora, navega al calendario con la fecha seleccionada
+      if (id) {
+        // Podría implementarse un modal de detalle aquí
+        console.log('Ver detalle:', id, tipo, fecha);
+      }
+      // Navegar al calendario
+      window.location.href = `calendario.html?fecha=${fecha}`;
+    }
     }
 
     // ============ TAREAS (REAL) ============
