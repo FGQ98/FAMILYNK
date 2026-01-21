@@ -1,0 +1,214 @@
+<!--
+  SNIPPET: Toggle de Tracking por Rama
+  
+  Añadir este código donde muestres la lista de familias/ramas en admin-sistema.html
+  
+  REQUISITOS:
+  1. Tener acceso a `db` (Firestore)
+  2. Tener la lista de familias cargada
+-->
+
+<!-- ============ CSS (añadir a tu <style>) ============ -->
+<style>
+  /* Toggle switch para tracking */
+  .tracking-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tracking-toggle-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.3s;
+    border-radius: 24px;
+  }
+
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  input:checked + .toggle-slider {
+    background-color: var(--sage, #7A9E7E);
+  }
+
+  input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+  }
+
+  .tracking-status {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .tracking-status.activo {
+    background: rgba(122, 158, 126, 0.2);
+    color: #5C7D5F;
+  }
+
+  .tracking-status.inactivo {
+    background: rgba(0, 0, 0, 0.08);
+    color: #999;
+  }
+</style>
+
+
+<!-- ============ HTML (dentro de cada tarjeta de familia) ============ -->
+<!--
+  Ejemplo de cómo añadirlo a una tarjeta de familia existente.
+  Reemplaza ${familia.id} con el ID real de la familia.
+-->
+
+<div class="tracking-toggle">
+  <span class="tracking-toggle-label">📊 Tracking:</span>
+  <label class="toggle-switch">
+    <input type="checkbox" 
+           id="tracking-${familia.id}"
+           onchange="toggleTracking('${familia.id}', this.checked)"
+           ${familia.trackingActivo ? 'checked' : ''}>
+    <span class="toggle-slider"></span>
+  </label>
+  <span class="tracking-status ${familia.trackingActivo ? 'activo' : 'inactivo'}" 
+        id="tracking-status-${familia.id}">
+    ${familia.trackingActivo ? 'Activo' : 'Inactivo'}
+  </span>
+</div>
+
+
+<!-- ============ JAVASCRIPT (añadir a tu <script>) ============ -->
+<script>
+  /**
+   * Activar/desactivar tracking para una familia
+   * @param {string} familiaId - ID de la familia
+   * @param {boolean} activo - Si debe estar activo o no
+   */
+  async function toggleTracking(familiaId, activo) {
+    const statusEl = document.getElementById(`tracking-status-${familiaId}`);
+    const toggleEl = document.getElementById(`tracking-${familiaId}`);
+    
+    // Estado visual de carga
+    if (statusEl) {
+      statusEl.textContent = '...';
+      statusEl.className = 'tracking-status';
+    }
+    
+    try {
+      await db.collection('familias').doc(familiaId).update({
+        trackingActivo: activo,
+        trackingModificadoPor: currentUser?.uid || null,
+        trackingModificadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Actualizar UI
+      if (statusEl) {
+        statusEl.textContent = activo ? 'Activo' : 'Inactivo';
+        statusEl.className = `tracking-status ${activo ? 'activo' : 'inactivo'}`;
+      }
+      
+      console.log(`✅ Tracking ${activo ? 'activado' : 'desactivado'} para familia ${familiaId}`);
+      
+    } catch (error) {
+      console.error('Error actualizando tracking:', error);
+      
+      // Revertir toggle
+      if (toggleEl) toggleEl.checked = !activo;
+      if (statusEl) {
+        statusEl.textContent = !activo ? 'Activo' : 'Inactivo';
+        statusEl.className = `tracking-status ${!activo ? 'activo' : 'inactivo'}`;
+      }
+      
+      alert('Error al cambiar el tracking: ' + error.message);
+    }
+  }
+
+  /**
+   * Activar tracking para múltiples familias (bulk)
+   * @param {string[]} familiaIds - Array de IDs
+   * @param {boolean} activo - Estado deseado
+   */
+  async function toggleTrackingBulk(familiaIds, activo) {
+    const batch = db.batch();
+    
+    familiaIds.forEach(id => {
+      const ref = db.collection('familias').doc(id);
+      batch.update(ref, {
+        trackingActivo: activo,
+        trackingModificadoPor: currentUser?.uid || null,
+        trackingModificadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    });
+    
+    try {
+      await batch.commit();
+      console.log(`✅ Tracking ${activo ? 'activado' : 'desactivado'} para ${familiaIds.length} familias`);
+      // Recargar lista o actualizar UI
+      location.reload();
+    } catch (error) {
+      console.error('Error en bulk update:', error);
+      alert('Error: ' + error.message);
+    }
+  }
+</script>
+
+
+<!-- ============ EJEMPLO DE USO EN LISTADO ============ -->
+<!--
+  Si tienes un bucle que renderiza familias, así quedaría:
+  
+  familias.forEach(familia => {
+    html += `
+      <div class="familia-card">
+        <h3>${familia.nombre}</h3>
+        <p>${familia.miembros} miembros</p>
+        
+        <!-- Toggle de tracking -->
+        <div class="tracking-toggle">
+          <span class="tracking-toggle-label">📊 Tracking:</span>
+          <label class="toggle-switch">
+            <input type="checkbox" 
+                   id="tracking-${familia.id}"
+                   onchange="toggleTracking('${familia.id}', this.checked)"
+                   ${familia.trackingActivo ? 'checked' : ''}>
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="tracking-status ${familia.trackingActivo ? 'activo' : 'inactivo'}" 
+                id="tracking-status-${familia.id}">
+            ${familia.trackingActivo ? 'Activo' : 'Inactivo'}
+          </span>
+        </div>
+      </div>
+    `;
+  });
+-->

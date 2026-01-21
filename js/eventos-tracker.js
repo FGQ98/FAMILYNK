@@ -42,7 +42,8 @@ const EventosTracker = {
     generacion: null,
     seccionActual: null,
     origen: 'directo',
-    initialized: false
+    initialized: false,
+    trackingActivo: false  // Por defecto desactivado hasta verificar
   },
   
   // Buffer para batch de eventos
@@ -59,6 +60,18 @@ const EventosTracker = {
     try {
       // Detectar contexto desde sessionStorage o URL
       await this.detectarContexto();
+      
+      // Verificar si el tracking está activo para esta rama
+      await this.verificarTrackingActivo();
+      
+      // Si no está activo, no continuar
+      if (!this.state.trackingActivo) {
+        if (this.config.debug) {
+          console.log('[Tracker] Tracking desactivado para esta rama');
+        }
+        this.state.initialized = true;
+        return;
+      }
       
       // Detectar origen (cómo llegó el usuario)
       this.detectarOrigen();
@@ -83,6 +96,37 @@ const EventosTracker = {
       
     } catch (error) {
       console.warn('[Tracker] Error al inicializar:', error);
+    }
+  },
+  
+  /**
+   * Verificar si el tracking está activo para la rama actual
+   */
+  async verificarTrackingActivo() {
+    if (!this.state.ramaId) {
+      this.state.trackingActivo = false;
+      return;
+    }
+    
+    try {
+      // Consultar la familia/rama para ver si tiene tracking activo
+      const familiaDoc = await db.collection('familias').doc(this.state.ramaId).get();
+      
+      if (familiaDoc.exists) {
+        const data = familiaDoc.data();
+        // Por defecto false si no existe el campo
+        this.state.trackingActivo = data.trackingActivo === true;
+      } else {
+        this.state.trackingActivo = false;
+      }
+      
+      if (this.config.debug) {
+        console.log('[Tracker] Tracking activo:', this.state.trackingActivo);
+      }
+      
+    } catch (error) {
+      console.warn('[Tracker] Error verificando tracking:', error);
+      this.state.trackingActivo = false;
     }
   },
   
@@ -208,6 +252,7 @@ const EventosTracker = {
    */
   registrar(accion, seccion = null, extras = {}) {
     if (!this.config.enabled) return;
+    if (!this.state.trackingActivo) return;  // Tracking desactivado para esta rama
     if (!this.state.ramaId) {
       if (this.config.debug) console.warn('[Tracker] Sin ramaId, evento ignorado');
       return;
