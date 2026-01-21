@@ -1165,25 +1165,30 @@
 
         let bienes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        // Filtrar por visibilidad
-        bienes = bienes.filter(bien => {
-          const visibilidad = bien.visibilidad || 'rama'; // Por defecto rama (compatibilidad)
-          
-          if (visibilidad === 'rama') {
-            return true; // Todos en la familia pueden ver
-          }
-          
-          if (visibilidad === 'nido') {
-            return bien.nidoCreadorId === userNidoId; // Solo si es mi nido
-          }
-          
-          if (visibilidad === 'estirpe') {
-            // Puedo ver si el nido creador está en mi cadena de ancestros
-            return cadenaAncestros.includes(bien.nidoCreadorId);
-          }
-          
-          return true; // Fallback
-        });
+        // Admin-rama ve TODOS los bienes sin filtro de visibilidad
+        if (!esAdmin) {
+          // Filtrar por visibilidad solo para usuarios normales
+          bienes = bienes.filter(bien => {
+            const visibilidad = bien.visibilidad || 'rama'; // Por defecto rama (compatibilidad)
+            
+            if (visibilidad === 'rama') {
+              return true; // Todos en la familia pueden ver
+            }
+            
+            if (visibilidad === 'nido') {
+              return bien.nidoCreadorId === userNidoId; // Solo si es mi nido
+            }
+            
+            if (visibilidad === 'estirpe') {
+              // Puedo ver si el nido creador está en mi cadena de ancestros
+              return cadenaAncestros.includes(bien.nidoCreadorId);
+            }
+            
+            return true; // Fallback
+          });
+        } else {
+          console.log('👑 Admin-rama: mostrando TODOS los bienes sin filtro de visibilidad');
+        }
 
         bienesData = bienes;
         
