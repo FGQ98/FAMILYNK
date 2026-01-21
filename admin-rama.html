@@ -191,6 +191,12 @@
       margin-bottom: 16px;
     }
 
+    .card.subseccion-card {
+      margin-left: 24px;
+      border-left: 3px solid var(--sage-light);
+      background: linear-gradient(135deg, var(--white) 0%, rgba(122,158,126,0.03) 100%);
+    }
+
     .card-title {
       font-weight: 700;
       font-size: 1rem;
@@ -732,14 +738,47 @@
 
     <section class="admin-section" id="section-secciones">
       <div class="section-header"><h2 class="section-title">📂 Secciones</h2></div>
+      
+      <!-- Card: Secciones Principales -->
       <div class="card">
-        <div class="card-title">Secciones principales</div>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Activa o desactiva secciones para toda la estirpe</p>
-        <div class="config-grid" id="secciones-grid"></div>
+        <div class="card-title">🗂️ Secciones principales</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Activa o desactiva secciones completas para toda la rama</p>
+        <div class="config-grid" id="secciones-principales-grid"></div>
       </div>
-      <div class="card">
-        <div class="card-title">Módulos del Cerebro</div>
+
+      <!-- Card: Cerebro -->
+      <div class="card subseccion-card" id="card-cerebro">
+        <div class="card-title">🧠 Módulos del Cerebro</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Configura qué módulos del Cerebro están disponibles</p>
         <div class="config-grid" id="cerebro-modulos-grid"></div>
+      </div>
+
+      <!-- Card: Lo Común -->
+      <div class="card subseccion-card" id="card-locomun">
+        <div class="card-title">🏠 Tipos de bienes en Lo Común</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Elige qué tipos de bienes se pueden gestionar</p>
+        <div class="config-grid" id="locomun-tipos-grid"></div>
+      </div>
+
+      <!-- Card: Legado -->
+      <div class="card subseccion-card" id="card-legado">
+        <div class="card-title">📜 Secciones del Legado</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Activa las secciones de legado familiar que quieras usar</p>
+        <div class="config-grid" id="legado-secciones-grid"></div>
+      </div>
+
+      <!-- Card: Activación -->
+      <div class="card subseccion-card" id="card-activacion">
+        <div class="card-title">🎯 Herramientas de Activación</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Elige qué herramientas están disponibles para los miembros</p>
+        <div class="config-grid" id="activacion-herramientas-grid"></div>
+      </div>
+
+      <!-- Card: CTAs -->
+      <div class="card">
+        <div class="card-title">🎬 Acciones rápidas (CTAs)</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Configura qué botones de acción aparecen en el panel principal</p>
+        <div class="config-grid" id="ctas-grid"></div>
       </div>
     </section>
 
@@ -1018,19 +1057,60 @@
     let tiposReservaData = [];
     let editandoTipoId = null;
 
-    const seccionesDisponibles = [
+    // ============ CONFIGURACIÓN DE SECCIONES ============
+    const seccionesPrincipales = [
+      { id: 'miNido', nombre: 'Mi Nido', icono: '🪺', desc: 'Panel personal del nido' },
       { id: 'arbol', nombre: 'Árbol', icono: '🌳', desc: 'Árbol genealógico' },
       { id: 'cerebro', nombre: 'Cerebro', icono: '🧠', desc: 'Centro de conocimiento' },
       { id: 'locomun', nombre: 'Lo Común', icono: '🏠', desc: 'Bienes compartidos' },
       { id: 'legado', nombre: 'Legado', icono: '📜', desc: 'Historia y tradiciones' },
-      { id: 'activacion', nombre: 'Activación', icono: '📅', desc: 'Calendario y eventos' }
+      { id: 'activacion', nombre: 'Activación', icono: '🎯', desc: 'Herramientas y dinámicas' },
+      { id: 'chat', nombre: 'Chat', icono: '💬', desc: 'Mensajería familiar' }
     ];
 
     const cerebroModulos = [
-      { id: 'memoria', nombre: 'Memoria', icono: '🗄️', desc: 'Repositorio de documentos' },
-      { id: 'razonamiento', nombre: 'Razonamiento', icono: '📐', desc: 'Instrucciones y pautas' },
+      { id: 'analisis', nombre: 'Análisis', icono: '📊', desc: 'Estadísticas de uso' },
       { id: 'intuicion', nombre: 'Intuición', icono: '💡', desc: 'Propuestas y sugerencias' },
-      { id: 'analisis', nombre: 'Análisis', icono: '📊', desc: 'Estadísticas' }
+      { id: 'memoria', nombre: 'Memoria', icono: '🗄️', desc: 'Repositorio de documentos' },
+      { id: 'razonamiento', nombre: 'Razonamiento', icono: '📐', desc: 'Instrucciones y pautas' }
+    ];
+
+    const locomunTipos = [
+      { id: 'inmuebles', nombre: 'Inmuebles', icono: '🏡', desc: 'Casas, pisos, locales' },
+      { id: 'terrenos', nombre: 'Terrenos', icono: '🌾', desc: 'Fincas, parcelas, campos' },
+      { id: 'vehiculos', nombre: 'Vehículos', icono: '🚗', desc: 'Coches, motos, embarcaciones' },
+      { id: 'ajuar', nombre: 'Ajuar', icono: '🪑', desc: 'Mobiliario, electrodomésticos' }
+    ];
+
+    const legadoSecciones = [
+      { id: 'recetas', nombre: 'Recetas', icono: '🍳', desc: 'Recetario familiar' },
+      { id: 'fotos', nombre: 'Fotos', icono: '📷', desc: 'Álbum fotográfico' },
+      { id: 'historias', nombre: 'Historias', icono: '📖', desc: 'Relatos y anécdotas' },
+      { id: 'valores', nombre: 'Valores', icono: '💎', desc: 'Principios familiares' },
+      { id: 'tradiciones', nombre: 'Tradiciones', icono: '🎄', desc: 'Costumbres y rituales' }
+    ];
+
+    const activacionHerramientas = [
+      { id: 'fechas', nombre: 'Fechas', icono: '📅', desc: 'Acordar fechas' },
+      { id: 'amigo', nombre: 'Amigo Invisible', icono: '🎁', desc: 'Sorteo de regalos' },
+      { id: 'listas', nombre: 'Listas', icono: '📝', desc: 'Listas colaborativas' },
+      { id: 'porras', nombre: 'Porras', icono: '🎲', desc: 'Apuestas amistosas' },
+      { id: 'mercadillo', nombre: 'Mercadillo', icono: '🏷️', desc: 'Compra-venta familiar' },
+      { id: 'votaciones', nombre: 'Votaciones', icono: '🗳️', desc: 'Decisiones colectivas' },
+      { id: 'encuestas', nombre: 'Encuestas', icono: '📊', desc: 'Sondeos de opinión' },
+      { id: 'turnos', nombre: 'Turnos', icono: '🔄', desc: 'Rotación de tareas' },
+      { id: 'asistencia', nombre: 'Asistencia', icono: '✋', desc: 'Confirmar asistencia' },
+      { id: 'mesas', nombre: 'Colocar mesas', icono: '🪑', desc: 'Distribución de invitados' },
+      { id: 'escaleta', nombre: 'Escaleta', icono: '📋', desc: 'Programa de eventos' }
+    ];
+
+    const ctasDisponibles = [
+      { id: 'averia', nombre: 'Avisar avería', icono: '🔧', desc: 'Reportar problemas' },
+      { id: 'iniciativa', nombre: 'Proponer idea', icono: '💡', desc: 'Sugerir iniciativas' },
+      { id: 'evento', nombre: 'Solicitar evento', icono: '🎉', desc: 'Pedir celebraciones' },
+      { id: 'reserva', nombre: 'Solicitar reserva', icono: '📅', desc: 'Reservar bienes' },
+      { id: 'queo', nombre: 'Enviar queo', icono: '📣', desc: 'Comunicados rápidos' },
+      { id: 'convocar', nombre: 'Convocar', icono: '✋', desc: 'Llamar a reunión' }
     ];
 
     const permisosBase = [
@@ -1580,23 +1660,122 @@
     }
 
     function renderSecciones() {
-      const config = familiaData.seccionesActivas || {};
-      document.getElementById('secciones-grid').innerHTML = seccionesDisponibles.map(sec => `<div class="config-item"><div class="config-item-info"><span class="config-item-icon">${sec.icono}</span><div><div class="config-item-name">${sec.nombre}</div><div class="config-item-desc">${sec.desc}</div></div></div><label class="toggle-switch"><input type="checkbox" ${config[sec.id] !== false ? 'checked' : ''} onchange="toggleSeccion('${sec.id}', this.checked)"><span class="toggle-slider"></span></label></div>`).join('');
+      const config = familiaData.configSecciones || {};
+      
+      // Valores por defecto
+      const defaultConfig = {
+        secciones: { miNido: true, arbol: false, cerebro: false, locomun: true, legado: false, activacion: true, chat: false },
+        cerebro: { analisis: false, intuicion: false, memoria: false, razonamiento: false },
+        locomun: { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true },
+        legado: { recetas: true, fotos: false, historias: false, valores: false, tradiciones: false },
+        activacion: { fechas: true, amigo: true, listas: true, porras: true, mercadillo: true, votaciones: false, encuestas: false, turnos: false, asistencia: false, mesas: false, escaleta: false },
+        ctas: { averia: true, iniciativa: true, evento: true, reserva: true, queo: true, convocar: true }
+      };
 
-      const cerebroConfig = familiaData.cerebroModulos || {};
-      document.getElementById('cerebro-modulos-grid').innerHTML = cerebroModulos.map(mod => `<div class="config-item"><div class="config-item-info"><span class="config-item-icon">${mod.icono}</span><div><div class="config-item-name">${mod.nombre}</div><div class="config-item-desc">${mod.desc}</div></div></div><label class="toggle-switch"><input type="checkbox" ${cerebroConfig[mod.id] !== false ? 'checked' : ''} onchange="toggleCerebroModulo('${mod.id}', this.checked)"><span class="toggle-slider"></span></label></div>`).join('');
+      const seccionesConfig = config.secciones || defaultConfig.secciones;
+      const cerebroConfig = config.cerebro || defaultConfig.cerebro;
+      const locomunConfig = config.locomun || defaultConfig.locomun;
+      const legadoConfig = config.legado || defaultConfig.legado;
+      const activacionConfig = config.activacion || defaultConfig.activacion;
+      const ctasConfig = config.ctas || defaultConfig.ctas;
+
+      // Render: Secciones principales
+      document.getElementById('secciones-principales-grid').innerHTML = seccionesPrincipales.map(sec => 
+        renderToggleItem(sec, seccionesConfig[sec.id] !== false, 'secciones', sec.id)
+      ).join('');
+
+      // Render: Cerebro
+      document.getElementById('cerebro-modulos-grid').innerHTML = cerebroModulos.map(mod => 
+        renderToggleItem(mod, cerebroConfig[mod.id] === true, 'cerebro', mod.id)
+      ).join('');
+
+      // Render: Lo Común
+      document.getElementById('locomun-tipos-grid').innerHTML = locomunTipos.map(tipo => 
+        renderToggleItem(tipo, locomunConfig[tipo.id] !== false, 'locomun', tipo.id)
+      ).join('');
+
+      // Render: Legado
+      document.getElementById('legado-secciones-grid').innerHTML = legadoSecciones.map(sec => 
+        renderToggleItem(sec, legadoConfig[sec.id] === true, 'legado', sec.id)
+      ).join('');
+
+      // Render: Activación
+      document.getElementById('activacion-herramientas-grid').innerHTML = activacionHerramientas.map(her => 
+        renderToggleItem(her, activacionConfig[her.id] === true, 'activacion', her.id)
+      ).join('');
+
+      // Render: CTAs
+      document.getElementById('ctas-grid').innerHTML = ctasDisponibles.map(cta => 
+        renderToggleItem(cta, ctasConfig[cta.id] !== false, 'ctas', cta.id)
+      ).join('');
+
+      // Mostrar/ocultar cards de subsecciones según sección principal
+      actualizarVisibilidadCards(seccionesConfig);
     }
 
+    function renderToggleItem(item, activo, grupo, id) {
+      return `
+        <div class="config-item">
+          <div class="config-item-info">
+            <span class="config-item-icon">${item.icono}</span>
+            <div>
+              <div class="config-item-name">${item.nombre}</div>
+              <div class="config-item-desc">${item.desc}</div>
+            </div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${activo ? 'checked' : ''} onchange="toggleConfigItem('${grupo}', '${id}', this.checked)">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      `;
+    }
+
+    function actualizarVisibilidadCards(seccionesConfig) {
+      // Cards de subsecciones se muestran solo si la sección principal está activa
+      const cardCerebro = document.getElementById('card-cerebro');
+      const cardLocomun = document.getElementById('card-locomun');
+      const cardLegado = document.getElementById('card-legado');
+      const cardActivacion = document.getElementById('card-activacion');
+
+      if (cardCerebro) cardCerebro.style.display = seccionesConfig.cerebro !== false ? 'block' : 'none';
+      if (cardLocomun) cardLocomun.style.display = seccionesConfig.locomun !== false ? 'block' : 'none';
+      if (cardLegado) cardLegado.style.display = seccionesConfig.legado !== false ? 'block' : 'none';
+      if (cardActivacion) cardActivacion.style.display = seccionesConfig.activacion !== false ? 'block' : 'none';
+    }
+
+    async function toggleConfigItem(grupo, id, activo) {
+      try {
+        // Actualizar en Firestore
+        await db.collection('familias').doc(familiaData.id).update({ 
+          [`configSecciones.${grupo}.${id}`]: activo 
+        });
+        
+        // Actualizar local
+        if (!familiaData.configSecciones) familiaData.configSecciones = {};
+        if (!familiaData.configSecciones[grupo]) familiaData.configSecciones[grupo] = {};
+        familiaData.configSecciones[grupo][id] = activo;
+
+        // Si es una sección principal, actualizar visibilidad de cards
+        if (grupo === 'secciones') {
+          const seccionesConfig = familiaData.configSecciones.secciones || {};
+          actualizarVisibilidadCards(seccionesConfig);
+        }
+
+        console.log(`✅ ${grupo}.${id} = ${activo}`);
+      } catch (error) {
+        console.error('Error guardando configuración:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    }
+
+    // Funciones legacy para compatibilidad
     async function toggleSeccion(id, activo) {
-      await db.collection('familias').doc(familiaData.id).update({ [`seccionesActivas.${id}`]: activo });
-      if (!familiaData.seccionesActivas) familiaData.seccionesActivas = {};
-      familiaData.seccionesActivas[id] = activo;
+      await toggleConfigItem('secciones', id, activo);
     }
 
     async function toggleCerebroModulo(id, activo) {
-      await db.collection('familias').doc(familiaData.id).update({ [`cerebroModulos.${id}`]: activo });
-      if (!familiaData.cerebroModulos) familiaData.cerebroModulos = {};
-      familiaData.cerebroModulos[id] = activo;
+      await toggleConfigItem('cerebro', id, activo);
     }
 
     function renderPermisos() {
