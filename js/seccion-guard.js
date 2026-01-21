@@ -33,8 +33,7 @@ const SeccionGuard = {
     locomun: {
       inmuebles: true,
       terrenos: true,
-      vehiculos: true,
-      ajuar: true
+      vehiculos: true
     }
   },
 

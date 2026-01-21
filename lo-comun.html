@@ -327,7 +327,38 @@
 
     .bien-stat strong { color: var(--text); }
 
-    /* Botón editar en card */
+    /* Botones de acción en card */
+    .bien-card-actions {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      display: flex;
+      gap: 6px;
+      opacity: 0;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+
+    .bien-card:hover .bien-card-actions { opacity: 1; }
+
+    .bien-card-btn {
+      background: var(--cream);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .bien-card-btn:hover { background: var(--sage-muted); }
+    .bien-card-btn.delete:hover { background: #fee; }
+
+    /* Legacy - mantener por si acaso */
     .bien-card-edit {
       position: absolute;
       bottom: 16px;
@@ -769,7 +800,6 @@
       <button class="filter-btn" id="filter-inmueble" onclick="filtrarBienes('inmueble')">🏠 Inmuebles</button>
       <button class="filter-btn" id="filter-terreno" onclick="filtrarBienes('terreno')">🌳 Terrenos</button>
       <button class="filter-btn" id="filter-vehiculo" onclick="filtrarBienes('vehiculo')">🚗 Vehículos</button>
-      <button class="filter-btn" id="filter-ajuar" onclick="filtrarBienes('ajuar')">🪑 Ajuar</button>
     </div>
 
     <!-- Loading -->
@@ -866,13 +896,6 @@
                     <div class="tipo-box">
                       <span class="tipo-icon">🚗</span>
                       <span class="tipo-name">Vehículo</span>
-                    </div>
-                  </label>
-                  <label class="tipo-option" id="tipo-option-ajuar">
-                    <input type="radio" name="bien-tipo" value="ajuar">
-                    <div class="tipo-box">
-                      <span class="tipo-icon">🪑</span>
-                      <span class="tipo-name">Ajuar</span>
                     </div>
                   </label>
                 </div>
@@ -1027,9 +1050,9 @@
     let esAdmin = false;       // Admin-rama
     let esAdminNido = false;   // Admin de su nido
     let esCreadorEstirpe = false; // Su nido es raíz o tiene descendientes
-    let tiposActivos = { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true }; // Config de tipos
+    let tiposActivos = { inmuebles: true, terrenos: true, vehiculos: true }; // Config de tipos
 
-    const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
+    const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗' };
     const visibilidadLabels = { rama: '🌳 Rama', estirpe: '👨‍👩‍👧‍👦 Estirpe', nido: '🏠 Nido' };
 
     // ========== AUTH ==========
@@ -1074,7 +1097,7 @@
           }
           
           // Cargar config de tipos
-          tiposActivos = config.locomun || { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true };
+          tiposActivos = config.locomun || { inmuebles: true, terrenos: true, vehiculos: true };
           aplicarFiltrosTipos();
         }
       }
@@ -1211,7 +1234,7 @@
           // Si NO es admin, aplicar filtros
           if (!esAdmin) {
             const config = familia.configSecciones || {};
-            tiposActivos = config.locomun || { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true };
+            tiposActivos = config.locomun || { inmuebles: true, terrenos: true, vehiculos: true };
             
             console.log('⚙️ Tipos de bienes activos:', tiposActivos);
             aplicarFiltrosTipos();
@@ -1228,8 +1251,7 @@
       const tipoMap = {
         inmueble: 'inmuebles',
         terreno: 'terrenos',
-        vehiculo: 'vehiculos',
-        ajuar: 'ajuar'
+        vehiculo: 'vehiculos'
       };
 
       // Ocultar botones de filtro desactivados
@@ -1374,13 +1396,15 @@
     function renderBienes() {
       const grid = document.getElementById('bienes-grid');
       const empty = document.getElementById('empty-state');
+      
+      // Solo admins pueden editar/eliminar
+      const puedeCrear = esAdmin || esAdminNido;
 
       // Mapa de tipo singular a plural (como está en config)
       const tipoMap = {
         inmueble: 'inmuebles',
         terreno: 'terrenos',
-        vehiculo: 'vehiculos',
-        ajuar: 'ajuar'
+        vehiculo: 'vehiculos'
       };
 
       let bienesFiltrados = bienesData;
@@ -1450,7 +1474,12 @@
                 </div>
               </div>
             </a>
-            <button class="bien-card-edit" onclick="editarBien('${b.id}')" title="Edición rápida">✏️</button>
+            ${puedeCrear ? `
+            <div class="bien-card-actions">
+              <button class="bien-card-btn" onclick="editarBien('${b.id}')" title="Editar">✏️</button>
+              <button class="bien-card-btn delete" onclick="eliminarBien('${b.id}', '${b.nombre.replace(/'/g, "\\'")}')" title="Eliminar">🗑️</button>
+            </div>
+            ` : ''}
           </div>
         `;
       }).join('');
@@ -1540,6 +1569,38 @@
     function editarBien(bienId) {
       const bien = bienesData.find(b => b.id === bienId);
       if (bien) abrirModalBien(bien);
+    }
+
+    async function eliminarBien(bienId, nombreBien) {
+      // Doble confirmación
+      if (!confirm(`¿Eliminar el bien "${nombreBien}"?`)) return;
+      if (!confirm(`⚠️ Esta acción NO se puede deshacer.\n\nSe eliminarán también todas las reservas, gastos, inventario y documentos asociados.\n\n¿Confirmar eliminación de "${nombreBien}"?`)) return;
+      
+      try {
+        // Eliminar subcolecciones primero
+        const subcolecciones = ['reservas', 'gastos', 'inventario', 'gruposAjuar'];
+        
+        for (const subcol of subcolecciones) {
+          const snap = await db.collection('bienes').doc(bienId).collection(subcol).get();
+          const batch = db.batch();
+          snap.docs.forEach(doc => batch.delete(doc.ref));
+          if (snap.docs.length > 0) await batch.commit();
+        }
+        
+        // Eliminar el bien
+        await db.collection('bienes').doc(bienId).delete();
+        
+        // Actualizar lista local
+        bienesData = bienesData.filter(b => b.id !== bienId);
+        renderBienes();
+        
+        // Feedback
+        alert(`✅ Bien "${nombreBien}" eliminado correctamente`);
+        
+      } catch (error) {
+        console.error('Error eliminando bien:', error);
+        alert('❌ Error al eliminar: ' + error.message);
+      }
     }
 
     // Click fuera para cerrar
