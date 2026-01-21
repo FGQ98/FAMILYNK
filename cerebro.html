@@ -10,6 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/eventos-tracker.js"></script>
   <style>
     :root {
       --sage: #7A9E7E;
@@ -691,6 +692,177 @@
     }
 
     .hidden { display: none !important; }
+
+    /* ============ ANÁLISIS - ARQUETIPOS ============ */
+    .arquetipos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .arquetipo-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .arquetipo-icon { font-size: 2rem; margin-bottom: 8px; }
+    .arquetipo-valor { font-size: 1.8rem; font-weight: 700; color: var(--analisis); }
+    .arquetipo-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .arquetipo-pct { font-size: 0.7rem; color: var(--text-light); }
+
+    /* ============ ANÁLISIS - MÉTRICAS DE USO ============ */
+    .metricas-uso {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metrica-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .metrica-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .metrica-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .metrica-periodo {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      background: var(--cream);
+      padding: 4px 8px;
+      border-radius: var(--radius-full);
+    }
+
+    /* Barras de progreso */
+    .barra-container {
+      margin-bottom: 12px;
+    }
+
+    .barra-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+
+    .barra-label-name { color: var(--text); }
+    .barra-label-value { color: var(--text-muted); font-weight: 600; }
+
+    .barra-track {
+      height: 8px;
+      background: var(--cream);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .barra-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .barra-fill.sage { background: var(--sage); }
+    .barra-fill.terracotta { background: var(--terracotta); }
+    .barra-fill.azul { background: var(--razonamiento); }
+    .barra-fill.morado { background: var(--intuicion); }
+
+    /* Gauge de proactividad */
+    .gauge-container {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 0;
+    }
+
+    .gauge-bar {
+      flex: 1;
+      height: 24px;
+      background: linear-gradient(90deg, var(--terracotta) 0%, var(--sage) 100%);
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .gauge-marker {
+      position: absolute;
+      top: -4px;
+      width: 4px;
+      height: 32px;
+      background: var(--text);
+      border-radius: 2px;
+      transform: translateX(-50%);
+    }
+
+    .gauge-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .gauge-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--analisis);
+      min-width: 60px;
+      text-align: right;
+    }
+
+    /* CTAs completados */
+    .ctas-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .cta-stat {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      font-size: 0.8rem;
+    }
+
+    .cta-stat-icon { font-size: 1.1rem; }
+    .cta-stat-name { flex: 1; color: var(--text-light); }
+    .cta-stat-value { font-weight: 700; color: var(--analisis); }
+
+    /* Loading y empty states */
+    .analisis-loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .analisis-empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .analisis-empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+
   </style>
 </head>
 <body>
@@ -871,14 +1043,14 @@
       <div class="section-header">
         <div>
           <h2 class="section-title analisis">📊 Análisis</h2>
-          <p class="section-description">Estadísticas y métricas</p>
+          <p class="section-description">Patrones de uso y participación familiar</p>
         </div>
         <button class="btn btn-secondary" onclick="exportarDatos()">
           📥 Exportar datos
         </button>
       </div>
 
-      <!-- Stats resumen -->
+      <!-- Stats básicos -->
       <div class="stats-grid" id="stats-grid">
         <div class="stat-card">
           <div class="stat-value" id="stat-miembros">0</div>
@@ -889,28 +1061,116 @@
           <div class="stat-label">Nidos</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value" id="stat-documentos">0</div>
-          <div class="stat-label">Documentos</div>
+          <div class="stat-value" id="stat-eventos-total">0</div>
+          <div class="stat-label">Acciones (30d)</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value" id="stat-pautas">0</div>
-          <div class="stat-label">Pautas</div>
+          <div class="stat-value" id="stat-usuarios-activos">0</div>
+          <div class="stat-label">Usuarios activos</div>
         </div>
       </div>
 
-      <!-- Área de gráficos -->
-      <div class="cards-grid">
-        <div class="card" style="cursor: default;">
-          <div class="card-title">📈 Actividad mensual</div>
-          <div class="card-description" style="padding: 40px; text-align: center; color: var(--text-muted);">
-            Próximamente
+      <!-- Arquetipos de usuarios -->
+      <div class="metrica-card" style="margin-bottom: 24px;">
+        <div class="metrica-header">
+          <div class="metrica-title">🎭 Arquetipos de participación</div>
+          <span class="metrica-periodo">Últimos 30 días</span>
+        </div>
+        <div class="arquetipos-grid" id="arquetipos-grid">
+          <div class="arquetipo-card">
+            <div class="arquetipo-icon">🚀</div>
+            <div class="arquetipo-valor" id="arq-capitan">0</div>
+            <div class="arquetipo-label">Capitanes</div>
+            <div class="arquetipo-pct" id="arq-capitan-pct">Crean y lideran</div>
+          </div>
+          <div class="arquetipo-card">
+            <div class="arquetipo-icon">⚓</div>
+            <div class="arquetipo-valor" id="arq-tripulante">0</div>
+            <div class="arquetipo-label">Tripulantes</div>
+            <div class="arquetipo-pct" id="arq-tripulante-pct">Responden activamente</div>
+          </div>
+          <div class="arquetipo-card">
+            <div class="arquetipo-icon">👀</div>
+            <div class="arquetipo-valor" id="arq-polizon">0</div>
+            <div class="arquetipo-label">Polizones</div>
+            <div class="arquetipo-pct" id="arq-polizon-pct">Miran pero no tocan</div>
+          </div>
+          <div class="arquetipo-card">
+            <div class="arquetipo-icon">🏝️</div>
+            <div class="arquetipo-valor" id="arq-naufrago">0</div>
+            <div class="arquetipo-label">Náufragos</div>
+            <div class="arquetipo-pct" id="arq-naufrago-pct">Sin actividad</div>
           </div>
         </div>
-        <div class="card" style="cursor: default;">
-          <div class="card-title">👥 Participación</div>
-          <div class="card-description" style="padding: 40px; text-align: center; color: var(--text-muted);">
-            Próximamente
+      </div>
+
+      <!-- Métricas de uso -->
+      <div class="metricas-uso">
+        <!-- Secciones más visitadas -->
+        <div class="metrica-card">
+          <div class="metrica-header">
+            <div class="metrica-title">📍 Secciones más visitadas</div>
+            <span class="metrica-periodo">30 días</span>
           </div>
+          <div id="secciones-ranking">
+            <div class="analisis-loading">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Proactividad vs Reactividad -->
+        <div class="metrica-card">
+          <div class="metrica-header">
+            <div class="metrica-title">⚡ Proactividad</div>
+            <span class="metrica-periodo">Ratio iniciativa propia</span>
+          </div>
+          <div class="gauge-container">
+            <div style="flex: 1;">
+              <div class="gauge-bar">
+                <div class="gauge-marker" id="gauge-marker" style="left: 50%;"></div>
+              </div>
+              <div class="gauge-labels">
+                <span>Reactivo</span>
+                <span>Proactivo</span>
+              </div>
+            </div>
+            <div class="gauge-value" id="gauge-value">50%</div>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+            <span id="proactivo-desc">Cargando...</span>
+          </p>
+        </div>
+
+        <!-- CTAs más usados -->
+        <div class="metrica-card">
+          <div class="metrica-header">
+            <div class="metrica-title">🎯 CTAs utilizados</div>
+            <span class="metrica-periodo">Completados</span>
+          </div>
+          <div class="ctas-grid" id="ctas-ranking">
+            <div class="analisis-loading" style="grid-column: 1/-1;">Cargando...</div>
+          </div>
+        </div>
+
+        <!-- Tasa de abandono -->
+        <div class="metrica-card">
+          <div class="metrica-header">
+            <div class="metrica-title">🚪 Flujos abandonados</div>
+            <span class="metrica-periodo">Iniciados vs completados</span>
+          </div>
+          <div id="abandono-ranking">
+            <div class="analisis-loading">Cargando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actividad por generación -->
+      <div class="metrica-card">
+        <div class="metrica-header">
+          <div class="metrica-title">👨‍👩‍👧‍👦 Actividad por generación</div>
+          <span class="metrica-periodo">Distribución de acciones</span>
+        </div>
+        <div id="generaciones-chart">
+          <div class="analisis-loading">Cargando...</div>
         </div>
       </div>
     </section>
@@ -1546,39 +1806,293 @@
     // ============ ANÁLISIS ============
     async function cargarEstadisticas() {
       try {
-        // Contar nidos
+        // 1. Contar nidos y miembros
         const nidosSnap = await db.collection('nidos')
           .where('familiaId', '==', userData.familiaId)
           .get();
 
         let totalMiembros = 0;
+        const miembrosSet = new Set();
         nidosSnap.docs.forEach(doc => {
           const data = doc.data();
-          if (data.miembrosData) totalMiembros += data.miembrosData.length;
+          if (data.miembrosData) {
+            totalMiembros += data.miembrosData.length;
+            data.miembrosData.forEach(m => {
+              if (m.email) miembrosSet.add(m.email);
+            });
+          }
         });
 
         document.getElementById('stat-nidos').textContent = nidosSnap.size;
         document.getElementById('stat-miembros').textContent = totalMiembros;
 
-        // Contar documentos
-        const docSnap = await db.collection('memoria')
-          .where('familiaId', '==', userData.familiaId)
-          .get();
-        document.getElementById('stat-documentos').textContent = docSnap.size;
+        // 2. Cargar eventos de uso (últimos 30 días)
+        const hace30dias = new Date();
+        hace30dias.setDate(hace30dias.getDate() - 30);
 
-        // Contar pautas
-        const pautasSnap = await db.collection('pautas')
-          .where('familiaId', '==', userData.familiaId)
-          .get();
-        document.getElementById('stat-pautas').textContent = pautasSnap.size;
+        let eventosSnap;
+        try {
+          eventosSnap = await db.collection('eventos_uso')
+            .where('ramaId', '==', userData.familiaId)
+            .where('timestamp', '>=', hace30dias)
+            .get();
+        } catch (e) {
+          console.warn('Sin datos de tracking aún:', e);
+          eventosSnap = { docs: [], size: 0 };
+        }
+
+        const eventos = eventosSnap.docs.map(d => d.data());
+        document.getElementById('stat-eventos-total').textContent = eventos.length;
+
+        // 3. Calcular usuarios activos únicos (por credencial, no por ID)
+        const credencialesActivas = new Set();
+        eventos.forEach(e => {
+          if (e.credencial) credencialesActivas.add(e.credencial + '-' + (e.generacion || 0));
+        });
+        document.getElementById('stat-usuarios-activos').textContent = credencialesActivas.size || '-';
+
+        // 4. Calcular arquetipos
+        calcularArquetipos(eventos, totalMiembros);
+
+        // 5. Calcular secciones más visitadas
+        calcularSeccionesRanking(eventos);
+
+        // 6. Calcular proactividad
+        calcularProactividad(eventos);
+
+        // 7. Calcular CTAs usados
+        calcularCTAsRanking(eventos);
+
+        // 8. Calcular abandonos
+        calcularAbandonos(eventos);
+
+        // 9. Actividad por generación
+        calcularGeneraciones(eventos);
 
       } catch (error) {
         console.error('Error cargando estadísticas:', error);
       }
     }
 
+    function calcularArquetipos(eventos, totalMiembros) {
+      // Agrupar acciones por credencial
+      const accionesPorUsuario = {};
+      eventos.forEach(e => {
+        const key = e.credencial + '-' + (e.generacion || 0);
+        if (!accionesPorUsuario[key]) {
+          accionesPorUsuario[key] = { crear: 0, consultar: 0, completar: 0, total: 0 };
+        }
+        accionesPorUsuario[key].total++;
+        if (e.accion === 'crear' || e.accion === 'iniciar') accionesPorUsuario[key].crear++;
+        if (e.accion === 'consultar') accionesPorUsuario[key].consultar++;
+        if (e.accion === 'completar') accionesPorUsuario[key].completar++;
+      });
+
+      let capitanes = 0, tripulantes = 0, polizones = 0;
+      
+      Object.values(accionesPorUsuario).forEach(u => {
+        const ratioCreacion = u.crear / Math.max(u.total, 1);
+        if (ratioCreacion > 0.3 || u.crear >= 5) {
+          capitanes++;
+        } else if (u.completar > 0 || u.total >= 3) {
+          tripulantes++;
+        } else {
+          polizones++;
+        }
+      });
+
+      const activos = Object.keys(accionesPorUsuario).length;
+      const naufragos = Math.max(0, totalMiembros - activos);
+
+      document.getElementById('arq-capitan').textContent = capitanes;
+      document.getElementById('arq-tripulante').textContent = tripulantes;
+      document.getElementById('arq-polizon').textContent = polizones;
+      document.getElementById('arq-naufrago').textContent = naufragos;
+    }
+
+    function calcularSeccionesRanking(eventos) {
+      const container = document.getElementById('secciones-ranking');
+      
+      if (eventos.length === 0) {
+        container.innerHTML = '<div class="analisis-empty"><div class="analisis-empty-icon">📊</div><p>Sin datos de navegación aún</p></div>';
+        return;
+      }
+
+      // Contar visitas por sección
+      const secciones = {};
+      eventos.forEach(e => {
+        if (e.seccion && e.accion === 'consultar') {
+          secciones[e.seccion] = (secciones[e.seccion] || 0) + 1;
+        }
+      });
+
+      // Ordenar y tomar top 5
+      const ranking = Object.entries(secciones)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      if (ranking.length === 0) {
+        container.innerHTML = '<div class="analisis-empty"><p>Sin visitas registradas</p></div>';
+        return;
+      }
+
+      const maxVal = ranking[0][1];
+      const iconos = {
+        'cgi': '🏠', 'lo-comun': '🏘️', 'legado': '📜', 'cerebro': '🧠',
+        'calendario': '📅', 'nido': '🪺', 'arbol': '🌳', 'activacion': '🎯'
+      };
+      const colores = ['sage', 'terracotta', 'azul', 'morado', 'sage'];
+
+      container.innerHTML = ranking.map(([sec, val], i) => `
+        <div class="barra-container">
+          <div class="barra-label">
+            <span class="barra-label-name">${iconos[sec] || '📄'} ${sec}</span>
+            <span class="barra-label-value">${val}</span>
+          </div>
+          <div class="barra-track">
+            <div class="barra-fill ${colores[i]}" style="width: ${(val/maxVal)*100}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function calcularProactividad(eventos) {
+      const directos = eventos.filter(e => e.origen === 'directo').length;
+      const notificaciones = eventos.filter(e => e.origen === 'notificacion').length;
+      const total = directos + notificaciones;
+
+      const pct = total > 0 ? Math.round((directos / total) * 100) : 50;
+      
+      document.getElementById('gauge-marker').style.left = pct + '%';
+      document.getElementById('gauge-value').textContent = pct + '%';
+      
+      let desc = '';
+      if (pct >= 70) desc = 'Tu familia es muy proactiva: entran por iniciativa propia';
+      else if (pct >= 40) desc = 'Equilibrio entre iniciativa propia y respuesta a avisos';
+      else desc = 'La mayoría entra cuando recibe notificaciones';
+      
+      document.getElementById('proactivo-desc').textContent = desc;
+    }
+
+    function calcularCTAsRanking(eventos) {
+      const container = document.getElementById('ctas-ranking');
+      
+      // Filtrar solo acciones completadas de CTAs
+      const ctas = {};
+      const ctasNombres = ['averia', 'iniciativa', 'evento', 'reserva', 'encargo', 'convocatoria', 'queo', 'hito'];
+      
+      eventos.forEach(e => {
+        if (e.accion === 'completar' && ctasNombres.includes(e.flujo || e.modulo)) {
+          const nombre = e.flujo || e.modulo;
+          ctas[nombre] = (ctas[nombre] || 0) + 1;
+        }
+      });
+
+      if (Object.keys(ctas).length === 0) {
+        container.innerHTML = '<div class="analisis-empty" style="grid-column: 1/-1;"><p>Sin CTAs completados aún</p></div>';
+        return;
+      }
+
+      const iconos = {
+        'averia': '🔧', 'iniciativa': '💡', 'evento': '🎉', 'reserva': '📅',
+        'encargo': '🛒', 'convocatoria': '✋', 'queo': '📣', 'hito': '📌'
+      };
+
+      const ranking = Object.entries(ctas).sort((a, b) => b[1] - a[1]);
+
+      container.innerHTML = ranking.map(([cta, val]) => `
+        <div class="cta-stat">
+          <span class="cta-stat-icon">${iconos[cta] || '📋'}</span>
+          <span class="cta-stat-name">${cta}</span>
+          <span class="cta-stat-value">${val}</span>
+        </div>
+      `).join('');
+    }
+
+    function calcularAbandonos(eventos) {
+      const container = document.getElementById('abandono-ranking');
+      
+      // Contar inicios y abandonos por flujo
+      const flujos = {};
+      eventos.forEach(e => {
+        if (e.accion === 'iniciar' && e.flujo) {
+          if (!flujos[e.flujo]) flujos[e.flujo] = { inicios: 0, abandonos: 0 };
+          flujos[e.flujo].inicios++;
+        }
+        if (e.accion === 'abandonar' && e.flujo) {
+          if (!flujos[e.flujo]) flujos[e.flujo] = { inicios: 0, abandonos: 0 };
+          flujos[e.flujo].abandonos++;
+        }
+      });
+
+      // Calcular tasa de abandono
+      const conAbandonos = Object.entries(flujos)
+        .filter(([_, v]) => v.abandonos > 0)
+        .map(([nombre, v]) => ({
+          nombre,
+          tasa: Math.round((v.abandonos / Math.max(v.inicios, 1)) * 100),
+          abandonos: v.abandonos,
+          inicios: v.inicios
+        }))
+        .sort((a, b) => b.tasa - a.tasa)
+        .slice(0, 4);
+
+      if (conAbandonos.length === 0) {
+        container.innerHTML = '<div class="analisis-empty"><div class="analisis-empty-icon">✅</div><p>Sin abandonos detectados</p></div>';
+        return;
+      }
+
+      container.innerHTML = conAbandonos.map(f => `
+        <div class="barra-container">
+          <div class="barra-label">
+            <span class="barra-label-name">${f.nombre}</span>
+            <span class="barra-label-value">${f.abandonos}/${f.inicios} (${f.tasa}%)</span>
+          </div>
+          <div class="barra-track">
+            <div class="barra-fill terracotta" style="width: ${f.tasa}%"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function calcularGeneraciones(eventos) {
+      const container = document.getElementById('generaciones-chart');
+      
+      // Contar acciones por generación
+      const generaciones = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      eventos.forEach(e => {
+        if (e.generacion && generaciones[e.generacion] !== undefined) {
+          generaciones[e.generacion]++;
+        }
+      });
+
+      const total = Object.values(generaciones).reduce((a, b) => a + b, 0);
+      
+      if (total === 0) {
+        container.innerHTML = '<div class="analisis-empty"><p>Sin datos de generaciones</p></div>';
+        return;
+      }
+
+      const nombres = { 1: 'Abuelos', 2: 'Padres', 3: 'Hijos', 4: 'Nietos' };
+      const colores = ['morado', 'sage', 'terracotta', 'azul'];
+
+      container.innerHTML = Object.entries(generaciones)
+        .filter(([_, val]) => val > 0)
+        .map(([gen, val], i) => `
+          <div class="barra-container">
+            <div class="barra-label">
+              <span class="barra-label-name">${nombres[gen]} (Gen ${gen})</span>
+              <span class="barra-label-value">${val} (${Math.round(val/total*100)}%)</span>
+            </div>
+            <div class="barra-track">
+              <div class="barra-fill ${colores[i % 4]}" style="width: ${(val/total)*100}%"></div>
+            </div>
+          </div>
+        `).join('');
+    }
+
     function exportarDatos() {
-      alert('Próximamente: Exportar datos');
+      alert('Próximamente: Exportar datos a CSV');
     }
 
     // ============ INVENTARIO BÁSICO ============
