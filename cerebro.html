@@ -1806,25 +1806,25 @@
     // ============ ANÁLISIS ============
     async function cargarEstadisticas() {
       try {
-        // 1. Contar nidos y miembros
+        // 1. Contar nidos y miembros (SOLO usuarios con cuenta validada = tienen uid)
         const nidosSnap = await db.collection('nidos')
           .where('familiaId', '==', userData.familiaId)
           .get();
 
-        let totalMiembros = 0;
-        const miembrosSet = new Set();
+        let totalMiembrosRegistrados = 0;  // Todos los pre-registrados
+        let totalUsuarios = 0;              // Solo con cuenta validada (tienen uid)
+        
         nidosSnap.docs.forEach(doc => {
           const data = doc.data();
           if (data.miembrosData) {
-            totalMiembros += data.miembrosData.length;
-            data.miembrosData.forEach(m => {
-              if (m.email) miembrosSet.add(m.email);
-            });
+            totalMiembrosRegistrados += data.miembrosData.length;
+            // Solo contar los que ya tienen cuenta (uid presente)
+            totalUsuarios += data.miembrosData.filter(m => m.uid).length;
           }
         });
 
         document.getElementById('stat-nidos').textContent = nidosSnap.size;
-        document.getElementById('stat-miembros').textContent = totalMiembros;
+        document.getElementById('stat-miembros').textContent = totalUsuarios;
 
         // 2. Cargar eventos de uso (últimos 30 días)
         const hace30dias = new Date();
@@ -1851,8 +1851,8 @@
         });
         document.getElementById('stat-usuarios-activos').textContent = credencialesActivas.size || '-';
 
-        // 4. Calcular arquetipos
-        calcularArquetipos(eventos, totalMiembros);
+        // 4. Calcular arquetipos (solo sobre usuarios con cuenta, no invitados)
+        calcularArquetipos(eventos, totalUsuarios);
 
         // 5. Calcular secciones más visitadas
         calcularSeccionesRanking(eventos);
@@ -1874,8 +1874,9 @@
       }
     }
 
-    function calcularArquetipos(eventos, totalMiembros) {
+    function calcularArquetipos(eventos, totalUsuarios) {
       // Agrupar acciones por credencial
+      // NOTA: totalUsuarios = solo usuarios con cuenta validada (no invitados pendientes)
       const accionesPorUsuario = {};
       eventos.forEach(e => {
         const key = e.credencial + '-' + (e.generacion || 0);
@@ -1902,7 +1903,7 @@
       });
 
       const activos = Object.keys(accionesPorUsuario).length;
-      const naufragos = Math.max(0, totalMiembros - activos);
+      const naufragos = Math.max(0, totalUsuarios - activos);
 
       document.getElementById('arq-capitan').textContent = capitanes;
       document.getElementById('arq-tripulante').textContent = tripulantes;

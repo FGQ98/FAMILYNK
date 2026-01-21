@@ -189,17 +189,20 @@ const AnalisisModule = {
     const familiaDoc = await db.collection('familias').doc(familiaId).get();
     this.data.familia = familiaDoc.exists ? { id: familiaDoc.id, ...familiaDoc.data() } : null;
 
-    // Nidos y miembros
+    // Nidos y miembros (SOLO usuarios con cuenta validada = tienen uid)
     const nidosSnap = await db.collection('nidos')
       .where('familiaId', '==', familiaId)
       .get();
 
-    let totalMiembros = 0;
+    let totalUsuarios = 0;  // Solo con cuenta validada
     nidosSnap.docs.forEach(doc => {
       const data = doc.data();
-      if (data.miembrosData) totalMiembros += data.miembrosData.length;
+      if (data.miembrosData) {
+        // Solo contar los que ya tienen cuenta (uid presente)
+        totalUsuarios += data.miembrosData.filter(m => m.uid).length;
+      }
     });
-    this.data.totalMiembros = totalMiembros;
+    this.data.totalMiembros = totalUsuarios;
 
     // Eventos (últimos 30 días)
     const hace30dias = new Date();
@@ -380,6 +383,8 @@ const AnalisisModule = {
 
   /**
    * Calcular métricas de una familia
+   * @param {array} eventos - Eventos de la familia
+   * @param {number} totalMiembros - Total de usuarios con cuenta validada (no invitados pendientes)
    */
   calcularMetricasFamilia(eventos, totalMiembros) {
     // Totales
