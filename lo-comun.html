@@ -813,8 +813,8 @@
             <div class="form-section">
               <div class="form-section-title">🔒 ¿Quién puede ver este bien?</div>
               
-              <div class="visibilidad-selector">
-                <label class="visibilidad-option">
+              <div class="visibilidad-selector" id="visibilidad-selector">
+                <label class="visibilidad-option" id="vis-option-rama">
                   <input type="radio" name="bien-visibilidad" value="rama" checked>
                   <div class="visibilidad-box">
                     <span class="visibilidad-icon">🌳</span>
@@ -822,7 +822,7 @@
                     <span class="visibilidad-desc">Toda la familia</span>
                   </div>
                 </label>
-                <label class="visibilidad-option">
+                <label class="visibilidad-option" id="vis-option-estirpe">
                   <input type="radio" name="bien-visibilidad" value="estirpe">
                   <div class="visibilidad-box">
                     <span class="visibilidad-icon">👨‍👩‍👧‍👦</span>
@@ -830,7 +830,7 @@
                     <span class="visibilidad-desc">Tu nido y descendientes</span>
                   </div>
                 </label>
-                <label class="visibilidad-option">
+                <label class="visibilidad-option" id="vis-option-nido">
                   <input type="radio" name="bien-visibilidad" value="nido">
                   <div class="visibilidad-box">
                     <span class="visibilidad-icon">🏠</span>
@@ -1024,7 +1024,9 @@
     let editingBienId = null;
     let userNidoId = null;
     let cadenaAncestros = []; // IDs de nidos ancestros del usuario (para filtrar estirpe)
-    let esAdmin = false;
+    let esAdmin = false;       // Admin-rama
+    let esAdminNido = false;   // Admin de su nido
+    let esCreadorEstirpe = false; // Su nido es raíz o tiene descendientes
     let tiposActivos = { inmuebles: true, terrenos: true, vehiculos: true, ajuar: true }; // Config de tipos
 
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
@@ -1079,12 +1081,107 @@
         await construirCadenaAncestros(userNidoId);
       }
 
+      // Detectar rol del usuario y configurar opciones de visibilidad
+      await detectarRolYConfigurarVisibilidad();
+
       const nombre = userData.nombre || user.email.split('@')[0];
       document.getElementById('user-name').textContent = nombre.split(' ')[0];
       document.getElementById('user-avatar').textContent = nombre.charAt(0).toUpperCase();
 
       await loadBienes();
     });
+
+    // ========== DETECTAR ROL Y CONFIGURAR VISIBILIDAD ==========
+    async function detectarRolYConfigurarVisibilidad() {
+      try {
+        // Si ya sabemos que es admin-rama, tiene acceso a todo
+        if (esAdmin) {
+          console.log('👑 Admin-rama: todas las opciones de visibilidad disponibles');
+          return;
+        }
+
+        // Cargar nidos para detectar rol
+        const nidosSnap = await db.collection('nidos')
+          .where('familiaId', '==', familiaId)
+          .get();
+
+        const nidosMap = {};
+        nidosSnap.docs.forEach(doc => {
+          nidosMap[doc.id] = { id: doc.id, ...doc.data() };
+        });
+
+        // Buscar mi nido y mi rol
+        if (userNidoId && nidosMap[userNidoId]) {
+          const miNido = nidosMap[userNidoId];
+          
+          // Verificar si soy admin de mi nido
+          if (miNido.miembrosData) {
+            const miembro = miNido.miembrosData.find(m => m.uid === currentUser.uid);
+            if (miembro) {
+              const rol = miembro.rol || miembro.credencial || '';
+              esAdminNido = ['adminNido', 'AdminNido', 'admin-nido'].includes(rol) || 
+                           miembro.esAdminNido === true;
+            }
+          }
+
+          // Verificar si mi nido es creador de estirpe (tiene descendientes)
+          // Un nido es "creador de estirpe" si:
+          // 1. No tiene nidoOrigen (es raíz), O
+          // 2. Tiene otros nidos que lo referencian como nidoOrigen
+          const tieneDescendientes = Object.values(nidosMap).some(n => n.nidoOrigen === userNidoId);
+          const esNidoRaiz = !miNido.nidoOrigen;
+          esCreadorEstirpe = esNidoRaiz || tieneDescendientes;
+        }
+
+        console.log('🔐 Roles detectados:', { esAdmin, esAdminNido, esCreadorEstirpe });
+
+        // Configurar opciones de visibilidad según rol
+        configurarOpcionesVisibilidad();
+
+      } catch (error) {
+        console.error('Error detectando rol:', error);
+      }
+    }
+
+    // ========== CONFIGURAR OPCIONES DE VISIBILIDAD ==========
+    function configurarOpcionesVisibilidad() {
+      const optRama = document.getElementById('vis-option-rama');
+      const optEstirpe = document.getElementById('vis-option-estirpe');
+      const optNido = document.getElementById('vis-option-nido');
+
+      // Admin-rama: todo disponible
+      if (esAdmin) {
+        return;
+      }
+
+      // Admin-nido creador de estirpe: puede estirpe y nido
+      if (esAdminNido && esCreadorEstirpe) {
+        if (optRama) optRama.style.display = 'none';
+        // Seleccionar estirpe por defecto
+        const radioEstirpe = document.querySelector('input[name="bien-visibilidad"][value="estirpe"]');
+        if (radioEstirpe) radioEstirpe.checked = true;
+        console.log('🏠 Admin-nido creador de estirpe: opciones estirpe y nido');
+        return;
+      }
+
+      // Admin-nido normal: solo nido
+      if (esAdminNido) {
+        if (optRama) optRama.style.display = 'none';
+        if (optEstirpe) optEstirpe.style.display = 'none';
+        // Seleccionar nido por defecto
+        const radioNido = document.querySelector('input[name="bien-visibilidad"][value="nido"]');
+        if (radioNido) radioNido.checked = true;
+        console.log('🏠 Admin-nido: solo opción nido');
+        return;
+      }
+
+      // Usuario normal sin rol admin: solo nido
+      if (optRama) optRama.style.display = 'none';
+      if (optEstirpe) optEstirpe.style.display = 'none';
+      const radioNido = document.querySelector('input[name="bien-visibilidad"][value="nido"]');
+      if (radioNido) radioNido.checked = true;
+      console.log('👤 Usuario normal: solo opción nido');
+    }
 
     // ========== CARGAR CONFIG TIPOS ==========
     async function cargarConfigTipos() {
