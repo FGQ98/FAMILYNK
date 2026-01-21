@@ -3122,7 +3122,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" onclick="abandonarModal('averia')">Cancelar</button>
           <button type="submit" class="btn btn-primary">Enviar aviso</button>
         </div>
       </form>
@@ -3178,7 +3178,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" onclick="abandonarModal('iniciativa')">Cancelar</button>
           <button type="submit" class="btn btn-primary">Enviar propuesta</button>
         </div>
       </form>
@@ -3230,7 +3230,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" onclick="abandonarModal('encargo')">Cancelar</button>
           <button type="submit" class="btn btn-primary">Enviar encargo</button>
         </div>
       </form>
@@ -3286,7 +3286,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" onclick="abandonarModal('evento')">Cancelar</button>
           <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #FF9800, #F57C00);">Enviar solicitud</button>
         </div>
       </form>
@@ -3342,7 +3342,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" onclick="abandonarModal('reserva')">Cancelar</button>
           <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #42A5F5, #1E88E5);">Enviar solicitud</button>
         </div>
       </form>
@@ -3400,7 +3400,7 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="button" class="btn btn-secondary" onclick="abandonarModal('convocatoria')">Cancelar</button>
           <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #9C27B0, #7B1FA2);">Enviar convocatoria</button>
         </div>
       </form>
@@ -3417,7 +3417,7 @@
           <h2 class="modal-title">Nuevo Queo</h2>
           <p class="modal-subtitle">Envía una notificación a los miembros</p>
         </div>
-        <button class="modal-close" onclick="cerrarModalComunicado()">×</button>
+        <button class="modal-close" onclick="track.abandonar('queo'); cerrarModalComunicado()">×</button>
       </div>
 
       <!-- Body -->
@@ -3545,7 +3545,7 @@
 
       <!-- Footer -->
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="cerrarModalComunicado()">Cancelar</button>
+        <button class="btn btn-secondary" onclick="track.abandonar('queo'); cerrarModalComunicado()">Cancelar</button>
         <button class="btn btn-primary" onclick="enviarComunicado()" id="btn-enviar-comunicado" disabled>
           <span>📤</span> Enviar queo
         </button>
@@ -3563,7 +3563,7 @@
           <h2 class="modal-title">Añadir al Calendario</h2>
           <p class="modal-subtitle">Crea una cita o evento</p>
         </div>
-        <button class="modal-close" onclick="cerrarModalHito()">×</button>
+        <button class="modal-close" onclick="track.abandonar('hito'); cerrarModalHito()">×</button>
       </div>
 
       <!-- Body -->
@@ -3661,7 +3661,7 @@
 
       <!-- Footer -->
       <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="cerrarModalHito()">Cancelar</button>
+        <button class="btn btn-secondary" onclick="track.abandonar('hito'); cerrarModalHito()">Cancelar</button>
         <button class="btn btn-primary" onclick="guardarHito()" id="btn-guardar-hito" style="background: var(--calendario);">
           <span>💾</span> Guardar
         </button>
@@ -5771,6 +5771,11 @@
       document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
     }
 
+    function abandonarModal(tipo) {
+      track.abandonar(tipo);
+      cerrarModales();
+    }
+
     function seleccionarVisibilidad(elemento, formulario) {
       // Quitar active de todas las opciones del mismo formulario
       const contenedor = elemento.closest('.visibilidad-selector');
@@ -5955,6 +5960,7 @@
           });
         }
 
+        track.completar('convocatoria');
         cerrarModales();
         alert(`✅ Convocatoria enviada a ${destinatarios.length} persona${destinatarios.length !== 1 ? 's' : ''}`);
         
@@ -5986,6 +5992,7 @@
           visibilidad,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
+        track.completar('averia');
         cerrarModales();
         alert('✅ Avería reportada correctamente');
       } catch (error) {
@@ -6026,6 +6033,7 @@
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        track.completar('iniciativa');
         cerrarModales();
         alert('✅ Propuesta enviada a los administradores');
       } catch (error) {
@@ -6055,6 +6063,7 @@
           nidoId: miNidoPrincipal?.id || null
         });
 
+        track.completar('evento');
         cerrarModales();
         alert('✅ Solicitud de evento enviada a los administradores');
       } catch (error) {
@@ -6089,6 +6098,7 @@
           nidoId: miNidoPrincipal?.id || null
         });
 
+        track.completar('reserva');
         cerrarModales();
         alert('✅ Solicitud de reserva enviada a los administradores');
       } catch (error) {
@@ -6116,6 +6126,7 @@
           visibilidad,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
+        track.completar('encargo');
         cerrarModales();
         alert('✅ Encargo registrado');
       } catch (error) {
@@ -6541,6 +6552,7 @@
         }
         
         alert('✅ Queo enviado correctamente');
+        track.completar('queo');
         cerrarModalComunicado();
         
         // Actualizar tablón si está visible
@@ -6897,6 +6909,7 @@
         await db.collection(coleccion).add(datos);
 
         alert(`✅ ${tipo === 'cita' ? 'Cita' : 'Evento'} creado correctamente`);
+        track.completar('hito');
         cerrarModalHito();
 
         // Refrescar calendario

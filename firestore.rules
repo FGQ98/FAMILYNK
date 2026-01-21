@@ -38,6 +38,13 @@ service cloud.firestore {
              getUserData().rol == 'AdminRama';
     }
     
+    // Verificar si es admin-rama (sin ramaId específico)
+    function isAnyAdminRama() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             (getUserData().rol == 'AdminRama' || getUserData().credencial == 'admin-rama');
+    }
+    
     // Verificar si pertenece a una familia
     function belongsToFamilia(familiaId) {
       return isAuthenticated() && 
@@ -152,6 +159,102 @@ service cloud.firestore {
     match /config/{configId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin();
+    }
+    
+    // ============================================================
+    // COLECCIÓN: eventos_uso (Análisis de comportamiento)
+    // ============================================================
+    // Solo escritura autenticada, lectura solo para admin-rama de su familia
+    match /eventos_uso/{eventoId} {
+      // Cualquier usuario autenticado puede crear eventos de tracking
+      allow create: if isAuthenticated()
+                    && request.resource.data.ramaId is string
+                    && request.resource.data.accion is string
+                    && request.resource.data.seccion is string;
+      
+      // Lectura solo para admin-rama de su propia familia (para dashboard Cerebro)
+      allow read: if isAuthenticated() 
+                  && isAnyAdminRama()
+                  && resource.data.ramaId == getUserData().familiaId;
+      
+      // Nadie puede actualizar ni borrar (inmutabilidad de logs)
+      allow update, delete: if false;
+    }
+    
+    // ============================================================
+    // COLECCIONES ADICIONALES (queos, notificaciones, etc.)
+    // ============================================================
+    match /queos/{queoId} {
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid in resource.data.destinatarios || 
+                     request.auth.uid == resource.data.remitente);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+                      (request.auth.uid in resource.data.destinatarios || 
+                       request.auth.uid == resource.data.remitente);
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.remitente;
+    }
+    
+    match /notificaciones/{notifId} {
+      allow read: if isAuthenticated() && 
+                    request.auth.uid in resource.data.destinatarios;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+                      request.auth.uid in resource.data.destinatarios;
+      allow delete: if isSuperAdmin() || isAdminSistema();
+    }
+    
+    match /convocatorias/{convId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.creadoPor;
+    }
+    
+    match /citas/{citaId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.creadoPor;
+    }
+    
+    match /eventos/{eventoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.creadoPor;
+    }
+    
+    match /tareas/{tareaId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+    }
+    
+    match /mensajes/{mensajeId} {
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid == resource.data.de || 
+                     request.auth.uid == resource.data.para);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.para;
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.de || 
+                       request.auth.uid == resource.data.para);
+    }
+    
+    match /anuncios/{anuncioId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.autor;
+    }
+    
+    match /menus/{menuId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated();
     }
   }
 }
