@@ -5132,7 +5132,7 @@
     let notificacionesData = [];
 
     async function renderTablon() {
-      console.log('Ejecutando renderTablon');
+      console.log('=== RENDER TABLÓN ===');
       const container = document.getElementById('tablon-list');
       
       if (!container) {
@@ -5146,15 +5146,14 @@
         return;
       }
 
+      console.log('Buscando para usuario:', currentUser.uid);
+      console.log('En familia:', currentFamilia.id);
+
       try {
         const ahora = new Date();
         let todosAvisos = [];
         
         // 1. Cargar QUEOS para este usuario
-        // ⚠️ ÍNDICE REQUERIDO en Firestore:
-        // Colección: queos
-        // Campos: familiaId (Ascending), destinatarios (Arrays), fechaCreacion (Descending)
-        // Si ves error de índice en consola, haz clic en el enlace para crearlo automáticamente
         try {
           const queosSnap = await db.collection('queos')
             .where('familiaId', '==', currentFamilia.id)
@@ -5180,6 +5179,8 @@
 
         // 2. Cargar NOTIFICACIONES del sistema para este usuario
         try {
+          console.log('Buscando notificaciones con array-contains:', currentUser.uid);
+          
           const notifSnap = await db.collection('notificaciones')
             .where('familiaId', '==', currentFamilia.id)
             .where('destinatarios', 'array-contains', currentUser.uid)
@@ -5195,11 +5196,36 @@
           }));
           todosAvisos = todosAvisos.concat(notifs);
           console.log('✅ Notificaciones cargadas:', notifs.length);
+          
+          if (notifs.length > 0) {
+            console.log('Primera notificación:', notifs[0]);
+          }
         } catch (e) {
           console.error('❌ Error cargando notificaciones:', e);
           if (e.message && e.message.includes('index')) {
             console.error('⚠️ FALTA ÍNDICE. Haz clic en el enlace del error para crearlo.');
           }
+        }
+
+        // 3. DEBUG: Verificar si hay notificaciones en la familia (sin filtro de destinatarios)
+        try {
+          const debugSnap = await db.collection('notificaciones')
+            .where('familiaId', '==', currentFamilia.id)
+            .orderBy('fechaCreacion', 'desc')
+            .limit(5)
+            .get();
+          
+          console.log('📋 DEBUG - Notificaciones totales en familia:', debugSnap.size);
+          debugSnap.docs.forEach((doc, i) => {
+            const data = doc.data();
+            console.log(`  ${i+1}. ${data.titulo || data.categoria}`, {
+              destinatarios: data.destinatarios,
+              estado: data.estado,
+              miUidIncluido: data.destinatarios?.includes(currentUser.uid)
+            });
+          });
+        } catch (e) {
+          console.error('DEBUG query error:', e);
         }
 
         // Filtrar completadas/leídas
