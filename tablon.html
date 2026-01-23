@@ -583,8 +583,8 @@
         `;
       }
 
-      // Sección: Queos (comunicados)
-      const queosFiltrados = avisosFiltrados.filter(n => n.source === 'queo' && n.tipo !== 'accion' && !n.leidoPor?.includes(currentUser.uid));
+      // Sección: Queos (comunicados) - mostrar todos, leídos y no leídos
+      const queosFiltrados = avisosFiltrados.filter(n => n.source === 'queo' && n.tipo !== 'accion');
       if (queosFiltrados.length > 0 && filtroActual !== 'accion') {
         hayAvisos = true;
         html += `
@@ -738,27 +738,29 @@
 
     function renderQueo(q) {
       const fecha = formatFecha(q.fechaCreacion);
-      const leido = q.leidoPor?.includes(currentUser.uid) ? 'leido' : '';
+      const leido = q.leidoPor?.includes(currentUser.uid);
+      const leidoClass = leido ? 'leido' : '';
       const tipoClass = q.tipo === 'accion' ? 'accion' : '';
       const esAdminRama = userData?.rol === 'adminRama' || userData?.rol === 'AdminRama' || userData?.rol === 'admin-rama' || userData?.esAdmin;
       const puedeEliminar = q.remitente === currentUser.uid || esAdminRama;
 
+      // Si ya está leído, no mostrar botón de marcar leído
       let accionesHtml = `
         <div class="aviso-acciones">
-          <button class="aviso-btn secondary" onclick="marcarQueoLeido('${q.id}')">✓ Leído</button>
-          ${puedeEliminar ? `<button class="aviso-btn secondary" onclick="eliminarQueo('${q.id}')" style="color: var(--error);">🗑️ Eliminar</button>` : ''}
+          ${!leido ? `<button class="aviso-btn secondary" onclick="marcarQueoLeido('${q.id}')">✓ Leído</button>` : ''}
+          ${puedeEliminar ? `<button class="aviso-btn secondary" onclick="eliminarQueo('${q.id}')" style="color: var(--error);">🗑️</button>` : ''}
         </div>
       `;
 
       return `
-        <div class="aviso ${tipoClass} ${leido}" data-id="${q.id}">
+        <div class="aviso ${tipoClass} ${leidoClass}" data-id="${q.id}">
           <div class="aviso-icon ${q.tipo === 'accion' ? 'accion' : 'info'}">📣</div>
           <div class="aviso-content">
             <div class="aviso-header">
               <span class="aviso-origen">De: ${q.remitenteNombre || 'Familia'}</span>
               <span class="aviso-fecha">${fecha}</span>
             </div>
-            <div class="aviso-titulo">${q.asunto || 'Queo'}</div>
+            <div class="aviso-titulo">${q.titulo || q.asunto || 'Comunicado'}</div>
             ${q.mensaje ? `<div class="aviso-mensaje">${q.mensaje}</div>` : ''}
             ${accionesHtml}
           </div>
