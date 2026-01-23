@@ -6523,8 +6523,15 @@
         throw new Error('No hay familia activa. Por favor, recarga la página.');
       }
       
+      // Verificar usuario autenticado
+      if (!currentUser?.uid) {
+        throw new Error('Usuario no autenticado. Por favor, inicia sesión de nuevo.');
+      }
+      
       const admins = await cargarAdminsEstirpe();
       const remitente = userData?.nombre || userData?.email || 'Usuario';
+      
+      console.log('Enviando solicitud:', { tipo, familiaId: currentFamilia.id, uid: currentUser.uid });
       
       const solicitud = {
         tipo, // 'iniciativa', 'evento', 'reserva', 'averia'
@@ -6533,6 +6540,7 @@
         solicitadoPor: currentUser.uid,
         solicitadoPorNombre: remitente,
         solicitadoPorNido: miNidoPrincipal?.nombre || '',
+        solicitadoPorNidoId: miNidoPrincipal?.id || null,
         familiaId: currentFamilia.id,
         fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
         respuesta: null,
@@ -6541,7 +6549,15 @@
       };
 
       // Guardar solicitud en colección central
-      const solicitudRef = await db.collection('solicitudes').add(solicitud);
+      let solicitudRef;
+      try {
+        solicitudRef = await db.collection('solicitudes').add(solicitud);
+        console.log('Solicitud creada:', solicitudRef.id);
+      } catch (errorSolicitud) {
+        console.error('Error creando solicitud:', errorSolicitud);
+        // Si falla en solicitudes, intentar guardar directamente en notificaciones
+        throw new Error('Error de permisos al guardar la solicitud. Contacte al administrador.');
+      }
 
       // Obtener UIDs de admins (excluyendo al propio usuario)
       const destinatarios = admins
@@ -6550,22 +6566,30 @@
 
       // Crear UNA notificación en la colección central (la que lee el tablón)
       if (destinatarios.length > 0) {
-        await db.collection('notificaciones').add({
-          tipo: 'accion',
-          categoria: tipo,
-          titulo: getTituloNotificacion(tipo, datos),
-          mensaje: `${remitente} ha enviado una solicitud`,
-          familiaId: currentFamilia.id,
-          nidoId: miNidoPrincipal?.id || null,
-          destinatarios: destinatarios,
-          leidoPor: [],
-          completadoPor: [],
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
-          fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
-          enlace: `solicitudes.html?id=${solicitudRef.id}`,
-          origen: { tipo: 'solicitud', subtipo: tipo, id: solicitudRef.id },
-          estado: 'activa'
-        });
+        try {
+          await db.collection('notificaciones').add({
+            tipo: 'accion',
+            categoria: tipo,
+            titulo: getTituloNotificacion(tipo, datos),
+            mensaje: `${remitente} ha enviado una solicitud`,
+            familiaId: currentFamilia.id,
+            nidoId: miNidoPrincipal?.id || null,
+            destinatarios: destinatarios,
+            leidoPor: [],
+            completadoPor: [],
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+            fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+            enlace: `solicitudes.html?id=${solicitudRef.id}`,
+            origen: { tipo: 'solicitud', subtipo: tipo, id: solicitudRef.id },
+            estado: 'activa'
+          });
+          console.log('Notificación enviada a', destinatarios.length, 'admins');
+        } catch (errorNotif) {
+          console.error('Error creando notificación (no crítico):', errorNotif);
+          // No lanzamos error aquí porque la solicitud ya se guardó
+        }
+      } else {
+        console.warn('No hay admins para notificar');
       }
 
       return solicitudRef.id;
