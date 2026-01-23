@@ -6493,6 +6493,13 @@
 
     async function cargarAdminsEstirpe() {
       if (adminsEstirpe.length > 0) return adminsEstirpe;
+      
+      // Verificar que hay familia activa
+      if (!currentFamilia?.id) {
+        console.warn('cargarAdminsEstirpe: No hay familia activa');
+        return [];
+      }
+      
       try {
         // Cargar admins de la familia (AdminRama y AdminNido)
         const usuariosSnap = await db.collection('usuarios')
@@ -6511,8 +6518,13 @@
     }
 
     async function enviarNotificacionAdmins(tipo, datos) {
+      // Verificar que hay familia activa
+      if (!currentFamilia?.id) {
+        throw new Error('No hay familia activa. Por favor, recarga la página.');
+      }
+      
       const admins = await cargarAdminsEstirpe();
-      const remitente = userData.nombre || userData.email;
+      const remitente = userData?.nombre || userData?.email || 'Usuario';
       
       const solicitud = {
         tipo, // 'iniciativa', 'evento', 'reserva', 'averia'
@@ -6642,6 +6654,13 @@
 
     async function abrirModalSolicitarReserva() {
       await cargarBienesConGestion();
+      
+      // Verificar si hay bienes con gestión
+      if (bienesConGestion.length === 0) {
+        alert('No hay bienes con gestión activa.\n\nPara solicitar reservas, primero debe activarse Mayordomo, Gerente o Capataz en algún bien desde su ficha.');
+        return;
+      }
+      
       popularSelectBienesConGestion('reserva-bien');
       document.getElementById('form-reserva').reset();
       resetVisibilidad('modal-reserva');
@@ -6941,11 +6960,22 @@
     document.getElementById('form-reserva').addEventListener('submit', async (e) => {
       e.preventDefault();
       const bienId = document.getElementById('reserva-bien').value;
+      
+      if (!bienId) {
+        alert('Por favor, selecciona un bien');
+        return;
+      }
+      
       const bien = bienesConGestion.find(b => b.id === bienId) || bienesUsuario.find(b => b.id === bienId);
       const fechaInicio = document.getElementById('reserva-inicio').value;
       const fechaFin = document.getElementById('reserva-fin').value;
       const motivo = document.getElementById('reserva-motivo').value;
       const visibilidad = obtenerVisibilidad('reserva');
+
+      if (!fechaInicio || !fechaFin) {
+        alert('Por favor, selecciona las fechas de inicio y fin');
+        return;
+      }
 
       if (fechaFin < fechaInicio) {
         alert('La fecha de fin debe ser posterior a la de inicio');
@@ -6968,7 +6998,7 @@
         alert('✅ Solicitud de reserva enviada a los administradores');
       } catch (error) {
         console.error('Error:', error);
-        alert('Error al enviar la solicitud');
+        alert('Error al enviar la solicitud: ' + (error.message || 'Inténtalo de nuevo'));
       }
     });
 
