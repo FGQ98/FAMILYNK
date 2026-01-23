@@ -1408,6 +1408,18 @@
 
     .mensaje-item:hover { background: var(--cream-dark); }
     .mensaje-item.no-leido { background: var(--tablon-muted); }
+    
+    /* Estilos para notificaciones por tipo */
+    .mensaje-item.notif-accion {
+      border-left: 3px solid var(--terracotta);
+      background: rgba(180, 93, 74, 0.08);
+    }
+    .mensaje-item.notif-accion:hover {
+      background: rgba(180, 93, 74, 0.15);
+    }
+    .mensaje-item.notif-info {
+      border-left: 3px solid var(--sage);
+    }
 
     .mensaje-avatar {
       width: 28px;
@@ -1422,8 +1434,20 @@
       font-size: 0.65rem;
       flex-shrink: 0;
     }
+    
+    .notif-accion .mensaje-avatar {
+      background: var(--terracotta);
+      font-size: 0.9rem;
+    }
+    .notif-info .mensaje-avatar {
+      background: var(--sage);
+      font-size: 0.9rem;
+    }
 
     .mensaje-content { flex: 1; min-width: 0; }
+    .mensaje-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+    .mensaje-autor { font-weight: 600; font-size: 0.75rem; color: var(--text); }
+    .mensaje-fecha { font-size: 0.65rem; color: var(--text-muted); }
     .mensaje-from { font-weight: 600; font-size: 0.75rem; }
     .mensaje-preview { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .mensaje-time { font-size: 0.6rem; color: var(--text-muted); }
@@ -4082,6 +4106,36 @@
       await renderMisBienes();
       cargarBadgeChat();
       renderPlan();
+      
+      // Chequear si viene de tablon.html con una solicitud para responder
+      checkUrlParams();
+    }
+    
+    async function checkUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const solicitudId = params.get('solicitud');
+      
+      if (solicitudId) {
+        console.log('Abriendo solicitud desde URL:', solicitudId);
+        // Cargar la solicitud y abrir modal
+        try {
+          const doc = await db.collection('solicitudes').doc(solicitudId).get();
+          if (doc.exists) {
+            const notifData = {
+              id: solicitudId,
+              categoria: doc.data().tipo,
+              titulo: getTituloSolicitud(doc.data()),
+              ...doc.data()
+            };
+            // Dar tiempo a que se renderice todo
+            setTimeout(() => abrirModalRespuesta(notifData), 500);
+          }
+        } catch (e) {
+          console.error('Error cargando solicitud:', e);
+        }
+        // Limpiar URL
+        window.history.replaceState({}, '', 'cgi.html');
+      }
     }
 
     // ============ MI PLAN ============
@@ -5132,7 +5186,7 @@
     let notificacionesData = [];
 
     async function renderTablon() {
-      console.log('=== RENDER TABLÓN ===');
+      console.log('=== RENDER TABLÓN (consulta directa) ===');
       const container = document.getElementById('tablon-list');
       
       if (!container) {
@@ -5146,124 +5200,152 @@
         return;
       }
 
-      console.log('Buscando para usuario:', currentUser.uid);
-      console.log('En familia:', currentFamilia.id);
+      const familiaId = currentFamilia.id;
+      const miUid = currentUser.uid;
+      
+      // Verificar si soy admin
+      const miUsuario = await db.collection('usuarios').doc(miUid).get();
+      const misDatos = miUsuario.exists ? miUsuario.data() : {};
+      const rolLower = String(misDatos.rol || '').toLowerCase();
+      const credencialLower = String(misDatos.credencial || '').toLowerCase();
+      const soyAdmin = rolLower.includes('admin') || credencialLower.includes('admin') || 
+                       misDatos.esAdmin === true || misDatos.adminRama === true || misDatos.superAdmin === true;
+      
+      console.log('Soy admin:', soyAdmin, 'Rol:', misDatos.rol);
 
       try {
-        const ahora = new Date();
-        let todosAvisos = [];
+        let itemsAccion = [];
+        let itemsInfo = [];
         
-        // 1. Cargar QUEOS para este usuario
+        // ========== PARA ADMINS: Solicitudes pendientes ==========
+        if (soyAdmin) {
+          try {
+            const solicitudesSnap = await db.collection('solicitudes')
+              .where('familiaId', '==', familiaId)
+              .where('estado', '==', 'pendiente')
+              .orderBy('fechaCreacion', 'desc')
+              .limit(20)
+              .get();
+            
+            console.log('✅ Solicitudes pendientes:', solicitudesSnap.size);
+            
+            solicitudesSnap.docs.forEach(doc => {
+              const data = doc.data();
+              const icono = {
+                'reserva': '📅',
+                'evento': '🎉',
+                'iniciativa': '💡',
+                'averia': '🔧',
+                'encargo': '🛒'
+              }[data.tipo] || '📌';
+              
+              itemsAccion.push({
+                id: doc.id,
+                source: 'solicitud',
+                tipo: 'accion',
+                categoria: data.tipo,
+                icono: icono,
+                titulo: getTituloSolicitud(data),
+                mensaje: `${data.solicitadoPorNombre || 'Usuario'} · ${data.solicitadoPorNido || ''}`,
+                fecha: data.fechaCreacion,
+                enlace: `solicitudes.html?id=${doc.id}`,
+                data: data
+              });
+            });
+          } catch (e) {
+            console.error('Error cargando solicitudes:', e);
+          }
+        }
+        
+        // ========== PARA TODOS: Mis solicitudes respondidas ==========
         try {
-          const queosSnap = await db.collection('queos')
-            .where('familiaId', '==', currentFamilia.id)
-            .where('destinatarios', 'array-contains', currentUser.uid)
-            .orderBy('fechaCreacion', 'desc')
+          const misRespondidas = await db.collection('solicitudes')
+            .where('solicitadoPor', '==', miUid)
+            .where('estado', 'in', ['aprobada', 'rechazada', 'respondida'])
+            .orderBy('fechaRespuesta', 'desc')
             .limit(10)
             .get();
           
-          const queos = queosSnap.docs.map(doc => ({ 
-            id: doc.id, 
-            source: 'queo', 
-            categoria: 'queo', 
-            ...doc.data() 
-          }));
-          todosAvisos = todosAvisos.concat(queos);
-          console.log('✅ Queos cargados:', queos.length);
-        } catch (e) {
-          console.error('❌ Error cargando queos:', e);
-          if (e.message && e.message.includes('index')) {
-            console.error('⚠️ FALTA ÍNDICE. Haz clic en el enlace del error para crearlo.');
-          }
-        }
-
-        // 2. Cargar NOTIFICACIONES del sistema para este usuario
-        try {
-          console.log('Buscando notificaciones con array-contains:', currentUser.uid);
+          console.log('✅ Mis solicitudes respondidas:', misRespondidas.size);
           
-          const notifSnap = await db.collection('notificaciones')
-            .where('familiaId', '==', currentFamilia.id)
-            .where('destinatarios', 'array-contains', currentUser.uid)
-            .where('estado', '==', 'activa')
-            .orderBy('fechaCreacion', 'desc')
-            .limit(10)
-            .get();
-          
-          const notifs = notifSnap.docs.map(doc => ({ 
-            id: doc.id, 
-            source: 'notificacion', 
-            ...doc.data() 
-          }));
-          todosAvisos = todosAvisos.concat(notifs);
-          console.log('✅ Notificaciones cargadas:', notifs.length);
-          
-          if (notifs.length > 0) {
-            console.log('Primera notificación:', notifs[0]);
-          }
-        } catch (e) {
-          console.error('❌ Error cargando notificaciones:', e);
-          if (e.message && e.message.includes('index')) {
-            console.error('⚠️ FALTA ÍNDICE. Haz clic en el enlace del error para crearlo.');
-          }
-        }
-
-        // 3. DEBUG: Verificar si hay notificaciones en la familia (sin filtro de destinatarios)
-        try {
-          const debugSnap = await db.collection('notificaciones')
-            .where('familiaId', '==', currentFamilia.id)
-            .orderBy('fechaCreacion', 'desc')
-            .limit(5)
-            .get();
-          
-          console.log('📋 DEBUG - Notificaciones totales en familia:', debugSnap.size);
-          debugSnap.docs.forEach((doc, i) => {
+          misRespondidas.docs.forEach(doc => {
             const data = doc.data();
-            console.log(`  ${i+1}. ${data.titulo || data.categoria}`, {
-              destinatarios: data.destinatarios,
-              estado: data.estado,
-              miUidIncluido: data.destinatarios?.includes(currentUser.uid)
+            const esAprobada = data.estado === 'aprobada';
+            
+            itemsInfo.push({
+              id: doc.id,
+              source: 'solicitud-respuesta',
+              tipo: 'info',
+              categoria: data.tipo,
+              icono: esAprobada ? '✅' : '❌',
+              titulo: `${esAprobada ? 'Aprobada' : 'Rechazada'}: ${getTituloSolicitud(data)}`,
+              mensaje: data.respuesta || 'Sin comentarios',
+              fecha: data.fechaRespuesta || data.fechaCreacion,
+              data: data
             });
           });
         } catch (e) {
-          console.error('DEBUG query error:', e);
+          console.error('Error cargando mis solicitudes:', e);
+        }
+        
+        // ========== QUEOS (sistema existente) ==========
+        try {
+          const queosSnap = await db.collection('queos')
+            .where('familiaId', '==', familiaId)
+            .where('destinatarios', 'array-contains', miUid)
+            .orderBy('fechaCreacion', 'desc')
+            .limit(10)
+            .get();
+          
+          console.log('✅ Queos:', queosSnap.size);
+          
+          queosSnap.docs.forEach(doc => {
+            const data = doc.data();
+            // Filtrar ya leídos
+            if (data.leidoPor?.includes(miUid)) return;
+            
+            itemsInfo.push({
+              id: doc.id,
+              source: 'queo',
+              tipo: 'info',
+              categoria: 'queo',
+              icono: '📢',
+              titulo: data.titulo || 'Aviso',
+              mensaje: data.mensaje || '',
+              fecha: data.fechaCreacion,
+              data: data
+            });
+          });
+        } catch (e) {
+          console.error('Error cargando queos:', e);
         }
 
-        // Filtrar completadas/leídas
-        notificacionesData = todosAvisos.filter(n => {
-          // Filtrar ya completadas por este usuario (tipo acción)
-          if (n.tipo === 'accion' && n.completadoPor?.includes(currentUser.uid)) return false;
-          // Filtrar ya leídas (tipo info) - solo para queos
-          if (n.source === 'queo' && n.tipo === 'info' && n.leidoPor?.includes(currentUser.uid)) return false;
-          return true;
-        });
-
-        // Ordenar por fecha (más recientes primero)
+        // ========== RENDERIZAR ==========
+        notificacionesData = [...itemsAccion, ...itemsInfo];
+        
+        // Ordenar por fecha
         notificacionesData.sort((a, b) => {
-          const fechaA = a.fechaCreacion?.toDate ? a.fechaCreacion.toDate() : new Date(a.fechaCreacion || 0);
-          const fechaB = b.fechaCreacion?.toDate ? b.fechaCreacion.toDate() : new Date(b.fechaCreacion || 0);
+          const fechaA = a.fecha?.toDate ? a.fecha.toDate() : new Date(a.fecha || 0);
+          const fechaB = b.fecha?.toDate ? b.fecha.toDate() : new Date(b.fecha || 0);
           return fechaB - fechaA;
         });
 
-        console.log('Total avisos para mostrar:', notificacionesData.length);
+        console.log('Total items para mostrar:', notificacionesData.length);
 
-        // Renderizar
         let html = '';
 
-        const acciones = notificacionesData.filter(n => n.tipo === 'accion');
-        const infos = notificacionesData.filter(n => n.tipo !== 'accion');
-
-        if (acciones.length > 0) {
+        if (itemsAccion.length > 0) {
           html += '<div class="tablon-separator">⚡ Requiere tu acción</div>';
-          html += acciones.map(n => renderNotificacion(n)).join('');
+          html += itemsAccion.slice(0, 5).map(n => renderNotificacionDirecta(n)).join('');
         }
 
-        if (infos.length > 0) {
+        if (itemsInfo.length > 0) {
           html += '<div class="tablon-separator">ℹ️ Información</div>';
-          html += infos.map(n => renderNotificacion(n)).join('');
+          html += itemsInfo.slice(0, 5).map(n => renderNotificacionDirecta(n)).join('');
         }
 
         if (html === '') {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✨</div>Sin novedades</div>';
           return;
         }
 
@@ -5272,6 +5354,83 @@
       } catch (error) {
         console.error('Error cargando tablón:', error);
         container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
+      }
+    }
+
+    function getTituloSolicitud(data) {
+      switch(data.tipo) {
+        case 'reserva': return `Reserva: ${data.bienNombre || 'Bien'}`;
+        case 'evento': return `Evento: ${data.nombre || data.titulo || 'Sin nombre'}`;
+        case 'iniciativa': return `Propuesta: ${data.titulo || 'Sin título'}`;
+        case 'averia': return `Avería: ${data.bienNombre || data.descripcion?.substring(0, 30) || 'Ver detalle'}`;
+        case 'encargo': return `Encargo: ${data.bienNombre || 'Bien'}`;
+        default: return data.titulo || 'Solicitud';
+      }
+    }
+
+    function renderNotificacionDirecta(item) {
+      const fecha = item.fecha?.toDate ? item.fecha.toDate() : new Date(item.fecha || Date.now());
+      const fechaStr = formatearFechaRelativa(fecha);
+      
+      const esAccion = item.tipo === 'accion';
+      const colorClass = esAccion ? 'notif-accion' : 'notif-info';
+      
+      return `
+        <div class="mensaje-item ${colorClass}" data-id="${item.id}" data-source="${item.source}" onclick="abrirDetalleSolicitud('${item.id}', '${item.source}')">
+          <div class="mensaje-avatar">${item.icono}</div>
+          <div class="mensaje-content">
+            <div class="mensaje-header">
+              <span class="mensaje-autor">${item.titulo}</span>
+              <span class="mensaje-fecha">${fechaStr}</span>
+            </div>
+            <div class="mensaje-preview">${item.mensaje}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function abrirDetalleSolicitud(id, source) {
+      if (source === 'solicitud') {
+        // Buscar la solicitud en los datos cargados
+        const solicitud = notificacionesData.find(n => n.id === id && n.source === 'solicitud');
+        if (solicitud) {
+          // Preparar datos para el modal
+          const notifData = {
+            id: id,
+            categoria: solicitud.categoria,
+            titulo: solicitud.titulo,
+            ...solicitud.data
+          };
+          abrirModalRespuesta(notifData);
+        }
+      } else if (source === 'queo') {
+        // Marcar como leído y mostrar detalle
+        marcarQueoLeido(id);
+      }
+    }
+
+    function formatearFechaRelativa(fecha) {
+      const ahora = new Date();
+      const diff = ahora - fecha;
+      const minutos = Math.floor(diff / 60000);
+      const horas = Math.floor(diff / 3600000);
+      const dias = Math.floor(diff / 86400000);
+      
+      if (minutos < 1) return 'ahora';
+      if (minutos < 60) return `${minutos}m`;
+      if (horas < 24) return `${horas}h`;
+      if (dias < 7) return `${dias}d`;
+      return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    }
+
+    async function marcarQueoLeido(queoId) {
+      try {
+        await db.collection('queos').doc(queoId).update({
+          leidoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+        });
+        await renderTablon();
+      } catch (e) {
+        console.error('Error marcando queo:', e);
       }
     }
 

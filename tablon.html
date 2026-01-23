@@ -391,49 +391,116 @@
       try {
         const ahora = new Date();
         const familiaId = currentFamilia?.id || userData.familiaId;
+        const miUid = currentUser.uid;
 
-        console.log('=== CARGAR AVISOS TABLÓN ===');
-        console.log('Usuario:', currentUser.uid);
+        console.log('=== CARGAR AVISOS TABLÓN (consulta directa) ===');
+        console.log('Usuario:', miUid);
         console.log('Familia:', familiaId);
 
-        // 1. Cargar notificaciones para este usuario (usando índice con estado)
-        try {
-          console.log('Buscando notificaciones...');
-          const notifSnap = await db.collection('notificaciones')
-            .where('familiaId', '==', familiaId)
-            .where('destinatarios', 'array-contains', currentUser.uid)
-            .where('estado', '==', 'activa')
-            .orderBy('fechaCreacion', 'desc')
-            .limit(50)
-            .get();
+        // Verificar si soy admin
+        const miUsuario = await db.collection('usuarios').doc(miUid).get();
+        const misDatos = miUsuario.exists ? miUsuario.data() : {};
+        const rolLower = String(misDatos.rol || '').toLowerCase();
+        const credencialLower = String(misDatos.credencial || '').toLowerCase();
+        const soyAdmin = rolLower.includes('admin') || credencialLower.includes('admin') || 
+                         misDatos.esAdmin === true || misDatos.adminRama === true || misDatos.superAdmin === true;
+        
+        console.log('Soy admin:', soyAdmin, 'Rol:', misDatos.rol);
 
-          notificaciones = notifSnap.docs.map(doc => ({ id: doc.id, source: 'notificacion', ...doc.data() }))
-            .filter(n => {
-              if (n.fechaExpiracion) {
-                const expira = n.fechaExpiracion.toDate ? n.fechaExpiracion.toDate() : new Date(n.fechaExpiracion);
-                if (expira < ahora) return false;
-              }
-              return true;
+        // Reset arrays
+        notificaciones = [];
+        queos = [];
+
+        // ========== PARA ADMINS: Solicitudes pendientes ==========
+        if (soyAdmin) {
+          try {
+            const solicitudesSnap = await db.collection('solicitudes')
+              .where('familiaId', '==', familiaId)
+              .where('estado', '==', 'pendiente')
+              .orderBy('fechaCreacion', 'desc')
+              .limit(50)
+              .get();
+            
+            console.log('✅ Solicitudes pendientes:', solicitudesSnap.size);
+            
+            solicitudesSnap.docs.forEach(doc => {
+              const data = doc.data();
+              const icono = {
+                'reserva': '📅',
+                'evento': '🎉',
+                'iniciativa': '💡',
+                'averia': '🔧',
+                'encargo': '🛒'
+              }[data.tipo] || '📌';
+              
+              notificaciones.push({
+                id: doc.id,
+                source: 'solicitud',
+                tipo: 'accion',
+                categoria: data.tipo || 'solicitud',
+                icono: icono,
+                titulo: getTituloSolicitud(data),
+                mensaje: `${data.solicitadoPorNombre || 'Usuario'} · ${data.solicitadoPorNido || ''}`,
+                fechaCreacion: data.fechaCreacion,
+                data: data
+              });
             });
-          console.log('✅ Notificaciones cargadas:', notificaciones.length);
-        } catch (e) {
-          console.warn('❌ Error cargando notificaciones:', e);
-          if (e.message && e.message.includes('index')) {
-            console.error('⚠️ FALTA ÍNDICE. Haz clic en el enlace del error para crearlo.');
+          } catch (e) {
+            console.error('Error cargando solicitudes:', e);
+            if (e.message && e.message.includes('index')) {
+              console.error('⚠️ FALTA ÍNDICE para solicitudes. Haz clic en el enlace del error.');
+            }
           }
-          notificaciones = [];
         }
 
-        // 2. Cargar queos para este usuario
+        // ========== PARA TODOS: Mis solicitudes respondidas ==========
+        try {
+          const misRespondidas = await db.collection('solicitudes')
+            .where('solicitadoPor', '==', miUid)
+            .where('estado', 'in', ['aprobada', 'rechazada', 'respondida'])
+            .orderBy('fechaRespuesta', 'desc')
+            .limit(20)
+            .get();
+          
+          console.log('✅ Mis solicitudes respondidas:', misRespondidas.size);
+          
+          misRespondidas.docs.forEach(doc => {
+            const data = doc.data();
+            const esAprobada = data.estado === 'aprobada';
+            
+            notificaciones.push({
+              id: doc.id,
+              source: 'solicitud-respuesta',
+              tipo: 'info',
+              categoria: data.tipo || 'respuesta',
+              icono: esAprobada ? '✅' : '❌',
+              titulo: `${esAprobada ? 'Aprobada' : 'Rechazada'}: ${getTituloSolicitud(data)}`,
+              mensaje: data.respuesta || 'Sin comentarios',
+              fechaCreacion: data.fechaRespuesta || data.fechaCreacion,
+              data: data
+            });
+          });
+        } catch (e) {
+          console.error('Error cargando mis solicitudes:', e);
+        }
+
+        // ========== QUEOS (sistema existente) ==========
         try {
           const queosSnap = await db.collection('queos')
             .where('familiaId', '==', familiaId)
-            .where('destinatarios', 'array-contains', currentUser.uid)
+            .where('destinatarios', 'array-contains', miUid)
             .orderBy('fechaCreacion', 'desc')
             .limit(50)
             .get();
 
-          queos = queosSnap.docs.map(doc => ({ id: doc.id, source: 'queo', ...doc.data() }));
+          queos = queosSnap.docs.map(doc => ({ 
+            id: doc.id, 
+            source: 'queo',
+            tipo: doc.data().tipo || 'info',
+            categoria: 'queo',
+            icono: '📢',
+            ...doc.data() 
+          }));
           console.log('✅ Queos cargados:', queos.length);
         } catch (e) {
           console.warn('❌ Error cargando queos:', e);
@@ -449,6 +516,17 @@
       } catch (error) {
         console.error('Error cargando avisos:', error);
         document.getElementById('loading').innerHTML = '<p style="color:var(--error);">Error al cargar avisos</p>';
+      }
+    }
+
+    function getTituloSolicitud(data) {
+      switch(data.tipo) {
+        case 'reserva': return `Reserva: ${data.bienNombre || 'Bien'}`;
+        case 'evento': return `Evento: ${data.nombre || data.titulo || 'Sin nombre'}`;
+        case 'iniciativa': return `Propuesta: ${data.titulo || 'Sin título'}`;
+        case 'averia': return `Avería: ${data.bienNombre || data.descripcion?.substring(0, 30) || 'Ver detalle'}`;
+        case 'encargo': return `Encargo: ${data.bienNombre || 'Bien'}`;
+        default: return data.titulo || 'Solicitud';
       }
     }
 
@@ -543,7 +621,7 @@
     function renderAviso(n, tipo) {
       // origen puede ser objeto {tipo, id} o string - usar categoria para el texto
       const categoriaTexto = n.categoria || (typeof n.origen === 'string' ? n.origen : n.origen?.tipo) || 'Sistema';
-      const icono = iconosPorOrigen[categoriaTexto] || iconosPorOrigen['default'];
+      const icono = n.icono || iconosPorOrigen[categoriaTexto] || iconosPorOrigen['default'];
       const fecha = formatFecha(n.fechaCreacion);
       const leido = n.leidoPor?.includes(currentUser.uid) ? 'leido' : '';
       const tipoClass = tipo === 'accion' ? 'accion' : '';
@@ -556,7 +634,16 @@
         `<button class="aviso-btn secondary" onclick="eliminarNotificacion('${n.id}', '${sourceType}')" style="color: var(--error);">🗑️</button>` : '';
       
       let accionesHtml = '';
-      if (n.enlace) {
+      
+      // Caso especial para solicitudes: botón Responder
+      if (sourceType === 'solicitud' && tipo === 'accion') {
+        accionesHtml = `
+          <div class="aviso-acciones">
+            <button class="aviso-btn primary" onclick="abrirModalResponderSolicitud('${n.id}')">📝 Responder</button>
+            ${btnEliminar}
+          </div>
+        `;
+      } else if (n.enlace) {
         accionesHtml = `
           <div class="aviso-acciones">
             <a href="${n.enlace}" class="aviso-btn primary">Ver detalle →</a>
@@ -581,6 +668,11 @@
 
       // Mostrar categoría formateada
       const origenText = n.source === 'queo' ? `De: ${n.remitenteNombre || 'Familia'}` : formatearCategoria(categoriaTexto);
+      
+      // Para solicitudes, mostrar info del solicitante
+      const mensajeDisplay = n.source === 'solicitud' ? 
+        `Solicitado por: ${n.data?.solicitadoPorNombre || 'Usuario'}${n.data?.solicitadoPorNido ? ' · ' + n.data.solicitadoPorNido : ''}` :
+        (n.mensaje || '');
 
       return `
         <div class="aviso ${tipoClass} ${leido}" data-id="${n.id}">
@@ -591,11 +683,32 @@
               <span class="aviso-fecha">${fecha}</span>
             </div>
             <div class="aviso-titulo">${n.titulo || n.asunto || 'Notificación'}</div>
-            ${n.mensaje ? `<div class="aviso-mensaje">${n.mensaje}</div>` : ''}
+            ${mensajeDisplay ? `<div class="aviso-mensaje">${mensajeDisplay}</div>` : ''}
             ${accionesHtml}
           </div>
         </div>
       `;
+    }
+    
+    // Variable global para datos de solicitud seleccionada
+    let solicitudActual = null;
+    
+    async function abrirModalResponderSolicitud(solicitudId) {
+      try {
+        const doc = await db.collection('solicitudes').doc(solicitudId).get();
+        if (!doc.exists) {
+          alert('Solicitud no encontrada');
+          return;
+        }
+        
+        solicitudActual = { id: solicitudId, ...doc.data() };
+        
+        // Redirigir a cgi.html con parámetro para abrir modal
+        window.location.href = `cgi.html?solicitud=${solicitudId}`;
+      } catch (e) {
+        console.error('Error abriendo solicitud:', e);
+        alert('Error al cargar la solicitud');
+      }
     }
 
     function formatearCategoria(cat) {
