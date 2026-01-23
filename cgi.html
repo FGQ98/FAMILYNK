@@ -6297,16 +6297,39 @@
       const visibilidad = obtenerVisibilidad('averia');
 
       try {
-        // 1. Guardar en colección de reparaciones del bien
+        const fechaActual = firebase.firestore.FieldValue.serverTimestamp();
+        const reportadoPorNombre = userData.nombre || userData.email;
+        
+        // 1. Registrar en Lista de Reparaciones (Mantenimiento)
+        // Esta es la colección que se muestra en el módulo de Mantenimiento
         await db.collection('bienes').doc(bienId).collection('reparaciones').add({
+          // Datos de la avería
           descripcion,
-          urgencia,
-          estado: 'pendiente',
+          urgencia, // 'baja', 'media', 'alta', 'urgente'
+          estado: 'pendiente', // pendiente -> en_proceso -> completada
+          
+          // Quién reportó
           reportadoPor: currentUser.uid,
-          reportadoPorNombre: userData.nombre || userData.email,
-          nidoId: miNidoPrincipal?.id || null,
+          reportadoPorNombre: reportadoPorNombre,
+          nidoReportador: miNidoPrincipal?.nombre || '',
+          
+          // Metadata
+          tipo: 'averia', // Para distinguir de mantenimientos programados
+          origen: 'cgi', // Reportado desde CGI (vs casero, admin, etc)
           visibilidad,
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          nidoId: miNidoPrincipal?.id || null,
+          bienId: bienId,
+          bienNombre: bien?.nombre || '',
+          
+          // Fechas
+          fechaCreacion: fechaActual,
+          fechaReporte: fechaActual,
+          
+          // Campos para seguimiento (se rellenan después)
+          asignadoA: null,
+          fechaResolucion: null,
+          coste: null,
+          notasResolucion: null
         });
         
         // 2. Notificar a los admins
@@ -6320,9 +6343,26 @@
           nidoId: miNidoPrincipal?.id || null
         });
         
+        // 3. Si el bien tiene Casero asignado, notificarle también
+        if (bien?.caseroUid) {
+          await db.collection('notificaciones').add({
+            tipo: 'alerta',
+            categoria: 'averia',
+            titulo: `🔧 Avería reportada: ${bien.nombre}`,
+            mensaje: `${reportadoPorNombre} ha reportado: ${descripcion.substring(0, 80)}${descripcion.length > 80 ? '...' : ''}`,
+            familiaId: currentFamilia.id,
+            destinatarios: [bien.caseroUid],
+            leidoPor: [],
+            fechaCreacion: fechaActual,
+            enlace: `casero.html?id=${bienId}`,
+            origen: { tipo: 'averia', bienId: bienId },
+            estado: 'activa'
+          });
+        }
+        
         track.completar('averia');
         cerrarModales();
-        alert('✅ Avería reportada y notificada a los administradores');
+        alert('✅ Avería registrada en Mantenimiento y notificada');
       } catch (error) {
         console.error('Error:', error);
         alert('Error al enviar el aviso');
@@ -6445,16 +6485,22 @@
       const visibilidad = obtenerVisibilidad('encargo');
 
       try {
+        const fechaActual = firebase.firestore.FieldValue.serverTimestamp();
+        const solicitadoPorNombre = userData.nombre || userData.email;
+        
         // 1. Guardar en colección de encargos del bien
         await db.collection('bienes').doc(bienId).collection('encargos').add({
           items,
           notas,
           estado: 'pendiente',
           solicitadoPor: currentUser.uid,
-          solicitadoPorNombre: userData.nombre || userData.email,
+          solicitadoPorNombre: solicitadoPorNombre,
+          nidoSolicitante: miNidoPrincipal?.nombre || '',
           nidoId: miNidoPrincipal?.id || null,
           visibilidad,
-          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+          bienId: bienId,
+          bienNombre: bien?.nombre || '',
+          fechaCreacion: fechaActual
         });
         
         // 2. Notificar a los admins
@@ -6468,9 +6514,26 @@
           nidoId: miNidoPrincipal?.id || null
         });
         
+        // 3. Si el bien tiene Casero asignado, notificarle también
+        if (bien?.caseroUid) {
+          await db.collection('notificaciones').add({
+            tipo: 'accion',
+            categoria: 'encargo',
+            titulo: `🛒 Nuevo encargo: ${bien.nombre}`,
+            mensaje: `${solicitadoPorNombre} solicita: ${items.substring(0, 80)}${items.length > 80 ? '...' : ''}`,
+            familiaId: currentFamilia.id,
+            destinatarios: [bien.caseroUid],
+            leidoPor: [],
+            fechaCreacion: fechaActual,
+            enlace: `casero.html?id=${bienId}`,
+            origen: { tipo: 'encargo', bienId: bienId },
+            estado: 'activa'
+          });
+        }
+        
         track.completar('encargo');
         cerrarModales();
-        alert('✅ Encargo registrado y notificado a los administradores');
+        alert('✅ Encargo registrado y notificado');
       } catch (error) {
         console.error('Error:', error);
         alert('Error al enviar el encargo');
