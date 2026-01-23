@@ -1421,33 +1421,31 @@
           .filter(p => p.estado === 'pendiente' || p.estado === 'en_proceso');
       }
 
-      // Menús semanales
+      // Menús del día (comida/cena)
       try {
-        // Obtener menú de la semana actual
+        // Obtener fechas de la semana actual
         const hoy = new Date();
         const inicioSemana = new Date(hoy);
-        inicioSemana.setDate(hoy.getDate() - hoy.getDay()); // Domingo
+        const diaActual = hoy.getDay();
+        const diffLunes = diaActual === 0 ? -6 : 1 - diaActual;
+        inicioSemana.setDate(hoy.getDate() + diffLunes);
         inicioSemana.setHours(0, 0, 0, 0);
         
-        const snap = await db.collection('bienes').doc(bienId).collection('menus')
-          .where('fechaInicio', '>=', inicioSemana)
-          .orderBy('fechaInicio', 'asc')
-          .limit(7)
+        const finSemana = new Date(inicioSemana);
+        finSemana.setDate(finSemana.getDate() + 6);
+        
+        const formatFecha = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        
+        const snap = await db.collection('bienes').doc(bienId).collection('menusDia')
+          .where('fecha', '>=', formatFecha(inicioSemana))
+          .where('fecha', '<=', formatFecha(finSemana))
           .get();
         
         datosModulos.menus = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('Menús cargados:', datosModulos.menus.length);
       } catch (error) {
-        console.log('Cargando menús sin índice:', error);
-        // Fallback: cargar últimos menús
-        try {
-          const snap = await db.collection('bienes').doc(bienId).collection('menus')
-            .orderBy('fechaInicio', 'desc')
-            .limit(7)
-            .get();
-          datosModulos.menus = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-          datosModulos.menus = [];
-        }
+        console.log('Cargando menús sin índice o error:', error);
+        datosModulos.menus = [];
       }
     }
 
@@ -1508,53 +1506,65 @@
     function renderModuloMenus() {
       const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       const diasCompletos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-      const hoyNum = new Date().getDay();
       const hoy = new Date();
+      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(hoy.getDate()).padStart(2,'0')}`;
       
       let itemsHtml = '';
       
       if (datosModulos.menus.length === 0) {
-        itemsHtml = '<div class="modulo-card-empty">Sin menús programados</div>';
+        itemsHtml = '<div class="modulo-card-empty">Sin menús programados esta semana</div>';
       } else {
-        // Agrupar menús por día
+        // Agrupar menús por fecha
         const menusPorDia = {};
         
         datosModulos.menus.forEach(menu => {
-          const fecha = menu.fechaInicio?.toDate ? menu.fechaInicio.toDate() : new Date(menu.fechaInicio);
-          const diaNum = fecha.getDay();
-          const fechaStr = fecha.toISOString().split('T')[0];
-          
-          if (!menusPorDia[fechaStr]) {
-            menusPorDia[fechaStr] = { dia: diaNum, fecha: fecha, comidas: [] };
+          const fecha = menu.fecha; // formato YYYY-MM-DD
+          if (!menusPorDia[fecha]) {
+            menusPorDia[fecha] = { comida: null, cena: null };
           }
-          menusPorDia[fechaStr].comidas.push(menu);
+          if (menu.tipo === 'comida') {
+            menusPorDia[fecha].comida = menu;
+          } else if (menu.tipo === 'cena') {
+            menusPorDia[fecha].cena = menu;
+          }
         });
         
-        // Mostrar próximos días
+        // Ordenar por fecha y mostrar
         const diasOrdenados = Object.entries(menusPorDia)
-          .sort(([a], [b]) => new Date(a) - new Date(b))
-          .slice(0, 4);
+          .sort(([a], [b]) => a.localeCompare(b))
+          .slice(0, 5); // Mostrar máximo 5 días
         
         if (diasOrdenados.length > 0) {
           itemsHtml = '<div class="menus-lista">';
           
           diasOrdenados.forEach(([fechaStr, datos]) => {
-            const esHoy = fechaStr === hoy.toISOString().split('T')[0];
-            const diaLabel = esHoy ? '📅 Hoy' : diasCompletos[datos.dia];
+            const fecha = new Date(fechaStr + 'T12:00:00');
+            const diaNum = fecha.getDay();
+            const esHoy = fechaStr === hoyStr;
+            const diaLabel = esHoy ? '📅 Hoy' : `${diasSemana[diaNum]} ${fecha.getDate()}`;
             
             itemsHtml += `
               <div class="menu-dia ${esHoy ? 'hoy' : ''}">
                 <div class="menu-dia-header">${diaLabel}</div>
                 <div class="menu-comidas">
-                  ${datos.comidas.map(c => {
-                    const tipoIcon = { desayuno: '🌅', almuerzo: '🍽️', cena: '🌙', merienda: '🍪' };
-                    return `
-                      <div class="menu-comida">
-                        <span class="menu-tipo">${tipoIcon[c.tipo] || '🍴'}</span>
-                        <span class="menu-plato">${c.plato || c.descripcion || 'Sin especificar'}</span>
-                      </div>
-                    `;
-                  }).join('')}
+                  ${datos.comida ? `
+                    <div class="menu-comida">
+                      <span class="menu-tipo">☀️</span>
+                      <span class="menu-plato">${datos.comida.plato || datos.comida.menuNombre || 'Comida'}</span>
+                    </div>
+                  ` : ''}
+                  ${datos.cena ? `
+                    <div class="menu-comida">
+                      <span class="menu-tipo">🌙</span>
+                      <span class="menu-plato">${datos.cena.plato || datos.cena.menuNombre || 'Cena'}</span>
+                    </div>
+                  ` : ''}
+                  ${!datos.comida && !datos.cena ? `
+                    <div class="menu-comida" style="color: var(--text-muted);">
+                      <span class="menu-tipo">📋</span>
+                      <span class="menu-plato">Sin definir</span>
+                    </div>
+                  ` : ''}
                 </div>
               </div>
             `;

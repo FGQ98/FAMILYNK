@@ -1359,6 +1359,16 @@
     .ajuar-articulo.hidden { display: none; }
     .ajuar-grupo.no-results .ajuar-grupo-header { opacity: 0.5; }
     .ajuar-highlight { background: var(--warning); padding: 0 2px; border-radius: 2px; }
+    
+    /* Select de ubicación con botón añadir */
+    .ubicacion-select-wrapper {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .ubicacion-select-wrapper select {
+      flex: 1;
+    }
 
     /* Inventario mejorado */
     .inventario-categorias {
@@ -1755,7 +1765,10 @@
               <div class="ajuar-grupos" id="lista-grupos-ajuar">
                 <div class="empty-mini">Sin grupos creados</div>
               </div>
-              <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="abrirModalGrupoAjuar()">+ Añadir grupo</button>
+              <div style="display: flex; gap: 8px; margin-top: 10px;">
+                <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="abrirModalGrupoAjuar()">+ Añadir grupo</button>
+                <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="abrirModalLugaresAjuar()">📍 Lugares</button>
+              </div>
             </div>
           </div>
 
@@ -2416,7 +2429,15 @@
         </div>
         <div class="form-group">
           <label class="form-label">Ubicación / Lugar</label>
-          <input type="text" class="form-input" id="articulo-ajuar-ubicacion" placeholder="Ej: Salón, Dormitorio 1...">
+          <div class="ubicacion-select-wrapper">
+            <select class="form-input" id="articulo-ajuar-ubicacion" style="flex:1;">
+              <option value="">-- Selecciona lugar --</option>
+              <!-- Se llenan dinámicamente -->
+            </select>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="crearNuevoLugarAjuar()" title="Crear nuevo lugar" style="padding: 8px 12px;">
+              + 📍
+            </button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Marca</label>
@@ -2443,6 +2464,59 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Gestión de Lugares Ajuar -->
+  <div class="modal-overlay" id="modal-lugares-ajuar">
+    <div class="modal" style="max-width:450px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📍 Gestión de Lugares</h3>
+        <button class="modal-close" onclick="cerrarModalLugaresAjuar()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px;">
+          Los lugares aparecen como opciones al crear artículos del ajuar.
+        </p>
+        
+        <!-- Input para añadir nuevo -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <input type="text" class="form-input" id="nuevo-lugar-nombre" placeholder="Nuevo lugar (ej: Salón, Cocina...)" style="flex:1;">
+          <button class="btn btn-primary btn-sm" onclick="guardarNuevoLugar()">Añadir</button>
+        </div>
+        
+        <!-- Lista de lugares -->
+        <div class="lugares-lista" id="lista-lugares-ajuar">
+          <div class="empty-mini">Sin lugares definidos</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalLugaresAjuar()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* Lugares Ajuar */
+    .lugares-lista { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
+    .lugar-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+    }
+    .lugar-item-nombre { font-weight: 600; font-size: 0.9rem; }
+    .lugar-item-count { font-size: 0.75rem; color: var(--text-muted); }
+    .lugar-item-del {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+    }
+    .lugar-item-del:hover { color: var(--error); }
+  </style>
 
   <style>
     /* Modal tabs */
@@ -5074,6 +5148,7 @@
 
     // ============ CATÁLOGO AJUAR ============
     let gruposAjuar = [];
+    let lugaresAjuar = []; // Lugares para el desplegable de ubicación
     let editingGrupoId = null;
     let editingArticuloId = null;
     let articuloFotoBase64 = null;
@@ -5093,6 +5168,11 @@
       document.getElementById('section-catalogo-ajuar').classList.remove('hidden');
       
       try {
+        // Cargar lugares de ajuar
+        const lugaresSnap = await db.collection('bienes').doc(bienId).collection('lugaresAjuar').orderBy('nombre').get();
+        lugaresAjuar = lugaresSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Cargar grupos y artículos
         const snap = await db.collection('bienes').doc(bienId).collection('gruposAjuar').get();
         gruposAjuar = [];
         
@@ -5314,12 +5394,15 @@
       document.getElementById('articulo-ajuar-grupo-id').value = grupoId;
       document.getElementById('articulo-ajuar-nombre').value = '';
       document.getElementById('articulo-ajuar-desc').value = '';
-      document.getElementById('articulo-ajuar-ubicacion').value = '';
       document.getElementById('articulo-ajuar-marca').value = '';
       document.getElementById('articulo-ajuar-procedencia').value = '';
       document.getElementById('articulo-foto-preview').innerHTML = '📷 Click para subir foto';
       document.getElementById('btn-eliminar-articulo-ajuar').classList.add('hidden');
       document.getElementById('modal-articulo-ajuar-title').textContent = '🪑 Nuevo artículo';
+      
+      // Cargar select de lugares
+      cargarSelectLugares('');
+      
       document.getElementById('modal-articulo-ajuar').classList.add('active');
     }
 
@@ -5335,9 +5418,11 @@
       document.getElementById('articulo-ajuar-grupo-id').value = grupoId;
       document.getElementById('articulo-ajuar-nombre').value = articulo.nombre || '';
       document.getElementById('articulo-ajuar-desc').value = articulo.descripcion || '';
-      document.getElementById('articulo-ajuar-ubicacion').value = articulo.ubicacion || '';
       document.getElementById('articulo-ajuar-marca').value = articulo.marca || '';
       document.getElementById('articulo-ajuar-procedencia').value = articulo.procedencia || '';
+      
+      // Cargar select de lugares con el valor actual
+      cargarSelectLugares(articulo.ubicacion || '');
       
       if (articulo.foto) {
         document.getElementById('articulo-foto-preview').innerHTML = `<img src="${articulo.foto}">`;
@@ -5348,6 +5433,167 @@
       document.getElementById('btn-eliminar-articulo-ajuar').classList.remove('hidden');
       document.getElementById('modal-articulo-ajuar-title').textContent = '✏️ Editar artículo';
       document.getElementById('modal-articulo-ajuar').classList.add('active');
+    }
+
+    // Cargar select de lugares dinámicamente
+    function cargarSelectLugares(valorActual) {
+      const select = document.getElementById('articulo-ajuar-ubicacion');
+      let html = '<option value="">-- Selecciona lugar --</option>';
+      
+      lugaresAjuar.forEach(lugar => {
+        const selected = lugar.nombre === valorActual ? 'selected' : '';
+        html += `<option value="${lugar.nombre}" ${selected}>${lugar.nombre}</option>`;
+      });
+      
+      // Si hay un valor que no está en la lista, añadirlo
+      if (valorActual && !lugaresAjuar.find(l => l.nombre === valorActual)) {
+        html += `<option value="${valorActual}" selected>${valorActual} (sin guardar)</option>`;
+      }
+      
+      select.innerHTML = html;
+    }
+
+    // Crear nuevo lugar desde el modal de artículo
+    async function crearNuevoLugarAjuar() {
+      const nombre = prompt('Nombre del nuevo lugar:');
+      if (!nombre || !nombre.trim()) return;
+      
+      const nombreTrim = nombre.trim();
+      
+      // Verificar si ya existe
+      if (lugaresAjuar.find(l => l.nombre.toLowerCase() === nombreTrim.toLowerCase())) {
+        alert('Ya existe un lugar con ese nombre');
+        // Seleccionarlo en el dropdown
+        document.getElementById('articulo-ajuar-ubicacion').value = nombreTrim;
+        return;
+      }
+      
+      try {
+        // Guardar en Firebase
+        await db.collection('bienes').doc(bienId).collection('lugaresAjuar').add({
+          nombre: nombreTrim,
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Añadir a la lista local
+        lugaresAjuar.push({ nombre: nombreTrim });
+        lugaresAjuar.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        
+        // Recargar el select y seleccionar el nuevo
+        cargarSelectLugares(nombreTrim);
+        
+      } catch (error) {
+        console.error('Error creando lugar:', error);
+        alert('Error al crear el lugar');
+      }
+    }
+
+    // ========== MODAL GESTIÓN DE LUGARES ==========
+    function abrirModalLugaresAjuar() {
+      renderLugaresAjuar();
+      document.getElementById('nuevo-lugar-nombre').value = '';
+      document.getElementById('modal-lugares-ajuar').classList.add('active');
+    }
+
+    function cerrarModalLugaresAjuar() {
+      document.getElementById('modal-lugares-ajuar').classList.remove('active');
+    }
+
+    function renderLugaresAjuar() {
+      const container = document.getElementById('lista-lugares-ajuar');
+      
+      if (lugaresAjuar.length === 0) {
+        container.innerHTML = '<div class="empty-mini">Sin lugares definidos</div>';
+        return;
+      }
+      
+      // Contar artículos por lugar
+      const conteoLugares = {};
+      gruposAjuar.forEach(grupo => {
+        (grupo.articulos || []).forEach(art => {
+          if (art.ubicacion) {
+            conteoLugares[art.ubicacion] = (conteoLugares[art.ubicacion] || 0) + 1;
+          }
+        });
+      });
+      
+      container.innerHTML = lugaresAjuar.map(lugar => `
+        <div class="lugar-item">
+          <div>
+            <div class="lugar-item-nombre">📍 ${lugar.nombre}</div>
+            <div class="lugar-item-count">${conteoLugares[lugar.nombre] || 0} artículos</div>
+          </div>
+          <button class="lugar-item-del" onclick="confirmarEliminarLugar('${lugar.id}')" title="Eliminar">🗑️</button>
+        </div>
+      `).join('');
+    }
+
+    async function guardarNuevoLugar() {
+      const input = document.getElementById('nuevo-lugar-nombre');
+      const nombre = input.value.trim();
+      
+      if (!nombre) {
+        alert('Introduce un nombre para el lugar');
+        return;
+      }
+      
+      // Verificar si ya existe
+      if (lugaresAjuar.find(l => l.nombre.toLowerCase() === nombre.toLowerCase())) {
+        alert('Ya existe un lugar con ese nombre');
+        return;
+      }
+      
+      try {
+        // Guardar en Firebase
+        const docRef = await db.collection('bienes').doc(bienId).collection('lugaresAjuar').add({
+          nombre: nombre,
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // Añadir a la lista local
+        lugaresAjuar.push({ id: docRef.id, nombre: nombre });
+        lugaresAjuar.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        
+        // Limpiar input y refrescar lista
+        input.value = '';
+        renderLugaresAjuar();
+        
+      } catch (error) {
+        console.error('Error creando lugar:', error);
+        alert('Error al crear el lugar');
+      }
+    }
+
+    async function confirmarEliminarLugar(lugarId) {
+      const lugar = lugaresAjuar.find(l => l.id === lugarId);
+      if (!lugar) return;
+      
+      // Contar artículos en este lugar
+      let articulosEnLugar = 0;
+      gruposAjuar.forEach(grupo => {
+        (grupo.articulos || []).forEach(art => {
+          if (art.ubicacion === lugar.nombre) articulosEnLugar++;
+        });
+      });
+      
+      let msg = `¿Eliminar el lugar "${lugar.nombre}"?`;
+      if (articulosEnLugar > 0) {
+        msg += `\n\n⚠️ Hay ${articulosEnLugar} artículo(s) con esta ubicación. Sus ubicaciones quedarán vacías.`;
+      }
+      
+      if (!confirm(msg)) return;
+      
+      try {
+        await db.collection('bienes').doc(bienId).collection('lugaresAjuar').doc(lugarId).delete();
+        
+        // Remover de la lista local
+        lugaresAjuar = lugaresAjuar.filter(l => l.id !== lugarId);
+        renderLugaresAjuar();
+        
+      } catch (error) {
+        console.error('Error eliminando lugar:', error);
+        alert('Error al eliminar');
+      }
     }
 
     function cerrarModalArticuloAjuar() {
