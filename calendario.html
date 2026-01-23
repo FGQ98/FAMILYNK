@@ -496,17 +496,34 @@
           const bienNombre = bien.nombre || 'Bien';
           
           try {
+            // Cargar TODAS las reservas (sin filtro de estado)
             const reservasSnap = await db.collection('bienes').doc(bienDoc.id)
               .collection('reservas')
-              .where('estado', 'in', ['confirmada', 'pendiente'])
               .get();
+            
+            console.log(`Reservas en ${bienNombre}:`, reservasSnap.size);
+            if (reservasSnap.size > 0) {
+              console.log('Primera reserva:', reservasSnap.docs[0].data());
+            }
             
             reservasSnap.docs.forEach(resDoc => {
               const r = resDoc.data();
-              const fechaStr = r.entrada || r.fechaInicio;
-              if (!fechaStr) return;
               
-              const fecha = new Date(fechaStr);
+              // Manejar Timestamps de Firestore y strings
+              let fechaEntrada = r.entrada || r.fechaInicio;
+              let fechaSalida = r.salida || r.fechaFin;
+              
+              if (!fechaEntrada) return;
+              
+              // Convertir Timestamp a string si es necesario
+              if (fechaEntrada.toDate) {
+                fechaEntrada = fechaEntrada.toDate().toISOString().split('T')[0];
+              }
+              if (fechaSalida && fechaSalida.toDate) {
+                fechaSalida = fechaSalida.toDate().toISOString().split('T')[0];
+              }
+              
+              const fecha = new Date(fechaEntrada);
               const tipoReserva = (r.tipo || '').toLowerCase();
               
               let subtipo = 'reserva';
@@ -525,14 +542,15 @@
               let textoLargo = bienNombre;
               if (r.quien) textoLargo += ` — ${r.quien}`;
               else if (r.motivo) textoLargo += ` — ${r.motivo}`;
+              else if (r.solicitadoPorNombre) textoLargo += ` — ${r.solicitadoPorNombre}`;
               
               todosEventos.push({
                 tipo: 'reserva',
                 subtipo: subtipo,
                 titulo: textoLargo,
                 textoCorto: bienNombre.substring(0, 12),
-                fecha: fechaStr,
-                fechaFin: r.salida || r.fechaFin,
+                fecha: fechaEntrada,
+                fechaFin: fechaSalida,
                 mesNum: fecha.getMonth() + 1,
                 diaNum: fecha.getDate(),
                 anioNum: fecha.getFullYear(),
