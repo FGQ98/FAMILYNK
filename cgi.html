@@ -6537,16 +6537,21 @@
         adminsEstirpe = usuariosSnap.docs
           .map(d => ({ uid: d.id, ...d.data() }))
           .filter(u => {
-            // Verificar múltiples formas de identificar admins
-            const esAdminRama = u.credencial === 'admin-rama' || 
-                               u.rol === 'AdminRama' || 
-                               u.rol === 'admin-rama' ||
+            // Verificar múltiples formas de identificar admins (todas las variantes)
+            const rolLower = (u.rol || '').toLowerCase();
+            const credencialLower = (u.credencial || '').toLowerCase();
+            
+            const esAdminRama = credencialLower === 'admin-rama' || 
+                               credencialLower === 'adminrama' ||
+                               rolLower === 'adminrama' || 
+                               rolLower === 'admin-rama' ||
                                u.adminRama === true;
-            const esAdminNido = u.credencial === 'admin-nido' || 
-                               u.rol === 'AdminNido' || 
-                               u.rol === 'admin-nido' ||
+            const esAdminNido = credencialLower === 'admin-nido' || 
+                               credencialLower === 'adminnido' ||
+                               rolLower === 'adminnido' || 
+                               rolLower === 'admin-nido' ||
                                u.adminNido === true;
-            const esAdmin = u.esAdmin === true;
+            const esAdmin = u.esAdmin === true || u.superAdmin === true;
             
             return esAdminRama || esAdminNido || esAdmin;
           });
