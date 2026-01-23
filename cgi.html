@@ -3805,6 +3805,91 @@
     </div>
   </div>
 
+  <!-- Modal Responder Solicitud (Reserva/Evento) -->
+  <div class="modal-overlay" id="modal-respuesta-solicitud">
+    <div class="modal">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--terracotta) 0%, #A65D3F 100%);">
+        <div class="modal-logo" id="respuesta-icono">📋</div>
+        <div class="modal-header-info">
+          <h2 class="modal-title" id="respuesta-titulo">Responder solicitud</h2>
+          <p class="modal-subtitle" id="respuesta-subtitulo">Solicitud pendiente</p>
+        </div>
+        <button class="modal-close" onclick="cerrarModalRespuesta()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Info de la solicitud -->
+        <div class="solicitud-info-card" style="background: var(--cream); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
+          <div id="respuesta-detalle"></div>
+        </div>
+
+        <!-- Selector de respuesta -->
+        <div class="form-group">
+          <label class="form-label">Tu respuesta</label>
+          <div class="respuesta-opciones" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <label class="respuesta-opcion" style="flex: 1; min-width: 100px;">
+              <input type="radio" name="respuesta-estado" value="aceptada" style="display: none;">
+              <div class="respuesta-btn aceptada" onclick="seleccionarRespuesta(this, 'aceptada')">
+                <span>✅</span> Aceptada
+              </div>
+            </label>
+            <label class="respuesta-opcion" style="flex: 1; min-width: 100px;">
+              <input type="radio" name="respuesta-estado" value="rechazada" style="display: none;">
+              <div class="respuesta-btn rechazada" onclick="seleccionarRespuesta(this, 'rechazada')">
+                <span>❌</span> Rechazada
+              </div>
+            </label>
+            <label class="respuesta-opcion" style="flex: 1; min-width: 100px;">
+              <input type="radio" name="respuesta-estado" value="en_estudio" style="display: none;">
+              <div class="respuesta-btn en-estudio" onclick="seleccionarRespuesta(this, 'en_estudio')">
+                <span>🔍</span> En estudio
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Comentarios -->
+        <div class="form-group">
+          <label class="form-label">Comentarios <span class="form-label-hint">(máx. 200 caracteres)</span></label>
+          <textarea class="form-input" id="respuesta-comentarios" placeholder="Añade un mensaje para el solicitante..." rows="3" maxlength="200"></textarea>
+          <div style="text-align: right; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+            <span id="respuesta-contador">0</span>/200
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalRespuesta()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-enviar-respuesta" onclick="enviarRespuestaSolicitud()" disabled>
+          <span>📤</span> Responder
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .respuesta-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 16px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+      font-size: 0.85rem;
+      background: var(--white);
+    }
+    .respuesta-btn:hover { border-color: var(--text-muted); }
+    .respuesta-btn.selected.aceptada { border-color: #27ae60; background: rgba(39,174,96,0.1); color: #27ae60; }
+    .respuesta-btn.selected.rechazada { border-color: #e74c3c; background: rgba(231,76,60,0.1); color: #e74c3c; }
+    .respuesta-btn.selected.en-estudio { border-color: #f39c12; background: rgba(243,156,18,0.1); color: #f39c12; }
+    .solicitud-info-card p { margin: 4px 0; font-size: 0.9rem; }
+    .solicitud-info-card strong { color: var(--text); }
+  </style>
+
   <footer class="app-footer">
     <a href="planes.html">Planes</a>
     <a href="#">Privacidad</a>
@@ -5061,7 +5146,7 @@
         `<button class="notif-eliminar" onclick="event.stopPropagation(); eliminarNotificacion('${sourceId}', '${sourceType}')" title="Eliminar">🗑️</button>` : '';
 
       return `
-        <div class="notif-item ${tipoClass}" onclick="abrirNotificacion('${sourceId}', '${n.enlace || ''}', '${sourceType}')">
+        <div class="notif-item ${tipoClass}" onclick="abrirNotificacion('${sourceId}', '${n.enlace || ''}', '${sourceType}', '${n.categoria || ''}')">
           <div class="notif-actions">
             <button class="notif-marcar" onclick="event.stopPropagation(); marcarNotificacion('${sourceId}', '${n.tipo}', '${sourceType}')" title="${n.tipo === 'accion' ? 'Marcar como hecho' : 'Descartar'}">✓</button>
             ${btnEliminar}
@@ -5078,7 +5163,26 @@
       `;
     }
 
-    async function abrirNotificacion(notifId, enlace, sourceType = 'notificacion') {
+    async function abrirNotificacion(notifId, enlace, sourceType = 'notificacion', categoria = '') {
+      // Si es solicitud de reserva o evento y soy admin, abrir modal de respuesta
+      const esAdmin = esAdminRama || userData?.rol === 'AdminNido' || userData?.rol === 'admin-nido';
+      if (esAdmin && (categoria === 'reserva' || categoria === 'evento')) {
+        // Cargar datos de la solicitud
+        try {
+          const notifDoc = await db.collection('notificaciones').doc(notifId).get();
+          if (notifDoc.exists) {
+            const notifData = { id: notifDoc.id, ...notifDoc.data() };
+            // Si tiene origen.id, es una solicitud que podemos responder
+            if (notifData.origen?.id) {
+              abrirModalRespuesta(notifData);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Error cargando solicitud:', e);
+        }
+      }
+
       // Marcar como leída
       try {
         const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
@@ -5138,6 +5242,243 @@
       } catch (error) {
         console.error('Error eliminando notificación:', error);
         alert('No tienes permisos para eliminar este aviso');
+      }
+    }
+
+    // ============ MODAL RESPUESTA SOLICITUDES ============
+    let solicitudActual = null;
+
+    function abrirModalRespuesta(notifData) {
+      solicitudActual = notifData;
+      
+      // Configurar encabezado según categoría
+      const esReserva = notifData.categoria === 'reserva';
+      document.getElementById('respuesta-icono').textContent = esReserva ? '📅' : '🎉';
+      document.getElementById('respuesta-titulo').textContent = esReserva ? 'Solicitud de Reserva' : 'Solicitud de Evento';
+      document.getElementById('respuesta-subtitulo').textContent = `De: ${notifData.mensaje?.split(' ha enviado')[0] || 'Miembro'}`;
+      
+      // Cargar datos de la solicitud original
+      cargarDetalleSolicitud(notifData);
+      
+      // Resetear formulario
+      document.querySelectorAll('.respuesta-btn').forEach(btn => btn.classList.remove('selected'));
+      document.getElementById('respuesta-comentarios').value = '';
+      document.getElementById('respuesta-contador').textContent = '0';
+      document.getElementById('btn-enviar-respuesta').disabled = true;
+      
+      // Abrir modal
+      document.getElementById('modal-respuesta-solicitud').classList.add('active');
+    }
+
+    async function cargarDetalleSolicitud(notifData) {
+      const container = document.getElementById('respuesta-detalle');
+      
+      // Obtener datos de la solicitud original
+      try {
+        const solicitudDoc = await db.collection('solicitudes').doc(notifData.origen.id).get();
+        if (solicitudDoc.exists) {
+          const sol = solicitudDoc.data();
+          solicitudActual.solicitudData = sol;
+          
+          let html = `
+            <p><strong>📍 Bien:</strong> ${sol.bienNombre || 'No especificado'}</p>
+            <p><strong>👤 Solicitante:</strong> ${sol.solicitadoPorNombre || 'Usuario'}</p>
+          `;
+          
+          if (notifData.categoria === 'reserva') {
+            html += `
+              <p><strong>📅 Fechas:</strong> ${sol.fechaInicio || '?'} → ${sol.fechaFin || '?'}</p>
+              ${sol.motivo ? `<p><strong>📝 Motivo:</strong> ${sol.motivo}</p>` : ''}
+            `;
+          } else {
+            html += `
+              <p><strong>📅 Fecha:</strong> ${sol.fecha || 'No especificada'}</p>
+              ${sol.descripcion ? `<p><strong>📝 Descripción:</strong> ${sol.descripcion}</p>` : ''}
+            `;
+          }
+          
+          container.innerHTML = html;
+        } else {
+          container.innerHTML = `<p>${notifData.titulo || 'Solicitud'}</p><p>${notifData.mensaje || ''}</p>`;
+        }
+      } catch (e) {
+        console.error('Error cargando solicitud:', e);
+        container.innerHTML = `<p>${notifData.titulo || 'Solicitud'}</p>`;
+      }
+    }
+
+    function seleccionarRespuesta(elemento, valor) {
+      // Quitar selección anterior
+      document.querySelectorAll('.respuesta-btn').forEach(btn => btn.classList.remove('selected'));
+      // Añadir selección
+      elemento.classList.add('selected');
+      // Marcar radio
+      elemento.closest('label').querySelector('input').checked = true;
+      // Habilitar botón
+      document.getElementById('btn-enviar-respuesta').disabled = false;
+    }
+
+    function cerrarModalRespuesta() {
+      document.getElementById('modal-respuesta-solicitud').classList.remove('active');
+      solicitudActual = null;
+    }
+
+    // Contador de caracteres
+    document.getElementById('respuesta-comentarios')?.addEventListener('input', function() {
+      document.getElementById('respuesta-contador').textContent = this.value.length;
+    });
+
+    async function enviarRespuestaSolicitud() {
+      if (!solicitudActual) return;
+      
+      const estadoSeleccionado = document.querySelector('input[name="respuesta-estado"]:checked')?.value;
+      const comentarios = document.getElementById('respuesta-comentarios').value.trim();
+      
+      if (!estadoSeleccionado) {
+        alert('Selecciona una respuesta');
+        return;
+      }
+      
+      const btn = document.getElementById('btn-enviar-respuesta');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span> Enviando...';
+      
+      try {
+        const fechaActual = firebase.firestore.FieldValue.serverTimestamp();
+        const solicitudId = solicitudActual.origen?.id;
+        const solData = solicitudActual.solicitudData || {};
+        
+        // 1. Actualizar estado de la solicitud
+        if (solicitudId) {
+          await db.collection('solicitudes').doc(solicitudId).update({
+            estado: estadoSeleccionado,
+            respuesta: comentarios,
+            respondidoPor: currentUser.uid,
+            respondidoPorNombre: userData?.nombre || currentUser.email,
+            fechaRespuesta: fechaActual
+          });
+        }
+        
+        // 2. Marcar notificación como completada
+        await db.collection('notificaciones').doc(solicitudActual.id).update({
+          completadoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+          estado: 'respondida'
+        });
+        
+        // 3. Notificar al solicitante
+        const solicitanteUid = solData.solicitadoPor;
+        if (solicitanteUid) {
+          const estadoEmoji = {
+            'aceptada': '✅',
+            'rechazada': '❌',
+            'en_estudio': '🔍'
+          };
+          const estadoTexto = {
+            'aceptada': 'Aceptada',
+            'rechazada': 'Rechazada',
+            'en_estudio': 'En estudio'
+          };
+          
+          await db.collection('notificaciones').add({
+            tipo: 'info',
+            categoria: solicitudActual.categoria,
+            titulo: `${estadoEmoji[estadoSeleccionado]} Tu solicitud ha sido ${estadoTexto[estadoSeleccionado].toLowerCase()}`,
+            mensaje: comentarios || `Respuesta de ${userData?.nombre || 'administrador'}`,
+            familiaId: currentFamilia.id,
+            destinatarios: [solicitanteUid],
+            leidoPor: [],
+            fechaCreacion: fechaActual,
+            origen: { tipo: 'respuesta-solicitud', solicitudId: solicitudId },
+            estado: 'activa'
+          });
+        }
+        
+        // 4. Si es ACEPTADA, añadir al calendario
+        if (estadoSeleccionado === 'aceptada') {
+          if (solicitudActual.categoria === 'reserva' && solData.bienId) {
+            // Crear reserva en el bien
+            await db.collection('bienes').doc(solData.bienId).collection('reservas').add({
+              tipo: 'estancia',
+              fechaInicio: solData.fechaInicio,
+              fechaFin: solData.fechaFin,
+              motivo: solData.motivo || '',
+              solicitadoPor: solData.solicitadoPor,
+              solicitadoPorNombre: solData.solicitadoPorNombre,
+              aprobadoPor: currentUser.uid,
+              estado: 'confirmada',
+              fechaAprobacion: fechaActual,
+              origenSolicitud: solicitudId
+            });
+          }
+          
+          // Crear evento en calendario
+          const eventoData = {
+            tipo: solicitudActual.categoria === 'reserva' ? 'reserva' : 'evento',
+            nombre: solicitudActual.categoria === 'reserva' 
+              ? `Reserva: ${solData.bienNombre || 'Bien'}`
+              : solData.nombre || 'Evento',
+            fecha: solData.fechaInicio || solData.fecha,
+            fechaFin: solData.fechaFin || null,
+            descripcion: solData.descripcion || solData.motivo || '',
+            familiaId: currentFamilia.id,
+            nidoId: solData.nidoId || null,
+            visibilidad: solData.visibilidad || 'rama',
+            creadoPor: currentUser.uid,
+            origenSolicitud: solicitudId,
+            fechaCreacion: fechaActual
+          };
+          await db.collection('eventos').add(eventoData);
+        }
+        
+        cerrarModalRespuesta();
+        await renderTablon();
+        
+        const mensajeExito = estadoSeleccionado === 'aceptada' 
+          ? '✅ Solicitud aceptada y añadida al calendario'
+          : estadoSeleccionado === 'rechazada'
+          ? '❌ Solicitud rechazada'
+          : '🔍 Solicitud marcada como "en estudio"';
+        
+        alert(mensajeExito);
+        
+      } catch (error) {
+        console.error('Error respondiendo solicitud:', error);
+        alert('Error al responder: ' + error.message);
+      }
+      
+      btn.disabled = false;
+      btn.innerHTML = '<span>📤</span> Responder';
+    }
+
+    // ============ OBTENER CASEROS DE UN BIEN ============
+    async function obtenerCaserosBien(bienId) {
+      // Obtiene los UIDs de usuarios que son caseros de este bien
+      try {
+        const caserosSnap = await db.collection('bienes').doc(bienId).collection('caseros')
+          .where('activo', '==', true)
+          .get();
+        
+        const caseroUIDs = [];
+        
+        for (const caseroDoc of caserosSnap.docs) {
+          const casero = caseroDoc.data();
+          if (casero.email) {
+            // Buscar usuario por email
+            const userSnap = await db.collection('usuarios')
+              .where('email', '==', casero.email.toLowerCase())
+              .limit(1)
+              .get();
+            
+            if (!userSnap.empty) {
+              caseroUIDs.push(userSnap.docs[0].id);
+            }
+          }
+        }
+        
+        return caseroUIDs;
+      } catch (e) {
+        console.error('Error obteniendo caseros:', e);
+        return [];
       }
     }
 
@@ -6343,15 +6684,16 @@
           nidoId: miNidoPrincipal?.id || null
         });
         
-        // 3. Si el bien tiene Casero asignado, notificarle también
-        if (bien?.caseroUid) {
+        // 3. Notificar a los Caseros del bien
+        const caseroUIDs = await obtenerCaserosBien(bienId);
+        if (caseroUIDs.length > 0) {
           await db.collection('notificaciones').add({
             tipo: 'alerta',
             categoria: 'averia',
-            titulo: `🔧 Avería reportada: ${bien.nombre}`,
+            titulo: `🔧 Avería reportada: ${bien?.nombre || 'Bien'}`,
             mensaje: `${reportadoPorNombre} ha reportado: ${descripcion.substring(0, 80)}${descripcion.length > 80 ? '...' : ''}`,
             familiaId: currentFamilia.id,
-            destinatarios: [bien.caseroUid],
+            destinatarios: caseroUIDs,
             leidoPor: [],
             fechaCreacion: fechaActual,
             enlace: `casero.html?id=${bienId}`,
@@ -6514,15 +6856,16 @@
           nidoId: miNidoPrincipal?.id || null
         });
         
-        // 3. Si el bien tiene Casero asignado, notificarle también
-        if (bien?.caseroUid) {
+        // 3. Notificar a los Caseros del bien
+        const caseroUIDs = await obtenerCaserosBien(bienId);
+        if (caseroUIDs.length > 0) {
           await db.collection('notificaciones').add({
             tipo: 'accion',
             categoria: 'encargo',
-            titulo: `🛒 Nuevo encargo: ${bien.nombre}`,
+            titulo: `🛒 Nuevo encargo: ${bien?.nombre || 'Bien'}`,
             mensaje: `${solicitadoPorNombre} solicita: ${items.substring(0, 80)}${items.length > 80 ? '...' : ''}`,
             familiaId: currentFamilia.id,
-            destinatarios: [bien.caseroUid],
+            destinatarios: caseroUIDs,
             leidoPor: [],
             fechaCreacion: fechaActual,
             enlace: `casero.html?id=${bienId}`,
