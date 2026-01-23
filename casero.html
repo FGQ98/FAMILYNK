@@ -162,6 +162,77 @@
     .bien-info-nombre { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.2rem; }
     .bien-info-ubicacion { font-size: 0.85rem; color: var(--text-muted); }
 
+    /* Pestañas de Casero */
+    .casero-tabs {
+      display: flex;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 6px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow-soft);
+      gap: 4px;
+    }
+
+    .casero-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 12px 8px;
+      border: none;
+      background: transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'Nunito', sans-serif;
+    }
+
+    .casero-tab .tab-icon {
+      font-size: 1.4rem;
+    }
+
+    .casero-tab .tab-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .casero-tab:hover {
+      background: var(--cream);
+    }
+
+    .casero-tab.active {
+      background: var(--mayordomo);
+    }
+
+    .casero-tab.active .tab-label {
+      color: white;
+    }
+
+    .casero-tab-content {
+      display: none;
+    }
+
+    .casero-tab-content.active {
+      display: block;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .tab-section-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--mayordomo);
+      margin-bottom: 16px;
+      padding-left: 4px;
+    }
+
     /* Módulos grid */
     .modulos-grid {
       display: grid;
@@ -808,8 +879,46 @@
         </div>
       </div>
 
-      <!-- Módulos según permisos -->
-      <div class="modulos-grid" id="modulos-grid"></div>
+      <!-- Pestañas de navegación -->
+      <div class="casero-tabs">
+        <button class="casero-tab active" data-tab="reservas" onclick="cambiarTabCasero('reservas', this)">
+          <span class="tab-icon">📅</span>
+          <span class="tab-label">Reservas</span>
+        </button>
+        <button class="casero-tab" data-tab="inventario" onclick="cambiarTabCasero('inventario', this)">
+          <span class="tab-icon">📦</span>
+          <span class="tab-label">Inventario</span>
+        </button>
+        <button class="casero-tab" data-tab="programa" onclick="cambiarTabCasero('programa', this)">
+          <span class="tab-icon">📋</span>
+          <span class="tab-label">Programa</span>
+        </button>
+        <button class="casero-tab" data-tab="gastos" onclick="cambiarTabCasero('gastos', this)">
+          <span class="tab-icon">💶</span>
+          <span class="tab-label">Gastos</span>
+        </button>
+      </div>
+
+      <!-- Contenido de cada pestaña -->
+      <div class="casero-tab-content active" id="tab-reservas">
+        <div class="tab-section-title">📅 Reservas, Pedidos y Menús</div>
+        <div class="modulos-grid" id="grid-reservas"></div>
+      </div>
+
+      <div class="casero-tab-content" id="tab-inventario">
+        <div class="tab-section-title">📦 Inventario y Herramientas</div>
+        <div class="modulos-grid" id="grid-inventario"></div>
+      </div>
+
+      <div class="casero-tab-content" id="tab-programa">
+        <div class="tab-section-title">📋 Limpieza, Mantenimiento y Reparaciones</div>
+        <div class="modulos-grid" id="grid-programa"></div>
+      </div>
+
+      <div class="casero-tab-content" id="tab-gastos">
+        <div class="tab-section-title">💶 Control de Gastos</div>
+        <div class="modulos-grid" id="grid-gastos"></div>
+      </div>
     </div>
 
     <div id="no-access" class="no-access hidden">
@@ -1146,6 +1255,7 @@
       // Cargar datos de cada módulo según permisos
       await cargarDatosModulos();
       renderModulos();
+      restaurarTabActivo();
     }
 
     // ========== FUNCIONES AUXILIARES PLAN SEMANAL ==========
@@ -1450,56 +1560,67 @@
     }
 
     function renderModulos() {
-      const container = document.getElementById('modulos-grid');
-      let html = '';
-
-      // PEDIDOS (siempre primero para caseros)
-      html += renderModuloPedidos();
-
-      // RESERVAS
+      // TAB RESERVAS: Pedidos, Reservas, Menús
+      let htmlReservas = '';
+      htmlReservas += renderModuloPedidos();
       if (permisosActuales.reservas?.ver) {
-        html += renderModuloReservas();
+        htmlReservas += renderModuloReservas();
       }
+      htmlReservas += renderModuloMenus();
+      document.getElementById('grid-reservas').innerHTML = htmlReservas || '<div class="modulo-card-empty">Sin módulos disponibles</div>';
 
-      // INVENTARIO
+      // TAB INVENTARIO: Inventario, Herramientas
+      let htmlInventario = '';
       if (permisosActuales.inventario?.ver) {
-        html += renderModuloInventario();
+        htmlInventario += renderModuloInventario();
       }
+      if (permisosActuales.mantenimiento?.ver) {
+        htmlInventario += renderModuloHerramientas();
+      }
+      document.getElementById('grid-inventario').innerHTML = htmlInventario || '<div class="modulo-card-empty">Sin módulos de inventario asignados</div>';
 
-      // MENÚS
-      html += renderModuloMenus();
-
-      // LIMPIEZA
+      // TAB PROGRAMA: Limpieza, Mantenimiento, Reparaciones
+      let htmlPrograma = '';
       if (permisosActuales.limpieza?.ver) {
-        html += renderModuloLimpieza();
+        htmlPrograma += renderModuloLimpieza();
       }
+      if (permisosActuales.mantenimiento?.ver) {
+        htmlPrograma += renderModuloMantenimiento();
+        htmlPrograma += renderModuloReparaciones();
+      }
+      document.getElementById('grid-programa').innerHTML = htmlPrograma || '<div class="modulo-card-empty">Sin módulos de programa asignados</div>';
 
-      // GASTOS
+      // TAB GASTOS: Gastos
+      let htmlGastos = '';
       if (permisosActuales.gastos?.ver) {
-        html += renderModuloGastos();
+        htmlGastos += renderModuloGastos();
       }
+      document.getElementById('grid-gastos').innerHTML = htmlGastos || '<div class="modulo-card-empty">Sin acceso al módulo de gastos</div>';
+    }
 
-      // MANTENIMIENTO
-      if (permisosActuales.mantenimiento?.ver) {
-        html += renderModuloMantenimiento();
+    // Función para cambiar de pestaña
+    function cambiarTabCasero(tabId, btn) {
+      // Cambiar tabs activos
+      document.querySelectorAll('.casero-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      
+      // Cambiar contenido visible
+      document.querySelectorAll('.casero-tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + tabId).classList.add('active');
+      
+      // Guardar preferencia
+      localStorage.setItem('casero_tab_activo', tabId);
+    }
+
+    // Restaurar tab activo al cargar
+    function restaurarTabActivo() {
+      const tabGuardado = localStorage.getItem('casero_tab_activo');
+      if (tabGuardado) {
+        const btn = document.querySelector(`.casero-tab[data-tab="${tabGuardado}"]`);
+        if (btn) {
+          cambiarTabCasero(tabGuardado, btn);
+        }
       }
-
-      // REPARACIONES
-      if (permisosActuales.mantenimiento?.ver) {
-        html += renderModuloReparaciones();
-      }
-
-      // HERRAMIENTAS
-      if (permisosActuales.mantenimiento?.ver) {
-        html += renderModuloHerramientas();
-      }
-
-      // DOCUMENTOS
-      if (permisosActuales.documentos?.ver) {
-        html += renderModuloDocumentos();
-      }
-
-      container.innerHTML = html || '<div class="modulo-card-empty">No tienes módulos asignados</div>';
     }
 
     // ========== MENÚS ==========
@@ -2881,158 +3002,176 @@
 
   <!-- Modal Primeros Pasos Casero -->
   <div class="modal-overlay" id="modal-primeros-pasos-casero">
-    <div class="modal" style="max-width: 560px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal" style="max-width: 580px; max-height: 85vh; display: flex; flex-direction: column;">
       <div class="modal-header" style="background: linear-gradient(135deg, var(--mayordomo), #6B5B4B); flex-shrink: 0;">
         <h3 class="modal-title" style="color: white;">👋 Bienvenido al Panel de Casero</h3>
         <button class="modal-close" onclick="cerrarPrimerosPasosCasero()" style="color: white;">×</button>
       </div>
       
-      <!-- Tabs -->
+      <p class="onboarding-intro" style="padding: 16px 20px 0; margin: 0;">
+        El panel está organizado en 4 pestañas. Pulse en cada una para ver qué información contiene y qué acciones se pueden realizar.
+      </p>
+      
+      <!-- Tabs por sección -->
       <div class="onboarding-tabs">
-        <button class="onboarding-tab active" onclick="cambiarTabOnboarding('ver', this)">
-          📊 Lo que se ve
+        <button class="onboarding-tab active" onclick="cambiarTabOnboarding('reservas', this)">
+          📅 Reservas
         </button>
-        <button class="onboarding-tab" onclick="cambiarTabOnboarding('hacer', this)">
-          ✋ Lo que se puede hacer
+        <button class="onboarding-tab" onclick="cambiarTabOnboarding('inventario', this)">
+          📦 Inventario
+        </button>
+        <button class="onboarding-tab" onclick="cambiarTabOnboarding('programa', this)">
+          📋 Programa
+        </button>
+        <button class="onboarding-tab" onclick="cambiarTabOnboarding('gastos', this)">
+          💶 Gastos
         </button>
       </div>
       
       <div class="modal-body" style="padding: 20px; overflow-y: auto; flex: 1;">
         
-        <!-- TAB: Lo que se ve -->
-        <div class="onboarding-tab-content active" id="onboarding-ver">
-          <p class="onboarding-intro">
-            Este panel muestra información que la familia mantiene actualizada. Cada tarjeta resume un aspecto de la gestión del bien.
-          </p>
+        <!-- TAB: Reservas -->
+        <div class="onboarding-tab-content active" id="onboarding-reservas">
+          <div class="onboarding-section-header">📅 Pestaña Reservas</div>
+          <p class="onboarding-section-desc">Contiene información sobre llegadas, encargos de la familia y planificación de menús.</p>
           
-          <div class="onboarding-items">
-            <div class="onboarding-item">
-              <span class="onboarding-icon">📋</span>
-              <div>
-                <strong>Pedidos</strong>
-                <p>Lista de encargos solicitados por la familia y artículos que han bajado del stock mínimo de seguridad. Permite saber qué hay que comprar o reponer.</p>
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede ver:</div>
+            <div class="onboarding-items">
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">📋</span>
+                <div>
+                  <strong>Pedidos</strong>
+                  <p>Encargos solicitados por la familia y artículos bajo stock mínimo que hay que reponer.</p>
+                </div>
+              </div>
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">📅</span>
+                <div>
+                  <strong>Reservas</strong>
+                  <p>Próximas estancias confirmadas con fechas, nombre del responsable y número de personas.</p>
+                </div>
+              </div>
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">🍽️</span>
+                <div>
+                  <strong>Menús</strong>
+                  <p>Comidas y cenas planificadas para la semana, útil para organizar las compras.</p>
+                </div>
               </div>
             </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">📅</span>
-              <div>
-                <strong>Reservas</strong>
-                <p>Calendario de próximas estancias confirmadas. Indica quién llega, en qué fechas y cuántas personas, para preparar el bien con antelación.</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">📦</span>
-              <div>
-                <strong>Inventario</strong>
-                <p>Listado de productos con su stock actual frente al mínimo de seguridad. Los colores indican el estado: verde (OK), naranja (bajo) y rojo (agotado).</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🍽️</span>
-              <div>
-                <strong>Menús</strong>
-                <p>Planificación semanal de comidas y cenas. Útil para organizar las compras de alimentación según lo previsto.</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🧹</span>
-              <div>
-                <strong>Limpieza</strong>
-                <p>Zonas prioritarias a preparar según las próximas llegadas y tareas de limpieza programadas por día de la semana.</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🔧</span>
-              <div>
-                <strong>Mantenimiento</strong>
-                <p>Revisiones periódicas programadas (caldera, piscina, jardín...) con su frecuencia y próxima fecha prevista.</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🔩</span>
-              <div>
-                <strong>Reparaciones</strong>
-                <p>Averías reportadas por la familia con su descripción, ubicación y estado actual (pendiente, en curso, resuelta).</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🛠️</span>
-              <div>
-                <strong>Herramientas</strong>
-                <p>Inventario del taller y almacén. Registro de herramientas disponibles, su ubicación y estado de conservación.</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">💶</span>
-              <div>
-                <strong>Gastos</strong>
-                <p>Historial de compras y pagos realizados. Permite registrar tickets y justificantes para el control económico.</p>
-              </div>
+          </div>
+          
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede hacer:</div>
+            <div class="onboarding-actions-compact">
+              <div class="onboarding-action-item">✅ Marcar pedidos como completados</div>
+              <div class="onboarding-action-item">📝 Consultar notas de las reservas</div>
             </div>
           </div>
         </div>
         
-        <!-- TAB: Lo que se puede hacer -->
-        <div class="onboarding-tab-content" id="onboarding-hacer">
-          <p class="onboarding-intro">
-            Desde este panel se pueden realizar las siguientes acciones de gestión. Los permisos específicos dependen de la configuración asignada.
-          </p>
+        <!-- TAB: Inventario -->
+        <div class="onboarding-tab-content" id="onboarding-inventario">
+          <div class="onboarding-section-header">📦 Pestaña Inventario</div>
+          <p class="onboarding-section-desc">Control de stock de productos y registro de herramientas del taller.</p>
           
-          <div class="onboarding-items">
-            <div class="onboarding-item">
-              <span class="onboarding-icon">📋</span>
-              <div>
-                <strong>Realizar Toma de Inventario</strong>
-                <p>Actualizar las cantidades reales de cada artículo. Al pulsar "Toma", los números se vuelven editables para introducir el stock actual.</p>
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede ver:</div>
+            <div class="onboarding-items">
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">📦</span>
+                <div>
+                  <strong>Inventario</strong>
+                  <p>Stock actual vs mínimo de seguridad. Colores: verde (OK), naranja (bajo), rojo (agotado).</p>
+                </div>
+              </div>
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">🛠️</span>
+                <div>
+                  <strong>Herramientas</strong>
+                  <p>Listado de herramientas del taller con su ubicación y estado de conservación.</p>
+                </div>
               </div>
             </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🔩</span>
-              <div>
-                <strong>Actualizar estado de averías</strong>
-                <p>Cambiar el estado de las reparaciones (pendiente → en curso → resuelta) y añadir notas sobre el progreso.</p>
+          </div>
+          
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede hacer:</div>
+            <div class="onboarding-actions-compact">
+              <div class="onboarding-action-item">📋 <strong>Toma de inventario:</strong> actualizar cantidades reales de cada artículo</div>
+              <div class="onboarding-action-item">➕ Ajustar stock con botones +/- rápidos</div>
+              <div class="onboarding-action-item">🛠️ Añadir nuevas herramientas al registro</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- TAB: Programa -->
+        <div class="onboarding-tab-content" id="onboarding-programa">
+          <div class="onboarding-section-header">📋 Pestaña Programa</div>
+          <p class="onboarding-section-desc">Tareas de limpieza, revisiones de mantenimiento y seguimiento de averías.</p>
+          
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede ver:</div>
+            <div class="onboarding-items">
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">🧹</span>
+                <div>
+                  <strong>Limpieza</strong>
+                  <p>Zonas prioritarias a preparar según llegadas y tareas programadas por día.</p>
+                </div>
+              </div>
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">🔧</span>
+                <div>
+                  <strong>Mantenimiento</strong>
+                  <p>Revisiones periódicas (caldera, piscina, jardín...) con frecuencia y próxima fecha.</p>
+                </div>
+              </div>
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">🔩</span>
+                <div>
+                  <strong>Reparaciones</strong>
+                  <p>Averías reportadas con descripción, ubicación y estado (pendiente/en curso/resuelta).</p>
+                </div>
               </div>
             </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">💶</span>
-              <div>
-                <strong>Registrar gastos y compras</strong>
-                <p>Anotar pagos realizados con fecha, importe, concepto y opcionalmente adjuntar foto del ticket o factura.</p>
+          </div>
+          
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede hacer:</div>
+            <div class="onboarding-actions-compact">
+              <div class="onboarding-action-item">✅ Marcar zonas de limpieza como completadas</div>
+              <div class="onboarding-action-item">🔩 Actualizar estado de averías (pendiente → en curso → resuelta)</div>
+              <div class="onboarding-action-item">📝 Añadir notas de seguimiento en reparaciones</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- TAB: Gastos -->
+        <div class="onboarding-tab-content" id="onboarding-gastos">
+          <div class="onboarding-section-header">💶 Pestaña Gastos</div>
+          <p class="onboarding-section-desc">Registro y control de compras, pagos y justificantes.</p>
+          
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede ver:</div>
+            <div class="onboarding-items">
+              <div class="onboarding-item compact">
+                <span class="onboarding-icon">💶</span>
+                <div>
+                  <strong>Gastos</strong>
+                  <p>Historial de compras y pagos con fecha, importe, concepto y categoría.</p>
+                </div>
               </div>
             </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🛠️</span>
-              <div>
-                <strong>Añadir herramientas</strong>
-                <p>Incorporar nuevas herramientas al inventario del taller indicando nombre, ubicación y estado.</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">🧹</span>
-              <div>
-                <strong>Marcar tareas de limpieza</strong>
-                <p>Indicar qué zonas o tareas de limpieza se han completado para llevar un seguimiento del trabajo realizado.</p>
-              </div>
-            </div>
-            
-            <div class="onboarding-item">
-              <span class="onboarding-icon">📦</span>
-              <div>
-                <strong>Gestionar pedidos</strong>
-                <p>Marcar encargos como completados una vez se han comprado o recibido los artículos solicitados.</p>
-              </div>
+          </div>
+          
+          <div class="onboarding-subsection">
+            <div class="onboarding-subsection-title">Se puede hacer:</div>
+            <div class="onboarding-actions-compact">
+              <div class="onboarding-action-item">➕ Registrar nuevos gastos con fecha e importe</div>
+              <div class="onboarding-action-item">📸 Adjuntar foto del ticket o factura</div>
+              <div class="onboarding-action-item">🏷️ Categorizar gastos (alimentación, limpieza, mantenimiento...)</div>
             </div>
           </div>
         </div>
@@ -3070,20 +3209,22 @@
       border-bottom: 2px solid var(--cream-dark);
       background: var(--white);
       flex-shrink: 0;
+      gap: 2px;
     }
     .onboarding-tab {
       flex: 1;
-      padding: 14px 16px;
+      padding: 12px 8px;
       border: none;
       background: none;
       font-family: 'Nunito', sans-serif;
-      font-size: 0.9rem;
+      font-size: 0.75rem;
       font-weight: 600;
       color: var(--text-muted);
       cursor: pointer;
       transition: all 0.2s;
       border-bottom: 3px solid transparent;
       margin-bottom: -2px;
+      text-align: center;
     }
     .onboarding-tab:hover { color: var(--text); background: var(--cream); }
     .onboarding-tab.active { 
@@ -3152,13 +3293,63 @@
     }
     .onboarding-no-mostrar input { width: 16px; height: 16px; }
     
-    /* Inventario mejorado */
-      gap: 8px;
-      cursor: pointer;
+    /* Onboarding - Nuevos estilos por sección */
+    .onboarding-section-header {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--mayordomo);
+      margin-bottom: 6px;
+    }
+    .onboarding-section-desc {
       font-size: 0.8rem;
       color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.4;
     }
-    .onboarding-no-mostrar input { width: 16px; height: 16px; }
+    .onboarding-subsection {
+      margin-bottom: 16px;
+    }
+    .onboarding-subsection-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+    .onboarding-item.compact {
+      padding: 10px 12px;
+      gap: 10px;
+    }
+    .onboarding-item.compact .onboarding-icon {
+      font-size: 1.2rem;
+      min-width: 28px;
+    }
+    .onboarding-item.compact strong {
+      font-size: 0.85rem;
+      margin-bottom: 2px;
+    }
+    .onboarding-item.compact p {
+      font-size: 0.75rem;
+    }
+    .onboarding-actions-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .onboarding-action-item {
+      background: var(--white);
+      border: 1px solid var(--cream-dark);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+    .onboarding-action-item strong {
+      color: var(--mayordomo);
+    }
     
     /* Inventario mejorado */
     .inventario-lista { display: flex; flex-direction: column; gap: 6px; }
