@@ -2029,17 +2029,39 @@
     }
 
     function aplicarVisibilidadPorRol() {
-      // Determinar qué configuración usar
-      let config;
+      // Determinar qué configuración usar según rol
+      let configRol;
       if (isAdminRama) {
-        config = visibilidadMayordomo.adminRama;
+        configRol = visibilidadMayordomo.adminRama;
       } else if (isAdminNido) {
-        config = visibilidadMayordomo.adminNido;
+        configRol = visibilidadMayordomo.adminNido;
       } else {
-        config = visibilidadMayordomo.miembro;
+        configRol = visibilidadMayordomo.miembro;
       }
       
-      console.log('Aplicando visibilidad:', config);
+      // ========== FILTRAR POR MÓDULOS ACTIVOS DEL BIEN ==========
+      // Obtener módulos activos en el bien (del add-on correspondiente)
+      const modulosActivosBien = bienData?.mayordomoModulos || 
+                                  bienData?.gerenteModulos || 
+                                  bienData?.capatazModulos || {};
+      
+      // Intersectar: solo mostrar módulos que el rol permite Y que están activos en el bien
+      const modulosFiltrados = configRol.modulos.filter(modulo => {
+        // Algunos módulos siempre están disponibles si el rol los permite
+        const modulosSiempreDisponibles = ['reservas', 'eventos'];
+        if (modulosSiempreDisponibles.includes(modulo)) return true;
+        
+        // Para el resto, verificar si está activado en el bien
+        return modulosActivosBien[modulo] === true;
+      });
+      
+      const config = {
+        modulos: modulosFiltrados,
+        apartados: configRol.apartados
+      };
+      // ========== FIN FILTRADO ==========
+      
+      console.log('Aplicando visibilidad:', config, '(Módulos del bien:', modulosActivosBien, ')');
       
       // Ocultar/mostrar elementos del sidebar según módulos permitidos
       const mapeoModulos = {
