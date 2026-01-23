@@ -6501,14 +6501,31 @@
       }
       
       try {
-        // Cargar admins de la familia (AdminRama y AdminNido)
+        // Cargar usuarios de la familia
         const usuariosSnap = await db.collection('usuarios')
           .where('familiaId', '==', currentFamilia.id)
           .get();
         
+        console.log('Usuarios en familia:', usuariosSnap.size);
+        
         adminsEstirpe = usuariosSnap.docs
           .map(d => ({ uid: d.id, ...d.data() }))
-          .filter(u => u.rol === 'AdminRama' || u.rol === 'AdminNido' || u.esAdmin);
+          .filter(u => {
+            // Verificar múltiples formas de identificar admins
+            const esAdminRama = u.credencial === 'admin-rama' || 
+                               u.rol === 'AdminRama' || 
+                               u.rol === 'admin-rama' ||
+                               u.adminRama === true;
+            const esAdminNido = u.credencial === 'admin-nido' || 
+                               u.rol === 'AdminNido' || 
+                               u.rol === 'admin-nido' ||
+                               u.adminNido === true;
+            const esAdmin = u.esAdmin === true;
+            
+            return esAdminRama || esAdminNido || esAdmin;
+          });
+        
+        console.log('Admins encontrados:', adminsEstirpe.length, adminsEstirpe.map(a => a.nombre || a.email));
         
         return adminsEstirpe;
       } catch (e) { 
@@ -6531,7 +6548,11 @@
       const admins = await cargarAdminsEstirpe();
       const remitente = userData?.nombre || userData?.email || 'Usuario';
       
-      console.log('Enviando solicitud:', { tipo, familiaId: currentFamilia.id, uid: currentUser.uid });
+      console.log('=== ENVIAR NOTIFICACIÓN ===');
+      console.log('Tipo:', tipo);
+      console.log('FamiliaId:', currentFamilia.id);
+      console.log('Usuario actual:', currentUser.uid);
+      console.log('Admins totales:', admins.length);
       
       const solicitud = {
         tipo, // 'iniciativa', 'evento', 'reserva', 'averia'
@@ -6552,29 +6573,37 @@
       let solicitudRef;
       try {
         solicitudRef = await db.collection('solicitudes').add(solicitud);
-        console.log('Solicitud creada:', solicitudRef.id);
+        console.log('✅ Solicitud creada:', solicitudRef.id);
       } catch (errorSolicitud) {
-        console.error('Error creando solicitud:', errorSolicitud);
-        // Si falla en solicitudes, intentar guardar directamente en notificaciones
+        console.error('❌ Error creando solicitud:', errorSolicitud);
         throw new Error('Error de permisos al guardar la solicitud. Contacte al administrador.');
       }
 
-      // Obtener UIDs de admins (excluyendo al propio usuario)
+      // Obtener UIDs de admins (excluyendo al propio usuario si es admin)
       const destinatarios = admins
         .filter(admin => admin.uid !== currentUser.uid)
         .map(admin => admin.uid);
 
+      console.log('Destinatarios (excluye usuario actual):', destinatarios.length, destinatarios);
+
+      // Si no hay otros admins, incluir al propio usuario si es admin
+      let destinatariosFinales = destinatarios;
+      if (destinatarios.length === 0 && admins.length > 0) {
+        console.log('⚠️ Solo hay un admin (el solicitante), incluyéndolo en destinatarios');
+        destinatariosFinales = admins.map(admin => admin.uid);
+      }
+
       // Crear UNA notificación en la colección central (la que lee el tablón)
-      if (destinatarios.length > 0) {
+      if (destinatariosFinales.length > 0) {
         try {
-          await db.collection('notificaciones').add({
+          const notifData = {
             tipo: 'accion',
             categoria: tipo,
             titulo: getTituloNotificacion(tipo, datos),
             mensaje: `${remitente} ha enviado una solicitud`,
             familiaId: currentFamilia.id,
             nidoId: miNidoPrincipal?.id || null,
-            destinatarios: destinatarios,
+            destinatarios: destinatariosFinales,
             leidoPor: [],
             completadoPor: [],
             fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
@@ -6582,14 +6611,18 @@
             enlace: `solicitudes.html?id=${solicitudRef.id}`,
             origen: { tipo: 'solicitud', subtipo: tipo, id: solicitudRef.id },
             estado: 'activa'
-          });
-          console.log('Notificación enviada a', destinatarios.length, 'admins');
+          };
+          
+          console.log('Creando notificación:', notifData);
+          
+          const notifRef = await db.collection('notificaciones').add(notifData);
+          console.log('✅ Notificación creada:', notifRef.id, 'para', destinatariosFinales.length, 'admins');
         } catch (errorNotif) {
-          console.error('Error creando notificación (no crítico):', errorNotif);
+          console.error('❌ Error creando notificación:', errorNotif);
           // No lanzamos error aquí porque la solicitud ya se guardó
         }
       } else {
-        console.warn('No hay admins para notificar');
+        console.warn('⚠️ No hay admins para notificar en esta familia');
       }
 
       return solicitudRef.id;
