@@ -5567,10 +5567,20 @@
     }
 
     async function eliminarNotificacion(notifId, sourceType = 'notificacion') {
-      if (!confirm('¿Eliminar este aviso para todos?')) return;
+      if (!confirm('¿Eliminar este aviso?')) return;
       
       try {
-        const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
+        // Determinar colección según el tipo
+        let collection;
+        if (sourceType === 'queo') {
+          collection = 'queos';
+        } else if (sourceType === 'solicitud' || sourceType === 'solicitud-respuesta') {
+          collection = 'solicitudes';
+        } else {
+          collection = 'notificaciones';
+        }
+        
+        console.log('Eliminando de', collection, ':', notifId);
         await db.collection(collection).doc(notifId).delete();
         
         // Refrescar tablón
@@ -5580,7 +5590,7 @@
           await renderBuzonUnificado();
         }
       } catch (error) {
-        console.error('Error eliminando notificación:', error);
+        console.error('Error eliminando:', error);
         alert('No tienes permisos para eliminar este aviso');
       }
     }

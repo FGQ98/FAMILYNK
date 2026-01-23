@@ -502,6 +502,12 @@
             ...doc.data() 
           }));
           console.log('✅ Queos cargados:', queos.length);
+          
+          // Debug: mostrar si están leídos
+          queos.forEach(q => {
+            const leido = q.leidoPor?.includes(miUid);
+            console.log(`  - Queo "${q.titulo}": leído=${leido}`);
+          });
         } catch (e) {
           console.warn('❌ Error cargando queos:', e);
           queos = [];
@@ -794,10 +800,20 @@
     }
 
     async function eliminarNotificacion(notifId, sourceType = 'notificacion') {
-      if (!confirm('¿Eliminar este aviso para todos?')) return;
+      if (!confirm('¿Eliminar este aviso?')) return;
       
       try {
-        const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
+        // Determinar colección según el tipo
+        let collection;
+        if (sourceType === 'queo') {
+          collection = 'queos';
+        } else if (sourceType === 'solicitud' || sourceType === 'solicitud-respuesta') {
+          collection = 'solicitudes';
+        } else {
+          collection = 'notificaciones';
+        }
+        
+        console.log('Eliminando de', collection, ':', notifId);
         await db.collection(collection).doc(notifId).delete();
         
         // Actualizar arrays locales
@@ -809,14 +825,23 @@
         
         renderAvisos();
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Error eliminando:', error);
         alert('No tienes permisos para eliminar este aviso');
       }
     }
 
     async function marcarCompletado(notifId, sourceType = 'notificacion') {
       try {
-        const collection = sourceType === 'queo' ? 'queos' : 'notificaciones';
+        // Determinar colección según el tipo
+        let collection;
+        if (sourceType === 'queo') {
+          collection = 'queos';
+        } else if (sourceType === 'solicitud' || sourceType === 'solicitud-respuesta') {
+          collection = 'solicitudes';
+        } else {
+          collection = 'notificaciones';
+        }
+        
         await db.collection(collection).doc(notifId).update({
           completadoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
         });
