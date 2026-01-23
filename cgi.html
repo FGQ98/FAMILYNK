@@ -6520,14 +6520,12 @@
     async function cargarAdminsEstirpe() {
       if (adminsEstirpe.length > 0) return adminsEstirpe;
       
-      // Verificar que hay familia activa
       if (!currentFamilia?.id) {
         console.warn('cargarAdminsEstirpe: No hay familia activa');
         return [];
       }
       
       try {
-        // Cargar usuarios de la familia
         const usuariosSnap = await db.collection('usuarios')
           .where('familiaId', '==', currentFamilia.id)
           .get();
@@ -6537,23 +6535,20 @@
         adminsEstirpe = usuariosSnap.docs
           .map(d => ({ uid: d.id, ...d.data() }))
           .filter(u => {
-            // Verificar múltiples formas de identificar admins (todas las variantes)
-            const rolLower = (u.rol || '').toLowerCase();
-            const credencialLower = (u.credencial || '').toLowerCase();
+            // Normalizar a minúsculas para comparar
+            const rol = String(u.rol || '').toLowerCase();
+            const credencial = String(u.credencial || '').toLowerCase();
             
-            const esAdminRama = credencialLower === 'admin-rama' || 
-                               credencialLower === 'adminrama' ||
-                               rolLower === 'adminrama' || 
-                               rolLower === 'admin-rama' ||
-                               u.adminRama === true;
-            const esAdminNido = credencialLower === 'admin-nido' || 
-                               credencialLower === 'adminnido' ||
-                               rolLower === 'adminnido' || 
-                               rolLower === 'admin-nido' ||
-                               u.adminNido === true;
-            const esAdmin = u.esAdmin === true || u.superAdmin === true;
+            // Buscar cualquier variante de admin
+            const esAdmin = 
+              rol.includes('admin') ||
+              credencial.includes('admin') ||
+              u.esAdmin === true ||
+              u.adminRama === true ||
+              u.adminNido === true ||
+              u.superAdmin === true;
             
-            return esAdminRama || esAdminNido || esAdmin;
+            return esAdmin;
           });
         
         console.log('Admins encontrados:', adminsEstirpe.length, adminsEstirpe.map(a => a.nombre || a.email));
