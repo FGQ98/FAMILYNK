@@ -4846,12 +4846,25 @@
               const r = { id: resDoc.id, ...resDoc.data() };
               if (!esVisibleParaUsuario(r, nidosMap)) return;
               
-              if (r.entrada) {
+              // Soportar ambos formatos: entrada/salida y fechaInicio/fechaFin
+              const fechaEntrada = r.entrada || r.fechaInicio;
+              const fechaSalida = r.salida || r.fechaFin;
+              
+              if (fechaEntrada) {
+                // Convertir Timestamp a string si es necesario
+                const fechaStr = fechaEntrada.toDate ? 
+                  fechaEntrada.toDate().toISOString().split('T')[0] : 
+                  fechaEntrada;
+                const fechaFinStr = fechaSalida ? 
+                  (fechaSalida.toDate ? fechaSalida.toDate().toISOString().split('T')[0] : fechaSalida) : 
+                  null;
+                
                 eventosCalendario.push({ 
                   tipo: 'reserva', 
                   titulo: `🏠 ${bien.nombre || 'Reserva'}`, 
-                  fecha: r.entrada,
-                  fechaFin: r.salida
+                  fecha: fechaStr,
+                  fechaFin: fechaFinStr,
+                  solicitante: r.solicitadoPorNombre || ''
                 });
               }
             });
@@ -5290,7 +5303,7 @@
         try {
           const misRespondidas = await db.collection('solicitudes')
             .where('solicitadoPor', '==', miUid)
-            .where('estado', 'in', ['aprobada', 'rechazada', 'respondida'])
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
             .orderBy('fechaRespuesta', 'desc')
             .limit(10)
             .get();
@@ -5299,7 +5312,7 @@
           
           misRespondidas.docs.forEach(doc => {
             const data = doc.data();
-            const esAprobada = data.estado === 'aprobada';
+            const esAprobada = data.estado === 'aceptada';
             
             itemsInfo.push({
               id: doc.id,
