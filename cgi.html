@@ -6068,7 +6068,8 @@
         case 'iniciativa': return `💡 Nueva propuesta: ${datos.titulo || 'Sin título'}`;
         case 'evento': return `🎉 Solicitud de evento: ${datos.nombre || 'Sin nombre'}`;
         case 'reserva': return `📅 Solicitud de reserva: ${datos.bienNombre || 'Bien'}`;
-        case 'averia': return `🔧 Avería reportada: ${datos.titulo || datos.descripcion?.substring(0, 30) || 'Ver detalle'}`;
+        case 'averia': return `🔧 Avería reportada: ${datos.bienNombre || datos.descripcion?.substring(0, 30) || 'Ver detalle'}`;
+        case 'encargo': return `🛒 Nuevo encargo: ${datos.bienNombre || 'Bien'}`;
         default: return '📌 Nueva solicitud';
       }
     }
@@ -6290,11 +6291,13 @@
     document.getElementById('form-averia').addEventListener('submit', async (e) => {
       e.preventDefault();
       const bienId = document.getElementById('averia-bien').value;
+      const bien = bienesUsuario.find(b => b.id === bienId);
       const descripcion = document.getElementById('averia-descripcion').value;
       const urgencia = document.querySelector('input[name="averia-urgencia"]:checked').value;
       const visibilidad = obtenerVisibilidad('averia');
 
       try {
+        // 1. Guardar en colección de reparaciones del bien
         await db.collection('bienes').doc(bienId).collection('reparaciones').add({
           descripcion,
           urgencia,
@@ -6305,9 +6308,21 @@
           visibilidad,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
+        
+        // 2. Notificar a los admins
+        await enviarNotificacionAdmins('averia', {
+          titulo: `Avería en ${bien?.nombre || 'bien'}`,
+          descripcion,
+          urgencia,
+          bienId,
+          bienNombre: bien?.nombre || '',
+          visibilidad,
+          nidoId: miNidoPrincipal?.id || null
+        });
+        
         track.completar('averia');
         cerrarModales();
-        alert('✅ Avería reportada correctamente');
+        alert('✅ Avería reportada y notificada a los administradores');
       } catch (error) {
         console.error('Error:', error);
         alert('Error al enviar el aviso');
@@ -6424,11 +6439,13 @@
     document.getElementById('form-encargo').addEventListener('submit', async (e) => {
       e.preventDefault();
       const bienId = document.getElementById('encargo-bien').value;
+      const bien = bienesUsuario.find(b => b.id === bienId);
       const items = document.getElementById('encargo-items').value;
       const notas = document.getElementById('encargo-notas').value;
       const visibilidad = obtenerVisibilidad('encargo');
 
       try {
+        // 1. Guardar en colección de encargos del bien
         await db.collection('bienes').doc(bienId).collection('encargos').add({
           items,
           notas,
@@ -6439,9 +6456,21 @@
           visibilidad,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
+        
+        // 2. Notificar a los admins
+        await enviarNotificacionAdmins('encargo', {
+          titulo: `Encargo para ${bien?.nombre || 'bien'}`,
+          items,
+          notas,
+          bienId,
+          bienNombre: bien?.nombre || '',
+          visibilidad,
+          nidoId: miNidoPrincipal?.id || null
+        });
+        
         track.completar('encargo');
         cerrarModales();
-        alert('✅ Encargo registrado');
+        alert('✅ Encargo registrado y notificado a los administradores');
       } catch (error) {
         console.error('Error:', error);
         alert('Error al enviar el encargo');
