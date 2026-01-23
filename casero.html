@@ -964,6 +964,7 @@
       gastos: [],
       documentos: [],
       pedidos: [],
+      menus: [],
       // Nuevos para integración con preparar-semana
       preparacionSemanal: null,
       zonasLimpieza: [],
@@ -1103,6 +1104,9 @@
 
       document.getElementById('page-loading').classList.add('hidden');
       document.getElementById('page-content').classList.remove('hidden');
+      
+      // Mostrar onboarding de Primeros Pasos
+      verificarPrimerosPasosCasero();
     }
 
     function mostrarSinAcceso() {
@@ -1416,6 +1420,35 @@
           .map(d => ({ id: d.id, ...d.data() }))
           .filter(p => p.estado === 'pendiente' || p.estado === 'en_proceso');
       }
+
+      // Menús semanales
+      try {
+        // Obtener menú de la semana actual
+        const hoy = new Date();
+        const inicioSemana = new Date(hoy);
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay()); // Domingo
+        inicioSemana.setHours(0, 0, 0, 0);
+        
+        const snap = await db.collection('bienes').doc(bienId).collection('menus')
+          .where('fechaInicio', '>=', inicioSemana)
+          .orderBy('fechaInicio', 'asc')
+          .limit(7)
+          .get();
+        
+        datosModulos.menus = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (error) {
+        console.log('Cargando menús sin índice:', error);
+        // Fallback: cargar últimos menús
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('menus')
+            .orderBy('fechaInicio', 'desc')
+            .limit(7)
+            .get();
+          datosModulos.menus = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) {
+          datosModulos.menus = [];
+        }
+      }
     }
 
     function renderModulos() {
@@ -1434,6 +1467,9 @@
       if (permisosActuales.inventario?.ver) {
         html += renderModuloInventario();
       }
+
+      // MENÚS
+      html += renderModuloMenus();
 
       // LIMPIEZA
       if (permisosActuales.limpieza?.ver) {
@@ -1466,6 +1502,78 @@
       }
 
       container.innerHTML = html || '<div class="modulo-card-empty">No tienes módulos asignados</div>';
+    }
+
+    // ========== MENÚS ==========
+    function renderModuloMenus() {
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const diasCompletos = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const hoyNum = new Date().getDay();
+      const hoy = new Date();
+      
+      let itemsHtml = '';
+      
+      if (datosModulos.menus.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin menús programados</div>';
+      } else {
+        // Agrupar menús por día
+        const menusPorDia = {};
+        
+        datosModulos.menus.forEach(menu => {
+          const fecha = menu.fechaInicio?.toDate ? menu.fechaInicio.toDate() : new Date(menu.fechaInicio);
+          const diaNum = fecha.getDay();
+          const fechaStr = fecha.toISOString().split('T')[0];
+          
+          if (!menusPorDia[fechaStr]) {
+            menusPorDia[fechaStr] = { dia: diaNum, fecha: fecha, comidas: [] };
+          }
+          menusPorDia[fechaStr].comidas.push(menu);
+        });
+        
+        // Mostrar próximos días
+        const diasOrdenados = Object.entries(menusPorDia)
+          .sort(([a], [b]) => new Date(a) - new Date(b))
+          .slice(0, 4);
+        
+        if (diasOrdenados.length > 0) {
+          itemsHtml = '<div class="menus-lista">';
+          
+          diasOrdenados.forEach(([fechaStr, datos]) => {
+            const esHoy = fechaStr === hoy.toISOString().split('T')[0];
+            const diaLabel = esHoy ? '📅 Hoy' : diasCompletos[datos.dia];
+            
+            itemsHtml += `
+              <div class="menu-dia ${esHoy ? 'hoy' : ''}">
+                <div class="menu-dia-header">${diaLabel}</div>
+                <div class="menu-comidas">
+                  ${datos.comidas.map(c => {
+                    const tipoIcon = { desayuno: '🌅', almuerzo: '🍽️', cena: '🌙', merienda: '🍪' };
+                    return `
+                      <div class="menu-comida">
+                        <span class="menu-tipo">${tipoIcon[c.tipo] || '🍴'}</span>
+                        <span class="menu-plato">${c.plato || c.descripcion || 'Sin especificar'}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          });
+          
+          itemsHtml += '</div>';
+        } else {
+          itemsHtml = '<div class="modulo-card-empty">Sin menús esta semana</div>';
+        }
+      }
+
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🍽️ Menús</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+        </div>
+      `;
     }
 
     function renderPermisosBadges(seccion) {
@@ -1714,29 +1822,42 @@
 
       let itemsHtml = '';
       if (datosModulos.inventario.length === 0) {
-        itemsHtml = '<div class="modulo-card-empty">Sin artículos</div>';
+        itemsHtml = '<div class="modulo-card-empty">Sin artículos en inventario</div>';
       } else {
-        // Mostrar primero los bajo stock
+        // Mostrar TODOS los ítems, ordenados: bajo stock primero
         const items = [...datosModulos.inventario].sort((a, b) => {
           const aBajo = a.stockActual <= a.stockMinimo;
           const bBajo = b.stockActual <= b.stockMinimo;
           if (aBajo && !bBajo) return -1;
           if (!aBajo && bBajo) return 1;
-          return 0;
-        }).slice(0, 8);
+          return a.nombre.localeCompare(b.nombre);
+        });
 
-        itemsHtml = '<div class="item-list">' + items.map(i => {
+        itemsHtml = '<div class="inventario-lista" id="inventario-lista">' + items.map(i => {
           const bajo = i.stockActual <= i.stockMinimo;
+          const agotado = i.stockActual === 0;
+          const estadoClass = agotado ? 'agotado' : bajo ? 'bajo' : 'ok';
+          
           return `
-            <div class="item-row no-hover">
-              <span class="item-icon">${catIcons[i.categoria] || '📦'}</span>
-              <div class="item-content">
-                <div class="item-title">${i.nombre}</div>
-                <div class="item-subtitle">mín. ${i.stockMinimo}</div>
+            <div class="inventario-item ${estadoClass}">
+              <span class="inventario-icon">${catIcons[i.categoria] || '📦'}</span>
+              <div class="inventario-info">
+                <div class="inventario-nombre">${i.nombre}</div>
+                <div class="inventario-minimo">mín. ${i.stockMinimo}</div>
               </div>
-              <span class="item-value ${bajo ? 'danger' : 'success'}">${i.stockActual}</span>
-              ${p.editar ? `
-                <div class="quick-btns">
+              <div class="inventario-stock-container">
+                <span class="inventario-stock ${estadoClass}" id="stock-display-${i.id}">${i.stockActual}</span>
+                <input type="number" 
+                       class="inventario-cantidad-input hidden" 
+                       id="stock-input-${i.id}"
+                       data-item-id="${i.id}"
+                       data-min="${i.stockMinimo}"
+                       value="${i.stockActual}" 
+                       min="0"
+                       onchange="colorearInputInventario(this)">
+              </div>
+              ${p.editar && !modoTomaActivo ? `
+                <div class="inventario-quick-btns" id="quick-btns-${i.id}">
                   <button class="quick-btn menos" onclick="ajustarInventario('${i.id}', -1)">−</button>
                   <button class="quick-btn mas" onclick="ajustarInventario('${i.id}', 1)">+</button>
                 </div>
@@ -1746,21 +1867,51 @@
         }).join('') + '</div>';
       }
 
+      // Botones de footer según modo
+      let footerHtml = '';
+      if (p.crear || p.editar) {
+        footerHtml = `
+          <div class="modulo-card-footer">
+            <button class="btn btn-sm btn-secondary ${modoTomaActivo ? 'activo' : ''}" 
+                    id="btn-modo-toma" 
+                    onclick="toggleModoToma()">
+              ${modoTomaActivo ? '❌ Cancelar' : '📋 Toma'}
+            </button>
+            <button class="btn btn-sm btn-primary hidden" 
+                    id="btn-guardar-toma-directa" 
+                    onclick="guardarTomaDirecta()"
+                    ${modoTomaActivo ? '' : 'style="display:none"'}>
+              💾 Guardar
+            </button>
+            ${!modoTomaActivo ? `<button class="btn btn-sm btn-primary" onclick="abrirModalInventario()">+ Añadir</button>` : ''}
+          </div>
+        `;
+      }
+
       return `
-        <div class="modulo-card">
+        <div class="modulo-card" id="card-inventario">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">📦 Inventario</div>
+            <div class="modulo-card-title">📦 Inventario <span class="count-badge">${datosModulos.inventario.length}</span></div>
             <div class="modulo-card-permisos">${renderPermisosBadges('inventario')}</div>
           </div>
-          <div class="modulo-card-body">${itemsHtml}</div>
-          ${p.crear ? `
-            <div class="modulo-card-footer">
-              <button class="btn btn-sm btn-secondary" onclick="abrirModalTomaInventario()">Toma</button>
-              <button class="btn btn-sm btn-primary" onclick="abrirModalInventario()">+ Añadir</button>
-            </div>
-          ` : ''}
+          <div class="modulo-card-body" style="max-height: 350px; overflow-y: auto;">${itemsHtml}</div>
+          ${footerHtml}
         </div>
       `;
+    }
+
+    function colorearInputInventario(input) {
+      const valor = parseInt(input.value) || 0;
+      const minimo = parseInt(input.dataset.min) || 0;
+      
+      input.classList.remove('agotado', 'bajo', 'ok');
+      if (valor === 0) {
+        input.classList.add('agotado');
+      } else if (valor <= minimo) {
+        input.classList.add('bajo');
+      } else {
+        input.classList.add('ok');
+      }
     }
 
     async function ajustarInventario(itemId, delta) {
@@ -2589,6 +2740,357 @@
     function cerrarModalTodos() {
       document.getElementById('modal-ver-todos').classList.remove('active');
     }
+
+    // ============ PRIMEROS PASOS CASERO ============
+    function verificarPrimerosPasosCasero() {
+      const noMostrar = localStorage.getItem('familynk_no_primeros_pasos_casero');
+      if (noMostrar !== 'true') {
+        document.getElementById('modal-primeros-pasos-casero').classList.add('active');
+      }
+    }
+
+    function cerrarPrimerosPasosCasero() {
+      document.getElementById('modal-primeros-pasos-casero').classList.remove('active');
+    }
+
+    function noMostrarMasPrimerosPasos() {
+      localStorage.setItem('familynk_no_primeros_pasos_casero', 'true');
+      cerrarPrimerosPasosCasero();
+    }
+
+    // ============ MODO TOMA INVENTARIO DIRECTO ============
+    let modoTomaActivo = false;
+
+    function toggleModoToma() {
+      modoTomaActivo = !modoTomaActivo;
+      
+      if (modoTomaActivo) {
+        // Activar modo toma: mostrar inputs, ocultar displays
+        document.querySelectorAll('.inventario-stock').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.inventario-cantidad-input').forEach(input => {
+          input.classList.remove('hidden');
+          colorearInputInventario(input);
+        });
+        document.querySelectorAll('.inventario-quick-btns').forEach(el => el.classList.add('hidden'));
+        
+        // Actualizar botones
+        const btnToma = document.getElementById('btn-modo-toma');
+        const btnGuardar = document.getElementById('btn-guardar-toma-directa');
+        if (btnToma) {
+          btnToma.textContent = '❌ Cancelar';
+          btnToma.classList.add('activo');
+        }
+        if (btnGuardar) {
+          btnGuardar.classList.remove('hidden');
+          btnGuardar.style.display = '';
+        }
+        
+        // Ocultar botón añadir
+        const footer = document.querySelector('#card-inventario .modulo-card-footer');
+        const btnAdd = footer?.querySelector('.btn-primary:not(#btn-guardar-toma-directa)');
+        if (btnAdd) btnAdd.style.display = 'none';
+        
+      } else {
+        // Desactivar modo toma: re-renderizar módulos
+        renderModulos();
+      }
+    }
+
+    async function guardarTomaDirecta() {
+      const inputs = document.querySelectorAll('.inventario-cantidad-input');
+      const btn = document.getElementById('btn-guardar-toma-directa');
+      btn.disabled = true;
+      btn.textContent = '⏳ Guardando...';
+      
+      try {
+        const batch = db.batch();
+        let cambios = 0;
+        
+        inputs.forEach(input => {
+          const itemId = input.dataset.itemId;
+          const nuevoValor = parseInt(input.value) || 0;
+          const item = datosModulos.inventario.find(i => i.id === itemId);
+          
+          if (item && item.stockActual !== nuevoValor) {
+            const ref = db.collection('bienes').doc(bienActual.bienId).collection('inventario').doc(itemId);
+            batch.update(ref, { 
+              stockActual: nuevoValor,
+              ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
+              tomadoPor: currentUser.uid
+            });
+            item.stockActual = nuevoValor;
+            cambios++;
+          }
+        });
+        
+        if (cambios > 0) {
+          await batch.commit();
+          
+          // Registrar la toma
+          await db.collection('bienes').doc(bienActual.bienId).collection('tomasInventario').add({
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            realizadoPor: currentUser.uid,
+            itemsActualizados: cambios
+          });
+        }
+        
+        modoTomaActivo = false;
+        renderModulos();
+        
+        if (cambios > 0) {
+          alert(`✅ Toma guardada: ${cambios} artículo${cambios !== 1 ? 's' : ''} actualizado${cambios !== 1 ? 's' : ''}`);
+        } else {
+          alert('ℹ️ Sin cambios que guardar');
+        }
+        
+      } catch (error) {
+        console.error('Error guardando toma:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+      
+      btn.disabled = false;
+      btn.textContent = '💾 Guardar';
+    }
   </script>
+
+  <!-- Modal Primeros Pasos Casero -->
+  <div class="modal-overlay" id="modal-primeros-pasos-casero">
+    <div class="modal" style="max-width: 560px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--mayordomo), #6B5B4B);">
+        <h3 class="modal-title">👋 Bienvenido al Panel de Casero</h3>
+        <button class="modal-close" onclick="cerrarPrimerosPasosCasero()">×</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        
+        <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
+          Aquí gestionas el día a día del bien. Esto es lo que puedes hacer:
+        </p>
+        
+        <!-- Sección: Lo que ves -->
+        <div class="onboarding-seccion">
+          <div class="onboarding-titulo">📊 Lo que ves en cada tarjeta</div>
+          
+          <div class="onboarding-items">
+            <div class="onboarding-item">
+              <span class="onboarding-icon">📋</span>
+              <div>
+                <strong>Pedidos</strong>
+                <p>Encargos de la familia y artículos bajo stock de seguridad</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">📅</span>
+              <div>
+                <strong>Reservas</strong>
+                <p>Próximas estancias confirmadas y quién viene</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">📦</span>
+              <div>
+                <strong>Inventario</strong>
+                <p>Stock actual de productos y materiales</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">🍽️</span>
+              <div>
+                <strong>Menús</strong>
+                <p>Planificación semanal de comidas</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">🧹</span>
+              <div>
+                <strong>Limpieza</strong>
+                <p>Tareas programadas y zonas a preparar</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">🔧</span>
+              <div>
+                <strong>Mantenimiento</strong>
+                <p>Revisiones periódicas programadas</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">🔩</span>
+              <div>
+                <strong>Reparaciones</strong>
+                <p>Averías reportadas y su estado</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">🛠️</span>
+              <div>
+                <strong>Herramientas</strong>
+                <p>Inventario del taller/almacén</p>
+              </div>
+            </div>
+            
+            <div class="onboarding-item">
+              <span class="onboarding-icon">💶</span>
+              <div>
+                <strong>Gastos</strong>
+                <p>Registro de compras y pagos</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sección: Lo que puedes hacer -->
+        <div class="onboarding-seccion" style="margin-top: 20px;">
+          <div class="onboarding-titulo">✋ Lo que puedes gestionar</div>
+          
+          <div class="onboarding-acciones">
+            <div class="onboarding-accion">
+              <span>📋</span> Hacer <strong>Toma de Inventario</strong>
+            </div>
+            <div class="onboarding-accion">
+              <span>🔩</span> Cambiar <strong>estado</strong> de reparaciones
+            </div>
+            <div class="onboarding-accion">
+              <span>💶</span> Registrar <strong>gastos</strong> y compras
+            </div>
+            <div class="onboarding-accion">
+              <span>🛠️</span> Añadir <strong>herramientas</strong>
+            </div>
+            <div class="onboarding-accion">
+              <span>🧹</span> Marcar tareas de <strong>limpieza</strong>
+            </div>
+            <div class="onboarding-accion">
+              <span>📦</span> Gestionar <strong>pedidos</strong>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+      
+      <div class="modal-footer" style="flex-direction: column; gap: 12px;">
+        <button class="btn btn-primary" onclick="cerrarPrimerosPasosCasero()" style="width: 100%;">
+          ✨ ¡Entendido!
+        </button>
+        <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">
+          <input type="checkbox" onchange="if(this.checked) noMostrarMasPrimerosPasos()">
+          No volver a mostrar
+        </label>
+      </div>
+    </div>
+  </div>
+  
+  <style>
+    .onboarding-seccion { background: var(--cream); padding: 16px; border-radius: var(--radius-md); }
+    .onboarding-titulo { font-weight: 700; font-size: 0.95rem; margin-bottom: 14px; color: var(--mayordomo); }
+    .onboarding-items { display: flex; flex-direction: column; gap: 10px; }
+    .onboarding-item { display: flex; gap: 12px; align-items: flex-start; }
+    .onboarding-icon { font-size: 1.3rem; min-width: 28px; text-align: center; }
+    .onboarding-item strong { display: block; font-size: 0.9rem; color: var(--text); }
+    .onboarding-item p { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
+    .onboarding-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .onboarding-accion { 
+      background: var(--white); 
+      padding: 10px 12px; 
+      border-radius: var(--radius-sm); 
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .onboarding-accion span { font-size: 1rem; }
+    .onboarding-accion strong { color: var(--mayordomo); }
+    
+    /* Inventario mejorado */
+    .inventario-lista { display: flex; flex-direction: column; gap: 6px; }
+    .inventario-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--cream-light);
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--success);
+    }
+    .inventario-item.bajo { border-left-color: var(--warning); background: rgba(232, 180, 77, 0.08); }
+    .inventario-item.agotado { border-left-color: var(--error); background: rgba(212, 105, 90, 0.08); }
+    .inventario-icon { font-size: 1.2rem; min-width: 24px; text-align: center; }
+    .inventario-info { flex: 1; min-width: 0; }
+    .inventario-nombre { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .inventario-minimo { font-size: 0.75rem; color: var(--text-muted); }
+    .inventario-stock-container { display: flex; align-items: center; min-width: 60px; justify-content: center; }
+    .inventario-stock {
+      font-size: 1.1rem;
+      font-weight: 700;
+      min-width: 40px;
+      text-align: center;
+    }
+    .inventario-stock.ok { color: var(--success); }
+    .inventario-stock.bajo { color: var(--warning); }
+    .inventario-stock.agotado { color: var(--error); }
+    
+    .inventario-cantidad-input {
+      width: 60px;
+      padding: 8px;
+      border: 2px solid var(--sage);
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: center;
+      background: var(--white);
+    }
+    .inventario-cantidad-input.ok { color: var(--success); border-color: var(--success); }
+    .inventario-cantidad-input.bajo { color: var(--warning); border-color: var(--warning); }
+    .inventario-cantidad-input.agotado { color: var(--error); border-color: var(--error); }
+    
+    .inventario-quick-btns {
+      display: flex;
+      gap: 4px;
+    }
+    
+    #btn-modo-toma.activo {
+      background: var(--error) !important;
+      color: white !important;
+    }
+    
+    /* Menús */
+    .menus-lista { display: flex; flex-direction: column; gap: 10px; }
+    .menu-dia {
+      background: var(--cream-light);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      border-left: 3px solid var(--sage);
+    }
+    .menu-dia.hoy {
+      border-left-color: var(--terracotta);
+      background: var(--terracotta-muted);
+    }
+    .menu-dia-header {
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+    .menu-comidas { display: flex; flex-direction: column; gap: 4px; }
+    .menu-comida {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+    }
+    .menu-tipo { font-size: 1rem; }
+    .menu-plato { color: var(--text-muted); }
+    
+    @media (max-width: 480px) {
+      .onboarding-acciones { grid-template-columns: 1fr; }
+      .inventario-item { padding: 8px 10px; }
+      .inventario-nombre { font-size: 0.85rem; }
+    }
+  </style>
 </body>
 </html>
