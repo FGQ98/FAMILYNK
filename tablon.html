@@ -392,8 +392,13 @@
         const ahora = new Date();
         const familiaId = currentFamilia?.id || userData.familiaId;
 
+        console.log('=== CARGAR AVISOS TABLÓN ===');
+        console.log('Usuario:', currentUser.uid);
+        console.log('Familia:', familiaId);
+
         // 1. Cargar notificaciones para este usuario (usando índice con estado)
         try {
+          console.log('Buscando notificaciones...');
           const notifSnap = await db.collection('notificaciones')
             .where('familiaId', '==', familiaId)
             .where('destinatarios', 'array-contains', currentUser.uid)
@@ -410,8 +415,12 @@
               }
               return true;
             });
+          console.log('✅ Notificaciones cargadas:', notificaciones.length);
         } catch (e) {
-          console.warn('Error cargando notificaciones:', e);
+          console.warn('❌ Error cargando notificaciones:', e);
+          if (e.message && e.message.includes('index')) {
+            console.error('⚠️ FALTA ÍNDICE. Haz clic en el enlace del error para crearlo.');
+          }
           notificaciones = [];
         }
 
@@ -425,10 +434,13 @@
             .get();
 
           queos = queosSnap.docs.map(doc => ({ id: doc.id, source: 'queo', ...doc.data() }));
+          console.log('✅ Queos cargados:', queos.length);
         } catch (e) {
-          console.warn('Error cargando queos:', e);
+          console.warn('❌ Error cargando queos:', e);
           queos = [];
         }
+
+        console.log('Total para mostrar:', notificaciones.length + queos.length);
 
         renderAvisos();
 
