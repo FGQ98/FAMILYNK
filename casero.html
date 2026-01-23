@@ -1853,10 +1853,13 @@
               <span class="inventario-icon">${catIcons[i.categoria] || '📦'}</span>
               <div class="inventario-info">
                 <div class="inventario-nombre">${i.nombre}</div>
-                <div class="inventario-minimo">mín. ${i.stockMinimo}</div>
               </div>
               <div class="inventario-stock-container">
-                <span class="inventario-stock ${estadoClass}" id="stock-display-${i.id}">${i.stockActual}</span>
+                <div class="inventario-stock-visual ${estadoClass}" id="stock-display-${i.id}">
+                  <span class="inventario-stock-actual">${i.stockActual}</span>
+                  <span class="inventario-stock-separador">/</span>
+                  <span class="inventario-stock-minimo">${i.stockMinimo}</span>
+                </div>
                 <input type="number" 
                        class="inventario-cantidad-input hidden" 
                        id="stock-input-${i.id}"
@@ -1876,6 +1879,16 @@
           `;
         }).join('') + '</div>';
       }
+
+      // Leyenda de colores
+      const leyendaHtml = `
+        <div style="display:flex; gap:12px; justify-content:center; padding:8px 0; font-size:0.7rem; color:var(--text-muted); border-bottom:1px solid var(--cream-dark); margin-bottom:8px;">
+          <span><span style="color:var(--success)">●</span> OK</span>
+          <span><span style="color:var(--warning)">●</span> Bajo mínimo</span>
+          <span><span style="color:var(--error)">●</span> Agotado</span>
+          <span style="margin-left:8px;">Stock: <strong>Actual</strong> / Mín</span>
+        </div>
+      `;
 
       // Botones de footer según modo
       let footerHtml = '';
@@ -1904,7 +1917,10 @@
             <div class="modulo-card-title">📦 Inventario <span class="count-badge">${datosModulos.inventario.length}</span></div>
             <div class="modulo-card-permisos">${renderPermisosBadges('inventario')}</div>
           </div>
-          <div class="modulo-card-body" style="max-height: 350px; overflow-y: auto;">${itemsHtml}</div>
+          <div class="modulo-card-body" style="max-height: 350px; overflow-y: auto;">
+            ${datosModulos.inventario.length > 0 ? leyendaHtml : ''}
+            ${itemsHtml}
+          </div>
           ${footerHtml}
         </div>
       `;
@@ -2776,7 +2792,7 @@
       
       if (modoTomaActivo) {
         // Activar modo toma: mostrar inputs, ocultar displays
-        document.querySelectorAll('.inventario-stock').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.inventario-stock-visual').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.inventario-cantidad-input').forEach(input => {
           input.classList.remove('hidden');
           colorearInputInventario(input);
@@ -2865,27 +2881,28 @@
 
   <!-- Modal Primeros Pasos Casero -->
   <div class="modal-overlay" id="modal-primeros-pasos-casero">
-    <div class="modal" style="max-width: 560px;">
-      <div class="modal-header" style="background: linear-gradient(135deg, var(--mayordomo), #6B5B4B);">
-        <h3 class="modal-title">👋 Bienvenido al Panel de Casero</h3>
-        <button class="modal-close" onclick="cerrarPrimerosPasosCasero()">×</button>
+    <div class="modal" style="max-width: 560px; max-height: 90vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--mayordomo), #6B5B4B); flex-shrink: 0;">
+        <h3 class="modal-title" style="color: white;">👋 Bienvenido al Panel de Casero</h3>
+        <button class="modal-close" onclick="cerrarPrimerosPasosCasero()" style="color: white;">×</button>
       </div>
-      <div class="modal-body" style="padding: 20px;">
+      <div class="modal-body" style="padding: 20px; overflow-y: auto; flex: 1;">
         
-        <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
-          Aquí gestionas el día a día del bien. Esto es lo que puedes hacer:
+        <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">
+          Este es tu centro de control para gestionar el día a día del bien.
         </p>
         
         <!-- Sección: Lo que ves -->
         <div class="onboarding-seccion">
           <div class="onboarding-titulo">📊 Lo que ves en cada tarjeta</div>
+          <p class="onboarding-desc">Información que la familia actualiza y tú consultas:</p>
           
           <div class="onboarding-items">
             <div class="onboarding-item">
               <span class="onboarding-icon">📋</span>
               <div>
                 <strong>Pedidos</strong>
-                <p>Encargos de la familia y artículos bajo stock de seguridad</p>
+                <p>Encargos pendientes y artículos bajo stock de seguridad</p>
               </div>
             </div>
             
@@ -2893,7 +2910,7 @@
               <span class="onboarding-icon">📅</span>
               <div>
                 <strong>Reservas</strong>
-                <p>Próximas estancias confirmadas y quién viene</p>
+                <p>Próximas llegadas: quién viene, cuándo y cuántos</p>
               </div>
             </div>
             
@@ -2901,7 +2918,7 @@
               <span class="onboarding-icon">📦</span>
               <div>
                 <strong>Inventario</strong>
-                <p>Stock actual de productos y materiales</p>
+                <p>Stock actual vs mínimo de seguridad (coloreado por estado)</p>
               </div>
             </div>
             
@@ -2909,7 +2926,7 @@
               <span class="onboarding-icon">🍽️</span>
               <div>
                 <strong>Menús</strong>
-                <p>Planificación semanal de comidas</p>
+                <p>Comidas y cenas planificadas para la semana</p>
               </div>
             </div>
             
@@ -2917,7 +2934,7 @@
               <span class="onboarding-icon">🧹</span>
               <div>
                 <strong>Limpieza</strong>
-                <p>Tareas programadas y zonas a preparar</p>
+                <p>Zonas a preparar según las próximas llegadas</p>
               </div>
             </div>
             
@@ -2925,7 +2942,7 @@
               <span class="onboarding-icon">🔧</span>
               <div>
                 <strong>Mantenimiento</strong>
-                <p>Revisiones periódicas programadas</p>
+                <p>Revisiones periódicas programadas (caldera, piscina...)</p>
               </div>
             </div>
             
@@ -2933,7 +2950,7 @@
               <span class="onboarding-icon">🔩</span>
               <div>
                 <strong>Reparaciones</strong>
-                <p>Averías reportadas y su estado</p>
+                <p>Averías reportadas por la familia y su estado</p>
               </div>
             </div>
             
@@ -2941,7 +2958,7 @@
               <span class="onboarding-icon">🛠️</span>
               <div>
                 <strong>Herramientas</strong>
-                <p>Inventario del taller/almacén</p>
+                <p>Inventario del taller y almacén</p>
               </div>
             </div>
             
@@ -2949,31 +2966,32 @@
               <span class="onboarding-icon">💶</span>
               <div>
                 <strong>Gastos</strong>
-                <p>Registro de compras y pagos</p>
+                <p>Historial de compras y pagos realizados</p>
               </div>
             </div>
           </div>
         </div>
         
         <!-- Sección: Lo que puedes hacer -->
-        <div class="onboarding-seccion" style="margin-top: 20px;">
+        <div class="onboarding-seccion" style="margin-top: 16px;">
           <div class="onboarding-titulo">✋ Lo que puedes gestionar</div>
+          <p class="onboarding-desc">Acciones que puedes realizar desde este panel:</p>
           
           <div class="onboarding-acciones">
             <div class="onboarding-accion">
-              <span>📋</span> Hacer <strong>Toma de Inventario</strong>
+              <span>📋</span> <strong>Toma</strong> de inventario
             </div>
             <div class="onboarding-accion">
-              <span>🔩</span> Cambiar <strong>estado</strong> de reparaciones
+              <span>🔩</span> Cambiar <strong>estado</strong> averías
             </div>
             <div class="onboarding-accion">
-              <span>💶</span> Registrar <strong>gastos</strong> y compras
+              <span>💶</span> Registrar <strong>gastos</strong>
             </div>
             <div class="onboarding-accion">
               <span>🛠️</span> Añadir <strong>herramientas</strong>
             </div>
             <div class="onboarding-accion">
-              <span>🧹</span> Marcar tareas de <strong>limpieza</strong>
+              <span>🧹</span> Marcar <strong>limpieza</strong> hecha
             </div>
             <div class="onboarding-accion">
               <span>📦</span> Gestionar <strong>pedidos</strong>
@@ -2983,11 +3001,11 @@
         
       </div>
       
-      <div class="modal-footer" style="flex-direction: column; gap: 12px;">
-        <button class="btn btn-primary" onclick="cerrarPrimerosPasosCasero()" style="width: 100%;">
-          ✨ ¡Entendido!
+      <div class="modal-footer onboarding-footer">
+        <button class="btn btn-primary" onclick="cerrarPrimerosPasosCasero()">
+          ✨ ¡Entendido, empezar!
         </button>
-        <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">
+        <label class="onboarding-no-mostrar">
           <input type="checkbox" onchange="if(this.checked) noMostrarMasPrimerosPasos()">
           No volver a mostrar
         </label>
@@ -2996,13 +3014,15 @@
   </div>
   
   <style>
+    /* Onboarding Modal */
     .onboarding-seccion { background: var(--cream); padding: 16px; border-radius: var(--radius-md); }
-    .onboarding-titulo { font-weight: 700; font-size: 0.95rem; margin-bottom: 14px; color: var(--mayordomo); }
-    .onboarding-items { display: flex; flex-direction: column; gap: 10px; }
-    .onboarding-item { display: flex; gap: 12px; align-items: flex-start; }
-    .onboarding-icon { font-size: 1.3rem; min-width: 28px; text-align: center; }
-    .onboarding-item strong { display: block; font-size: 0.9rem; color: var(--text); }
-    .onboarding-item p { margin: 0; font-size: 0.8rem; color: var(--text-muted); }
+    .onboarding-titulo { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; color: var(--mayordomo); }
+    .onboarding-desc { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 12px 0; }
+    .onboarding-items { display: flex; flex-direction: column; gap: 8px; }
+    .onboarding-item { display: flex; gap: 10px; align-items: flex-start; }
+    .onboarding-icon { font-size: 1.2rem; min-width: 26px; text-align: center; }
+    .onboarding-item strong { display: block; font-size: 0.85rem; color: var(--text); }
+    .onboarding-item p { margin: 0; font-size: 0.75rem; color: var(--text-muted); line-height: 1.3; }
     .onboarding-acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .onboarding-accion { 
       background: var(--white); 
@@ -3015,6 +3035,25 @@
     }
     .onboarding-accion span { font-size: 1rem; }
     .onboarding-accion strong { color: var(--mayordomo); }
+    .onboarding-footer {
+      flex-shrink: 0;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px 20px;
+      background: var(--white);
+      border-top: 1px solid var(--cream-dark);
+    }
+    .onboarding-footer .btn { width: 100%; padding: 12px; font-size: 0.95rem; }
+    .onboarding-no-mostrar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .onboarding-no-mostrar input { width: 16px; height: 16px; }
     
     /* Inventario mejorado */
     .inventario-lista { display: flex; flex-direction: column; gap: 6px; }
@@ -3033,21 +3072,61 @@
     .inventario-info { flex: 1; min-width: 0; }
     .inventario-nombre { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .inventario-minimo { font-size: 0.75rem; color: var(--text-muted); }
-    .inventario-stock-container { display: flex; align-items: center; min-width: 60px; justify-content: center; }
-    .inventario-stock {
-      font-size: 1.1rem;
-      font-weight: 700;
-      min-width: 40px;
-      text-align: center;
+    .inventario-stock-container { 
+      display: flex; 
+      align-items: center; 
+      gap: 6px;
+      min-width: 80px; 
+      justify-content: flex-end; 
     }
-    .inventario-stock.ok { color: var(--success); }
-    .inventario-stock.bajo { color: var(--warning); }
-    .inventario-stock.agotado { color: var(--error); }
+    .inventario-stock-visual {
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+      font-family: 'Quicksand', sans-serif;
+    }
+    .inventario-stock-actual {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+    .inventario-stock-separador {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .inventario-stock-minimo {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .inventario-stock-visual.ok .inventario-stock-actual { color: var(--success); }
+    .inventario-stock-visual.bajo .inventario-stock-actual { color: var(--warning); }
+    .inventario-stock-visual.agotado .inventario-stock-actual { color: var(--error); }
     
     .inventario-cantidad-input {
       width: 60px;
       padding: 8px;
       border: 2px solid var(--sage);
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
+      font-weight: 700;
+      text-align: center;
+      background: var(--white);
+    }
+    .inventario-cantidad-input.ok { color: var(--success); border-color: var(--success); }
+    .inventario-cantidad-input.bajo { color: var(--warning); border-color: var(--warning); }
+    .inventario-cantidad-input.agotado { color: var(--error); border-color: var(--error); }
+    
+    .inventario-quick-btns {
+      display: flex;
+      gap: 4px;
+    }
+    
+    #btn-modo-toma.activo {
+      background: var(--error) !important;
+      color: white !important;
+    }
+    
+    /* Menús */
       border-radius: var(--radius-sm);
       font-size: 1rem;
       font-weight: 700;
