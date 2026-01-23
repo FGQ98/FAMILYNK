@@ -4197,6 +4197,153 @@
     // ============ ADMIN BUTTONS ============
     let esAdminRama = false;
     let esAdminNido = false;
+    let rolUsuario = 'adulto'; // Por defecto
+    let permisosCVEB = null;
+
+    // Permisos CVEB por defecto (igual que en admin-rama)
+    const permisosCVEBDefault = {
+      arbol: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: true },
+        adulto: { c: false, v: true, e: false, b: false },
+        nino: { c: false, v: true, e: false, b: false },
+        especial: { c: false, v: true, e: false, b: false },
+        alejado: { c: false, v: true, e: false, b: false }
+      },
+      nidos: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: true },
+        adulto: { c: false, v: true, e: false, b: false },
+        nino: { c: false, v: false, e: false, b: false },
+        especial: { c: false, v: true, e: false, b: false },
+        alejado: { c: false, v: false, e: false, b: false }
+      },
+      bienes: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: false },
+        adulto: { c: false, v: true, e: false, b: false },
+        nino: { c: false, v: true, e: false, b: false },
+        especial: { c: false, v: true, e: false, b: false },
+        alejado: { c: false, v: true, e: false, b: false }
+      },
+      calendario: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: true },
+        adulto: { c: true, v: true, e: true, b: false },
+        nino: { c: false, v: true, e: false, b: false },
+        especial: { c: true, v: true, e: true, b: false },
+        alejado: { c: false, v: true, e: false, b: false }
+      },
+      reservas: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: true },
+        adulto: { c: true, v: true, e: false, b: false },
+        nino: { c: false, v: true, e: false, b: false },
+        especial: { c: true, v: true, e: false, b: false },
+        alejado: { c: false, v: false, e: false, b: false }
+      },
+      legado: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: true },
+        adulto: { c: true, v: true, e: true, b: false },
+        nino: { c: false, v: true, e: false, b: false },
+        especial: { c: true, v: true, e: true, b: false },
+        alejado: { c: false, v: true, e: false, b: false }
+      },
+      tablon: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: true },
+        adulto: { c: true, v: true, e: false, b: false },
+        nino: { c: false, v: true, e: false, b: false },
+        especial: { c: true, v: true, e: false, b: false },
+        alejado: { c: false, v: true, e: false, b: false }
+      },
+      recetas: {
+        adminRama: { c: true, v: true, e: true, b: true },
+        adminNido: { c: true, v: true, e: true, b: true },
+        adulto: { c: true, v: true, e: true, b: false },
+        nino: { c: false, v: true, e: false, b: false },
+        especial: { c: true, v: true, e: true, b: false },
+        alejado: { c: false, v: true, e: false, b: false }
+      }
+    };
+
+    // Función para determinar el rol del usuario
+    function determinarRolUsuario() {
+      // SuperAdmin o AdminRama
+      if (userData.superAdmin === true) return 'adminRama';
+      
+      const isAdminRama = userData.rol === 'adminRama' || 
+        userData.rol === 'adminSistema' ||
+        (currentFamilia?.adminsGenerales?.includes(currentUser.uid)) ||
+        (currentFamilia?.fundador === currentUser.uid) ||
+        (currentFamilia?.creador === currentUser.uid);
+      
+      if (isAdminRama) return 'adminRama';
+      
+      // AdminNido (tiene nidoId y es admin de ese nido)
+      const esAdminDeNido = userData.esAdminNido || userData.rol === 'adminNido' || userData.rol === 'AdminNido';
+      if (esAdminDeNido) return 'adminNido';
+      
+      // Roles específicos guardados en userData
+      if (userData.credenciales === 'nino' || userData.credenciales === 'niño') return 'nino';
+      if (userData.credenciales === 'especial') return 'especial';
+      if (userData.credenciales === 'alejado') return 'alejado';
+      
+      // Por defecto es adulto
+      return 'adulto';
+    }
+
+    // Función para verificar permisos CVEB
+    function tienePermiso(modulo, accion) {
+      // Admins siempre tienen permiso total
+      if (esAdminRama) return true;
+      
+      // Cargar permisos de la familia o usar default
+      const permisosActuales = permisosCVEB || currentFamilia?.permisosCVEB || permisosCVEBDefault;
+      
+      // Obtener permisos del módulo
+      const moduloPermisos = permisosActuales[modulo];
+      if (!moduloPermisos) return accion === 'v'; // Si no existe el módulo, solo VER por defecto
+      
+      // Obtener permisos del rol
+      const rolPermisos = moduloPermisos[rolUsuario];
+      if (!rolPermisos) return accion === 'v';
+      
+      return rolPermisos[accion] === true;
+    }
+
+    // Aplicar permisos CVEB a la interfaz
+    function aplicarPermisosCVEB() {
+      console.log('Aplicando permisos CVEB para rol:', rolUsuario);
+      
+      // Ocultar botones de acción según permisos
+      // CTAs - requieren permiso de CREAR en sus módulos respectivos
+      const ctaPermisos = {
+        'cta-averia': { modulo: 'bienes', accion: 'c' },
+        'cta-iniciativa': { modulo: 'tablon', accion: 'c' },
+        'cta-evento': { modulo: 'calendario', accion: 'c' },
+        'cta-reserva': { modulo: 'reservas', accion: 'c' },
+        'cta-queo': { modulo: 'tablon', accion: 'c' },
+        'cta-convocar': { modulo: 'calendario', accion: 'c' }
+      };
+      
+      Object.entries(ctaPermisos).forEach(([ctaId, config]) => {
+        const btn = document.getElementById(ctaId);
+        if (btn) {
+          const tiene = tienePermiso(config.modulo, config.accion);
+          btn.style.display = tiene ? '' : 'none';
+        }
+      });
+      
+      // Botón de añadir al calendario
+      const btnAddCalendario = document.getElementById('btn-add-calendario');
+      if (btnAddCalendario) {
+        btnAddCalendario.style.display = tienePermiso('calendario', 'c') ? '' : 'none';
+      }
+      
+      console.log('Permisos CVEB aplicados');
+    }
 
     function renderAdminButtons() {
       const container = document.getElementById('admin-buttons');
@@ -4249,8 +4396,16 @@
         adminSection.style.display = html ? 'block' : 'none';
       }
 
+      // Determinar rol del usuario y cargar permisos CVEB
+      rolUsuario = determinarRolUsuario();
+      permisosCVEB = currentFamilia?.permisosCVEB || null;
+      console.log('👤 Rol del usuario:', rolUsuario);
+      
       // Aplicar configuración de secciones (menú + CTAs)
       aplicarConfigSecciones(isAdminRama || isSuperAdmin);
+      
+      // Aplicar permisos CVEB (oculta CTAs según permisos del rol)
+      aplicarPermisosCVEB();
     }
 
     // ============ APLICAR CONFIG SECCIONES ============
@@ -7039,14 +7194,6 @@
       }
     }
 
-    // ============ PRIMEROS PASOS ============
-    function verificarPrimerosPasos() {
-      const noMostrar = localStorage.getItem('familynk_no_mostrar_primeros_pasos');
-      if (noMostrar !== 'true') {
-        document.getElementById('modal-primeros-pasos').classList.add('active');
-      }
-    }
-
     // ============ MODAL COMUNICADO ============
     let comunicadoImagenes = [];
     const COMUNICADO_MAX_IMAGENES = 3;
@@ -7691,40 +7838,171 @@
       // Abrir video en nueva ventana o modal de video
       window.open('https://www.youtube.com/watch?v=VIDEO_ID', '_blank');
     }
+
+    function mostrarPrimerosPasos() {
+      // Detectar si es creador (AdminRama) o invitado
+      const esCreador = esAdminRama;
+      
+      // Ocultar/mostrar secciones según rol
+      document.getElementById('pasos-creador').style.display = esCreador ? 'block' : 'none';
+      document.getElementById('pasos-invitado').style.display = esCreador ? 'none' : 'block';
+      
+      // Actualizar título
+      document.getElementById('primeros-pasos-titulo').textContent = esCreador 
+        ? '👋 ¡Bienvenido, creador!' 
+        : '👋 ¡Bienvenido a la familia!';
+      
+      document.getElementById('modal-primeros-pasos').classList.add('active');
+    }
+
+    function verificarPrimerosPasos() {
+      const noMostrar = localStorage.getItem('familynk_no_mostrar_primeros_pasos');
+      if (noMostrar !== 'true') {
+        mostrarPrimerosPasos();
+      }
+    }
   </script>
 
   <!-- Modal Primeros Pasos -->
   <div class="modal-overlay" id="modal-primeros-pasos">
-    <div class="modal" style="max-width: 500px;">
-      <div class="modal-header">
-        <h3 class="modal-title">🎬 Bienvenido a FAMILYNK</h3>
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--sage) 0%, var(--sage-dark) 100%);">
+        <div class="modal-logo">🏠</div>
+        <div class="modal-header-info">
+          <h2 class="modal-title" id="primeros-pasos-titulo">👋 ¡Bienvenido!</h2>
+          <p class="modal-subtitle">Tu espacio familiar te espera</p>
+        </div>
         <button class="modal-close" onclick="cerrarPrimerosPasos()">&times;</button>
       </div>
-      <div class="modal-body" style="text-align: center;">
-        <div style="font-size: 4rem; margin-bottom: 16px;">🏠</div>
-        <p style="font-size: 1.1rem; margin-bottom: 16px;">
-          ¿Es tu primera vez aquí?
-        </p>
-        <p style="color: var(--text-muted); margin-bottom: 24px;">
-          Te recomendamos ver nuestro video de introducción para sacar el máximo partido a FAMILYNK.
-        </p>
-        <button class="btn btn-primary" onclick="verVideoPrimerosPasos()" style="width: 100%; margin-bottom: 12px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px; vertical-align: middle;">
-            <path d="M8 5v14l11-7z"/>
-          </svg>
-          Ver Primeros Pasos
-        </button>
-        <button class="btn btn-secondary" onclick="cerrarPrimerosPasos()" style="width: 100%;">
-          Ahora no, gracias
-        </button>
+      
+      <div class="modal-body" style="padding: 20px;">
+        
+        <!-- GUÍA PARA CREADOR -->
+        <div id="pasos-creador" style="display: none;">
+          <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
+            Has creado tu rama familiar. Estos son tus primeros pasos:
+          </p>
+          
+          <div class="pasos-lista">
+            <div class="paso-item">
+              <div class="paso-numero">1</div>
+              <div class="paso-contenido">
+                <strong>Configura tu nido</strong>
+                <p>Ve a <em>Mi Nido</em> y completa los datos de tu hogar</p>
+              </div>
+            </div>
+            
+            <div class="paso-item">
+              <div class="paso-numero">2</div>
+              <div class="paso-contenido">
+                <strong>Invita a tu familia</strong>
+                <p>Desde <em>Admin Rama → Herramientas</em> invita a los miembros</p>
+              </div>
+            </div>
+            
+            <div class="paso-item">
+              <div class="paso-numero">3</div>
+              <div class="paso-contenido">
+                <strong>Añade bienes compartidos</strong>
+                <p>En <em>Lo Común</em> registra casas, vehículos o propiedades</p>
+              </div>
+            </div>
+            
+            <div class="paso-item">
+              <div class="paso-numero">4</div>
+              <div class="paso-contenido">
+                <strong>Personaliza secciones</strong>
+                <p>En <em>Admin Rama → Secciones</em> activa solo lo que necesites</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="paso-tip">
+            💡 <strong>Consejo:</strong> Empieza simple. Puedes activar más funciones cuando las necesites.
+          </div>
+        </div>
+        
+        <!-- GUÍA PARA INVITADO -->
+        <div id="pasos-invitado" style="display: none;">
+          <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
+            Te han invitado a unirte. Esto es lo que puedes hacer:
+          </p>
+          
+          <div class="pasos-lista">
+            <div class="paso-item">
+              <div class="paso-numero">1</div>
+              <div class="paso-contenido">
+                <strong>Completa tu perfil</strong>
+                <p>Pulsa en <em>Mi Nido</em> para ver y editar tus datos</p>
+              </div>
+            </div>
+            
+            <div class="paso-item">
+              <div class="paso-numero">2</div>
+              <div class="paso-contenido">
+                <strong>Explora el Árbol</strong>
+                <p>Descubre a todos los miembros de la familia</p>
+              </div>
+            </div>
+            
+            <div class="paso-item">
+              <div class="paso-numero">3</div>
+              <div class="paso-contenido">
+                <strong>Revisa Lo Común</strong>
+                <p>Mira los bienes compartidos y haz reservas si lo necesitas</p>
+              </div>
+            </div>
+            
+            <div class="paso-item">
+              <div class="paso-numero">4</div>
+              <div class="paso-contenido">
+                <strong>Usa los botones de acción</strong>
+                <p>Reporta averías, propón ideas o convoca reuniones</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="paso-tip">
+            💡 <strong>Consejo:</strong> Consulta el <em>Tablón</em> para ver avisos y notificaciones pendientes.
+          </div>
+        </div>
+        
       </div>
-      <div class="modal-footer" style="justify-content: center; border-top: none; padding-top: 0;">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">
+      
+      <div class="modal-footer" style="flex-direction: column; gap: 12px;">
+        <button class="btn btn-primary" onclick="cerrarPrimerosPasos()" style="width: 100%;">
+          ✨ ¡Entendido, empezar!
+        </button>
+        <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">
           <input type="checkbox" onchange="if(this.checked) noMostrarPrimerosPasos()">
           No volver a mostrar
         </label>
       </div>
     </div>
   </div>
+  
+  <style>
+    .pasos-lista { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
+    .paso-item { display: flex; gap: 14px; align-items: flex-start; }
+    .paso-numero {
+      width: 28px; height: 28px; min-width: 28px;
+      background: var(--sage);
+      color: white;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.85rem;
+    }
+    .paso-contenido strong { display: block; margin-bottom: 2px; color: var(--text); }
+    .paso-contenido p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
+    .paso-contenido em { color: var(--sage-dark); font-style: normal; font-weight: 600; }
+    .paso-tip {
+      background: var(--cream);
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .paso-tip strong { color: var(--terracotta); }
+  </style>
 </body>
 </html>
