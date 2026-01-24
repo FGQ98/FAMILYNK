@@ -304,6 +304,84 @@
     
     .precepto-texto { font-size: 0.9rem; line-height: 1.5; }
 
+    /* Apartados en modal de capítulos */
+    .apartado-item {
+      background: var(--cream);
+      border-radius: 8px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      border: 1px solid var(--cream-dark);
+    }
+    
+    .apartado-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--sage-muted);
+    }
+    
+    .apartado-header input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid var(--cream-dark);
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: 'Nunito', sans-serif;
+    }
+    
+    .apartado-num {
+      background: var(--sage);
+      color: white;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    
+    .apartado-actions {
+      display: flex;
+      gap: 4px;
+    }
+    
+    .apartado-actions button {
+      background: white;
+      border: none;
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    
+    .apartado-actions button:hover {
+      background: var(--cream-dark);
+    }
+    
+    .apartado-body {
+      padding: 10px 12px;
+    }
+    
+    .apartado-body textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--cream-dark);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-family: 'Nunito', sans-serif;
+      resize: vertical;
+      min-height: 80px;
+    }
+    
+    .apartado-body p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
     .users-table { width: 100%; border-collapse: collapse; }
     .users-table th, .users-table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--cream-dark); }
     .users-table th { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
@@ -926,20 +1004,31 @@
 
     <!-- MODAL: Añadir/Editar Capítulo (Externos) -->
     <div class="modal" id="modal-capitulo">
-      <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-content" style="max-width: 650px;">
         <div class="modal-header">
           <h3 id="modal-capitulo-titulo">➕ Nuevo capítulo</h3>
           <button class="modal-close" onclick="cerrarModal('modal-capitulo')">×</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
           <div class="form-group">
             <label class="form-label">Título del capítulo *</label>
             <input type="text" class="form-input" id="capitulo-titulo" placeholder="Ej: Acceso y seguridad">
           </div>
+          
+          <!-- Preceptos directos del capítulo -->
           <div class="form-group">
-            <label class="form-label">Preceptos</label>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Un precepto por línea</p>
-            <textarea class="form-input" id="capitulo-preceptos" rows="6" placeholder="Mantener puertas cerradas con llave&#10;No facilitar códigos a terceros&#10;Revisar cerraduras semanalmente"></textarea>
+            <label class="form-label">Preceptos generales del capítulo</label>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Preceptos que no requieren apartado (uno por línea)</p>
+            <textarea class="form-input" id="capitulo-preceptos-directos" rows="3" placeholder="Norma general 1&#10;Norma general 2"></textarea>
+          </div>
+          
+          <!-- Apartados -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <label class="form-label" style="margin: 0;">Apartados <span style="font-size:0.8rem;color:var(--text-muted);">(opcional)</span></label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="agregarApartado('externos')">➕ Añadir apartado</button>
+            </div>
+            <div id="apartados-container-externos"></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -951,20 +1040,31 @@
 
     <!-- MODAL: Añadir/Editar Capítulo (Miembros) -->
     <div class="modal" id="modal-capitulo-miembros">
-      <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-content" style="max-width: 650px;">
         <div class="modal-header">
           <h3 id="modal-capitulo-miembros-titulo">➕ Nuevo capítulo</h3>
           <button class="modal-close" onclick="cerrarModal('modal-capitulo-miembros')">×</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
           <div class="form-group">
             <label class="form-label">Título del capítulo *</label>
             <input type="text" class="form-input" id="capitulo-miembros-titulo" placeholder="Ej: Normas de convivencia">
           </div>
+          
+          <!-- Preceptos directos del capítulo -->
           <div class="form-group">
-            <label class="form-label">Preceptos</label>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">Un precepto por línea</p>
-            <textarea class="form-input" id="capitulo-miembros-preceptos" rows="6" placeholder="Apagar luces al salir&#10;No dejar comida fuera de la nevera&#10;Respetar horarios de descanso"></textarea>
+            <label class="form-label">Preceptos generales del capítulo</label>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Preceptos que no requieren apartado (uno por línea)</p>
+            <textarea class="form-input" id="capitulo-miembros-preceptos-directos" rows="3" placeholder="Norma general 1&#10;Norma general 2"></textarea>
+          </div>
+          
+          <!-- Apartados -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <label class="form-label" style="margin: 0;">Apartados <span style="font-size:0.8rem;color:var(--text-muted);">(opcional)</span></label>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="agregarApartado('miembros')">➕ Añadir apartado</button>
+            </div>
+            <div id="apartados-container-miembros"></div>
           </div>
         </div>
         <div class="modal-footer">
@@ -2257,35 +2357,57 @@
           <div style="text-align: center; padding: 40px; color: var(--text-muted);">
             <span style="font-size: 2.5rem; opacity: 0.5;">📝</span>
             <p style="margin-top: 12px;">No hay capítulos definidos</p>
-            <p style="font-size: 0.85rem;">Añade capítulos con sus preceptos para crear la plantilla</p>
+            <p style="font-size: 0.85rem;">Añade capítulos con preceptos y/o apartados</p>
           </div>
         `;
       } else {
-        container.innerHTML = capitulos.map((cap, idx) => `
+        container.innerHTML = capitulos.map((cap, capIdx) => {
+          const preceptosDirectos = cap.preceptos || [];
+          const apartados = cap.apartados || [];
+          const totalPreceptosApartados = apartados.reduce((sum, ap) => sum + (ap.preceptos?.length || 0), 0);
+          const totalPreceptos = preceptosDirectos.length + totalPreceptosApartados;
+          
+          return `
           <div class="capitulo-card">
-            <div class="capitulo-header" onclick="toggleCapitulo(${idx})">
+            <div class="capitulo-header" onclick="toggleCapitulo(${capIdx})">
               <div class="capitulo-titulo">
-                <span class="capitulo-numero">${idx + 1}</span>
+                <span class="capitulo-numero">${capIdx + 1}</span>
                 <span>${cap.titulo}</span>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">(${cap.preceptos?.length || 0} preceptos)</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">(${totalPreceptos} preceptos${apartados.length > 0 ? `, ${apartados.length} apartados` : ''})</span>
               </div>
               <div class="capitulo-actions" onclick="event.stopPropagation()">
-                <button onclick="editarCapitulo(${idx})" title="Editar">✏️</button>
-                <button onclick="moverCapitulo(${idx}, -1)" title="Subir" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
-                <button onclick="moverCapitulo(${idx}, 1)" title="Bajar" ${idx === capitulos.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
-                <button onclick="eliminarCapitulo(${idx})" title="Eliminar" style="color:#dc3545;">🗑️</button>
+                <button onclick="editarCapitulo(${capIdx})" title="Editar">✏️</button>
+                <button onclick="moverCapitulo(${capIdx}, -1)" title="Subir" ${capIdx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
+                <button onclick="moverCapitulo(${capIdx}, 1)" title="Bajar" ${capIdx === capitulos.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
+                <button onclick="eliminarCapitulo(${capIdx})" title="Eliminar" style="color:#dc3545;">🗑️</button>
               </div>
             </div>
-            <div class="capitulo-body" id="capitulo-body-${idx}" style="display:none;">
-              ${(cap.preceptos || []).map((prec, pIdx) => `
-                <div class="precepto-item">
-                  <span class="precepto-num">${idx + 1}.${pIdx + 1}</span>
-                  <span class="precepto-texto">${typeof prec === 'string' ? prec : prec.texto}</span>
+            <div class="capitulo-body" id="capitulo-body-${capIdx}" style="display:none;">
+              ${preceptosDirectos.length > 0 ? `
+                <div style="margin-bottom: 12px;">
+                  ${preceptosDirectos.map((prec, precIdx) => `
+                    <div class="precepto-item">
+                      <span class="precepto-num">${capIdx + 1}.${precIdx + 1}</span>
+                      <span class="precepto-texto">${typeof prec === 'string' ? prec : prec.texto}</span>
+                    </div>
+                  `).join('')}
                 </div>
-              `).join('') || '<p style="color:var(--text-muted);font-size:0.9rem;">Sin preceptos</p>'}
+              ` : ''}
+              ${apartados.length > 0 ? apartados.map((ap, apIdx) => `
+                <div style="margin-bottom: 12px; padding: 10px; background: var(--sage-muted); border-radius: 6px;">
+                  <div style="font-weight: 600; margin-bottom: 6px; color: var(--sage-dark);">${capIdx + 1}.${apIdx + 1} ${ap.titulo}</div>
+                  ${(ap.preceptos || []).map((prec, precIdx) => `
+                    <div class="precepto-item">
+                      <span class="precepto-num">${capIdx + 1}.${apIdx + 1}.${precIdx + 1}</span>
+                      <span class="precepto-texto">${typeof prec === 'string' ? prec : prec.texto}</span>
+                    </div>
+                  `).join('') || '<p style="color:var(--text-muted);font-size:0.85rem;margin-left:35px;">Sin preceptos</p>'}
+                </div>
+              `).join('') : ''}
+              ${preceptosDirectos.length === 0 && apartados.length === 0 ? '<p style="color:var(--text-muted);font-size:0.9rem;">Sin contenido</p>' : ''}
             </div>
           </div>
-        `).join('');
+        `}).join('');
       }
       
       // Bienes que usan esta plantilla
@@ -2297,11 +2419,18 @@
       body.style.display = body.style.display === 'none' ? 'block' : 'none';
     }
 
+    // Variables temporales para el modal
+    let apartadosTemp = [];
+    let preceptosDirectosTemp = '';
+
     function abrirModalCapitulo() {
       capituloEditando = null;
+      apartadosTemp = [];
+      preceptosDirectosTemp = '';
       document.getElementById('modal-capitulo-titulo').textContent = '➕ Nuevo capítulo';
       document.getElementById('capitulo-titulo').value = '';
-      document.getElementById('capitulo-preceptos').value = '';
+      document.getElementById('capitulo-preceptos-directos').value = '';
+      renderApartadosModal('externos');
       document.getElementById('modal-capitulo').classList.add('active');
     }
 
@@ -2311,29 +2440,107 @@
       if (!cap) return;
       
       capituloEditando = idx;
-      document.getElementById('modal-capitulo-titulo').textContent = '✏️ Editar capítulo';
-      document.getElementById('capitulo-titulo').value = cap.titulo || '';
+      apartadosTemp = JSON.parse(JSON.stringify(cap.apartados || []));
       
-      // Convertir preceptos a texto (uno por línea)
+      // Preceptos directos a texto
       const preceptosTexto = (cap.preceptos || [])
         .map(p => typeof p === 'string' ? p : p.texto)
         .join('\n');
-      document.getElementById('capitulo-preceptos').value = preceptosTexto;
       
+      document.getElementById('modal-capitulo-titulo').textContent = '✏️ Editar capítulo';
+      document.getElementById('capitulo-titulo').value = cap.titulo || '';
+      document.getElementById('capitulo-preceptos-directos').value = preceptosTexto;
+      renderApartadosModal('externos');
       document.getElementById('modal-capitulo').classList.add('active');
+    }
+
+    function renderApartadosModal(tipo) {
+      const containerId = tipo === 'externos' ? 'apartados-container-externos' : 'apartados-container-miembros';
+      const container = document.getElementById(containerId);
+      
+      if (apartadosTemp.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      container.innerHTML = apartadosTemp.map((ap, idx) => {
+        const preceptosTexto = (ap.preceptos || []).map(p => typeof p === 'string' ? p : p.texto).join('\n');
+        return `
+          <div class="apartado-item">
+            <div class="apartado-header">
+              <span class="apartado-num">${idx + 1}</span>
+              <input type="text" value="${ap.titulo || ''}" placeholder="Título del apartado" onchange="actualizarApartadoTitulo(${idx}, this.value, '${tipo}')">
+              <div class="apartado-actions">
+                <button onclick="moverApartado(${idx}, -1, '${tipo}')" title="Subir" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
+                <button onclick="moverApartado(${idx}, 1, '${tipo}')" title="Bajar" ${idx === apartadosTemp.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
+                <button onclick="eliminarApartado(${idx}, '${tipo}')" title="Eliminar" style="color:#dc3545;">🗑️</button>
+              </div>
+            </div>
+            <div class="apartado-body">
+              <p>Preceptos del apartado (uno por línea):</p>
+              <textarea onchange="actualizarApartadoPreceptos(${idx}, this.value, '${tipo}')" placeholder="Precepto 1&#10;Precepto 2&#10;Precepto 3">${preceptosTexto}</textarea>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function agregarApartado(tipo) {
+      apartadosTemp.push({
+        orden: apartadosTemp.length + 1,
+        titulo: '',
+        preceptos: []
+      });
+      renderApartadosModal(tipo);
+    }
+
+    function eliminarApartado(idx, tipo) {
+      apartadosTemp.splice(idx, 1);
+      apartadosTemp = apartadosTemp.map((ap, i) => ({ ...ap, orden: i + 1 }));
+      renderApartadosModal(tipo);
+    }
+
+    function moverApartado(idx, direccion, tipo) {
+      const nuevoIdx = idx + direccion;
+      if (nuevoIdx < 0 || nuevoIdx >= apartadosTemp.length) return;
+      
+      [apartadosTemp[idx], apartadosTemp[nuevoIdx]] = [apartadosTemp[nuevoIdx], apartadosTemp[idx]];
+      apartadosTemp = apartadosTemp.map((ap, i) => ({ ...ap, orden: i + 1 }));
+      renderApartadosModal(tipo);
+    }
+
+    function actualizarApartadoTitulo(idx, valor, tipo) {
+      apartadosTemp[idx].titulo = valor;
+    }
+
+    function actualizarApartadoPreceptos(idx, texto, tipo) {
+      const preceptos = texto
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .map((t, i) => ({ orden: i + 1, texto: t }));
+      apartadosTemp[idx].preceptos = preceptos;
     }
 
     async function guardarCapitulo() {
       const titulo = document.getElementById('capitulo-titulo').value.trim();
-      const preceptosTexto = document.getElementById('capitulo-preceptos').value.trim();
+      const preceptosDirectosTexto = document.getElementById('capitulo-preceptos-directos').value.trim();
       
       if (!titulo) {
         alert('El título es obligatorio');
         return;
       }
       
-      // Convertir texto a array de preceptos
-      const preceptos = preceptosTexto
+      // Validar que los apartados con contenido tengan título
+      for (let i = 0; i < apartadosTemp.length; i++) {
+        if (!apartadosTemp[i].titulo.trim()) {
+          alert(`El apartado ${i + 1} necesita un título`);
+          return;
+        }
+      }
+      
+      // Convertir preceptos directos
+      const preceptosDirectos = preceptosDirectosTexto
         .split('\n')
         .map(l => l.trim())
         .filter(l => l.length > 0)
@@ -2346,14 +2553,17 @@
       const nuevoCapitulo = {
         titulo,
         orden: capituloEditando !== null ? capitulos[capituloEditando].orden : capitulos.length + 1,
-        preceptos
+        preceptos: preceptosDirectos,
+        apartados: apartadosTemp.map((ap, i) => ({
+          orden: i + 1,
+          titulo: ap.titulo.trim(),
+          preceptos: ap.preceptos || []
+        }))
       };
       
       if (capituloEditando !== null) {
-        // Editar existente
         capitulos[capituloEditando] = nuevoCapitulo;
       } else {
-        // Añadir nuevo
         capitulos.push(nuevoCapitulo);
       }
       
@@ -2383,7 +2593,7 @@
     }
 
     async function eliminarCapitulo(idx) {
-      if (!confirm('¿Eliminar este capítulo y todos sus preceptos?')) return;
+      if (!confirm('¿Eliminar este capítulo y todo su contenido?')) return;
       
       let plantilla = plantillasData[tipoPlantillaActual];
       if (!plantilla) return;
@@ -2543,35 +2753,57 @@
           <div style="text-align: center; padding: 40px; color: var(--text-muted);">
             <span style="font-size: 2.5rem; opacity: 0.5;">📝</span>
             <p style="margin-top: 12px;">No hay capítulos definidos</p>
-            <p style="font-size: 0.85rem;">Añade capítulos con sus preceptos para crear la plantilla</p>
+            <p style="font-size: 0.85rem;">Añade capítulos con preceptos y/o apartados</p>
           </div>
         `;
       } else {
-        container.innerHTML = capitulos.map((cap, idx) => `
+        container.innerHTML = capitulos.map((cap, capIdx) => {
+          const preceptosDirectos = cap.preceptos || [];
+          const apartados = cap.apartados || [];
+          const totalPreceptosApartados = apartados.reduce((sum, ap) => sum + (ap.preceptos?.length || 0), 0);
+          const totalPreceptos = preceptosDirectos.length + totalPreceptosApartados;
+          
+          return `
           <div class="capitulo-card">
-            <div class="capitulo-header" onclick="toggleCapituloMiembros(${idx})">
+            <div class="capitulo-header" onclick="toggleCapituloMiembros(${capIdx})">
               <div class="capitulo-titulo">
-                <span class="capitulo-numero" style="background: var(--terracotta);">${idx + 1}</span>
+                <span class="capitulo-numero" style="background: var(--terracotta);">${capIdx + 1}</span>
                 <span>${cap.titulo}</span>
-                <span style="font-size: 0.8rem; color: var(--text-muted);">(${cap.preceptos?.length || 0} preceptos)</span>
+                <span style="font-size: 0.8rem; color: var(--text-muted);">(${totalPreceptos} preceptos${apartados.length > 0 ? `, ${apartados.length} apartados` : ''})</span>
               </div>
               <div class="capitulo-actions" onclick="event.stopPropagation()">
-                <button onclick="editarCapituloMiembros(${idx})" title="Editar">✏️</button>
-                <button onclick="moverCapituloMiembros(${idx}, -1)" title="Subir" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
-                <button onclick="moverCapituloMiembros(${idx}, 1)" title="Bajar" ${idx === capitulos.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
-                <button onclick="eliminarCapituloMiembros(${idx})" title="Eliminar" style="color:#dc3545;">🗑️</button>
+                <button onclick="editarCapituloMiembros(${capIdx})" title="Editar">✏️</button>
+                <button onclick="moverCapituloMiembros(${capIdx}, -1)" title="Subir" ${capIdx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
+                <button onclick="moverCapituloMiembros(${capIdx}, 1)" title="Bajar" ${capIdx === capitulos.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
+                <button onclick="eliminarCapituloMiembros(${capIdx})" title="Eliminar" style="color:#dc3545;">🗑️</button>
               </div>
             </div>
-            <div class="capitulo-body" id="capitulo-miembros-body-${idx}" style="display:none;">
-              ${(cap.preceptos || []).map((prec, pIdx) => `
-                <div class="precepto-item">
-                  <span class="precepto-num">${idx + 1}.${pIdx + 1}</span>
-                  <span class="precepto-texto">${typeof prec === 'string' ? prec : prec.texto}</span>
+            <div class="capitulo-body" id="capitulo-miembros-body-${capIdx}" style="display:none;">
+              ${preceptosDirectos.length > 0 ? `
+                <div style="margin-bottom: 12px;">
+                  ${preceptosDirectos.map((prec, precIdx) => `
+                    <div class="precepto-item">
+                      <span class="precepto-num">${capIdx + 1}.${precIdx + 1}</span>
+                      <span class="precepto-texto">${typeof prec === 'string' ? prec : prec.texto}</span>
+                    </div>
+                  `).join('')}
                 </div>
-              `).join('') || '<p style="color:var(--text-muted);font-size:0.9rem;">Sin preceptos</p>'}
+              ` : ''}
+              ${apartados.length > 0 ? apartados.map((ap, apIdx) => `
+                <div style="margin-bottom: 12px; padding: 10px; background: var(--terracotta-muted); border-radius: 6px;">
+                  <div style="font-weight: 600; margin-bottom: 6px; color: var(--terracotta);">${capIdx + 1}.${apIdx + 1} ${ap.titulo}</div>
+                  ${(ap.preceptos || []).map((prec, precIdx) => `
+                    <div class="precepto-item">
+                      <span class="precepto-num">${capIdx + 1}.${apIdx + 1}.${precIdx + 1}</span>
+                      <span class="precepto-texto">${typeof prec === 'string' ? prec : prec.texto}</span>
+                    </div>
+                  `).join('') || '<p style="color:var(--text-muted);font-size:0.85rem;margin-left:35px;">Sin preceptos</p>'}
+                </div>
+              `).join('') : ''}
+              ${preceptosDirectos.length === 0 && apartados.length === 0 ? '<p style="color:var(--text-muted);font-size:0.9rem;">Sin contenido</p>' : ''}
             </div>
           </div>
-        `).join('');
+        `}).join('');
       }
       
       // Bienes que usan esta plantilla
@@ -2583,11 +2815,16 @@
       body.style.display = body.style.display === 'none' ? 'block' : 'none';
     }
 
+    // Variable temporal para apartados del modal de miembros
+    let apartadosMiembrosTemp = [];
+
     function abrirModalCapituloMiembros() {
       capituloMiembrosEditando = null;
+      apartadosMiembrosTemp = [];
       document.getElementById('modal-capitulo-miembros-titulo').textContent = '➕ Nuevo capítulo';
       document.getElementById('capitulo-miembros-titulo').value = '';
-      document.getElementById('capitulo-miembros-preceptos').value = '';
+      document.getElementById('capitulo-miembros-preceptos-directos').value = '';
+      renderApartadosModalMiembros();
       document.getElementById('modal-capitulo-miembros').classList.add('active');
     }
 
@@ -2597,27 +2834,121 @@
       if (!cap) return;
       
       capituloMiembrosEditando = idx;
-      document.getElementById('modal-capitulo-miembros-titulo').textContent = '✏️ Editar capítulo';
-      document.getElementById('capitulo-miembros-titulo').value = cap.titulo || '';
+      apartadosMiembrosTemp = JSON.parse(JSON.stringify(cap.apartados || []));
       
+      // Preceptos directos a texto
       const preceptosTexto = (cap.preceptos || [])
         .map(p => typeof p === 'string' ? p : p.texto)
         .join('\n');
-      document.getElementById('capitulo-miembros-preceptos').value = preceptosTexto;
       
+      document.getElementById('modal-capitulo-miembros-titulo').textContent = '✏️ Editar capítulo';
+      document.getElementById('capitulo-miembros-titulo').value = cap.titulo || '';
+      document.getElementById('capitulo-miembros-preceptos-directos').value = preceptosTexto;
+      renderApartadosModalMiembros();
       document.getElementById('modal-capitulo-miembros').classList.add('active');
+    }
+
+    function renderApartadosModalMiembros() {
+      const container = document.getElementById('apartados-container-miembros');
+      
+      if (apartadosMiembrosTemp.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      
+      container.innerHTML = apartadosMiembrosTemp.map((ap, idx) => {
+        const preceptosTexto = (ap.preceptos || []).map(p => typeof p === 'string' ? p : p.texto).join('\n');
+        return `
+          <div class="apartado-item" style="border-color: var(--terracotta-muted);">
+            <div class="apartado-header" style="background: var(--terracotta-muted);">
+              <span class="apartado-num" style="background: var(--terracotta);">${idx + 1}</span>
+              <input type="text" value="${ap.titulo || ''}" placeholder="Título del apartado" onchange="actualizarApartadoMiembrosTitulo(${idx}, this.value)">
+              <div class="apartado-actions">
+                <button onclick="moverApartadoMiembros(${idx}, -1)" title="Subir" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
+                <button onclick="moverApartadoMiembros(${idx}, 1)" title="Bajar" ${idx === apartadosMiembrosTemp.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
+                <button onclick="eliminarApartadoMiembros(${idx})" title="Eliminar" style="color:#dc3545;">🗑️</button>
+              </div>
+            </div>
+            <div class="apartado-body">
+              <p>Preceptos del apartado (uno por línea):</p>
+              <textarea onchange="actualizarApartadoMiembrosPreceptos(${idx}, this.value)" placeholder="Precepto 1&#10;Precepto 2&#10;Precepto 3">${preceptosTexto}</textarea>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function agregarApartadoMiembros() {
+      apartadosMiembrosTemp.push({
+        orden: apartadosMiembrosTemp.length + 1,
+        titulo: '',
+        preceptos: []
+      });
+      renderApartadosModalMiembros();
+    }
+
+    // Redirigir la función genérica al contexto correcto
+    function agregarApartado(tipo) {
+      if (tipo === 'miembros') {
+        agregarApartadoMiembros();
+      } else {
+        // externos - ya usa apartadosTemp
+        apartadosTemp.push({
+          orden: apartadosTemp.length + 1,
+          titulo: '',
+          preceptos: []
+        });
+        renderApartadosModal('externos');
+      }
+    }
+
+    function eliminarApartadoMiembros(idx) {
+      apartadosMiembrosTemp.splice(idx, 1);
+      apartadosMiembrosTemp = apartadosMiembrosTemp.map((ap, i) => ({ ...ap, orden: i + 1 }));
+      renderApartadosModalMiembros();
+    }
+
+    function moverApartadoMiembros(idx, direccion) {
+      const nuevoIdx = idx + direccion;
+      if (nuevoIdx < 0 || nuevoIdx >= apartadosMiembrosTemp.length) return;
+      
+      [apartadosMiembrosTemp[idx], apartadosMiembrosTemp[nuevoIdx]] = [apartadosMiembrosTemp[nuevoIdx], apartadosMiembrosTemp[idx]];
+      apartadosMiembrosTemp = apartadosMiembrosTemp.map((ap, i) => ({ ...ap, orden: i + 1 }));
+      renderApartadosModalMiembros();
+    }
+
+    function actualizarApartadoMiembrosTitulo(idx, valor) {
+      apartadosMiembrosTemp[idx].titulo = valor;
+    }
+
+    function actualizarApartadoMiembrosPreceptos(idx, texto) {
+      const preceptos = texto
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .map((t, i) => ({ orden: i + 1, texto: t }));
+      apartadosMiembrosTemp[idx].preceptos = preceptos;
     }
 
     async function guardarCapituloMiembros() {
       const titulo = document.getElementById('capitulo-miembros-titulo').value.trim();
-      const preceptosTexto = document.getElementById('capitulo-miembros-preceptos').value.trim();
+      const preceptosDirectosTexto = document.getElementById('capitulo-miembros-preceptos-directos').value.trim();
       
       if (!titulo) {
         alert('El título es obligatorio');
         return;
       }
       
-      const preceptos = preceptosTexto
+      // Validar que los apartados con contenido tengan título
+      for (let i = 0; i < apartadosMiembrosTemp.length; i++) {
+        if (!apartadosMiembrosTemp[i].titulo.trim()) {
+          alert(`El apartado ${i + 1} necesita un título`);
+          return;
+        }
+      }
+      
+      // Convertir preceptos directos
+      const preceptosDirectos = preceptosDirectosTexto
         .split('\n')
         .map(l => l.trim())
         .filter(l => l.length > 0)
@@ -2629,7 +2960,12 @@
       const nuevoCapitulo = {
         titulo,
         orden: capituloMiembrosEditando !== null ? capitulos[capituloMiembrosEditando].orden : capitulos.length + 1,
-        preceptos
+        preceptos: preceptosDirectos,
+        apartados: apartadosMiembrosTemp.map((ap, i) => ({
+          orden: i + 1,
+          titulo: ap.titulo.trim(),
+          preceptos: ap.preceptos || []
+        }))
       };
       
       if (capituloMiembrosEditando !== null) {
@@ -2664,7 +3000,7 @@
     }
 
     async function eliminarCapituloMiembros(idx) {
-      if (!confirm('¿Eliminar este capítulo y todos sus preceptos?')) return;
+      if (!confirm('¿Eliminar este capítulo y todo su contenido?')) return;
       
       let plantilla = plantillasMiembrosData[tipoBienPlantillaActual];
       if (!plantilla) return;
