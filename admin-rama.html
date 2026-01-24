@@ -517,6 +517,7 @@
       <button class="admin-tab" data-section="buzon" onclick="cambiarSeccion('buzon')"><span>📬</span> Buzón <span class="badge-pendientes" id="badge-buzon" style="display:none">0</span></button>
       <button class="admin-tab" data-section="reservas" onclick="cambiarSeccion('reservas')"><span>📅</span> Reservas</button>
       <button class="admin-tab" data-section="gestion" onclick="cambiarSeccion('gestion')"><span>🎩</span> Gestión Activa</button>
+      <button class="admin-tab" data-section="externos" onclick="cambiarSeccion('externos')"><span>🔑</span> Externos</button>
       <button class="admin-tab" data-section="planes" onclick="cambiarSeccion('planes')"><span>📋</span> Planes</button>
       <button class="admin-tab" data-section="secciones" onclick="cambiarSeccion('secciones')"><span>📂</span> Secciones</button>
       <button class="admin-tab" data-section="permisos" onclick="cambiarSeccion('permisos')"><span>🔐</span> Permisos</button>
@@ -591,8 +592,20 @@
         <h2 class="section-title">🎩 Gestión Activa</h2>
       </div>
       
+      <!-- Resumen de bienes con gestión activa -->
       <div class="card">
-        <div class="card-title">Gestión de bienes</div>
+        <div class="card-title">📊 Resumen de gestión activa</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Vista general de bienes con Mayordomo activo y sus módulos configurados
+        </p>
+        <div id="gestion-resumen-tabla" style="overflow-x: auto;">
+          <!-- Se genera dinámicamente -->
+        </div>
+      </div>
+      
+      <!-- Configurador individual -->
+      <div class="card">
+        <div class="card-title">⚙️ Configurar bien</div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
           Activa la gestión y configura los submódulos para cada bien de la rama
         </p>
@@ -648,6 +661,16 @@
                 <span class="submodulo-icono">🧹</span>
                 <span class="submodulo-nombre">Limpieza</span>
               </label>
+              <label class="submodulo-item">
+                <input type="checkbox" id="mod-eventos" onchange="guardarSubmodulos()">
+                <span class="submodulo-icono">🎉</span>
+                <span class="submodulo-nombre">Eventos</span>
+              </label>
+              <label class="submodulo-item">
+                <input type="checkbox" id="mod-otros" onchange="guardarSubmodulos()">
+                <span class="submodulo-icono">📋</span>
+                <span class="submodulo-nombre">Otros Servicios</span>
+              </label>
             </div>
             
             <a href="#" id="enlace-ver-bien" class="btn btn-secondary" style="margin-top: 16px;">
@@ -657,10 +680,50 @@
         </div>
       </div>
       
+      <!-- Lista resumen legacy -->
       <div class="card">
-        <div class="card-title">Resumen de bienes</div>
+        <div class="card-title">Lista de bienes</div>
         <div class="bienes-resumen" id="bienes-resumen">
           <!-- Se carga dinámicamente -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN EXTERNOS -->
+    <section class="admin-section" id="section-externos">
+      <div class="section-header">
+        <h2 class="section-title">🔑 Colaboradores Externos</h2>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Matriz de accesos</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Vista general de los colaboradores externos y sus accesos a bienes con gestión activa
+        </p>
+        
+        <div id="externos-matriz-container" style="overflow-x: auto;">
+          <p style="text-align: center; color: var(--text-muted); padding: 20px;">Cargando...</p>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-title">Resumen por tipo</div>
+        <div id="externos-resumen" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <div style="padding: 16px; background: var(--cream); border-radius: 8px; text-align: center;">
+            <span style="font-size: 2rem;">🏠</span>
+            <div style="font-weight: 700; margin-top: 8px;" id="count-caseros">0</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Caseros</div>
+          </div>
+          <div style="padding: 16px; background: var(--cream); border-radius: 8px; text-align: center;">
+            <span style="font-size: 2rem;">🏨</span>
+            <div style="font-weight: 700; margin-top: 8px;" id="count-hosters">0</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Hosters</div>
+          </div>
+          <div style="padding: 16px; background: var(--cream); border-radius: 8px; text-align: center;">
+            <span style="font-size: 2rem;">🛡️</span>
+            <div style="font-weight: 700; margin-top: 8px;" id="count-guardas">0</div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">Guardas</div>
+          </div>
         </div>
       </div>
     </section>
@@ -794,7 +857,7 @@
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Define qué zonas puede ver cada tipo de miembro</p>
         <div style="overflow-x: auto;">
           <table class="permisos-table">
-            <thead><tr><th>Sección</th><th>Admin Rama</th><th>Admin Nido</th><th>Adulto</th><th>Niño</th><th>Especial</th><th>Alejado</th></tr></thead>
+            <thead><tr><th>Sección</th><th>Admin Rama</th><th>Patriarca</th><th>Matriarca</th><th>Admin Nido</th><th>Adulto</th><th>Niño</th><th>Especial</th><th>Alejado</th></tr></thead>
             <tbody id="permisos-tbody"></tbody>
           </table>
         </div>
@@ -819,6 +882,8 @@
               <tr>
                 <th rowspan="2">Módulo</th>
                 <th colspan="4" class="rol-header" style="background: var(--rojo); color: white;">Admin Rama</th>
+                <th colspan="4" class="rol-header cveb-group" style="background: #8B7355; color: white;">Patriarca</th>
+                <th colspan="4" class="rol-header cveb-group" style="background: #9B7EB8; color: white;">Matriarca</th>
                 <th colspan="4" class="rol-header cveb-group">Admin Nido</th>
                 <th colspan="4" class="rol-header cveb-group">Adulto</th>
                 <th colspan="4" class="rol-header cveb-group">Niño</th>
@@ -828,6 +893,16 @@
               <tr>
                 <!-- Admin Rama -->
                 <th><span class="cveb-letter c">C</span></th>
+                <th><span class="cveb-letter v">V</span></th>
+                <th><span class="cveb-letter e">E</span></th>
+                <th><span class="cveb-letter b">B</span></th>
+                <!-- Patriarca -->
+                <th class="cveb-group"><span class="cveb-letter c">C</span></th>
+                <th><span class="cveb-letter v">V</span></th>
+                <th><span class="cveb-letter e">E</span></th>
+                <th><span class="cveb-letter b">B</span></th>
+                <!-- Matriarca -->
+                <th class="cveb-group"><span class="cveb-letter c">C</span></th>
                 <th><span class="cveb-letter v">V</span></th>
                 <th><span class="cveb-letter e">E</span></th>
                 <th><span class="cveb-letter b">B</span></th>
@@ -926,7 +1001,7 @@
       <div class="modal-header"><h3 class="modal-title">➕ Invitar usuario</h3><button class="modal-close" onclick="cerrarModal('modal-invitar')">×</button></div>
       <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-input" id="invitar-email" placeholder="email@ejemplo.com"></div>
       <div class="form-group"><label class="form-label">Nido</label><select class="form-input" id="invitar-nido"><option value="">Sin asignar</option></select></div>
-      <div class="form-group"><label class="form-label">Credenciales</label><select class="form-input" id="invitar-rol"><option value="adulto">👤 Adulto</option><option value="nino">👶 Niño</option><option value="especial">⭐ Especial</option><option value="alejado">🚪 Alejado</option><option value="adminNido">🏠 Admin Nido</option><option value="adminRama">👑 Admin Rama</option></select></div>
+      <div class="form-group"><label class="form-label">Credenciales</label><select class="form-input" id="invitar-rol"><option value="adulto">👤 Adulto</option><option value="nino">👶 Niño</option><option value="especial">⭐ Especial</option><option value="alejado">🚪 Alejado</option><option value="adminNido">🏠 Admin Nido</option><option value="patriarca">🧔 Patriarca</option><option value="matriarca">👵 Matriarca</option><option value="adminRama">👑 Admin Rama</option></select></div>
       <div class="modal-footer"><button class="btn btn-secondary" onclick="cerrarModal('modal-invitar')">Cancelar</button><button class="btn btn-primary" onclick="enviarInvitacion()">Enviar invitación</button></div>
     </div>
   </div>
@@ -968,6 +1043,8 @@
             <label class="form-label">Credenciales</label>
             <select class="form-input" id="editar-usuario-rol">
               <option value="adminRama">👑 Admin Rama</option>
+              <option value="patriarca">🧔 Patriarca</option>
+              <option value="matriarca">👵 Matriarca</option>
               <option value="adminNido">🏠 Admin Nido</option>
               <option value="adulto">👤 Adulto</option>
               <option value="nino">👶 Niño</option>
@@ -1118,13 +1195,13 @@
     ];
 
     const permisosBase = [
-      { seccion: 'Árbol', permisos: { adminRama: true, adminNido: true, adulto: true, nino: true, especial: true, alejado: false } },
-      { seccion: 'Cerebro', permisos: { adminRama: true, adminNido: true, adulto: true, nino: false, especial: true, alejado: false } },
-      { seccion: 'Lo Común', permisos: { adminRama: true, adminNido: true, adulto: true, nino: false, especial: true, alejado: false } },
-      { seccion: 'Legado', permisos: { adminRama: true, adminNido: true, adulto: true, nino: true, especial: true, alejado: true } },
-      { seccion: 'Invitar usuarios', permisos: { adminRama: true, adminNido: true, adulto: false, nino: false, especial: false, alejado: false } },
-      { seccion: 'Editar nidos', permisos: { adminRama: true, adminNido: true, adulto: false, nino: false, especial: false, alejado: false } },
-      { seccion: 'Gestionar bienes', permisos: { adminRama: true, adminNido: false, adulto: false, nino: false, especial: false, alejado: false } }
+      { seccion: 'Árbol', permisos: { adminRama: true, patriarca: true, matriarca: true, adminNido: true, adulto: true, nino: true, especial: true, alejado: false } },
+      { seccion: 'Cerebro', permisos: { adminRama: true, patriarca: true, matriarca: true, adminNido: true, adulto: true, nino: false, especial: true, alejado: false } },
+      { seccion: 'Lo Común', permisos: { adminRama: true, patriarca: true, matriarca: true, adminNido: true, adulto: true, nino: false, especial: true, alejado: false } },
+      { seccion: 'Legado', permisos: { adminRama: true, patriarca: true, matriarca: true, adminNido: true, adulto: true, nino: true, especial: true, alejado: true } },
+      { seccion: 'Invitar usuarios', permisos: { adminRama: true, patriarca: true, matriarca: true, adminNido: true, adulto: false, nino: false, especial: false, alejado: false } },
+      { seccion: 'Editar nidos', permisos: { adminRama: true, patriarca: true, matriarca: true, adminNido: true, adulto: false, nino: false, especial: false, alejado: false } },
+      { seccion: 'Gestionar bienes', permisos: { adminRama: true, patriarca: true, matriarca: true, adminNido: false, adulto: false, nino: false, especial: false, alejado: false } }
     ];
 
     auth.onAuthStateChanged(async (user) => {
@@ -1244,6 +1321,7 @@
       renderPlanes();
       renderSolicitudes();
       await cargarTiposReserva();
+      await cargarExternos();
 
       document.getElementById('invitar-nido').innerHTML = '<option value="">Sin asignar</option>' + nidosData.map(n => `<option value="${n.id}">${nidosNumerados[n.id] || ''} ${n.nombre}</option>`).join('');
     }
@@ -1353,6 +1431,8 @@
 
     const ROLES_LABELS = {
       'adminRama': '👑 Admin Rama',
+      'patriarca': '🧔 Patriarca',
+      'matriarca': '👵 Matriarca',
       'adminNido': '🏠 Admin Nido', 
       'adulto': '👤 Adulto',
       'nino': '👶 Niño',
@@ -1540,7 +1620,73 @@
       select.innerHTML = '<option value="">-- Selecciona un bien --</option>' + 
         bienesData.map(b => `<option value="${b.id}">${tipoIconos[b.tipo] || '📦'} ${b.nombre}</option>`).join('');
       
-      // Resumen de bienes
+      // Resumen de bienes con gestión activa (tabla)
+      const tablaResumen = document.getElementById('gestion-resumen-tabla');
+      const bienesConAddon = bienesData.filter(b => b.mayordomoActivo);
+      
+      if (bienesConAddon.length === 0) {
+        tablaResumen.innerHTML = `
+          <div style="text-align: center; padding: 30px; color: var(--text-muted);">
+            <span style="font-size: 2.5rem; opacity: 0.5;">🎩</span>
+            <p style="margin-top: 12px;">No hay bienes con gestión activa</p>
+            <p style="font-size: 0.85rem;">Selecciona un bien arriba y activa el Mayordomo</p>
+          </div>
+        `;
+      } else {
+        const modulosIconos = {
+          reservas: '📅',
+          inventario: '📦',
+          gastos: '💰',
+          mantenimiento: '🔧',
+          limpieza: '🧹',
+          eventos: '🎉',
+          otros: '📋'
+        };
+        
+        let html = `<table class="users-table" style="font-size: 0.85rem;">
+          <thead>
+            <tr>
+              <th>Bien</th>
+              <th>Módulos activos</th>
+              <th>Quién ve</th>
+              <th>Quién edita</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>`;
+        
+        bienesConAddon.forEach(b => {
+          const modulos = b.mayordomoModulos || {};
+          const modulosActivos = Object.entries(modulos)
+            .filter(([k, v]) => v)
+            .map(([k]) => `<span title="${k}" style="margin: 0 2px;">${modulosIconos[k] || '📋'}</span>`)
+            .join('') || '<span style="color: var(--text-muted);">Ninguno</span>';
+          
+          // Permisos del bien (si están configurados)
+          const permisosVer = b.permisosVer || ['Todos'];
+          const permisosEditar = b.permisosEditar || ['Admin Rama', 'Admin Nido'];
+          
+          html += `<tr>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">${tipoIconos[b.tipo] || '📦'}</span>
+                <strong>${b.nombre}</strong>
+              </div>
+            </td>
+            <td>${modulosActivos}</td>
+            <td><span style="font-size: 0.8rem; color: var(--text-light);">${Array.isArray(permisosVer) ? permisosVer.join(', ') : permisosVer}</span></td>
+            <td><span style="font-size: 0.8rem; color: var(--text-light);">${Array.isArray(permisosEditar) ? permisosEditar.join(', ') : permisosEditar}</span></td>
+            <td>
+              <a href="bien.html?id=${b.id}" class="btn btn-sm btn-secondary">👁️ Ver</a>
+            </td>
+          </tr>`;
+        });
+        
+        html += '</tbody></table>';
+        tablaResumen.innerHTML = html;
+      }
+      
+      // Resumen de bienes (lista legacy)
       const resumen = document.getElementById('bienes-resumen');
       if (bienesData.length === 0) {
         resumen.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 20px;">No hay bienes registrados. Créalos en "Lo Común".</p>';
@@ -1612,6 +1758,8 @@
       document.getElementById('mod-gastos').checked = modulos.gastos || false;
       document.getElementById('mod-mantenimiento').checked = modulos.mantenimiento || false;
       document.getElementById('mod-limpieza').checked = modulos.limpieza || false;
+      document.getElementById('mod-eventos').checked = modulos.eventos || false;
+      document.getElementById('mod-otros').checked = modulos.otros || false;
     }
 
     async function toggleMayordomoBien() {
@@ -1648,7 +1796,9 @@
         inventario: document.getElementById('mod-inventario').checked,
         gastos: document.getElementById('mod-gastos').checked,
         mantenimiento: document.getElementById('mod-mantenimiento').checked,
-        limpieza: document.getElementById('mod-limpieza').checked
+        limpieza: document.getElementById('mod-limpieza').checked,
+        eventos: document.getElementById('mod-eventos').checked,
+        otros: document.getElementById('mod-otros').checked
       };
       
       try {
@@ -1661,6 +1811,146 @@
         console.error('Error:', error);
         alert('Error al guardar submódulos');
       }
+    }
+
+    // ============ EXTERNOS (Caseros, Hosters, Guardas) ============
+    let externosData = { caseros: [], hosters: [], guardas: [] };
+
+    async function cargarExternos() {
+      const bienesConAddon = bienesData.filter(b => b.mayordomoActivo);
+      
+      externosData = { caseros: [], hosters: [], guardas: [] };
+      
+      for (const bien of bienesConAddon) {
+        // Cargar caseros
+        try {
+          const caserosSnap = await db.collection('bienes').doc(bien.id).collection('caseros').get();
+          caserosSnap.docs.forEach(d => {
+            const data = { id: d.id, bienId: bien.id, bienNombre: bien.nombre, tipo: 'casero', ...d.data() };
+            // Evitar duplicados por email
+            if (!externosData.caseros.find(c => c.email === data.email)) {
+              externosData.caseros.push(data);
+            } else {
+              // Añadir el bien a los bienes del externo existente
+              const existing = externosData.caseros.find(c => c.email === data.email);
+              if (!existing.bienes) existing.bienes = [{ id: existing.bienId, nombre: existing.bienNombre }];
+              existing.bienes.push({ id: bien.id, nombre: bien.nombre });
+            }
+          });
+        } catch (e) { console.log('Sin caseros en', bien.nombre); }
+
+        // Cargar hosters
+        try {
+          const hostersSnap = await db.collection('bienes').doc(bien.id).collection('hosters').get();
+          hostersSnap.docs.forEach(d => {
+            const data = { id: d.id, bienId: bien.id, bienNombre: bien.nombre, tipo: 'hoster', ...d.data() };
+            if (!externosData.hosters.find(h => h.email === data.email)) {
+              externosData.hosters.push(data);
+            } else {
+              const existing = externosData.hosters.find(h => h.email === data.email);
+              if (!existing.bienes) existing.bienes = [{ id: existing.bienId, nombre: existing.bienNombre }];
+              existing.bienes.push({ id: bien.id, nombre: bien.nombre });
+            }
+          });
+        } catch (e) { console.log('Sin hosters en', bien.nombre); }
+
+        // Cargar guardas
+        try {
+          const guardasSnap = await db.collection('bienes').doc(bien.id).collection('guardas').get();
+          guardasSnap.docs.forEach(d => {
+            const data = { id: d.id, bienId: bien.id, bienNombre: bien.nombre, tipo: 'guarda', ...d.data() };
+            if (!externosData.guardas.find(g => g.email === data.email)) {
+              externosData.guardas.push(data);
+            } else {
+              const existing = externosData.guardas.find(g => g.email === data.email);
+              if (!existing.bienes) existing.bienes = [{ id: existing.bienId, nombre: existing.bienNombre }];
+              existing.bienes.push({ id: bien.id, nombre: bien.nombre });
+            }
+          });
+        } catch (e) { console.log('Sin guardas en', bien.nombre); }
+      }
+      
+      renderExternos();
+    }
+
+    function renderExternos() {
+      const bienesConAddon = bienesData.filter(b => b.mayordomoActivo);
+      const todosExternos = [
+        ...externosData.caseros.map(e => ({ ...e, tipoLabel: '🏠 Casero' })),
+        ...externosData.hosters.map(e => ({ ...e, tipoLabel: '🏨 Hoster' })),
+        ...externosData.guardas.map(e => ({ ...e, tipoLabel: '🛡️ Guarda' }))
+      ];
+      
+      // Actualizar contadores
+      document.getElementById('count-caseros').textContent = externosData.caseros.length;
+      document.getElementById('count-hosters').textContent = externosData.hosters.length;
+      document.getElementById('count-guardas').textContent = externosData.guardas.length;
+      
+      const container = document.getElementById('externos-matriz-container');
+      
+      if (todosExternos.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <span style="font-size: 3rem; opacity: 0.5;">🔑</span>
+            <p style="margin-top: 12px;">No hay colaboradores externos registrados</p>
+            <p style="font-size: 0.85rem;">Los externos se añaden desde la ficha de cada bien con gestión activa</p>
+          </div>
+        `;
+        return;
+      }
+      
+      if (bienesConAddon.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <span style="font-size: 3rem; opacity: 0.5;">🎩</span>
+            <p style="margin-top: 12px;">No hay bienes con gestión activa</p>
+            <p style="font-size: 0.85rem;">Activa la gestión en algún bien para ver los externos</p>
+          </div>
+        `;
+        return;
+      }
+      
+      // Construir tabla matriz
+      let html = `<table class="users-table" style="font-size: 0.85rem;">
+        <thead>
+          <tr>
+            <th>Externo</th>
+            <th>Tipo</th>
+            ${bienesConAddon.map(b => `<th style="text-align:center;">${tipoIconos[b.tipo] || '📦'} ${b.nombre}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>`;
+      
+      todosExternos.forEach(ext => {
+        const bienesDelExterno = ext.bienes || [{ id: ext.bienId, nombre: ext.bienNombre }];
+        const bienesIds = bienesDelExterno.map(b => b.id);
+        
+        html += `<tr>
+          <td>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 32px; height: 32px; background: var(--sage-muted); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; color: var(--sage-dark);">
+                ${(ext.nombre || ext.email || '?').charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style="font-weight: 600;">${ext.nombre || 'Sin nombre'}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${ext.email || ''}</div>
+              </div>
+            </div>
+          </td>
+          <td><span style="font-size: 0.8rem; padding: 2px 8px; background: var(--cream); border-radius: 4px;">${ext.tipoLabel}</span></td>
+          ${bienesConAddon.map(b => {
+            const tieneAcceso = bienesIds.includes(b.id);
+            return `<td style="text-align:center;">
+              ${tieneAcceso 
+                ? `<a href="bien.html?id=${b.id}&tab=externos" class="btn btn-sm btn-secondary" style="padding: 4px 8px;">🔗</a>` 
+                : '<span style="color: var(--text-muted);">—</span>'}
+            </td>`;
+          }).join('')}
+        </tr>`;
+      });
+      
+      html += '</tbody></table>';
+      container.innerHTML = html;
     }
 
     function renderSecciones() {
@@ -1800,7 +2090,7 @@
 
     function renderPermisos() {
       const permisos = familiaData.permisos || permisosBase;
-      document.getElementById('permisos-tbody').innerHTML = permisos.map((p, idx) => `<tr><td><strong>${p.seccion}</strong></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adminRama" ${p.permisos.adminRama ? 'checked' : ''} disabled></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adminNido" ${p.permisos.adminNido ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adulto" ${p.permisos.adulto ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="nino" ${p.permisos.nino ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="especial" ${p.permisos.especial ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="alejado" ${p.permisos.alejado ? 'checked' : ''}></td></tr>`).join('');
+      document.getElementById('permisos-tbody').innerHTML = permisos.map((p, idx) => `<tr><td><strong>${p.seccion}</strong></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adminRama" ${p.permisos.adminRama ? 'checked' : ''} disabled></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="patriarca" ${p.permisos.patriarca ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="matriarca" ${p.permisos.matriarca ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adminNido" ${p.permisos.adminNido ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="adulto" ${p.permisos.adulto ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="nino" ${p.permisos.nino ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="especial" ${p.permisos.especial ? 'checked' : ''}></td><td><input type="checkbox" class="permiso-check" data-idx="${idx}" data-rol="alejado" ${p.permisos.alejado ? 'checked' : ''}></td></tr>`).join('');
     }
 
     async function guardarPermisos() {
@@ -1829,6 +2119,8 @@
     const permisosCVEBBase = modulosCVEB.reduce((acc, mod) => {
       acc[mod.id] = {
         adminRama: { c: true, v: true, e: true, b: true },
+        patriarca: { c: true, v: true, e: true, b: mod.id !== 'nidos' },
+        matriarca: { c: true, v: true, e: true, b: mod.id !== 'nidos' },
         adminNido: { c: true, v: true, e: true, b: mod.id !== 'bienes' },
         adulto: { c: mod.id !== 'nidos', v: true, e: mod.id !== 'nidos' && mod.id !== 'bienes', b: false },
         nino: { c: false, v: ['arbol', 'legado', 'calendario', 'tablón', 'recetas'].includes(mod.id), e: false, b: false },
@@ -1840,7 +2132,7 @@
 
     function renderCVEB() {
       const permisosCVEB = familiaData.permisosCVEB || permisosCVEBBase;
-      const roles = ['adminRama', 'adminNido', 'adulto', 'nino', 'especial', 'alejado'];
+      const roles = ['adminRama', 'patriarca', 'matriarca', 'adminNido', 'adulto', 'nino', 'especial', 'alejado'];
       const acciones = ['c', 'v', 'e', 'b'];
 
       document.getElementById('cveb-tbody').innerHTML = modulosCVEB.map(mod => {
