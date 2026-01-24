@@ -1100,6 +1100,10 @@
     .cal-dot.evento { background: #FF9800; }
     .cal-dot.cita { background: #2196F3; }
     .cal-dot.reserva { background: #9C27B0; }
+    .cal-dot.reserva-estancia { background: #9C27B0; }
+    .cal-dot.reserva-huespedes { background: #FF7043; }
+    .cal-dot.reserva-zafarrancho { background: #66BB6A; }
+    .cal-dot.reserva-monteria { background: #8D6E63; }
 
     .eventos-hoy {
       margin-top: 8px;
@@ -1123,6 +1127,10 @@
     .evento-dot.evento { background: #FF9800; }
     .evento-dot.cita { background: #2196F3; }
     .evento-dot.reserva { background: #9C27B0; }
+    .evento-dot.reserva-estancia { background: #9C27B0; }
+    .evento-dot.reserva-huespedes { background: #FF7043; }
+    .evento-dot.reserva-zafarrancho { background: #66BB6A; }
+    .evento-dot.reserva-monteria { background: #8D6E63; }
 
     /* ============ CALENDARIO MÓVIL (Próximos 3 días) ============ */
     .proximos-dias { display: flex; flex-direction: column; gap: 12px; }
@@ -4859,8 +4867,22 @@
                   (fechaSalida.toDate ? fechaSalida.toDate().toISOString().split('T')[0] : fechaSalida) : 
                   null;
                 
+                // Clasificar subtipo de reserva
+                const tipoReserva = (r.tipo || '').toLowerCase();
+                let subtipo = 'reserva';
+                if (tipoReserva.includes('huespedes') || tipoReserva.includes('huesped') || tipoReserva.includes('alquiler') || tipoReserva.includes('inquilino')) {
+                  subtipo = 'huespedes';
+                } else if (tipoReserva.includes('estancia') || tipoReserva.includes('familia') || tipoReserva.includes('familiar')) {
+                  subtipo = 'estancia';
+                } else if (tipoReserva.includes('zafarrancho')) {
+                  subtipo = 'zafarrancho';
+                } else if (tipoReserva.includes('monteria') || tipoReserva.includes('caceria')) {
+                  subtipo = 'monteria';
+                }
+                
                 eventosCalendario.push({ 
-                  tipo: 'reserva', 
+                  tipo: 'reserva',
+                  subtipo: subtipo,
                   titulo: `🏠 ${bien.nombre || 'Reserva'}`, 
                   fecha: fechaStr,
                   fechaFin: fechaFinStr,
@@ -4912,8 +4934,12 @@
         const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const eventosDelDia = eventosPorFecha[fechaStr] || [];
         
-        // Generar dots únicos por tipo
-        const tiposUnicos = [...new Set(eventosDelDia.map(e => e.tipo))];
+        // Generar dots únicos por tipo (usando subtipo para reservas)
+        const tiposParaDots = eventosDelDia.map(e => {
+          if (e.tipo === 'reserva' && e.subtipo) return `reserva-${e.subtipo}`;
+          return e.tipo;
+        });
+        const tiposUnicos = [...new Set(tiposParaDots)];
         const dotsHtml = tiposUnicos.length > 0 
           ? `<div class="cal-day-dots">${tiposUnicos.slice(0,3).map(t => `<div class="cal-dot ${t}"></div>`).join('')}</div>` 
           : '';
@@ -4941,12 +4967,14 @@
         return;
       }
 
-      container.innerHTML = eventosHoy.slice(0, 3).map(e => `
+      container.innerHTML = eventosHoy.slice(0, 3).map(e => {
+        const claseColor = e.tipo === 'reserva' && e.subtipo ? `reserva-${e.subtipo}` : e.tipo;
+        return `
         <div class="evento-mini" style="margin-bottom:4px;">
-          <div class="evento-dot ${e.tipo}"></div>
+          <div class="evento-dot ${claseColor}"></div>
           <span>${e.titulo}${e.hora ? ` · ${e.hora}` : ''}</span>
         </div>
-      `).join('') + (eventosHoy.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted);text-align:center;">+${eventosHoy.length - 3} más</div>` : '');
+      `}).join('') + (eventosHoy.length > 3 ? `<div style="font-size:0.65rem;color:var(--text-muted);text-align:center;">+${eventosHoy.length - 3} más</div>` : '');
     }
 
     function renderCalendarioMovil() {

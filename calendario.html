@@ -20,6 +20,14 @@
       --cita: #2196F3;
       --evento: #FF9800;
       --reserva: #9C27B0;
+      
+      /* Subtipos de reserva */
+      --reserva-estancia: #9C27B0;    /* Familia - morado */
+      --reserva-huespedes: #FF7043;   /* Huéspedes - coral */
+      --reserva-zafarrancho: #66BB6A; /* Zafarrancho - verde */
+      --reserva-monteria: #8D6E63;    /* Montería - marrón */
+      --reserva-recoleccion: #FFA726; /* Recolección - dorado */
+      --reserva-actividad: #42A5F5;   /* Actividad - azul */
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
@@ -109,6 +117,14 @@
     .day-event.evento { background: var(--evento); }
     .day-event.reserva { background: var(--reserva); }
     
+    /* Subtipos de reserva */
+    .day-event.reserva-estancia { background: var(--reserva-estancia); }
+    .day-event.reserva-huespedes { background: var(--reserva-huespedes); }
+    .day-event.reserva-zafarrancho { background: var(--reserva-zafarrancho); }
+    .day-event.reserva-monteria { background: var(--reserva-monteria); }
+    .day-event.reserva-recoleccion { background: var(--reserva-recoleccion); }
+    .day-event.reserva-actividad { background: var(--reserva-actividad); }
+    
     /* Botón Ver más */
     .btn-ver-mas {
       font-size: 0.65rem;
@@ -145,6 +161,12 @@
     .leyenda-dot.cita { background: var(--cita); }
     .leyenda-dot.evento { background: var(--evento); }
     .leyenda-dot.reserva { background: var(--reserva); }
+    .leyenda-dot.reserva-estancia { background: var(--reserva-estancia); }
+    .leyenda-dot.reserva-huespedes { background: var(--reserva-huespedes); }
+    .leyenda-dot.reserva-zafarrancho { background: var(--reserva-zafarrancho); }
+    .leyenda-dot.reserva-monteria { background: var(--reserva-monteria); }
+    .leyenda-dot.reserva-recoleccion { background: var(--reserva-recoleccion); }
+    .leyenda-dot.reserva-actividad { background: var(--reserva-actividad); }
 
     /* Panel móvil - Solo visible en móvil */
     .mobile-panel {
@@ -184,6 +206,12 @@
     .mobile-event-color.cita { background: var(--cita); }
     .mobile-event-color.evento { background: var(--evento); }
     .mobile-event-color.reserva { background: var(--reserva); }
+    .mobile-event-color.reserva-estancia { background: var(--reserva-estancia); }
+    .mobile-event-color.reserva-huespedes { background: var(--reserva-huespedes); }
+    .mobile-event-color.reserva-zafarrancho { background: var(--reserva-zafarrancho); }
+    .mobile-event-color.reserva-monteria { background: var(--reserva-monteria); }
+    .mobile-event-color.reserva-recoleccion { background: var(--reserva-recoleccion); }
+    .mobile-event-color.reserva-actividad { background: var(--reserva-actividad); }
     .mobile-event-info { flex: 1; }
     .mobile-event-titulo { font-weight: 600; font-size: 0.85rem; margin-bottom: 2px; }
     .mobile-event-meta { font-size: 0.75rem; color: var(--text-muted); }
@@ -269,7 +297,10 @@
           <div class="leyenda-item"><div class="leyenda-dot hito"></div> Hitos</div>
           <div class="leyenda-item"><div class="leyenda-dot cita"></div> Citas</div>
           <div class="leyenda-item"><div class="leyenda-dot evento"></div> Eventos</div>
-          <div class="leyenda-item"><div class="leyenda-dot reserva"></div> Reservas</div>
+          <div class="leyenda-item"><div class="leyenda-dot reserva-estancia"></div> Familia</div>
+          <div class="leyenda-item"><div class="leyenda-dot reserva-huespedes"></div> Huéspedes</div>
+          <div class="leyenda-item"><div class="leyenda-dot reserva-zafarrancho"></div> Zafarrancho</div>
+          <div class="leyenda-item"><div class="leyenda-dot reserva-monteria"></div> Montería</div>
         </div>
       </div>
 
@@ -528,7 +559,9 @@
               const tipoReserva = (r.tipo || '').toLowerCase();
               
               let subtipo = 'reserva';
-              if (tipoReserva.includes('estancia') || tipoReserva.includes('familia') || tipoReserva.includes('huespedes')) {
+              if (tipoReserva.includes('huespedes') || tipoReserva.includes('huesped') || tipoReserva.includes('alquiler') || tipoReserva.includes('inquilino')) {
+                subtipo = 'huespedes';
+              } else if (tipoReserva.includes('estancia') || tipoReserva.includes('familia') || tipoReserva.includes('familiar')) {
                 subtipo = 'estancia';
               } else if (tipoReserva.includes('zafarrancho')) {
                 subtipo = 'zafarrancho';
@@ -604,8 +637,9 @@
         let eventsHtml = '';
         
         eventosDelDia.slice(0, maxVisibles).forEach((e, idx) => {
-          // Solo texto, sin iconos
-          eventsHtml += `<div class="day-event ${e.tipo}" title="${e.titulo}" data-dia="${dia}" data-idx="${idx}">${e.textoCorto}</div>`;
+          // Usar subtipo para reservas (reserva-estancia, reserva-huespedes, etc.)
+          const claseColor = e.tipo === 'reserva' && e.subtipo ? `reserva-${e.subtipo}` : e.tipo;
+          eventsHtml += `<div class="day-event ${claseColor}" title="${e.titulo}" data-dia="${dia}" data-idx="${idx}">${e.textoCorto}</div>`;
         });
         
         if (eventosDelDia.length > maxVisibles) {
@@ -745,15 +779,17 @@
         return 0;
       });
       
-      container.innerHTML = eventos.map((e, idx) => `
+      container.innerHTML = eventos.map((e, idx) => {
+        const claseColor = e.tipo === 'reserva' && e.subtipo ? `reserva-${e.subtipo}` : e.tipo;
+        return `
         <div class="mobile-event-item ${highlightIdx === idx ? 'highlighted' : ''}"> 
-          <div class="mobile-event-color ${e.tipo}"></div>
+          <div class="mobile-event-color ${claseColor}"></div>
           <div class="mobile-event-info">
             <div class="mobile-event-titulo">${e.titulo}</div>
             <div class="mobile-event-meta">${e.hora || 'Todo el día'}${e.lugar ? ' • ' + e.lugar : ''}</div>
           </div>
         </div>
-      `).join('');
+      `}).join('');
     }
   </script>
 </body>
