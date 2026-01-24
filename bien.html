@@ -609,6 +609,122 @@
       white-space: pre-line;
     }
 
+    /* Normas de externos - estilos */
+    .normas-externos-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .normas-externos-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .normas-capitulo {
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .normas-capitulo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--sage-muted);
+      cursor: pointer;
+    }
+
+    .normas-capitulo-header:hover {
+      background: var(--sage-light);
+    }
+
+    .normas-capitulo-titulo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .normas-capitulo-num {
+      background: var(--sage);
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .normas-capitulo-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .normas-capitulo-actions button {
+      background: white;
+      border: none;
+      padding: 4px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .normas-capitulo-actions button:hover {
+      background: var(--cream-dark);
+    }
+
+    .normas-capitulo-body {
+      padding: 12px 14px;
+      display: none;
+    }
+
+    .normas-capitulo.open .normas-capitulo-body {
+      display: block;
+    }
+
+    .normas-precepto {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--cream-dark);
+      font-size: 0.85rem;
+    }
+
+    .normas-precepto:last-child {
+      border-bottom: none;
+    }
+
+    .normas-precepto-num {
+      color: var(--text-muted);
+      font-weight: 600;
+      min-width: 30px;
+      font-size: 0.8rem;
+    }
+
+    .normas-empty {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+    }
+
+    .normas-empty-icon {
+      font-size: 2rem;
+      opacity: 0.5;
+      margin-bottom: 8px;
+    }
+
     /* Responsive para hero y gestión */
     @media (max-width: 768px) {
       .bien-hero-image {
@@ -1774,10 +1890,27 @@
 
           <div class="collapsible-section" id="section-normas">
             <div class="collapsible-header" onclick="toggleSection('normas')">
-              <div class="collapsible-title"><span>📜</span><span>Normas</span></div>
+              <div class="collapsible-title"><span>📜</span><span>Normas para Externos</span><span class="collapsible-count" id="count-normas">0</span></div>
               <span class="collapsible-toggle">▼</span>
             </div>
-            <div class="collapsible-body"><div class="normas-box" id="normas-texto">Sin normas definidas</div></div>
+            <div class="collapsible-body">
+              <div class="normas-externos-header">
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
+                  Normas visibles para caseros, hosters y guardas
+                </p>
+                <div class="normas-externos-actions">
+                  <button class="btn btn-secondary btn-sm" onclick="copiarPlantillaNormas()">📋 Copiar plantilla</button>
+                  <button class="btn btn-secondary btn-sm" onclick="abrirModalCapituloNorma()">➕ Añadir capítulo</button>
+                </div>
+              </div>
+              <div id="normas-externos-container">
+                <div class="normas-empty">
+                  <div class="normas-empty-icon">📝</div>
+                  <p>Sin normas definidas</p>
+                  <p style="font-size: 0.8rem;">Añade capítulos o copia una plantilla base</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="collapsible-section" id="section-caseros">
@@ -2494,6 +2627,74 @@
     </div>
   </div>
 
+  <!-- Modal Capítulo de Normas -->
+  <div class="modal-overlay" id="modal-capitulo-norma">
+    <div class="modal" style="max-width:500px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-capitulo-norma-titulo">➕ Nuevo capítulo</h3>
+        <button class="modal-close" onclick="cerrarModalCapituloNorma()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Título del capítulo *</label>
+          <input type="text" class="form-input" id="norma-capitulo-titulo" placeholder="Ej: Acceso y seguridad">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preceptos</label>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Un precepto por línea</p>
+          <textarea class="form-input" id="norma-capitulo-preceptos" rows="6" placeholder="Mantener puertas cerradas con llave&#10;No facilitar códigos a terceros&#10;Revisar cerraduras semanalmente"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm hidden" id="btn-eliminar-capitulo-norma" onclick="eliminarCapituloNorma()">🗑️ Eliminar</button>
+        <div style="flex:1;"></div>
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalCapituloNorma()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="guardarCapituloNorma()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Copiar Plantilla de Normas -->
+  <div class="modal-overlay" id="modal-copiar-plantilla">
+    <div class="modal" style="max-width:450px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Copiar plantilla base</h3>
+        <button class="modal-close" onclick="cerrarModalCopiarPlantilla()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Selecciona una plantilla base para copiar las normas a este bien. Podrás editarlas después.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Tipo de plantilla</label>
+          <select class="form-input" id="select-tipo-plantilla">
+            <option value="">-- Selecciona tipo --</option>
+            <option value="mayordomo">🏠 Casero (Mayordomo)</option>
+            <option value="gerente">🏨 Hoster (Gerente)</option>
+            <option value="capataz">🌾 Guarda (Capataz)</option>
+          </select>
+        </div>
+        <div id="plantilla-preview" style="display:none;">
+          <div class="form-label" style="margin-top: 12px;">Vista previa:</div>
+          <div id="plantilla-preview-content" style="max-height: 200px; overflow-y: auto; background: var(--cream); padding: 12px; border-radius: var(--radius-sm); font-size: 0.85rem;"></div>
+        </div>
+        <div class="form-group" style="margin-top: 12px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; cursor: pointer;">
+            <input type="checkbox" id="check-reemplazar-normas">
+            <span>Reemplazar normas existentes</span>
+          </label>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+            Si no marcas esta opción, se añadirán a las existentes
+          </p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModalCopiarPlantilla()">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-copiar" onclick="confirmarCopiarPlantilla()" disabled>📋 Copiar</button>
+      </div>
+    </div>
+  </div>
+
   <style>
     /* Lugares Ajuar */
     .lugares-lista { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; }
@@ -2620,6 +2821,11 @@
     let caserosData = [];
     let editingCaseroId = null;
     let esAdminRama = false;
+    
+    // Normas de externos
+    let normasExternosData = [];
+    let editingCapituloNormaIdx = null;
+    let plantillasNormasCache = {};
 
     const nidoColores = ['nido-1', 'nido-2', 'nido-3', 'nido-4'];
     const nidoColorMap = {};
@@ -2660,6 +2866,7 @@
         await loadInventario();
         await loadGastos();
         await loadCaseros();
+        await cargarNormasExternos();
         
         // Migrar módulos si existen datos antiguos
         await migrarModulos();
@@ -5659,6 +5866,336 @@
       } catch (error) {
         console.error('Error eliminando artículo:', error);
         alert('Error al eliminar');
+      }
+    }
+
+    // ============ NORMAS PARA EXTERNOS ============
+    
+    async function cargarNormasExternos() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('normasExternos')
+          .orderBy('orden', 'asc')
+          .get();
+        
+        normasExternosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderNormasExternos();
+      } catch (e) {
+        console.log('Sin normas de externos o error:', e.message);
+        normasExternosData = [];
+        renderNormasExternos();
+      }
+    }
+
+    function renderNormasExternos() {
+      const container = document.getElementById('normas-externos-container');
+      const countEl = document.getElementById('count-normas');
+      
+      if (!container) return;
+      
+      // Actualizar contador
+      const totalPreceptos = normasExternosData.reduce((sum, cap) => sum + (cap.preceptos?.length || 0), 0);
+      if (countEl) countEl.textContent = totalPreceptos;
+      
+      if (normasExternosData.length === 0) {
+        container.innerHTML = `
+          <div class="normas-empty">
+            <div class="normas-empty-icon">📝</div>
+            <p>Sin normas definidas</p>
+            <p style="font-size: 0.8rem;">Añade capítulos o copia una plantilla base</p>
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = normasExternosData.map((cap, idx) => {
+        const preceptos = cap.preceptos || [];
+        return `
+          <div class="normas-capitulo" id="norma-cap-${idx}">
+            <div class="normas-capitulo-header" onclick="toggleCapituloNorma(${idx})">
+              <div class="normas-capitulo-titulo">
+                <span class="normas-capitulo-num">${idx + 1}</span>
+                <span>${cap.titulo || 'Sin título'}</span>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">(${preceptos.length})</span>
+              </div>
+              <div class="normas-capitulo-actions" onclick="event.stopPropagation()">
+                <button onclick="editarCapituloNorma(${idx})" title="Editar">✏️</button>
+                <button onclick="moverCapituloNorma(${idx}, -1)" title="Subir" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
+                <button onclick="moverCapituloNorma(${idx}, 1)" title="Bajar" ${idx === normasExternosData.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
+              </div>
+            </div>
+            <div class="normas-capitulo-body">
+              ${preceptos.length === 0 
+                ? '<p style="color: var(--text-muted); font-size: 0.85rem;">Sin preceptos</p>'
+                : preceptos.map((prec, pIdx) => `
+                    <div class="normas-precepto">
+                      <span class="normas-precepto-num">${idx + 1}.${pIdx + 1}</span>
+                      <span>${typeof prec === 'string' ? prec : prec.texto}</span>
+                    </div>
+                  `).join('')
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleCapituloNorma(idx) {
+      const el = document.getElementById(`norma-cap-${idx}`);
+      if (el) el.classList.toggle('open');
+    }
+
+    function abrirModalCapituloNorma() {
+      editingCapituloNormaIdx = null;
+      document.getElementById('modal-capitulo-norma-titulo').textContent = '➕ Nuevo capítulo';
+      document.getElementById('norma-capitulo-titulo').value = '';
+      document.getElementById('norma-capitulo-preceptos').value = '';
+      document.getElementById('btn-eliminar-capitulo-norma').classList.add('hidden');
+      document.getElementById('modal-capitulo-norma').classList.add('active');
+    }
+
+    function editarCapituloNorma(idx) {
+      const cap = normasExternosData[idx];
+      if (!cap) return;
+      
+      editingCapituloNormaIdx = idx;
+      document.getElementById('modal-capitulo-norma-titulo').textContent = '✏️ Editar capítulo';
+      document.getElementById('norma-capitulo-titulo').value = cap.titulo || '';
+      
+      // Convertir preceptos a texto
+      const preceptosTexto = (cap.preceptos || [])
+        .map(p => typeof p === 'string' ? p : p.texto)
+        .join('\n');
+      document.getElementById('norma-capitulo-preceptos').value = preceptosTexto;
+      
+      document.getElementById('btn-eliminar-capitulo-norma').classList.remove('hidden');
+      document.getElementById('modal-capitulo-norma').classList.add('active');
+    }
+
+    function cerrarModalCapituloNorma() {
+      document.getElementById('modal-capitulo-norma').classList.remove('active');
+    }
+
+    async function guardarCapituloNorma() {
+      const titulo = document.getElementById('norma-capitulo-titulo').value.trim();
+      const preceptosTexto = document.getElementById('norma-capitulo-preceptos').value.trim();
+      
+      if (!titulo) {
+        alert('El título es obligatorio');
+        return;
+      }
+      
+      // Convertir texto a array de preceptos
+      const preceptos = preceptosTexto
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0)
+        .map((texto, idx) => ({ orden: idx + 1, texto }));
+      
+      try {
+        if (editingCapituloNormaIdx !== null) {
+          // Editar existente
+          const capId = normasExternosData[editingCapituloNormaIdx].id;
+          await db.collection('bienes').doc(bienId)
+            .collection('normasExternos').doc(capId)
+            .update({
+              titulo,
+              preceptos,
+              actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        } else {
+          // Crear nuevo
+          const orden = normasExternosData.length + 1;
+          await db.collection('bienes').doc(bienId)
+            .collection('normasExternos').add({
+              titulo,
+              orden,
+              preceptos,
+              creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        cerrarModalCapituloNorma();
+        await cargarNormasExternos();
+        
+      } catch (e) {
+        console.error('Error guardando capítulo:', e);
+        alert('Error al guardar: ' + e.message);
+      }
+    }
+
+    async function eliminarCapituloNorma() {
+      if (editingCapituloNormaIdx === null) return;
+      if (!confirm('¿Eliminar este capítulo y todos sus preceptos?')) return;
+      
+      try {
+        const capId = normasExternosData[editingCapituloNormaIdx].id;
+        await db.collection('bienes').doc(bienId)
+          .collection('normasExternos').doc(capId).delete();
+        
+        cerrarModalCapituloNorma();
+        await cargarNormasExternos();
+        
+        // Reordenar los restantes
+        await reordenarCapitulosNormas();
+        
+      } catch (e) {
+        console.error('Error eliminando capítulo:', e);
+        alert('Error al eliminar');
+      }
+    }
+
+    async function moverCapituloNorma(idx, direccion) {
+      const nuevoIdx = idx + direccion;
+      if (nuevoIdx < 0 || nuevoIdx >= normasExternosData.length) return;
+      
+      // Intercambiar en el array local
+      const temp = normasExternosData[idx];
+      normasExternosData[idx] = normasExternosData[nuevoIdx];
+      normasExternosData[nuevoIdx] = temp;
+      
+      // Actualizar órdenes en Firebase
+      await reordenarCapitulosNormas();
+      renderNormasExternos();
+    }
+
+    async function reordenarCapitulosNormas() {
+      try {
+        const batch = db.batch();
+        normasExternosData.forEach((cap, idx) => {
+          const ref = db.collection('bienes').doc(bienId).collection('normasExternos').doc(cap.id);
+          batch.update(ref, { orden: idx + 1 });
+        });
+        await batch.commit();
+      } catch (e) {
+        console.error('Error reordenando capítulos:', e);
+      }
+    }
+
+    // ============ COPIAR PLANTILLA DE NORMAS ============
+    
+    function copiarPlantillaNormas() {
+      document.getElementById('select-tipo-plantilla').value = '';
+      document.getElementById('plantilla-preview').style.display = 'none';
+      document.getElementById('check-reemplazar-normas').checked = false;
+      document.getElementById('btn-confirmar-copiar').disabled = true;
+      document.getElementById('modal-copiar-plantilla').classList.add('active');
+      
+      // Listener para cambio de tipo
+      document.getElementById('select-tipo-plantilla').onchange = async function() {
+        const tipo = this.value;
+        if (!tipo) {
+          document.getElementById('plantilla-preview').style.display = 'none';
+          document.getElementById('btn-confirmar-copiar').disabled = true;
+          return;
+        }
+        
+        // Cargar plantilla
+        await cargarPreviewPlantilla(tipo);
+      };
+    }
+
+    function cerrarModalCopiarPlantilla() {
+      document.getElementById('modal-copiar-plantilla').classList.remove('active');
+    }
+
+    async function cargarPreviewPlantilla(tipo) {
+      const previewContainer = document.getElementById('plantilla-preview-content');
+      previewContainer.innerHTML = '<p style="color: var(--text-muted);">Cargando...</p>';
+      document.getElementById('plantilla-preview').style.display = 'block';
+      
+      try {
+        // Verificar si ya está en cache
+        if (!plantillasNormasCache[tipo]) {
+          const doc = await db.collection('familias').doc(familiaId)
+            .collection('plantillasNormas').doc(tipo).get();
+          
+          if (doc.exists) {
+            plantillasNormasCache[tipo] = doc.data();
+          } else {
+            plantillasNormasCache[tipo] = null;
+          }
+        }
+        
+        const plantilla = plantillasNormasCache[tipo];
+        
+        if (!plantilla || !plantilla.capitulos || plantilla.capitulos.length === 0) {
+          previewContainer.innerHTML = '<p style="color: var(--text-muted);">No hay plantilla definida para este tipo</p>';
+          document.getElementById('btn-confirmar-copiar').disabled = true;
+          return;
+        }
+        
+        // Mostrar preview
+        previewContainer.innerHTML = plantilla.capitulos.map((cap, idx) => `
+          <div style="margin-bottom: 10px;">
+            <strong>${idx + 1}. ${cap.titulo}</strong>
+            <ul style="margin: 4px 0 0 20px; font-size: 0.8rem; color: var(--text-light);">
+              ${(cap.preceptos || []).slice(0, 3).map(p => `<li>${typeof p === 'string' ? p : p.texto}</li>`).join('')}
+              ${(cap.preceptos || []).length > 3 ? `<li style="color:var(--text-muted);">... y ${cap.preceptos.length - 3} más</li>` : ''}
+            </ul>
+          </div>
+        `).join('');
+        
+        document.getElementById('btn-confirmar-copiar').disabled = false;
+        
+      } catch (e) {
+        console.error('Error cargando plantilla:', e);
+        previewContainer.innerHTML = '<p style="color: var(--error);">Error al cargar la plantilla</p>';
+        document.getElementById('btn-confirmar-copiar').disabled = true;
+      }
+    }
+
+    async function confirmarCopiarPlantilla() {
+      const tipo = document.getElementById('select-tipo-plantilla').value;
+      const reemplazar = document.getElementById('check-reemplazar-normas').checked;
+      
+      if (!tipo || !plantillasNormasCache[tipo]) {
+        alert('Selecciona una plantilla válida');
+        return;
+      }
+      
+      const plantilla = plantillasNormasCache[tipo];
+      
+      try {
+        const batch = db.batch();
+        
+        // Si reemplazar, eliminar las existentes primero
+        if (reemplazar && normasExternosData.length > 0) {
+          for (const cap of normasExternosData) {
+            const ref = db.collection('bienes').doc(bienId).collection('normasExternos').doc(cap.id);
+            batch.delete(ref);
+          }
+        }
+        
+        // Determinar orden inicial
+        const ordenInicial = reemplazar ? 1 : normasExternosData.length + 1;
+        
+        // Añadir capítulos de la plantilla
+        plantilla.capitulos.forEach((cap, idx) => {
+          const ref = db.collection('bienes').doc(bienId).collection('normasExternos').doc();
+          batch.set(ref, {
+            titulo: cap.titulo,
+            orden: ordenInicial + idx,
+            preceptos: cap.preceptos || [],
+            copiadoDePlantilla: tipo,
+            creadoEn: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+        
+        // Marcar el bien como usando esta plantilla
+        const bienRef = db.collection('bienes').doc(bienId);
+        batch.update(bienRef, { normasUsanPlantilla: tipo });
+        
+        await batch.commit();
+        
+        cerrarModalCopiarPlantilla();
+        await cargarNormasExternos();
+        
+        alert(`✅ Plantilla copiada: ${plantilla.capitulos.length} capítulos`);
+        
+      } catch (e) {
+        console.error('Error copiando plantilla:', e);
+        alert('Error al copiar: ' + e.message);
       }
     }
   </script>

@@ -500,6 +500,111 @@
       opacity: 0.5;
     }
 
+    /* Card de Normas del puesto */
+    .normas-card {
+      background: var(--cream-light);
+      border-radius: 12px;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    .normas-header {
+      background: linear-gradient(135deg, #5C6B7A, #4A5568);
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .normas-header-icon {
+      font-size: 1.2rem;
+    }
+
+    .normas-body {
+      padding: 16px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .normas-empty {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .normas-capitulo {
+      margin-bottom: 16px;
+    }
+
+    .normas-capitulo:last-child {
+      margin-bottom: 0;
+    }
+
+    .normas-capitulo-titulo {
+      font-weight: 700;
+      color: var(--text-dark);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .normas-capitulo-numero {
+      background: var(--sage);
+      color: white;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .normas-precepto {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 0.85rem;
+      color: var(--text-dark);
+      line-height: 1.5;
+    }
+
+    .normas-precepto-num {
+      color: var(--text-muted);
+      font-weight: 600;
+      min-width: 32px;
+      flex-shrink: 0;
+    }
+
+    .normas-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px;
+      background: none;
+      border: none;
+      color: var(--sage-dark);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      border-top: 1px solid #E2E8F0;
+    }
+
+    .normas-toggle:hover {
+      background: rgba(135, 168, 120, 0.1);
+    }
+
     /* Responsive */
     @media (max-width: 480px) {
       .card-body {
@@ -615,6 +720,21 @@
             <span style="color: var(--sage);">✓</span> Compromisos aceptados anteriormente
           </div>
           
+          <!-- Card de Normas del puesto -->
+          <div class="normas-card" id="normas-card" style="display:none;">
+            <div class="normas-header">
+              <span class="normas-header-icon">📋</span>
+              <span>Normas del puesto</span>
+            </div>
+            <div class="normas-body" id="normas-body">
+              <!-- Se genera dinámicamente -->
+            </div>
+            <button class="normas-toggle" id="normas-toggle" onclick="toggleNormas()">
+              <span id="normas-toggle-text">Ver todas</span>
+              <span id="normas-toggle-icon">▼</span>
+            </button>
+          </div>
+          
           <button class="btn btn-primary" style="margin-top:20px;" id="btn-continuar" onclick="continuarAPanel()" disabled>Continuar</button>
         </div>
       </div>
@@ -672,6 +792,8 @@
     let accesosData = [];
     let familiaId = null;
     let terminosAceptados = false;
+    let normasData = [];
+    let normasExpandidas = false;
 
     // Vistas
     const viewLogin = document.getElementById('view-login');
@@ -839,6 +961,9 @@
 
         // Cargar texto personalizado de landing si existe
         await cargarTextoLanding();
+        
+        // Cargar normas de los bienes asignados
+        await cargarNormas();
 
         // Verificar si ya aceptó términos (guardado en localStorage)
         const aceptado = localStorage.getItem(`familynk_terminos_${currentUser.uid}`);
@@ -973,6 +1098,123 @@
         }
       } catch (e) {
         console.error('Error cargando texto landing:', e);
+      }
+    }
+
+    // Cargar normas de los bienes asignados
+    async function cargarNormas() {
+      normasData = [];
+      
+      for (const acceso of accesosData) {
+        try {
+          const normasSnap = await db.collection('bienes').doc(acceso.bienId)
+            .collection('normasExternos')
+            .orderBy('orden', 'asc')
+            .get();
+          
+          if (!normasSnap.empty) {
+            const capitulos = normasSnap.docs.map(doc => ({
+              id: doc.id,
+              bienId: acceso.bienId,
+              bienNombre: acceso.bienNombre,
+              tipoExterno: acceso.tipo,
+              ...doc.data()
+            }));
+            normasData.push(...capitulos);
+          }
+        } catch (e) {
+          console.log('Sin normas para', acceso.bienNombre, e.message);
+        }
+      }
+      
+      renderNormas();
+    }
+
+    // Renderizar normas en el landing
+    function renderNormas() {
+      const card = document.getElementById('normas-card');
+      const body = document.getElementById('normas-body');
+      
+      if (normasData.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+      
+      card.style.display = 'block';
+      
+      // Agrupar por bien si hay varios
+      const normasPorBien = {};
+      normasData.forEach(cap => {
+        if (!normasPorBien[cap.bienId]) {
+          normasPorBien[cap.bienId] = {
+            nombre: cap.bienNombre,
+            capitulos: []
+          };
+        }
+        normasPorBien[cap.bienId].capitulos.push(cap);
+      });
+      
+      const bienes = Object.keys(normasPorBien);
+      const mostrarNombreBien = bienes.length > 1;
+      
+      let html = '';
+      
+      bienes.forEach(bienId => {
+        const bien = normasPorBien[bienId];
+        
+        if (mostrarNombreBien) {
+          html += `<div style="font-weight:700; color:var(--sage-dark); margin-bottom:10px; font-size:0.9rem;">📍 ${bien.nombre}</div>`;
+        }
+        
+        bien.capitulos.forEach((cap, capIdx) => {
+          const preceptos = cap.preceptos || [];
+          
+          html += `
+            <div class="normas-capitulo">
+              <div class="normas-capitulo-titulo">
+                <span class="normas-capitulo-numero">${capIdx + 1}</span>
+                <span>${cap.titulo || 'Sin título'}</span>
+              </div>
+              ${preceptos.map((prec, precIdx) => `
+                <div class="normas-precepto">
+                  <span class="normas-precepto-num">${capIdx + 1}.${precIdx + 1}</span>
+                  <span>${typeof prec === 'string' ? prec : prec.texto}</span>
+                </div>
+              `).join('')}
+            </div>
+          `;
+        });
+      });
+      
+      body.innerHTML = html || '<div class="normas-empty">No hay normas definidas</div>';
+      
+      // Ajustar visibilidad inicial (colapsado si hay muchas)
+      const totalPreceptos = normasData.reduce((sum, cap) => sum + (cap.preceptos?.length || 0), 0);
+      if (totalPreceptos <= 5) {
+        body.style.maxHeight = 'none';
+        document.getElementById('normas-toggle').style.display = 'none';
+      } else {
+        body.style.maxHeight = '200px';
+        document.getElementById('normas-toggle').style.display = 'flex';
+      }
+    }
+
+    // Toggle expandir/colapsar normas
+    function toggleNormas() {
+      const body = document.getElementById('normas-body');
+      const text = document.getElementById('normas-toggle-text');
+      const icon = document.getElementById('normas-toggle-icon');
+      
+      normasExpandidas = !normasExpandidas;
+      
+      if (normasExpandidas) {
+        body.style.maxHeight = 'none';
+        text.textContent = 'Ver menos';
+        icon.textContent = '▲';
+      } else {
+        body.style.maxHeight = '200px';
+        text.textContent = 'Ver todas';
+        icon.textContent = '▼';
       }
     }
 
