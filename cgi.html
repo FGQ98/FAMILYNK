@@ -3449,13 +3449,29 @@
           </div>
           <div class="form-group">
             <label class="form-label">¿Dónde? *</label>
-            <select class="form-select" id="evento-bien" required>
+            <select class="form-select" id="evento-bien" required onchange="cargarTiposEvento()">
               <option value="">Selecciona un lugar...</option>
+            </select>
+          </div>
+          <div class="form-group" id="evento-tipo-container" style="display: none;">
+            <label class="form-label">Tipo de evento *</label>
+            <select class="form-select" id="evento-tipo" required>
+              <option value="">Selecciona tipo...</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Fecha propuesta *</label>
             <input type="date" class="form-input" id="evento-fecha" required>
+          </div>
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Nº Familiares</label>
+              <input type="number" class="form-input" id="evento-familiares" min="0" max="50" value="1" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nº Invitados</label>
+              <input type="number" class="form-input" id="evento-invitados" min="0" max="50" value="0" placeholder="0">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Descripción / Motivo</label>
@@ -3501,8 +3517,14 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">¿Qué quieres reservar? *</label>
-            <select class="form-select" id="reserva-bien" required>
+            <select class="form-select" id="reserva-bien" required onchange="cargarTiposReserva()">
               <option value="">Selecciona un bien...</option>
+            </select>
+          </div>
+          <div class="form-group" id="reserva-tipo-container" style="display: none;">
+            <label class="form-label">Tipo de reserva *</label>
+            <select class="form-select" id="reserva-tipo" required>
+              <option value="">Selecciona tipo...</option>
             </select>
           </div>
           <div class="form-group">
@@ -3512,6 +3534,16 @@
           <div class="form-group">
             <label class="form-label">Fecha fin *</label>
             <input type="date" class="form-input" id="reserva-fin" required>
+          </div>
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">Nº Familiares</label>
+              <input type="number" class="form-input" id="reserva-familiares" min="0" max="50" value="1" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nº Invitados</label>
+              <input type="number" class="form-input" id="reserva-invitados" min="0" max="50" value="0" placeholder="0">
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Motivo / Notas</label>
@@ -5721,10 +5753,22 @@
             '<p><strong>👤 Solicitante:</strong> ' + (sol.solicitadoPorNombre || 'Usuario') + '</p>';
           
           if (notifData.categoria === 'reserva') {
+            if (sol.tipoReserva) html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoReserva + '</p>';
             html += '<p><strong>📅 Fechas:</strong> ' + (sol.fechaInicio || '?') + ' → ' + (sol.fechaFin || '?') + '</p>';
+            if (sol.numFamiliares || sol.numInvitados) {
+              html += '<p><strong>👥 Asistentes:</strong> ' + (sol.numFamiliares || 0) + ' familiares';
+              if (sol.numInvitados) html += ' + ' + sol.numInvitados + ' invitados';
+              html += '</p>';
+            }
             if (sol.motivo) html += '<p><strong>📝 Motivo:</strong> ' + sol.motivo + '</p>';
           } else {
+            if (sol.tipoEvento) html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoEvento + '</p>';
             html += '<p><strong>📅 Fecha:</strong> ' + (sol.fecha || 'No especificada') + '</p>';
+            if (sol.numFamiliares || sol.numInvitados) {
+              html += '<p><strong>👥 Asistentes:</strong> ' + (sol.numFamiliares || 0) + ' familiares';
+              if (sol.numInvitados) html += ' + ' + sol.numInvitados + ' invitados';
+              html += '</p>';
+            }
             if (sol.descripcion) html += '<p><strong>📝 Descripción:</strong> ' + sol.descripcion + '</p>';
           }
           
@@ -6986,6 +7030,8 @@
       popularSelectBienes('evento-bien');
       document.getElementById('form-evento').reset();
       resetVisibilidad('modal-evento');
+      // Ocultar selector de tipo hasta que se elija bien
+      document.getElementById('evento-tipo-container').style.display = 'none';
       document.getElementById('evento-fecha').min = new Date().toISOString().split('T')[0];
       document.getElementById('modal-evento').classList.add('active');
       track.iniciar('evento');
@@ -7003,11 +7049,147 @@
       popularSelectBienesConGestion('reserva-bien');
       document.getElementById('form-reserva').reset();
       resetVisibilidad('modal-reserva');
+      // Ocultar selector de tipo hasta que se elija bien
+      document.getElementById('reserva-tipo-container').style.display = 'none';
       const hoy = new Date().toISOString().split('T')[0];
       document.getElementById('reserva-inicio').min = hoy;
       document.getElementById('reserva-fin').min = hoy;
       document.getElementById('modal-reserva').classList.add('active');
       track.iniciar('reserva');
+    }
+
+    // Cargar tipos de reserva según el add-on del bien seleccionado
+    async function cargarTiposReserva() {
+      const bienId = document.getElementById('reserva-bien').value;
+      const container = document.getElementById('reserva-tipo-container');
+      const select = document.getElementById('reserva-tipo');
+      
+      if (!bienId) {
+        container.style.display = 'none';
+        return;
+      }
+      
+      // Buscar el bien en bienesConGestion
+      const bien = bienesConGestion.find(b => b.id === bienId);
+      if (!bien) {
+        container.style.display = 'none';
+        return;
+      }
+      
+      // Determinar qué add-on tiene activo y cargar sus tipos
+      let tipos = [];
+      
+      try {
+        if (bien.mayordomoActivo) {
+          // Tipos de estancia (Mayordomo)
+          const tiposSnap = await db.collection('familias').doc(currentFamilia.id)
+            .collection('tiposReserva').where('addon', '==', 'mayordomo').get();
+          tipos = tiposSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          // Si no hay tipos configurados, usar los por defecto
+          if (tipos.length === 0) {
+            tipos = [
+              { id: 'estancia', nombre: 'Estancia', icono: '🏠' },
+              { id: 'visita', nombre: 'Visita de día', icono: '☀️' }
+            ];
+          }
+        } else if (bien.gerenteActivo) {
+          // Tipos de reserva (Gerente)
+          const tiposSnap = await db.collection('familias').doc(currentFamilia.id)
+            .collection('tiposReserva').where('addon', '==', 'gerente').get();
+          tipos = tiposSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          if (tipos.length === 0) {
+            tipos = [
+              { id: 'alquiler', nombre: 'Alquiler vacacional', icono: '🏨' },
+              { id: 'evento_externo', nombre: 'Evento externo', icono: '🎊' }
+            ];
+          }
+        } else if (bien.capatazActivo) {
+          // Tipos de actividad (Capataz)
+          const tiposSnap = await db.collection('familias').doc(currentFamilia.id)
+            .collection('tiposReserva').where('addon', '==', 'capataz').get();
+          tipos = tiposSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          if (tipos.length === 0) {
+            tipos = [
+              { id: 'actividad_campo', nombre: 'Actividad de campo', icono: '🌾' },
+              { id: 'jornada', nombre: 'Jornada de trabajo', icono: '👷' }
+            ];
+          }
+        }
+      } catch (e) {
+        console.warn('Error cargando tipos de reserva:', e);
+        // Tipos genéricos por defecto
+        tipos = [
+          { id: 'estancia', nombre: 'Estancia', icono: '🏠' },
+          { id: 'visita', nombre: 'Visita', icono: '☀️' }
+        ];
+      }
+      
+      // Popular el select
+      if (tipos.length > 0) {
+        select.innerHTML = '<option value="">Selecciona tipo...</option>' +
+          tipos.map(t => '<option value="' + t.id + '">' + (t.icono || '📌') + ' ' + t.nombre + '</option>').join('');
+        container.style.display = 'block';
+      } else {
+        container.style.display = 'none';
+      }
+    }
+
+    // Cargar tipos de evento según el bien seleccionado
+    async function cargarTiposEvento() {
+      const bienId = document.getElementById('evento-bien').value;
+      const container = document.getElementById('evento-tipo-container');
+      const select = document.getElementById('evento-tipo');
+      
+      if (!bienId) {
+        container.style.display = 'none';
+        return;
+      }
+      
+      // Buscar el bien
+      const bien = bienesVisibles.find(b => b.id === bienId);
+      if (!bien) {
+        container.style.display = 'none';
+        return;
+      }
+      
+      // Tipos de evento (pueden variar según si tiene add-on o no)
+      let tipos = [];
+      
+      try {
+        // Cargar tipos de evento de la familia
+        const tiposSnap = await db.collection('familias').doc(currentFamilia.id)
+          .collection('tiposEvento').get();
+        tipos = tiposSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Si no hay tipos configurados, usar los por defecto
+        if (tipos.length === 0) {
+          tipos = [
+            { id: 'celebracion', nombre: 'Celebración', icono: '🎉' },
+            { id: 'reunion', nombre: 'Reunión familiar', icono: '👨‍👩‍👧‍👦' },
+            { id: 'comida', nombre: 'Comida/Cena', icono: '🍽️' },
+            { id: 'otro', nombre: 'Otro', icono: '📌' }
+          ];
+        }
+      } catch (e) {
+        console.warn('Error cargando tipos de evento:', e);
+        tipos = [
+          { id: 'celebracion', nombre: 'Celebración', icono: '🎉' },
+          { id: 'reunion', nombre: 'Reunión familiar', icono: '👨‍👩‍👧‍👦' },
+          { id: 'otro', nombre: 'Otro', icono: '📌' }
+        ];
+      }
+      
+      // Popular el select
+      if (tipos.length > 0) {
+        select.innerHTML = '<option value="">Selecciona tipo...</option>' +
+          tipos.map(t => '<option value="' + t.id + '">' + (t.icono || '📌') + ' ' + t.nombre + '</option>').join('');
+        container.style.display = 'block';
+      } else {
+        container.style.display = 'none';
+      }
     }
 
     async function abrirModalEncargo() {
@@ -7271,7 +7453,10 @@
       const nombre = document.getElementById('evento-nombre').value;
       const bienId = document.getElementById('evento-bien').value;
       const bien = bienesUsuario.find(b => b.id === bienId);
+      const tipoEvento = document.getElementById('evento-tipo').value || 'otro';
       const fecha = document.getElementById('evento-fecha').value;
+      const numFamiliares = parseInt(document.getElementById('evento-familiares').value) || 0;
+      const numInvitados = parseInt(document.getElementById('evento-invitados').value) || 0;
       const descripcion = document.getElementById('evento-descripcion').value;
       const visibilidad = obtenerVisibilidad('evento');
 
@@ -7280,7 +7465,11 @@
           nombre,
           bienId,
           bienNombre: bien?.nombre || '',
+          tipoEvento,
           fecha,
+          numFamiliares,
+          numInvitados,
+          totalAsistentes: numFamiliares + numInvitados,
           descripcion,
           visibilidad,
           nidoId: miNidoPrincipal?.id || null
@@ -7306,8 +7495,11 @@
       }
       
       const bien = bienesConGestion.find(b => b.id === bienId) || bienesUsuario.find(b => b.id === bienId);
+      const tipoReserva = document.getElementById('reserva-tipo').value || 'estancia';
       const fechaInicio = document.getElementById('reserva-inicio').value;
       const fechaFin = document.getElementById('reserva-fin').value;
+      const numFamiliares = parseInt(document.getElementById('reserva-familiares').value) || 0;
+      const numInvitados = parseInt(document.getElementById('reserva-invitados').value) || 0;
       const motivo = document.getElementById('reserva-motivo').value;
       const visibilidad = obtenerVisibilidad('reserva');
 
@@ -7325,8 +7517,12 @@
         await enviarNotificacionAdmins('reserva', {
           bienId,
           bienNombre: bien?.nombre || '',
+          tipoReserva,
           fechaInicio,
           fechaFin,
+          numFamiliares,
+          numInvitados,
+          totalAsistentes: numFamiliares + numInvitados,
           motivo,
           visibilidad,
           nidoId: miNidoPrincipal?.id || null
