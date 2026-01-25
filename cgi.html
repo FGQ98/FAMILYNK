@@ -8024,19 +8024,32 @@
       if (!container) return;
       
       try {
-        const snap = await db.collection('solicitudes')
-          .where('solicitadoPor', '==', currentUser.uid)
-          .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
-          .limit(30)
-          .get();
+        // Determinar si es admin
+        const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
+        
+        let snap;
+        if (esAdmin) {
+          // Admin: mostrar solicitudes que YO gestioné
+          snap = await db.collection('solicitudes')
+            .where('respondidoPor', '==', currentUser.uid)
+            .limit(30)
+            .get();
+        } else {
+          // Usuario normal: mostrar MIS solicitudes respondidas
+          snap = await db.collection('solicitudes')
+            .where('solicitadoPor', '==', currentUser.uid)
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+            .limit(30)
+            .get();
+        }
         
         if (snap.empty) {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin respuestas</div>';
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin gestiones</div>';
           if (badge) badge.style.display = 'none';
           return;
         }
         
-        // Ordenar en cliente
+        // Ordenar en cliente por fecha de respuesta
         const docs = snap.docs.sort((a, b) => {
           const fechaA = a.data().fechaRespuesta?.toDate?.() || new Date(0);
           const fechaB = b.data().fechaRespuesta?.toDate?.() || new Date(0);
@@ -8063,6 +8076,9 @@
           const estadoColor = esAceptada ? '#22c55e' : esRechazada ? '#ef4444' : '#f59e0b';
           const estadoIcono = esAceptada ? '✅' : esRechazada ? '❌' : '🔄';
           
+          // Si es admin, mostrar quién solicitó
+          const solicitante = esAdmin && data.solicitadoPorNombre ? `De: ${data.solicitadoPorNombre}` : '';
+          
           return `
             <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="verDetalleRespuesta('${doc.id}')">
               <div class="mensaje-avatar">${iconos[data.tipo] || '📋'}</div>
@@ -8073,7 +8089,8 @@
                 </div>
                 <div class="mensaje-preview">
                   <span style="color: ${estadoColor}; font-weight: 600;">${estadoIcono}</span>
-                  ${data.respuesta ? ` ${data.respuesta.substring(0, 35)}...` : ''}
+                  ${solicitante ? ` ${solicitante}` : ''}
+                  ${data.respuesta && !solicitante ? ` ${data.respuesta.substring(0, 35)}...` : ''}
                 </div>
               </div>
             </div>
@@ -8149,15 +8166,27 @@
       if (!container) return;
       
       try {
-        // Cargar MIS solicitudes respondidas (sin ordenar para evitar índice compuesto)
-        const snap = await db.collection('solicitudes')
-          .where('solicitadoPor', '==', currentUser.uid)
-          .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
-          .limit(30)
-          .get();
+        // Determinar si es admin
+        const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
+        
+        let snap;
+        if (esAdmin) {
+          // Admin: mostrar solicitudes que YO gestioné
+          snap = await db.collection('solicitudes')
+            .where('respondidoPor', '==', currentUser.uid)
+            .limit(30)
+            .get();
+        } else {
+          // Usuario normal: mostrar MIS solicitudes respondidas
+          snap = await db.collection('solicitudes')
+            .where('solicitadoPor', '==', currentUser.uid)
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+            .limit(30)
+            .get();
+        }
         
         if (snap.empty) {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin respuestas pendientes</div>';
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin gestiones</div>';
           if (badge) badge.style.display = 'none';
           return;
         }
@@ -8198,6 +8227,9 @@
           const estadoTexto = esAceptada ? 'Aceptada' : esRechazada ? 'Rechazada' : 'En estudio';
           const estadoColor = esAceptada ? '#22c55e' : esRechazada ? '#ef4444' : '#f59e0b';
           
+          // Si es admin, mostrar quién solicitó
+          const solicitante = esAdmin && data.solicitadoPorNombre ? `De: ${data.solicitadoPorNombre}` : '';
+          
           return `
             <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="verDetalleRespuesta('${doc.id}')">
               <div class="mensaje-avatar">${iconos[data.tipo] || '📋'}</div>
@@ -8208,7 +8240,8 @@
                 </div>
                 <div class="mensaje-preview">
                   <span style="color: ${estadoColor}; font-weight: 600;">${estadoIcono} ${estadoTexto}</span>
-                  ${data.respuesta ? ` · ${data.respuesta.substring(0, 40)}...` : ''}
+                  ${solicitante ? ` · ${solicitante}` : ''}
+                  ${data.respuesta && !esAdmin ? ` · ${data.respuesta.substring(0, 40)}...` : ''}
                 </div>
               </div>
             </div>
