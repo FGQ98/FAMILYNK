@@ -4192,8 +4192,10 @@
           if (doc.exists) {
             const notifData = {
               id: solicitudId,
+              notifId: null, // Viene de URL, no de notificación
               categoria: doc.data().tipo,
               titulo: getTituloSolicitud(doc.data()),
+              origen: { tipo: 'solicitud', id: solicitudId },
               ...doc.data()
             };
             // Dar tiempo a que se renderice todo
@@ -5497,9 +5499,10 @@
         // Buscar la solicitud en los datos cargados
         const solicitud = notificacionesData.find(n => n.id === id && n.source === 'solicitud');
         if (solicitud) {
-          // Preparar datos para el modal
+          // Preparar datos para el modal - viene de solicitud directa, NO de notificación
           const notifData = {
             id: id,
+            notifId: null, // No hay notificación asociada
             categoria: solicitud.categoria,
             titulo: solicitud.titulo,
             origen: { tipo: 'solicitud', id: id },
@@ -5615,7 +5618,8 @@
         try {
           const notifDoc = await db.collection('notificaciones').doc(notifId).get();
           if (notifDoc.exists) {
-            const notifData = { id: notifDoc.id, ...notifDoc.data() };
+            // notifId se usa para marcar la notificación como respondida
+            const notifData = { id: notifDoc.id, notifId: notifDoc.id, ...notifDoc.data() };
             // Si tiene origen.id, es una solicitud que podemos responder
             if (notifData.origen?.id) {
               abrirModalRespuesta(notifData);
@@ -5840,11 +5844,17 @@
           }
         }
         
-        // 2. Marcar notificación como completada
-        await db.collection('notificaciones').doc(solicitudActual.id).update({
-          completadoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
-          estado: 'respondida'
-        });
+        // 2. Marcar notificación como completada (solo si viene de una notificación, no de solicitud directa)
+        if (solicitudActual.notifId) {
+          try {
+            await db.collection('notificaciones').doc(solicitudActual.notifId).update({
+              completadoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid),
+              estado: 'respondida'
+            });
+          } catch (notifError) {
+            console.warn('No se pudo actualizar notificación:', notifError);
+          }
+        }
         
         // 3. Notificar al solicitante (solo si tenemos datos)
         const solicitanteUid = solData.solicitadoPor;
@@ -6839,19 +6849,25 @@
             const rol = String(u.rol || '').toLowerCase();
             const credencial = String(u.credencial || '').toLowerCase();
             
-            // Buscar cualquier variante de admin
+            // Buscar cualquier variante de admin, patriarca o matriarca
             const esAdmin = 
               rol.includes('admin') ||
               credencial.includes('admin') ||
+              rol === 'patriarca' ||
+              rol === 'matriarca' ||
+              credencial === 'patriarca' ||
+              credencial === 'matriarca' ||
               u.esAdmin === true ||
               u.adminRama === true ||
               u.adminNido === true ||
-              u.superAdmin === true;
+              u.superAdmin === true ||
+              u.esPatriarca === true ||
+              u.esMatriarca === true;
             
             return esAdmin;
           });
         
-        console.log('Admins encontrados:', adminsEstirpe.length, adminsEstirpe.map(a => a.nombre || a.email));
+        console.log('Admins/Patriarcas encontrados:', adminsEstirpe.length, adminsEstirpe.map(a => a.nombre || a.email));
         
         return adminsEstirpe;
       } catch (e) { 
