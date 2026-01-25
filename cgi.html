@@ -1548,6 +1548,9 @@
     .buzon-content { display: none; }
     .buzon-content.active { display: block; }
 
+    .tablon-content { display: none; }
+    .tablon-content.active { display: block; }
+
     /* ============ MIS BIENES ============ */
     .mis-bienes-section {
       margin-top: 16px;
@@ -3216,10 +3219,29 @@
           <div class="card tablon-card">
             <div class="card-header">
               <span class="card-title">📌 Tablón</span>
-              <a href="tablon.html" class="card-action">Ver todo →</a>
             </div>
             <div class="card-body">
-              <div id="tablon-list"></div>
+              <!-- Pestañas del tablón -->
+              <div class="buzon-tabs" style="margin-bottom: 12px;">
+                <button class="buzon-tab active" onclick="cambiarPestanaTablon('avisos')">
+                  🔔 Avisos
+                  <span class="buzon-tab-badge" id="badge-tablon-avisos">0</span>
+                </button>
+                <button class="buzon-tab" onclick="cambiarPestanaTablon('respondidas')">
+                  ✅ Respondidas
+                  <span class="buzon-tab-badge" id="badge-tablon-respondidas">0</span>
+                </button>
+              </div>
+              
+              <!-- Contenido Avisos -->
+              <div class="tablon-content active" id="tablon-avisos">
+                <div id="tablon-list"></div>
+              </div>
+              
+              <!-- Contenido Respondidas -->
+              <div class="tablon-content" id="tablon-respondidas">
+                <div id="tablon-respondidas-list"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -4213,6 +4235,7 @@
       renderCalendario();
       await renderMensajes();
       await renderTablon();
+      await cargarRespondidasTablon();
       // Renderizar buzón unificado después de mensajes y tablón
       setTimeout(() => renderBuzonUnificado(), 800);
       await renderMisBienes();
@@ -7817,8 +7840,8 @@
     // ============ BUZÓN UNIFICADO (MÓVIL) ============
     function cambiarPestanaBuzon(pestaña) {
       // Actualizar pestañas
-      document.querySelectorAll('.buzon-tab').forEach(tab => tab.classList.remove('active'));
-      document.querySelector(`.buzon-tab[onclick*="${pestaña}"]`)?.classList.add('active');
+      document.querySelectorAll('.buzon-col .buzon-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelector(`.buzon-col .buzon-tab[onclick*="${pestaña}"]`)?.classList.add('active');
       
       // Actualizar contenido
       document.querySelectorAll('.buzon-content').forEach(c => c.classList.remove('active'));
@@ -7827,6 +7850,96 @@
       // Si cambia a respondidas, cargar datos
       if (pestaña === 'respondidas') {
         cargarRespondidasBuzon();
+      }
+    }
+
+    // ============ TABLÓN (DESKTOP) ============
+    function cambiarPestanaTablon(pestaña) {
+      // Actualizar pestañas del tablón
+      document.querySelectorAll('.tablon-col .buzon-tab').forEach(tab => tab.classList.remove('active'));
+      document.querySelector(`.tablon-col .buzon-tab[onclick*="${pestaña}"]`)?.classList.add('active');
+      
+      // Actualizar contenido
+      document.querySelectorAll('.tablon-content').forEach(c => c.classList.remove('active'));
+      document.getElementById(`tablon-${pestaña}`)?.classList.add('active');
+      
+      // Si cambia a respondidas, cargar datos
+      if (pestaña === 'respondidas') {
+        cargarRespondidasTablon();
+      }
+    }
+
+    async function cargarRespondidasTablon() {
+      const container = document.getElementById('tablon-respondidas-list');
+      const badge = document.getElementById('badge-tablon-respondidas');
+      
+      if (!container) return;
+      
+      try {
+        const snap = await db.collection('solicitudes')
+          .where('solicitadoPor', '==', currentUser.uid)
+          .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+          .limit(30)
+          .get();
+        
+        if (snap.empty) {
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin respuestas</div>';
+          if (badge) badge.style.display = 'none';
+          return;
+        }
+        
+        // Ordenar en cliente
+        const docs = snap.docs.sort((a, b) => {
+          const fechaA = a.data().fechaRespuesta?.toDate?.() || new Date(0);
+          const fechaB = b.data().fechaRespuesta?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        }).slice(0, 20);
+        
+        const iconos = { 'reserva': '📅', 'evento': '🎉', 'iniciativa': '💡', 'averia': '🔧', 'encargo': '🛒' };
+        
+        container.innerHTML = docs.map(doc => {
+          const data = doc.data();
+          const esAceptada = data.estado === 'aceptada';
+          const esRechazada = data.estado === 'rechazada';
+          const fechaResp = data.fechaRespuesta?.toDate?.() || new Date();
+          const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+          
+          let titulo = '';
+          switch(data.tipo) {
+            case 'reserva': titulo = `Reserva: ${data.bienNombre || 'Bien'}`; break;
+            case 'evento': titulo = `Evento: ${data.nombre || 'Sin nombre'}`; break;
+            case 'iniciativa': titulo = `Propuesta: ${data.titulo || 'Sin título'}`; break;
+            default: titulo = data.titulo || 'Solicitud';
+          }
+          
+          const estadoColor = esAceptada ? '#22c55e' : esRechazada ? '#ef4444' : '#f59e0b';
+          const estadoIcono = esAceptada ? '✅' : esRechazada ? '❌' : '🔄';
+          
+          return `
+            <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="verDetalleRespuesta('${doc.id}')">
+              <div class="mensaje-avatar">${iconos[data.tipo] || '📋'}</div>
+              <div class="mensaje-content">
+                <div class="mensaje-header">
+                  <span class="mensaje-autor">${titulo}</span>
+                  <span class="mensaje-fecha">${fechaStr}</span>
+                </div>
+                <div class="mensaje-preview">
+                  <span style="color: ${estadoColor}; font-weight: 600;">${estadoIcono}</span>
+                  ${data.respuesta ? ` ${data.respuesta.substring(0, 35)}...` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        if (badge) {
+          badge.textContent = docs.length;
+          badge.style.display = docs.length > 0 ? 'inline-block' : 'none';
+        }
+        
+      } catch (e) {
+        console.error('Error cargando respondidas tablón:', e);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Error</div>';
       }
     }
 
@@ -7888,12 +8001,11 @@
       if (!container) return;
       
       try {
-        // Cargar MIS solicitudes que han sido respondidas
+        // Cargar MIS solicitudes respondidas (sin ordenar para evitar índice compuesto)
         const snap = await db.collection('solicitudes')
           .where('solicitadoPor', '==', currentUser.uid)
           .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
-          .orderBy('fechaRespuesta', 'desc')
-          .limit(20)
+          .limit(30)
           .get();
         
         if (snap.empty) {
@@ -7901,6 +8013,13 @@
           if (badge) badge.style.display = 'none';
           return;
         }
+        
+        // Ordenar en cliente por fecha de respuesta
+        const docs = snap.docs.sort((a, b) => {
+          const fechaA = a.data().fechaRespuesta?.toDate?.() || new Date(0);
+          const fechaB = b.data().fechaRespuesta?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        }).slice(0, 20);
         
         const iconos = {
           'reserva': '📅',
@@ -7910,7 +8029,7 @@
           'encargo': '🛒'
         };
         
-        container.innerHTML = snap.docs.map(doc => {
+        container.innerHTML = docs.map(doc => {
           const data = doc.data();
           const esAceptada = data.estado === 'aceptada';
           const esRechazada = data.estado === 'rechazada';
@@ -7950,7 +8069,9 @@
         
         // Badge con las no vistas
         if (badge) {
-          badge.textContent = snap.size;
+          badge.textContent = docs.length;
+          badge.style.display = docs.length > 0 ? 'inline-block' : 'none';
+        }
           badge.style.display = snap.size > 0 ? 'inline-block' : 'none';
         }
         
