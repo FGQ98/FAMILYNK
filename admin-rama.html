@@ -2624,144 +2624,181 @@
       
       // Colores Familynk
       const sageGreen = [139, 168, 144];
-      const terracotta = [194, 126, 104];
-      const cream = [250, 248, 244];
       const textDark = [51, 51, 51];
+      const textMuted = [120, 120, 120];
       
-      // Configuración de márgenes
+      // Configuración
       const marginLeft = 20;
       const marginRight = 20;
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const contentWidth = pageWidth - marginLeft - marginRight;
       
+      // Tamaños de fuente
+      const fontSizeBase = 10;
+      const fontSizeApartado = fontSizeBase + 2; // +2pt para apartados
+      const fontSizeCapitulo = 13;
+      
+      // Contadores para numeración
+      let numCapitulo = 0;
+      let numApartado = 0;
+      
       let y = 20;
       
-      // ===== CABECERA CON LOGO =====
-      // Rectángulo superior verde
+      // ===== CABECERA =====
       doc.setFillColor(...sageGreen);
-      doc.rect(0, 0, pageWidth, 35, 'F');
+      doc.rect(0, 0, pageWidth, 32, 'F');
       
-      // Texto "FAMILYNK" como logo
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
+      doc.setFontSize(22);
       doc.setFont('helvetica', 'bold');
-      doc.text('FAMILYNK', marginLeft, 22);
+      doc.text('FAMILYNK', marginLeft, 20);
       
-      // Subtítulo
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.text('Gestión Familiar Inteligente', marginLeft, 30);
+      doc.text('Gestion Familiar Inteligente', marginLeft, 28);
       
-      y = 50;
+      y = 48;
       
-      // ===== TÍTULO DEL DOCUMENTO =====
+      // ===== TÍTULO =====
       const tipoLabel = categoria === 'externos' 
         ? `Normas para ${nombresPlantilla[tipoPlantillaActual]} (Externos)`
         : `Normas para ${nombresPlantilla[tipoPlantillaActual]} (Familiares)`;
       
       doc.setTextColor(...textDark);
-      doc.setFontSize(18);
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.text(tipoLabel, marginLeft, y);
       
-      // Línea decorativa
-      y += 5;
-      doc.setDrawColor(...terracotta);
-      doc.setLineWidth(0.8);
-      doc.line(marginLeft, y, marginLeft + 60, y);
-      
-      // Fecha
-      y += 10;
+      y += 8;
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
+      doc.setTextColor(...textMuted);
       const fecha = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-      doc.text(`Generado el ${fecha}`, marginLeft, y);
+      doc.text('Generado el ' + fecha, marginLeft, y);
       
       y += 15;
       
       // ===== CONTENIDO =====
       const indentaciones = {
         capitulo: 0,
-        apartado: 8,
-        linea: 16,
-        sublinea: 24,
-        detalle: 32
-      };
-      
-      const fontSizes = {
-        capitulo: 13,
-        apartado: 11,
-        linea: 10,
-        sublinea: 9,
-        detalle: 9
-      };
-      
-      const iconos = {
-        capitulo: '■',
-        apartado: '▪',
-        linea: '•',
-        sublinea: '›',
-        detalle: '-'
+        apartado: 6,
+        linea: 12,
+        sublinea: 18,
+        detalle: 24
       };
       
       elementos.forEach((el, idx) => {
         const indent = indentaciones[el.tipo] || 0;
-        const fontSize = fontSizes[el.tipo] || 10;
-        const icono = iconos[el.tipo] || '•';
         
-        // Verificar si necesita nueva página
-        if (y > pageHeight - 30) {
+        // Nueva página si es necesario
+        if (y > pageHeight - 25) {
           doc.addPage();
-          y = 20;
+          y = 15;
           
-          // Mini cabecera en páginas siguientes
+          // Mini cabecera
           doc.setFillColor(...sageGreen);
-          doc.rect(0, 0, pageWidth, 12, 'F');
+          doc.rect(0, 0, pageWidth, 10, 'F');
           doc.setTextColor(255, 255, 255);
-          doc.setFontSize(8);
-          doc.text('FAMILYNK - ' + tipoLabel, marginLeft, 8);
-          y = 25;
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'normal');
+          doc.text('FAMILYNK - ' + tipoLabel, marginLeft, 7);
+          y = 20;
+        }
+        
+        let textoFinal = '';
+        let fontSize = fontSizeBase;
+        let fontStyle = 'normal';
+        
+        // Configurar según tipo
+        if (el.tipo === 'capitulo') {
+          numCapitulo++;
+          numApartado = 0; // Reset apartados
+          textoFinal = numCapitulo + '. ' + el.texto.toUpperCase();
+          fontSize = fontSizeCapitulo;
+          fontStyle = 'bold';
+          
+          // Espacio antes del capítulo (excepto el primero)
+          if (idx > 0) y += 8;
+          
+          // Fondo verde para capítulos
+          doc.setFillColor(...sageGreen);
+          const textHeight = 8;
+          doc.roundedRect(marginLeft - 2, y - 6, contentWidth + 4, textHeight + 2, 1, 1, 'F');
+          doc.setTextColor(255, 255, 255);
+          
+        } else if (el.tipo === 'apartado') {
+          numApartado++;
+          textoFinal = numCapitulo + '.' + numApartado + ' ' + el.texto;
+          fontSize = fontSizeApartado;
+          fontStyle = 'bold';
+          doc.setTextColor(...textDark);
+          
+          // Espacio antes del apartado
+          y += 4;
+          
+        } else if (el.tipo === 'linea') {
+          textoFinal = '- ' + el.texto;
+          fontSize = fontSizeBase;
+          fontStyle = 'normal';
+          doc.setTextColor(...textDark);
+          
+        } else if (el.tipo === 'sublinea') {
+          textoFinal = '  - ' + el.texto;
+          fontSize = fontSizeBase;
+          fontStyle = 'normal';
+          doc.setTextColor(...textMuted);
+          
+        } else if (el.tipo === 'detalle') {
+          textoFinal = '    - ' + el.texto;
+          fontSize = fontSizeBase;
+          fontStyle = 'italic';
+          doc.setTextColor(...textMuted);
         }
         
         doc.setFontSize(fontSize);
+        doc.setFont('helvetica', fontStyle);
         
-        // Estilo según tipo
-        if (el.tipo === 'capitulo') {
-          // Fondo verde para capítulos
-          doc.setFillColor(...sageGreen);
-          doc.roundedRect(marginLeft + indent - 2, y - 5, contentWidth - indent + 4, 10, 2, 2, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFont('helvetica', 'bold');
-          y += 2;
-        } else if (el.tipo === 'apartado') {
-          doc.setTextColor(...terracotta);
-          doc.setFont('helvetica', 'bold');
-        } else if (el.tipo === 'detalle') {
-          doc.setTextColor(100, 100, 100);
-          doc.setFont('helvetica', 'italic');
-        } else {
-          doc.setTextColor(...textDark);
-          doc.setFont('helvetica', 'normal');
-        }
-        
-        // Texto con wrap
-        const texto = icono + ' ' + el.texto;
-        const lines = doc.splitTextToSize(texto, contentWidth - indent);
+        // Wrap del texto
+        const maxWidth = contentWidth - indent;
+        const lines = doc.splitTextToSize(textoFinal, maxWidth);
         
         lines.forEach((line, lineIdx) => {
+          // Verificar espacio
+          if (y > pageHeight - 20) {
+            doc.addPage();
+            y = 15;
+            doc.setFillColor(...sageGreen);
+            doc.rect(0, 0, pageWidth, 10, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.text('FAMILYNK - ' + tipoLabel, marginLeft, 7);
+            y = 20;
+            
+            // Restaurar estilo
+            doc.setFontSize(fontSize);
+            doc.setFont('helvetica', fontStyle);
+            if (el.tipo === 'capitulo') {
+              doc.setTextColor(255, 255, 255);
+            } else if (el.tipo === 'sublinea' || el.tipo === 'detalle') {
+              doc.setTextColor(...textMuted);
+            } else {
+              doc.setTextColor(...textDark);
+            }
+          }
+          
           doc.text(line, marginLeft + indent, y);
-          y += fontSize * 0.45;
+          y += fontSize * 0.4;
         });
         
         // Espacio después según tipo
         if (el.tipo === 'capitulo') {
-          y += 6;
+          y += 5;
         } else if (el.tipo === 'apartado') {
-          y += 4;
+          y += 3;
         } else {
-          y += 2;
+          y += 1;
         }
       });
       
@@ -2770,13 +2807,14 @@
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Página ${i} de ${totalPages}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+        doc.setTextColor(...textMuted);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Pagina ' + i + ' de ' + totalPages, pageWidth / 2, pageHeight - 10, { align: 'center' });
         doc.text('www.familynk.com', pageWidth - marginRight, pageHeight - 10, { align: 'right' });
       }
       
-      // Descargar PDF
-      const nombreArchivo = `Normas_${nombresPlantilla[tipoPlantillaActual]}_${categoria}.pdf`;
+      // Descargar
+      const nombreArchivo = 'Normas_' + nombresPlantilla[tipoPlantillaActual] + '_' + categoria + '.pdf';
       doc.save(nombreArchivo);
     }
 
