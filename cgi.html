@@ -3172,6 +3172,10 @@
                   🔔 Avisos
                   <span class="buzon-tab-badge" id="badge-notif-count">0</span>
                 </button>
+                <button class="buzon-tab" onclick="cambiarPestanaBuzon('respondidas')">
+                  ✅ Respondidas
+                  <span class="buzon-tab-badge" id="badge-respondidas-count">0</span>
+                </button>
               </div>
               
               <!-- Contenido Chat -->
@@ -3183,6 +3187,11 @@
               <!-- Contenido Notificaciones -->
               <div class="buzon-content" id="buzon-notificaciones">
                 <div id="buzon-tablon-list"></div>
+              </div>
+              
+              <!-- Contenido Respondidas -->
+              <div class="buzon-content" id="buzon-respondidas">
+                <div id="buzon-respondidas-list"></div>
               </div>
             </div>
           </div>
@@ -7814,6 +7823,11 @@
       // Actualizar contenido
       document.querySelectorAll('.buzon-content').forEach(c => c.classList.remove('active'));
       document.getElementById(`buzon-${pestaña}`)?.classList.add('active');
+      
+      // Si cambia a respondidas, cargar datos
+      if (pestaña === 'respondidas') {
+        cargarRespondidasBuzon();
+      }
     }
 
     async function renderBuzonUnificado() {
@@ -7843,6 +7857,9 @@
         tablonContainer.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
       }
       
+      // Cargar solicitudes respondidas
+      await cargarRespondidasBuzon();
+      
       // Actualizar badges
       const chatBadge = document.getElementById('badge-chat-count');
       const notifBadge = document.getElementById('badge-notif-count');
@@ -7862,6 +7879,130 @@
       }
       
       console.log('Buzón renderizado - Mensajes:', mensajesNoLeidos, 'Notifs:', notifAccion);
+    }
+
+    async function cargarRespondidasBuzon() {
+      const container = document.getElementById('buzon-respondidas-list');
+      const badge = document.getElementById('badge-respondidas-count');
+      
+      if (!container) return;
+      
+      try {
+        // Cargar MIS solicitudes que han sido respondidas
+        const snap = await db.collection('solicitudes')
+          .where('solicitadoPor', '==', currentUser.uid)
+          .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+          .orderBy('fechaRespuesta', 'desc')
+          .limit(20)
+          .get();
+        
+        if (snap.empty) {
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin respuestas pendientes</div>';
+          if (badge) badge.style.display = 'none';
+          return;
+        }
+        
+        const iconos = {
+          'reserva': '📅',
+          'evento': '🎉',
+          'iniciativa': '💡',
+          'averia': '🔧',
+          'encargo': '🛒'
+        };
+        
+        container.innerHTML = snap.docs.map(doc => {
+          const data = doc.data();
+          const esAceptada = data.estado === 'aceptada';
+          const esRechazada = data.estado === 'rechazada';
+          const fechaResp = data.fechaRespuesta?.toDate?.() || new Date();
+          const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+          
+          let titulo = '';
+          switch(data.tipo) {
+            case 'reserva': titulo = `Reserva: ${data.bienNombre || 'Bien'}`; break;
+            case 'evento': titulo = `Evento: ${data.nombre || data.titulo || 'Sin nombre'}`; break;
+            case 'iniciativa': titulo = `Propuesta: ${data.titulo || 'Sin título'}`; break;
+            case 'averia': titulo = `Avería: ${data.bienNombre || 'Bien'}`; break;
+            case 'encargo': titulo = `Encargo: ${data.bienNombre || 'Bien'}`; break;
+            default: titulo = data.titulo || 'Solicitud';
+          }
+          
+          const estadoIcono = esAceptada ? '✅' : esRechazada ? '❌' : '🔄';
+          const estadoTexto = esAceptada ? 'Aceptada' : esRechazada ? 'Rechazada' : 'En estudio';
+          const estadoColor = esAceptada ? '#22c55e' : esRechazada ? '#ef4444' : '#f59e0b';
+          
+          return `
+            <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="verDetalleRespuesta('${doc.id}')">
+              <div class="mensaje-avatar">${iconos[data.tipo] || '📋'}</div>
+              <div class="mensaje-content">
+                <div class="mensaje-header">
+                  <span class="mensaje-autor">${titulo}</span>
+                  <span class="mensaje-fecha">${fechaStr}</span>
+                </div>
+                <div class="mensaje-preview">
+                  <span style="color: ${estadoColor}; font-weight: 600;">${estadoIcono} ${estadoTexto}</span>
+                  ${data.respuesta ? ` · ${data.respuesta.substring(0, 40)}...` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        // Badge con las no vistas
+        if (badge) {
+          badge.textContent = snap.size;
+          badge.style.display = snap.size > 0 ? 'inline-block' : 'none';
+        }
+        
+      } catch (e) {
+        console.error('Error cargando respondidas:', e);
+        container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Error al cargar</div>';
+      }
+    }
+
+    function verDetalleRespuesta(solicitudId) {
+      // Buscar en los datos cargados o cargar directamente
+      db.collection('solicitudes').doc(solicitudId).get().then(doc => {
+        if (!doc.exists) return;
+        
+        const data = doc.data();
+        const esAceptada = data.estado === 'aceptada';
+        const fechaResp = data.fechaRespuesta?.toDate?.() || new Date();
+        
+        // Crear modal de detalle
+        let modal = document.getElementById('modal-detalle-respuesta');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'modal-detalle-respuesta';
+          modal.className = 'modal-overlay';
+          document.body.appendChild(modal);
+        }
+        
+        const estadoColor = esAceptada ? '#22c55e' : data.estado === 'rechazada' ? '#ef4444' : '#f59e0b';
+        const estadoTexto = esAceptada ? '✅ Aceptada' : data.estado === 'rechazada' ? '❌ Rechazada' : '🔄 En estudio';
+        
+        modal.innerHTML = `
+          <div class="modal" style="max-width: 450px;">
+            <div class="modal-header" style="background: ${estadoColor};">
+              <h3 class="modal-title" style="color: white;">${estadoTexto}</h3>
+              <button class="modal-close" onclick="document.getElementById('modal-detalle-respuesta').classList.remove('active')">×</button>
+            </div>
+            <div class="modal-body">
+              <p style="font-weight: 600; margin-bottom: 12px;">${getTituloSolicitud(data)}</p>
+              ${data.respuesta ? `<p style="background: var(--cream); padding: 12px; border-radius: 8px; margin-bottom: 12px;"><strong>📝 Comentarios:</strong><br>${data.respuesta}</p>` : ''}
+              <p style="font-size: 0.85rem; color: var(--text-muted);">
+                📅 Respondido el ${fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}
+                ${data.respondidoPorNombre ? ` por ${data.respondidoPorNombre}` : ''}
+              </p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-primary" onclick="document.getElementById('modal-detalle-respuesta').classList.remove('active')">Entendido</button>
+            </div>
+          </div>
+        `;
+        
+        modal.classList.add('active');
+      }).catch(e => console.error('Error cargando detalle:', e));
     }
 
     // ============ MIS BIENES (MÓVIL) ============
