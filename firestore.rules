@@ -6,31 +6,26 @@ service cloud.firestore {
     // FUNCIONES AUXILIARES
     // ============================================================
     
-    // Verificar si el usuario está autenticado
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Obtener datos del usuario actual
     function getUserData() {
       return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
     
-    // Verificar si es SuperAdmin
     function isSuperAdmin() {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
              getUserData().superAdmin == true;
     }
     
-    // Verificar si es AdminSistema
     function isAdminSistema() {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
              getUserData().rol == 'AdminSistema';
     }
     
-    // Verificar si es admin de una rama específica
     function isAdminRama(ramaId) {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
@@ -38,7 +33,6 @@ service cloud.firestore {
              getUserData().rol == 'AdminRama';
     }
     
-    // Verificar si es admin-rama (sin ramaId específico)
     function isAnyAdminRama() {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
@@ -48,39 +42,54 @@ service cloud.firestore {
               getUserData().credencial == 'admin-rama');
     }
     
-    // Verificar si pertenece a una familia
+    function isPatriarcaOrMatriarca() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             (getUserData().rol == 'patriarca' || 
+              getUserData().rol == 'matriarca');
+    }
+    
     function belongsToFamilia(familiaId) {
       return isAuthenticated() && 
              exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
              getUserData().familiaId == familiaId;
     }
     
+    function isAdminOfFamilia(familiaId) {
+      return isAuthenticated() &&
+             belongsToFamilia(familiaId) &&
+             (isAnyAdminRama() || isPatriarcaOrMatriarca());
+    }
+    
     // ============================================================
     // COLECCIÓN: usuarios
     // ============================================================
     match /usuarios/{userId} {
-      // Permitir leer: tu propio doc, superadmin, adminsistema, o miembros de tu misma familia
       allow read: if isAuthenticated() && 
                     (request.auth.uid == userId || 
                      isSuperAdmin() || 
                      isAdminSistema() ||
                      (resource.data.familiaId != null && belongsToFamilia(resource.data.familiaId)));
+      
       allow create: if isAuthenticated();
+      
       allow update: if isAuthenticated() && 
-                      (request.auth.uid == userId || isSuperAdmin() || isAdminSistema());
+                      (request.auth.uid == userId || 
+                       isSuperAdmin() || 
+                       isAdminSistema() ||
+                       (resource.data.familiaId != null && isAdminOfFamilia(resource.data.familiaId)));
+      
       allow delete: if isSuperAdmin();
     }
     
     // ============================================================
-    // COLECCIÓN: externos (caseros, hosters, guardas)
+    // COLECCIÓN: externos
     // ============================================================
     match /externos/{externoId} {
-      // Leer: autenticado y de tu familia
       allow read: if isAuthenticated() && 
                     (isSuperAdmin() || 
                      isAdminSistema() || 
                      belongsToFamilia(resource.data.familiaId));
-      // Escribir: superadmin, adminsistema, o miembro de la familia
       allow create: if isAuthenticated() && 
                       (isSuperAdmin() || isAdminSistema() || belongsToFamilia(request.resource.data.familiaId));
       allow update, delete: if isAuthenticated() && 
@@ -88,11 +97,17 @@ service cloud.firestore {
     }
     
     // ============================================================
-    // COLECCIÓN: familias
+    // COLECCIÓN: familias (con subcolecciones)
     // ============================================================
     match /familias/{familiaId} {
       allow read: if isAuthenticated();
       allow write: if isSuperAdmin() || isAdminSistema() || belongsToFamilia(familiaId);
+      
+      match /{subcollection}/{docId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated() && 
+                       (isSuperAdmin() || isAdminSistema() || belongsToFamilia(familiaId));
+      }
     }
     
     // ============================================================
@@ -110,17 +125,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated() && 
                      (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
-    }
-    
-    // ============================================================
-    // COLECCIÓN: bienes (con todas sus subcolecciones)
-    // ============================================================
-    match /bienes/{bienId} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated() && 
-                     (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
       
-      // Subcolecciones de bienes - acceso para usuarios autenticados de la familia
       match /{subcollection}/{docId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
@@ -128,8 +133,21 @@ service cloud.firestore {
     }
     
     // ============================================================
-    // COLLECTION GROUP QUERIES para externos (caseros, hosters, guardas)
-    // Permite consultas collectionGroup para login de externos
+    // COLECCIÓN: bienes (con subcolecciones)
+    // ============================================================
+    match /bienes/{bienId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                     (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
+      
+      match /{subcollection}/{docId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+    
+    // ============================================================
+    // COLLECTION GROUP QUERIES para externos
     // ============================================================
     match /{path=**}/caseros/{caseroId} {
       allow read: if isAuthenticated() && 
@@ -144,6 +162,25 @@ service cloud.firestore {
     match /{path=**}/guardas/{guardaId} {
       allow read: if isAuthenticated() && 
                     request.auth.token.email == resource.data.email;
+    }
+    
+    // ============================================================
+    // COLECCIÓN: invitaciones
+    // ============================================================
+    match /invitaciones/{invId} {
+      allow read: if isAuthenticated() && 
+                    (isSuperAdmin() || 
+                     isAdminSistema() || 
+                     belongsToFamilia(resource.data.familiaId));
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+                      (isSuperAdmin() || 
+                       isAdminSistema() || 
+                       belongsToFamilia(resource.data.familiaId));
+      allow delete: if isAuthenticated() && 
+                      (isSuperAdmin() || 
+                       isAdminSistema() || 
+                       belongsToFamilia(resource.data.familiaId));
     }
     
     // ============================================================
@@ -165,27 +202,23 @@ service cloud.firestore {
     }
     
     // ============================================================
-    // COLECCIÓN: eventos_uso (Análisis de comportamiento)
+    // COLECCIÓN: eventos_uso
     // ============================================================
-    // Solo escritura autenticada, lectura solo para admin-rama de su familia
     match /eventos_uso/{eventoId} {
-      // Cualquier usuario autenticado puede crear eventos de tracking
       allow create: if isAuthenticated()
                     && request.resource.data.ramaId is string
                     && request.resource.data.accion is string
                     && request.resource.data.seccion is string;
       
-      // Lectura solo para admin-rama de su propia familia (para dashboard Cerebro)
       allow read: if isAuthenticated() 
                   && isAnyAdminRama()
                   && resource.data.ramaId == getUserData().familiaId;
       
-      // Nadie puede actualizar ni borrar (inmutabilidad de logs)
       allow update, delete: if false;
     }
     
     // ============================================================
-    // COLECCIONES ADICIONALES (queos, notificaciones, etc.)
+    // COLECCIÓN: queos
     // ============================================================
     match /queos/{queoId} {
       allow read: if isAuthenticated() && 
@@ -198,15 +231,43 @@ service cloud.firestore {
       allow delete: if isAuthenticated() && request.auth.uid == resource.data.remitente;
     }
     
+    // ============================================================
+    // COLECCIÓN: notificaciones
+    // ============================================================
     match /notificaciones/{notifId} {
       allow read: if isAuthenticated() && 
-                    request.auth.uid in resource.data.destinatarios;
+                    (request.auth.uid in resource.data.destinatarios ||
+                     belongsToFamilia(resource.data.familiaId));
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
-                      request.auth.uid in resource.data.destinatarios;
+                      (request.auth.uid in resource.data.destinatarios ||
+                       belongsToFamilia(resource.data.familiaId));
       allow delete: if isSuperAdmin() || isAdminSistema();
     }
     
+    // ============================================================
+    // COLECCIÓN: solicitudes (reservas, eventos, iniciativas, averías)
+    // ============================================================
+    match /solicitudes/{solicitudId} {
+      allow read: if isAuthenticated() && 
+                    (request.auth.uid == resource.data.solicitadoPor ||
+                     belongsToFamilia(resource.data.familiaId) ||
+                     isSuperAdmin() || isAdminSistema());
+      allow create: if isAuthenticated() && 
+                      request.resource.data.solicitadoPor == request.auth.uid;
+      allow update: if isAuthenticated() && 
+                      (belongsToFamilia(resource.data.familiaId) ||
+                       request.auth.uid == resource.data.solicitadoPor ||
+                       isSuperAdmin() || isAdminSistema());
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.solicitadoPor ||
+                       belongsToFamilia(resource.data.familiaId) ||
+                       isSuperAdmin() || isAdminSistema());
+    }
+    
+    // ============================================================
+    // COLECCIONES ADICIONALES
+    // ============================================================
     match /convocatorias/{convId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
