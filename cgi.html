@@ -5694,12 +5694,30 @@
     async function cargarDetalleSolicitud(notifData) {
       const container = document.getElementById('respuesta-detalle');
       
+      // Verificar que existe origen.id
+      const solicitudId = notifData.origen?.id;
+      
+      if (!solicitudId) {
+        // Notificación antigua sin enlace a solicitud
+        console.warn('Notificación sin origen.id:', notifData);
+        container.innerHTML = `
+          <p>${notifData.titulo || 'Solicitud'}</p>
+          <p>${notifData.mensaje || ''}</p>
+          <p style="color: var(--terracota); font-size: 0.85rem; margin-top: 8px;">
+            ⚠️ Esta notificación no tiene enlace a la solicitud original. 
+            Puedes marcarla como respondida pero no se actualizará el estado de la solicitud.
+          </p>
+        `;
+        return;
+      }
+      
       // Obtener datos de la solicitud original
       try {
-        const solicitudDoc = await db.collection('solicitudes').doc(notifData.origen.id).get();
+        const solicitudDoc = await db.collection('solicitudes').doc(solicitudId).get();
         if (solicitudDoc.exists) {
           const sol = solicitudDoc.data();
           solicitudActual.solicitudData = sol;
+          solicitudActual.solicitudId = solicitudId;
           
           let html = `
             <p><strong>📍 Bien:</strong> ${sol.bienNombre || 'No especificado'}</p>
@@ -5729,13 +5747,9 @@
     }
 
     function seleccionarRespuesta(elemento, valor) {
-      // Quitar selección anterior
       document.querySelectorAll('.respuesta-btn').forEach(btn => btn.classList.remove('selected'));
-      // Añadir selección
       elemento.classList.add('selected');
-      // Marcar radio
       elemento.closest('label').querySelector('input').checked = true;
-      // Habilitar botón
       document.getElementById('btn-enviar-respuesta').disabled = false;
     }
 
@@ -5744,7 +5758,6 @@
       solicitudActual = null;
     }
 
-    // Contador de caracteres
     document.getElementById('respuesta-comentarios')?.addEventListener('input', function() {
       document.getElementById('respuesta-contador').textContent = this.value.length;
     });
@@ -5766,18 +5779,22 @@
       
       try {
         const fechaActual = firebase.firestore.FieldValue.serverTimestamp();
-        const solicitudId = solicitudActual.origen?.id;
+        const solicitudId = solicitudActual.solicitudId || solicitudActual.origen?.id;
         const solData = solicitudActual.solicitudData || {};
         
-        // 1. Actualizar estado de la solicitud
+        // 1. Actualizar solicitud (solo si existe)
         if (solicitudId) {
-          await db.collection('solicitudes').doc(solicitudId).update({
-            estado: estadoSeleccionado,
-            respuesta: comentarios,
-            respondidoPor: currentUser.uid,
-            respondidoPorNombre: userData?.nombre || currentUser.email,
-            fechaRespuesta: fechaActual
-          });
+          try {
+            await db.collection('solicitudes').doc(solicitudId).update({
+              estado: estadoSeleccionado,
+              respuesta: comentarios,
+              respondidoPor: currentUser.uid,
+              respondidoPorNombre: userData?.nombre || currentUser.email,
+              fechaRespuesta: fechaActual
+            });
+          } catch (solError) {
+            console.warn('No se pudo actualizar la solicitud:', solError);
+          }
         }
         
         // 2. Marcar notificación como completada
@@ -5788,17 +5805,9 @@
         
         // 3. Notificar al solicitante
         const solicitanteUid = solData.solicitadoPor;
-        if (solicitanteUid) {
-          const estadoEmoji = {
-            'aceptada': '✅',
-            'rechazada': '❌',
-            'en_estudio': '🔍'
-          };
-          const estadoTexto = {
-            'aceptada': 'Aceptada',
-            'rechazada': 'Rechazada',
-            'en_estudio': 'En estudio'
-          };
+        if (solicitanteUid && solicitudId) {
+          const estadoEmoji = { 'aceptada': '✅', 'rechazada': '❌', 'en_estudio': '🔍' };
+          const estadoTexto = { 'aceptada': 'Aceptada', 'rechazada': 'Rechazada', 'en_estudio': 'En estudio' };
           
           await db.collection('notificaciones').add({
             tipo: 'info',
@@ -5814,10 +5823,9 @@
           });
         }
         
-        // 4. Si es ACEPTADA, añadir al calendario
-        if (estadoSeleccionado === 'aceptada') {
+        // 4. Si ACEPTADA, añadir al calendario
+        if (estadoSeleccionado === 'aceptada' && solicitudId) {
           if (solicitudActual.categoria === 'reserva' && solData.bienId) {
-            // Crear reserva en el bien
             await db.collection('bienes').doc(solData.bienId).collection('reservas').add({
               tipo: 'estancia',
               fechaInicio: solData.fechaInicio,
@@ -5832,8 +5840,7 @@
             });
           }
           
-          // Crear evento en calendario
-          const eventoData = {
+          await db.collection('eventos').add({
             tipo: solicitudActual.categoria === 'reserva' ? 'reserva' : 'evento',
             nombre: solicitudActual.categoria === 'reserva' 
               ? `Reserva: ${solData.bienNombre || 'Bien'}`
@@ -5847,8 +5854,7 @@
             creadoPor: currentUser.uid,
             origenSolicitud: solicitudId,
             fechaCreacion: fechaActual
-          };
-          await db.collection('eventos').add(eventoData);
+          });
         }
         
         cerrarModalRespuesta();
@@ -5872,7 +5878,6 @@
     }
 
     // ============ OBTENER CASEROS DE UN BIEN ============
-    async function obtenerCaserosBien(bienId) {
       // Obtiene los UIDs de usuarios que son caseros de este bien
       try {
         const caserosSnap = await db.collection('bienes').doc(bienId).collection('caseros')
