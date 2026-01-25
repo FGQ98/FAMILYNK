@@ -1008,17 +1008,39 @@
     /* Mostrar/Ocultar según dispositivo (por defecto: desktop) */
     .desktop-only { display: inline; }
     .mobile-only { display: none; }
-    .calendario-desktop { display: block; }
-    .calendario-movil { display: none; }
 
     @media (max-width: 768px) {
       .rama-stats-mobile { display: flex; }
-      
-      /* Calendario: ocultar desktop, mostrar móvil */
       .desktop-only { display: none !important; }
       .mobile-only { display: inline !important; }
-      .calendario-desktop { display: none !important; }
-      .calendario-movil { display: block !important; }
+    }
+
+    /* Calendario toggle */
+    .calendario-toggle {
+      margin-top: 12px;
+      text-align: center;
+    }
+    
+    .btn-toggle-calendario {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--cream);
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-toggle-calendario:hover {
+      background: var(--sage-muted);
+      border-color: var(--sage);
+      color: var(--sage-dark);
     }
 
     .nido-header {
@@ -3139,20 +3161,27 @@
         <div class="calendario-col">
           <div class="card">
             <div class="card-header">
-              <span class="card-title">📅 <span id="mes-actual" class="desktop-only">Diciembre</span><span class="mobile-only">Próximos días</span></span>
+              <span class="card-title">📅 <span id="mes-actual">Próximos días</span></span>
               <div class="card-actions">
                 <button class="card-action-btn" onclick="abrirModalHito()" title="Crear cita o evento">+ Nuevo</button>
-                <a href="calendario.html" class="card-action desktop-only">Ver más →</a>
               </div>
             </div>
             <div class="card-body">
-              <!-- Vista Desktop: Calendario cuadrícula -->
-              <div class="calendario-desktop">
+              <!-- Vista compacta: Hoy, Mañana, Pasado (default) -->
+              <div class="calendario-compacto" id="calendario-compacto"></div>
+              
+              <!-- Vista expandida: Cuadrícula del mes (oculta inicialmente) -->
+              <div class="calendario-expandido" id="calendario-expandido" style="display: none;">
                 <div class="calendario-mini" id="calendario-mini"></div>
                 <div class="eventos-hoy" id="eventos-hoy"></div>
               </div>
-              <!-- Vista Móvil: Próximos 3 días -->
-              <div class="calendario-movil" id="calendario-movil"></div>
+              
+              <!-- Botón toggle -->
+              <div class="calendario-toggle">
+                <button class="btn-toggle-calendario" id="btn-toggle-calendario" onclick="toggleVistaCalendario()">
+                  <span id="toggle-icono">📆</span> <span id="toggle-texto">Ver mes completo</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -4999,13 +5028,113 @@
       }
     }
 
+    let calendarioExpandido = false;
+
     function renderCalendario() {
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const hoy = new Date();
       
-      document.getElementById('mes-actual').textContent = meses[hoy.getMonth()];
+      // Actualizar título según vista
+      document.getElementById('mes-actual').textContent = calendarioExpandido ? meses[hoy.getMonth()] : 'Próximos días';
 
+      // Renderizar vista compacta (Hoy, Mañana, Pasado)
+      renderCalendarioCompacto();
+      
+      // Renderizar vista expandida (cuadrícula del mes)
+      renderCalendarioExpandido();
+    }
+
+    function renderCalendarioCompacto() {
+      const container = document.getElementById('calendario-compacto');
+      if (!container) return;
+      
+      const hoy = new Date();
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      
+      const iconos = {
+        'cumple': '🎂',
+        'especial': '⭐',
+        'evento': '🎉',
+        'cita': '📋',
+        'reserva': '🏠',
+        'mantenimiento': '🔧',
+        'default': '📌'
+      };
+      
+      // Agrupar eventos por fecha
+      const eventosPorFecha = {};
+      eventosCalendario.forEach(e => {
+        if (!eventosPorFecha[e.fecha]) eventosPorFecha[e.fecha] = [];
+        eventosPorFecha[e.fecha].push(e);
+      });
+      
+      let html = '<div class="proximos-dias">';
+      
+      for (let i = 0; i < 3; i++) {
+        const fecha = new Date(hoy);
+        fecha.setDate(hoy.getDate() + i);
+        
+        const fechaStr = fecha.getFullYear() + '-' + String(fecha.getMonth()+1).padStart(2,'0') + '-' + String(fecha.getDate()).padStart(2,'0');
+        const eventosDelDia = eventosPorFecha[fechaStr] || [];
+        
+        let label = '';
+        if (i === 0) label = 'Hoy';
+        else if (i === 1) label = 'Mañana';
+        else label = 'Pasado';
+        
+        const fechaFormateada = diasSemana[fecha.getDay()] + ' ' + fecha.getDate() + ' ' + meses[fecha.getMonth()];
+        
+        html += '<div class="dia-grupo ' + (i === 0 ? 'hoy' : '') + '">';
+        html += '<div class="dia-header">';
+        html += '<span class="dia-label">' + label + '</span>';
+        html += '<span class="dia-fecha">' + fechaFormateada + '</span>';
+        html += '</div>';
+        html += '<div class="dia-eventos">';
+        
+        if (eventosDelDia.length === 0) {
+          html += '<div class="dia-vacio">Sin eventos</div>';
+        } else {
+          const eventosAMostrar = eventosDelDia.slice(0, 3);
+          
+          eventosAMostrar.forEach(function(evento) {
+            const icono = iconos[evento.tipo] || iconos.default;
+            var tituloLimpio = evento.titulo || 'Sin título';
+            
+            html += '<div class="hito-item" onclick="verDetalleHito(\'' + (evento.id || '') + '\', \'' + evento.tipo + '\', \'' + fechaStr + '\')" title="' + tituloLimpio + '">';
+            html += '<span class="hito-icono">' + icono + '</span>';
+            html += '<div class="hito-info">';
+            html += '<div class="hito-titulo">' + tituloLimpio + '</div>';
+            html += '<div class="hito-meta">';
+            if (evento.hora) {
+              html += '<span class="hito-hora">' + evento.hora + '</span>';
+            }
+            if (evento.lugar) {
+              html += '<span>' + evento.lugar + '</span>';
+            }
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+          });
+          
+          if (eventosDelDia.length > 3) {
+            html += '<div class="dia-mas" onclick="window.location.href=\'calendario.html\'">+' + (eventosDelDia.length - 3) + ' más</div>';
+          }
+        }
+        
+        html += '</div>';
+        html += '</div>';
+      }
+      
+      html += '</div>';
+      container.innerHTML = html;
+    }
+
+    function renderCalendarioExpandido() {
+      const hoy = new Date();
       const container = document.getElementById('calendario-mini');
+      if (!container) return;
+      
       const dias = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
       
       let html = dias.map(d => `<div class="cal-header">${d}</div>`).join('');
@@ -5017,7 +5146,6 @@
       if (diaInicio === 0) diaInicio = 7;
       diaInicio--;
 
-      // Agrupar eventos por fecha
       const eventosPorFecha = {};
       eventosCalendario.forEach(e => {
         if (!eventosPorFecha[e.fecha]) eventosPorFecha[e.fecha] = [];
@@ -5034,7 +5162,6 @@
         const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const eventosDelDia = eventosPorFecha[fechaStr] || [];
         
-        // Generar dots únicos por tipo (usando subtipo para reservas)
         const tiposParaDots = eventosDelDia.map(e => {
           if (e.tipo === 'reserva' && e.subtipo) return `reserva-${e.subtipo}`;
           return e.tipo;
@@ -5048,12 +5175,33 @@
       }
 
       container.innerHTML = html;
-
-      // Mostrar eventos de hoy
       renderEventosHoy(hoy);
+    }
+
+    function toggleVistaCalendario() {
+      calendarioExpandido = !calendarioExpandido;
       
-      // Renderizar versión móvil
-      renderCalendarioMovil();
+      const compacto = document.getElementById('calendario-compacto');
+      const expandido = document.getElementById('calendario-expandido');
+      const toggleIcono = document.getElementById('toggle-icono');
+      const toggleTexto = document.getElementById('toggle-texto');
+      const mesActual = document.getElementById('mes-actual');
+      
+      if (calendarioExpandido) {
+        compacto.style.display = 'none';
+        expandido.style.display = 'block';
+        toggleIcono.textContent = '📋';
+        toggleTexto.textContent = 'Ver próximos días';
+        
+        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        mesActual.textContent = meses[new Date().getMonth()];
+      } else {
+        compacto.style.display = 'block';
+        expandido.style.display = 'none';
+        toggleIcono.textContent = '📆';
+        toggleTexto.textContent = 'Ver mes completo';
+        mesActual.textContent = 'Próximos días';
+      }
     }
 
     function renderEventosHoy(fecha) {
