@@ -3248,6 +3248,7 @@
           <div class="card tablon-card">
             <div class="card-header">
               <span class="card-title">📌 Tablón</span>
+              <a href="tablon.html" class="card-action">Ver todo →</a>
             </div>
             <div class="card-body">
               <!-- Pestañas del tablón -->
@@ -8029,9 +8030,10 @@
         
         let snap;
         if (esAdmin) {
-          // Admin: mostrar solicitudes que YO gestioné
+          // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
-            .where('respondidoPor', '==', currentUser.uid)
+            .where('familiaId', '==', currentFamilia?.id || familiaData?.id)
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
             .limit(30)
             .get();
         } else {
@@ -8051,8 +8053,8 @@
         
         // Ordenar en cliente por fecha de respuesta
         const docs = snap.docs.sort((a, b) => {
-          const fechaA = a.data().fechaRespuesta?.toDate?.() || new Date(0);
-          const fechaB = b.data().fechaRespuesta?.toDate?.() || new Date(0);
+          const fechaA = a.data().fechaRespuesta?.toDate?.() || a.data().fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.data().fechaRespuesta?.toDate?.() || b.data().fechaCreacion?.toDate?.() || new Date(0);
           return fechaB - fechaA;
         }).slice(0, 20);
         
@@ -8062,7 +8064,7 @@
           const data = doc.data();
           const esAceptada = data.estado === 'aceptada';
           const esRechazada = data.estado === 'rechazada';
-          const fechaResp = data.fechaRespuesta?.toDate?.() || new Date();
+          const fechaResp = data.fechaRespuesta?.toDate?.() || data.fechaCreacion?.toDate?.() || new Date();
           const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
           
           let titulo = '';
@@ -8171,9 +8173,10 @@
         
         let snap;
         if (esAdmin) {
-          // Admin: mostrar solicitudes que YO gestioné
+          // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
-            .where('respondidoPor', '==', currentUser.uid)
+            .where('familiaId', '==', currentFamilia?.id || familiaData?.id)
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
             .limit(30)
             .get();
         } else {
@@ -8193,8 +8196,8 @@
         
         // Ordenar en cliente por fecha de respuesta
         const docs = snap.docs.sort((a, b) => {
-          const fechaA = a.data().fechaRespuesta?.toDate?.() || new Date(0);
-          const fechaB = b.data().fechaRespuesta?.toDate?.() || new Date(0);
+          const fechaA = a.data().fechaRespuesta?.toDate?.() || a.data().fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.data().fechaRespuesta?.toDate?.() || b.data().fechaCreacion?.toDate?.() || new Date(0);
           return fechaB - fechaA;
         }).slice(0, 20);
         
@@ -8210,7 +8213,7 @@
           const data = doc.data();
           const esAceptada = data.estado === 'aceptada';
           const esRechazada = data.estado === 'rechazada';
-          const fechaResp = data.fechaRespuesta?.toDate?.() || new Date();
+          const fechaResp = data.fechaRespuesta?.toDate?.() || data.fechaCreacion?.toDate?.() || new Date();
           const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
           
           let titulo = '';
