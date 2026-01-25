@@ -5444,6 +5444,52 @@
           console.error('Error cargando queos:', e);
         }
 
+        // ========== NOTIFICACIONES DIRECTAS (respuestas, avisos, etc.) ==========
+        try {
+          const notifsSnap = await db.collection('notificaciones')
+            .where('familiaId', '==', familiaId)
+            .where('destinatarios', 'array-contains', miUid)
+            .where('estado', '==', 'activa')
+            .orderBy('fechaCreacion', 'desc')
+            .limit(15)
+            .get();
+          
+          console.log('✅ Notificaciones directas:', notifsSnap.size);
+          
+          notifsSnap.docs.forEach(doc => {
+            const data = doc.data();
+            const leido = data.leidoPor?.includes(miUid);
+            
+            // Evitar duplicados con solicitudes respondidas
+            if (data.origen?.tipo === 'respuesta-solicitud') {
+              // Ya se muestran en "Mis solicitudes respondidas"
+              return;
+            }
+            
+            const icono = {
+              'reserva': '📅',
+              'evento': '🎉',
+              'info': 'ℹ️',
+              'aviso': '⚠️'
+            }[data.categoria] || '📬';
+            
+            itemsInfo.push({
+              id: doc.id,
+              source: 'notificacion',
+              tipo: data.tipo || 'info',
+              categoria: data.categoria || 'general',
+              icono: icono,
+              titulo: data.titulo || 'Notificación',
+              mensaje: data.mensaje || '',
+              fecha: data.fechaCreacion,
+              leido: leido,
+              data: data
+            });
+          });
+        } catch (e) {
+          console.error('Error cargando notificaciones:', e);
+        }
+
         // ========== RENDERIZAR ==========
         notificacionesData = [...itemsAccion, ...itemsInfo];
         
