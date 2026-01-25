@@ -5694,37 +5694,46 @@
     async function cargarDetalleSolicitud(notifData) {
       const container = document.getElementById('respuesta-detalle');
       
+      // Verificar que existe origen.id
+      const solicitudId = notifData.origen?.id;
+      
+      if (!solicitudId) {
+        // Notificación antigua sin enlace a solicitud
+        console.warn('Notificación sin origen.id:', notifData);
+        container.innerHTML = '<p>' + (notifData.titulo || 'Solicitud') + '</p>' +
+          '<p>' + (notifData.mensaje || '') + '</p>' +
+          '<p style="color: var(--terracota); font-size: 0.85rem; margin-top: 8px;">' +
+          '⚠️ Esta notificación no tiene enlace a la solicitud original. ' +
+          'Puedes marcarla como respondida pero no se actualizará el estado de la solicitud.</p>';
+        return;
+      }
+      
       // Obtener datos de la solicitud original
       try {
-        const solicitudDoc = await db.collection('solicitudes').doc(notifData.origen.id).get();
+        const solicitudDoc = await db.collection('solicitudes').doc(solicitudId).get();
         if (solicitudDoc.exists) {
           const sol = solicitudDoc.data();
           solicitudActual.solicitudData = sol;
+          solicitudActual.solicitudId = solicitudId; // Guardar ID para usar después
           
-          let html = `
-            <p><strong>📍 Bien:</strong> ${sol.bienNombre || 'No especificado'}</p>
-            <p><strong>👤 Solicitante:</strong> ${sol.solicitadoPorNombre || 'Usuario'}</p>
-          `;
+          let html = '<p><strong>📍 Bien:</strong> ' + (sol.bienNombre || 'No especificado') + '</p>' +
+            '<p><strong>👤 Solicitante:</strong> ' + (sol.solicitadoPorNombre || 'Usuario') + '</p>';
           
           if (notifData.categoria === 'reserva') {
-            html += `
-              <p><strong>📅 Fechas:</strong> ${sol.fechaInicio || '?'} → ${sol.fechaFin || '?'}</p>
-              ${sol.motivo ? `<p><strong>📝 Motivo:</strong> ${sol.motivo}</p>` : ''}
-            `;
+            html += '<p><strong>📅 Fechas:</strong> ' + (sol.fechaInicio || '?') + ' → ' + (sol.fechaFin || '?') + '</p>';
+            if (sol.motivo) html += '<p><strong>📝 Motivo:</strong> ' + sol.motivo + '</p>';
           } else {
-            html += `
-              <p><strong>📅 Fecha:</strong> ${sol.fecha || 'No especificada'}</p>
-              ${sol.descripcion ? `<p><strong>📝 Descripción:</strong> ${sol.descripcion}</p>` : ''}
-            `;
+            html += '<p><strong>📅 Fecha:</strong> ' + (sol.fecha || 'No especificada') + '</p>';
+            if (sol.descripcion) html += '<p><strong>📝 Descripción:</strong> ' + sol.descripcion + '</p>';
           }
           
           container.innerHTML = html;
         } else {
-          container.innerHTML = `<p>${notifData.titulo || 'Solicitud'}</p><p>${notifData.mensaje || ''}</p>`;
+          container.innerHTML = '<p>' + (notifData.titulo || 'Solicitud') + '</p><p>' + (notifData.mensaje || '') + '</p>';
         }
       } catch (e) {
         console.error('Error cargando solicitud:', e);
-        container.innerHTML = `<p>${notifData.titulo || 'Solicitud'}</p>`;
+        container.innerHTML = '<p>' + (notifData.titulo || 'Solicitud') + '</p>';
       }
     }
 
@@ -5766,18 +5775,24 @@
       
       try {
         const fechaActual = firebase.firestore.FieldValue.serverTimestamp();
-        const solicitudId = solicitudActual.origen?.id;
+        // Usar solicitudId guardado o intentar desde origen
+        const solicitudId = solicitudActual.solicitudId || solicitudActual.origen?.id;
         const solData = solicitudActual.solicitudData || {};
         
-        // 1. Actualizar estado de la solicitud
+        // 1. Actualizar estado de la solicitud (solo si existe)
         if (solicitudId) {
-          await db.collection('solicitudes').doc(solicitudId).update({
-            estado: estadoSeleccionado,
-            respuesta: comentarios,
-            respondidoPor: currentUser.uid,
-            respondidoPorNombre: userData?.nombre || currentUser.email,
-            fechaRespuesta: fechaActual
-          });
+          try {
+            await db.collection('solicitudes').doc(solicitudId).update({
+              estado: estadoSeleccionado,
+              respuesta: comentarios,
+              respondidoPor: currentUser.uid,
+              respondidoPorNombre: userData?.nombre || currentUser.email,
+              fechaRespuesta: fechaActual
+            });
+          } catch (solError) {
+            console.warn('No se pudo actualizar la solicitud:', solError);
+            // Continuar de todas formas
+          }
         }
         
         // 2. Marcar notificación como completada
@@ -5786,9 +5801,9 @@
           estado: 'respondida'
         });
         
-        // 3. Notificar al solicitante
+        // 3. Notificar al solicitante (solo si tenemos datos)
         const solicitanteUid = solData.solicitadoPor;
-        if (solicitanteUid) {
+        if (solicitanteUid && solicitudId) {
           const estadoEmoji = {
             'aceptada': '✅',
             'rechazada': '❌',
@@ -5803,8 +5818,8 @@
           await db.collection('notificaciones').add({
             tipo: 'info',
             categoria: solicitudActual.categoria,
-            titulo: `${estadoEmoji[estadoSeleccionado]} Tu solicitud ha sido ${estadoTexto[estadoSeleccionado].toLowerCase()}`,
-            mensaje: comentarios || `Respuesta de ${userData?.nombre || 'administrador'}`,
+            titulo: estadoEmoji[estadoSeleccionado] + ' Tu solicitud ha sido ' + estadoTexto[estadoSeleccionado].toLowerCase(),
+            mensaje: comentarios || ('Respuesta de ' + (userData?.nombre || 'administrador')),
             familiaId: currentFamilia.id,
             destinatarios: [solicitanteUid],
             leidoPor: [],
@@ -5815,7 +5830,7 @@
         }
         
         // 4. Si es ACEPTADA, añadir al calendario
-        if (estadoSeleccionado === 'aceptada') {
+        if (estadoSeleccionado === 'aceptada' && solicitudId) {
           if (solicitudActual.categoria === 'reserva' && solData.bienId) {
             // Crear reserva en el bien
             await db.collection('bienes').doc(solData.bienId).collection('reservas').add({
@@ -5836,8 +5851,8 @@
           const eventoData = {
             tipo: solicitudActual.categoria === 'reserva' ? 'reserva' : 'evento',
             nombre: solicitudActual.categoria === 'reserva' 
-              ? `Reserva: ${solData.bienNombre || 'Bien'}`
-              : solData.nombre || 'Evento',
+              ? ('Reserva: ' + (solData.bienNombre || 'Bien'))
+              : (solData.nombre || 'Evento'),
             fecha: solData.fechaInicio || solData.fecha,
             fechaFin: solData.fechaFin || null,
             descripcion: solData.descripcion || solData.motivo || '',
