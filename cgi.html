@@ -5560,7 +5560,7 @@
       `;
     }
 
-    function abrirDetalleSolicitud(id, source) {
+    async function abrirDetalleSolicitud(id, source) {
       if (source === 'solicitud') {
         // Buscar la solicitud en los datos cargados
         const solicitud = notificacionesData.find(n => n.id === id && n.source === 'solicitud');
@@ -5579,7 +5579,70 @@
       } else if (source === 'queo') {
         // Marcar como leído y mostrar detalle
         marcarQueoLeido(id);
+      } else if (source === 'notificacion' || source === 'solicitud-respuesta') {
+        // Notificación directa (respuestas, avisos, etc.)
+        const notif = notificacionesData.find(n => n.id === id);
+        if (notif) {
+          // Marcar como leída
+          try {
+            await db.collection('notificaciones').doc(id).update({
+              leidoPor: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+            });
+          } catch (e) {
+            console.warn('Error marcando notificación como leída:', e);
+          }
+          
+          // Mostrar detalle en modal simple
+          mostrarModalNotificacion(notif);
+        }
       }
+    }
+
+    function mostrarModalNotificacion(notif) {
+      // Crear modal dinámico si no existe
+      let modal = document.getElementById('modal-notificacion-detalle');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-notificacion-detalle';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+          <div class="modal" style="max-width: 400px;">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--sage), var(--sage-dark));">
+              <span id="notif-detalle-icono" style="font-size: 1.5rem; margin-right: 8px;"></span>
+              <h3 class="modal-title" id="notif-detalle-titulo" style="color: white;"></h3>
+              <button class="modal-close" onclick="cerrarModalNotificacion()">×</button>
+            </div>
+            <div class="modal-body">
+              <p id="notif-detalle-mensaje" style="font-size: 1rem; line-height: 1.5;"></p>
+              <p id="notif-detalle-fecha" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px;"></p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-primary" onclick="cerrarModalNotificacion()">Entendido</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      
+      // Rellenar datos
+      document.getElementById('notif-detalle-icono').textContent = notif.icono || '📬';
+      document.getElementById('notif-detalle-titulo').textContent = notif.titulo || 'Notificación';
+      document.getElementById('notif-detalle-mensaje').textContent = notif.mensaje || '';
+      
+      const fecha = notif.fecha?.toDate ? notif.fecha.toDate() : new Date(notif.fecha || Date.now());
+      document.getElementById('notif-detalle-fecha').textContent = fecha.toLocaleString('es-ES', {
+        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+      
+      modal.classList.add('active');
+      
+      // Refrescar tablón para actualizar estado de leído
+      renderTablon();
+    }
+
+    function cerrarModalNotificacion() {
+      const modal = document.getElementById('modal-notificacion-detalle');
+      if (modal) modal.classList.remove('active');
     }
 
     function formatearFechaRelativa(fecha) {
