@@ -1933,10 +1933,10 @@
             </div>
           </div>
 
-          <!-- Normas de uso para miembros de la familia -->
+          <!-- Normas para miembros de la familia -->
           <div class="collapsible-section open" id="section-normas-uso">
             <div class="collapsible-header" onclick="toggleSection('normas-uso')">
-              <div class="collapsible-title"><span>📖</span><span>Normas de uso</span><span class="collapsible-count" id="count-normas-uso">0</span></div>
+              <div class="collapsible-title"><span>📖</span><span>Normas para familiares</span><span class="collapsible-count" id="count-normas-uso">0</span></div>
               <span class="collapsible-toggle">▼</span>
             </div>
             <div class="collapsible-body">
@@ -1952,7 +1952,7 @@
               <div id="normas-miembros-container">
                 <div class="normas-empty">
                   <div class="normas-empty-icon">📖</div>
-                  <p>Sin normas de uso definidas</p>
+                  <p>Sin normas para familiares</p>
                   <p style="font-size: 0.8rem;">Añade capítulos o copia una plantilla base</p>
                 </div>
               </div>
@@ -1962,13 +1962,13 @@
           <!-- Normas para externos (solo visible si hay add-on activo) -->
           <div class="collapsible-section hidden" id="section-normas">
             <div class="collapsible-header" onclick="toggleSection('normas')">
-              <div class="collapsible-title"><span>📜</span><span>Normas para Externos</span><span class="collapsible-count" id="count-normas">0</span></div>
+              <div class="collapsible-title"><span>📜</span><span id="titulo-normas-externos">Normas para Caseros</span><span class="collapsible-count" id="count-normas">0</span></div>
               <span class="collapsible-toggle">▼</span>
             </div>
             <div class="collapsible-body">
               <div class="normas-externos-header">
-                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">
-                  Normas visibles para caseros, hosters y guardas
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;" id="desc-normas-externos">
+                  Normas visibles para usuarios externos con acceso al bien
                 </p>
                 <div class="normas-externos-actions">
                   <button class="btn btn-secondary btn-sm" onclick="copiarPlantillaNormas()">📋 Copiar plantilla</button>
@@ -3422,7 +3422,10 @@
         renderModulosBotones('mayordomo');
         if (sectionCaseros) sectionCaseros.classList.remove('hidden');
         if (sectionHosters) sectionHosters.classList.add('hidden');
-        if (sectionNormasExternos) sectionNormasExternos.classList.remove('hidden');
+        if (sectionNormasExternos) {
+          sectionNormasExternos.classList.remove('hidden');
+          document.getElementById('titulo-normas-externos').textContent = 'Normas para Caseros';
+        }
       } else if (gerenteActivo) {
         cardGerente.classList.add('active');
         cardGerente.classList.remove('disabled');
@@ -3439,7 +3442,10 @@
         renderModulosBotones('gerente');
         if (sectionHosters) sectionHosters.classList.remove('hidden');
         if (sectionCaseros) sectionCaseros.classList.add('hidden');
-        if (sectionNormasExternos) sectionNormasExternos.classList.remove('hidden');
+        if (sectionNormasExternos) {
+          sectionNormasExternos.classList.remove('hidden');
+          document.getElementById('titulo-normas-externos').textContent = 'Normas para Hosters';
+        }
         cargarHosters();
       } else if (capatazActivo) {
         cardCapataz.classList.add('active');
@@ -3457,7 +3463,10 @@
         renderModulosBotones('capataz');
         if (sectionCaseros) sectionCaseros.classList.remove('hidden');
         if (sectionHosters) sectionHosters.classList.add('hidden');
-        if (sectionNormasExternos) sectionNormasExternos.classList.remove('hidden');
+        if (sectionNormasExternos) {
+          sectionNormasExternos.classList.remove('hidden');
+          document.getElementById('titulo-normas-externos').textContent = 'Normas para Guardas';
+        }
       } else {
         // Ninguno activo - quitar disabled de todas para que se puedan activar
         [cardMayordomo, cardGerente, cardCapataz].forEach(card => {
@@ -6414,22 +6423,35 @@
         
         const plantilla = plantillasNormasCache[tipo];
         
-        if (!plantilla || !plantilla.capitulos || plantilla.capitulos.length === 0) {
-          previewContainer.innerHTML = '<p style="color: var(--text-muted);">No hay plantilla definida para este tipo</p>';
+        if (!plantilla || !plantilla.elementos || plantilla.elementos.length === 0) {
+          previewContainer.innerHTML = '<p style="color: var(--text-muted);">No hay plantilla definida para este tipo</p><p style="font-size:0.8rem;color:var(--text-muted);">Puedes crearla en Admin Rama → Plantillas → Externos</p>';
           document.getElementById('btn-confirmar-copiar').disabled = true;
           return;
         }
         
-        // Mostrar preview
-        previewContainer.innerHTML = plantilla.capitulos.map((cap, idx) => `
-          <div style="margin-bottom: 10px;">
-            <strong>${idx + 1}. ${cap.titulo}</strong>
-            <ul style="margin: 4px 0 0 20px; font-size: 0.8rem; color: var(--text-light);">
-              ${(cap.preceptos || []).slice(0, 3).map(p => `<li>${typeof p === 'string' ? p : p.texto}</li>`).join('')}
-              ${(cap.preceptos || []).length > 3 ? `<li style="color:var(--text-muted);">... y ${cap.preceptos.length - 3} más</li>` : ''}
-            </ul>
-          </div>
-        `).join('');
+        // Filtrar capítulos para preview
+        const elementos = plantilla.elementos || [];
+        const capitulos = elementos.filter(el => el.tipo === 'capitulo');
+        
+        previewContainer.innerHTML = capitulos.length > 0 
+          ? capitulos.map((cap, idx) => {
+              const siguientes = elementos.slice(elementos.indexOf(cap) + 1);
+              const contenido = [];
+              for (const el of siguientes) {
+                if (el.tipo === 'capitulo') break;
+                if (el.tipo === 'linea' || el.tipo === 'apartado') contenido.push(el);
+              }
+              return `
+                <div style="margin-bottom: 10px;">
+                  <strong>${idx + 1}. ${cap.texto}</strong>
+                  <ul style="margin: 4px 0 0 20px; font-size: 0.8rem; color: var(--text-light);">
+                    ${contenido.slice(0, 3).map(p => `<li>${p.texto}</li>`).join('')}
+                    ${contenido.length > 3 ? `<li style="color:var(--text-muted);">... y ${contenido.length - 3} más</li>` : ''}
+                  </ul>
+                </div>
+              `;
+            }).join('')
+          : `<p style="color: var(--text-muted);">${elementos.length} elementos en la plantilla</p>`;
         
         document.getElementById('btn-confirmar-copiar').disabled = false;
         
@@ -6450,6 +6472,12 @@
       }
       
       const plantilla = plantillasNormasCache[tipo];
+      const elementos = plantilla.elementos || [];
+      
+      if (elementos.length === 0) {
+        alert('La plantilla está vacía');
+        return;
+      }
       
       try {
         const batch = db.batch();
@@ -6465,13 +6493,40 @@
         // Determinar orden inicial
         const ordenInicial = reemplazar ? 1 : normasExternosData.length + 1;
         
+        // Convertir elementos planos a estructura de capítulos
+        const capitulos = [];
+        let capituloActual = null;
+        
+        elementos.forEach(el => {
+          if (el.tipo === 'capitulo') {
+            if (capituloActual) capitulos.push(capituloActual);
+            capituloActual = { titulo: el.texto, preceptos: [], apartados: [] };
+          } else if (capituloActual) {
+            if (el.tipo === 'apartado') {
+              capituloActual.apartados.push({ titulo: el.texto, preceptos: [] });
+            } else if (el.tipo === 'linea' || el.tipo === 'sublinea' || el.tipo === 'detalle') {
+              if (capituloActual.apartados.length > 0) {
+                capituloActual.apartados[capituloActual.apartados.length - 1].preceptos.push({ texto: el.texto });
+              } else {
+                capituloActual.preceptos.push({ texto: el.texto });
+              }
+            }
+          }
+        });
+        if (capituloActual) capitulos.push(capituloActual);
+        
         // Añadir capítulos de la plantilla
-        plantilla.capitulos.forEach((cap, idx) => {
+        capitulos.forEach((cap, idx) => {
           const ref = db.collection('bienes').doc(bienId).collection('normasExternos').doc();
           batch.set(ref, {
             titulo: cap.titulo,
             orden: ordenInicial + idx,
-            preceptos: cap.preceptos || [],
+            preceptos: cap.preceptos,
+            apartados: cap.apartados.map((ap, apIdx) => ({
+              orden: apIdx + 1,
+              titulo: ap.titulo,
+              preceptos: ap.preceptos
+            })),
             copiadoDePlantilla: tipo,
             creadoEn: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -6486,7 +6541,7 @@
         cerrarModalCopiarPlantilla();
         await cargarNormasExternos();
         
-        alert(`✅ Plantilla copiada: ${plantilla.capitulos.length} capítulos`);
+        alert(`✅ Plantilla copiada: ${capitulos.length} capítulos`);
         
       } catch (e) {
         console.error('Error copiando plantilla:', e);
@@ -6530,7 +6585,7 @@
         container.innerHTML = `
           <div class="normas-empty">
             <div class="normas-empty-icon">📖</div>
-            <p>Sin normas de uso definidas</p>
+            <p>Sin normas para familiares</p>
             <p style="font-size: 0.8rem;">Añade capítulos o copia una plantilla base</p>
           </div>
         `;
