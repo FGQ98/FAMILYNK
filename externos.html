@@ -661,21 +661,8 @@
           <h2>Bienvenido/a a FAMILYNK</h2>
         </div>
         <div class="card-body">
-          <div class="landing-intro">
-            <p style="color: var(--text-muted); margin-bottom: 20px; text-align: center;">
-              Como colaborador externo, tiene acceso a:
-            </p>
-          </div>
-          
-          <!-- Cards de bienes asignados -->
-          <div id="landing-bienes" class="landing-bienes">
-            <!-- Se genera dinámicamente -->
-          </div>
-          
-          <div class="landing-divider"></div>
-          
-          <p style="font-size: 0.9rem; color: var(--text-dark); margin-bottom: 15px; font-weight: 600;">
-            Le recordamos sus compromisos:
+          <p style="font-size: 0.95rem; color: var(--text-dark); margin-bottom: 20px; font-weight: 600; text-align: center;">
+            Antes de continuar, confirme sus compromisos:
           </p>
           
           <div class="landing-text" id="landing-compromisos">
@@ -718,21 +705,6 @@
           </div>
           <div class="landing-footer" id="landing-footer-recurrente" style="display:none;">
             <span style="color: var(--sage);">✓</span> Compromisos aceptados anteriormente
-          </div>
-          
-          <!-- Card de Normas del puesto -->
-          <div class="normas-card" id="normas-card" style="display:none;">
-            <div class="normas-header">
-              <span class="normas-header-icon">📋</span>
-              <span>Normas del puesto</span>
-            </div>
-            <div class="normas-body" id="normas-body">
-              <!-- Se genera dinámicamente -->
-            </div>
-            <button class="normas-toggle" id="normas-toggle" onclick="toggleNormas()">
-              <span id="normas-toggle-text">Ver todas</span>
-              <span id="normas-toggle-icon">▼</span>
-            </button>
           </div>
           
           <button class="btn btn-primary" style="margin-top:20px;" id="btn-continuar" onclick="continuarAPanel()" disabled>Continuar</button>
@@ -792,8 +764,6 @@
     let accesosData = [];
     let familiaId = null;
     let terminosAceptados = false;
-    let normasData = [];
-    let normasExpandidas = false;
 
     // Vistas
     const viewLogin = document.getElementById('view-login');
@@ -961,9 +931,6 @@
 
         // Cargar texto personalizado de landing si existe
         await cargarTextoLanding();
-        
-        // Cargar normas de los bienes asignados
-        await cargarNormas();
 
         // Verificar si ya aceptó términos (guardado en localStorage)
         const aceptado = localStorage.getItem(`familynk_terminos_${currentUser.uid}`);
@@ -983,8 +950,6 @@
 
     // Mostrar landing para usuario nuevo (debe marcar todos)
     function mostrarLandingNuevo() {
-      renderBienesLanding();
-      
       // Reset checkboxes
       document.querySelectorAll('.compromiso-check').forEach(cb => {
         cb.checked = false;
@@ -1005,8 +970,6 @@
 
     // Mostrar landing para usuario recurrente (ya aceptó, puede continuar)
     function mostrarLandingRecurrente() {
-      renderBienesLanding();
-      
       // Marcar todos los checkboxes
       document.querySelectorAll('.compromiso-check').forEach(cb => {
         cb.checked = true;
@@ -1019,31 +982,6 @@
       document.getElementById('landing-footer-recurrente').style.display = 'block';
       
       showView(viewLanding);
-    }
-
-    // Renderizar cards de bienes en landing
-    function renderBienesLanding() {
-      const container = document.getElementById('landing-bienes');
-      
-      const tipoConfig = {
-        casero: { icon: '🏠', label: 'Casero', class: 'casero' },
-        hoster: { icon: '🏨', label: 'Hoster', class: 'hoster' },
-        operario: { icon: '🌾', label: 'Operario', class: 'operario' }
-      };
-
-      container.innerHTML = accesosData.map(acc => {
-        const cfg = tipoConfig[acc.tipo];
-        const rolText = acc.rol ? ` (${acc.rol})` : '';
-        return `
-          <div class="landing-bien-card ${cfg.class}">
-            <span class="landing-bien-icon">${cfg.icon}</span>
-            <div class="landing-bien-info">
-              <div class="landing-bien-nombre">${acc.bienNombre}</div>
-              <div class="landing-bien-rol">${cfg.label}${rolText}${acc.bienUbicacion ? ' · ' + acc.bienUbicacion : ''}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
     }
 
     // Verificar si todos los compromisos están marcados
@@ -1098,123 +1036,6 @@
         }
       } catch (e) {
         console.error('Error cargando texto landing:', e);
-      }
-    }
-
-    // Cargar normas de los bienes asignados
-    async function cargarNormas() {
-      normasData = [];
-      
-      for (const acceso of accesosData) {
-        try {
-          const normasSnap = await db.collection('bienes').doc(acceso.bienId)
-            .collection('normasExternos')
-            .orderBy('orden', 'asc')
-            .get();
-          
-          if (!normasSnap.empty) {
-            const capitulos = normasSnap.docs.map(doc => ({
-              id: doc.id,
-              bienId: acceso.bienId,
-              bienNombre: acceso.bienNombre,
-              tipoExterno: acceso.tipo,
-              ...doc.data()
-            }));
-            normasData.push(...capitulos);
-          }
-        } catch (e) {
-          console.log('Sin normas para', acceso.bienNombre, e.message);
-        }
-      }
-      
-      renderNormas();
-    }
-
-    // Renderizar normas en el landing
-    function renderNormas() {
-      const card = document.getElementById('normas-card');
-      const body = document.getElementById('normas-body');
-      
-      if (normasData.length === 0) {
-        card.style.display = 'none';
-        return;
-      }
-      
-      card.style.display = 'block';
-      
-      // Agrupar por bien si hay varios
-      const normasPorBien = {};
-      normasData.forEach(cap => {
-        if (!normasPorBien[cap.bienId]) {
-          normasPorBien[cap.bienId] = {
-            nombre: cap.bienNombre,
-            capitulos: []
-          };
-        }
-        normasPorBien[cap.bienId].capitulos.push(cap);
-      });
-      
-      const bienes = Object.keys(normasPorBien);
-      const mostrarNombreBien = bienes.length > 1;
-      
-      let html = '';
-      
-      bienes.forEach(bienId => {
-        const bien = normasPorBien[bienId];
-        
-        if (mostrarNombreBien) {
-          html += `<div style="font-weight:700; color:var(--sage-dark); margin-bottom:10px; font-size:0.9rem;">📍 ${bien.nombre}</div>`;
-        }
-        
-        bien.capitulos.forEach((cap, capIdx) => {
-          const preceptos = cap.preceptos || [];
-          
-          html += `
-            <div class="normas-capitulo">
-              <div class="normas-capitulo-titulo">
-                <span class="normas-capitulo-numero">${capIdx + 1}</span>
-                <span>${cap.titulo || 'Sin título'}</span>
-              </div>
-              ${preceptos.map((prec, precIdx) => `
-                <div class="normas-precepto">
-                  <span class="normas-precepto-num">${capIdx + 1}.${precIdx + 1}</span>
-                  <span>${typeof prec === 'string' ? prec : prec.texto}</span>
-                </div>
-              `).join('')}
-            </div>
-          `;
-        });
-      });
-      
-      body.innerHTML = html || '<div class="normas-empty">No hay normas definidas</div>';
-      
-      // Ajustar visibilidad inicial (colapsado si hay muchas)
-      const totalPreceptos = normasData.reduce((sum, cap) => sum + (cap.preceptos?.length || 0), 0);
-      if (totalPreceptos <= 5) {
-        body.style.maxHeight = 'none';
-        document.getElementById('normas-toggle').style.display = 'none';
-      } else {
-        body.style.maxHeight = '200px';
-        document.getElementById('normas-toggle').style.display = 'flex';
-      }
-    }
-
-    // Toggle expandir/colapsar normas
-    function toggleNormas() {
-      const body = document.getElementById('normas-body');
-      const text = document.getElementById('normas-toggle-text');
-      const icon = document.getElementById('normas-toggle-icon');
-      
-      normasExpandidas = !normasExpandidas;
-      
-      if (normasExpandidas) {
-        body.style.maxHeight = 'none';
-        text.textContent = 'Ver menos';
-        icon.textContent = '▲';
-      } else {
-        body.style.maxHeight = '200px';
-        text.textContent = 'Ver todas';
-        icon.textContent = '▼';
       }
     }
 

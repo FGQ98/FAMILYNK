@@ -1296,6 +1296,20 @@
       </div>
 
       <div class="card">
+        <div class="card-title">🔑 Portal de Externos</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Configura qué pueden ver los colaboradores externos (caseros, hosters, guardas)
+        </p>
+        <label style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: var(--cream); border-radius: 8px; cursor: pointer;">
+          <input type="checkbox" id="config-mostrar-normas-externos" onchange="guardarConfigExternos()" style="margin-top: 3px; width: 18px; height: 18px; accent-color: var(--sage);">
+          <div>
+            <strong style="display: block; margin-bottom: 4px;">Mostrar normas y procedimientos</strong>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Los externos verán un botón en su interfaz para consultar las normas del puesto que hayas definido en cada bien.</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="card">
         <div class="card-title">🚨 Zona de peligro</div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Estas acciones son irreversibles</p>
         <button class="btn btn-danger" onclick="exportarDatos()">📥 Exportar todos los datos</button>
@@ -3328,6 +3342,7 @@
       document.getElementById('config-lema').value = familiaData.lema || '';
       document.getElementById('config-generaciones').value = familiaData.numGeneraciones || 4;
       actualizarGeneraciones();
+      cargarConfigExternos();
     }
 
     async function guardarConfigRama() {
@@ -3349,6 +3364,28 @@
       familiaData.numGeneraciones = numGeneraciones;
       document.getElementById('estirpe-nombre').textContent = nombre;
       alert('✅ Configuración guardada');
+    }
+
+    async function guardarConfigExternos() {
+      const mostrarNormas = document.getElementById('config-mostrar-normas-externos').checked;
+      
+      try {
+        await db.collection('familias').doc(familiaData.id).update({ 
+          'config.mostrarNormasExternos': mostrarNormas
+        });
+        
+        if (!familiaData.config) familiaData.config = {};
+        familiaData.config.mostrarNormasExternos = mostrarNormas;
+        
+      } catch (e) {
+        console.error('Error guardando config externos:', e);
+        alert('Error al guardar');
+      }
+    }
+
+    function cargarConfigExternos() {
+      const mostrarNormas = familiaData.config?.mostrarNormasExternos || false;
+      document.getElementById('config-mostrar-normas-externos').checked = mostrarNormas;
     }
 
     function abrirModalInvitar() { document.getElementById('modal-invitar').classList.add('active'); }

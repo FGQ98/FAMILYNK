@@ -101,6 +101,164 @@
 
     .btn-logout:hover { background: rgba(255,255,255,0.25); }
 
+    .btn-normas {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: none;
+    }
+
+    .btn-normas:hover { background: rgba(255,255,255,0.25); }
+    .btn-normas.visible { display: inline-flex; align-items: center; gap: 6px; }
+
+    /* Modal Normas */
+    .modal-normas-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+
+    .modal-normas-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal-normas {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow: hidden;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+
+    .modal-normas-overlay.active .modal-normas {
+      transform: translateY(0);
+    }
+
+    .modal-normas-header {
+      background: var(--mayordomo);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-normas-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .modal-normas-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-normas-body {
+      padding: 20px;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .norma-capitulo {
+      margin-bottom: 20px;
+    }
+
+    .norma-capitulo-titulo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--mayordomo);
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--mayordomo-muted);
+    }
+
+    .norma-capitulo-num {
+      background: var(--mayordomo);
+      color: white;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .norma-precepto {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 0.9rem;
+      color: var(--text);
+      border-bottom: 1px solid var(--cream-dark);
+    }
+
+    .norma-precepto:last-child { border-bottom: none; }
+
+    .norma-precepto-num {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      min-width: 35px;
+    }
+
+    .norma-apartado {
+      margin: 12px 0 12px 20px;
+      padding-left: 12px;
+      border-left: 3px solid var(--mayordomo-muted);
+    }
+
+    .norma-apartado-titulo {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .normas-empty {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+    }
+
+    .normas-empty-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      opacity: 0.5;
+    }
+
     .main { max-width: 900px; margin: 0 auto; padding: 24px; }
 
     /* Selector de bien */
@@ -1057,6 +1215,7 @@
       <span class="header-badge">CASERO</span>
     </div>
     <div class="header-user">
+      <button class="btn-normas" id="btn-normas" onclick="abrirModalNormas()">📋 Normas y procedimientos</button>
       <span class="header-user-name" id="user-name">...</span>
       <button class="btn-logout" onclick="logout()">Salir</button>
     </div>
@@ -1339,6 +1498,8 @@
     let bienesAcceso = [];
     let bienActual = null;
     let permisosActuales = {};
+    let normasData = [];
+    let configFamilia = {};
     let datosModulos = {
       reservas: [],
       inventario: [],
@@ -1573,6 +1734,9 @@
       await cargarDatosModulos();
       renderModulos();
       restaurarTabActivo();
+      
+      // Cargar normas y verificar visibilidad del botón
+      await cargarNormasYConfig();
     }
 
     // ========== FUNCIONES AUXILIARES PLAN SEMANAL ==========
@@ -3315,7 +3479,136 @@
       btn.disabled = false;
       btn.textContent = '💾 Guardar';
     }
+
+    // ========== NORMAS Y PROCEDIMIENTOS ==========
+    async function cargarNormasYConfig() {
+      if (!bienActual) return;
+      
+      try {
+        // Cargar configuración de la familia
+        const familiaDoc = await db.collection('familias').doc(bienActual.bien.familiaId).get();
+        if (familiaDoc.exists) {
+          configFamilia = familiaDoc.data().config || {};
+        }
+        
+        // Verificar si mostrar el botón
+        if (configFamilia.mostrarNormasExternos) {
+          // Cargar normas del bien
+          const normasSnap = await db.collection('bienes').doc(bienActual.bien.id)
+            .collection('normasExternos')
+            .orderBy('orden', 'asc')
+            .get();
+          
+          normasData = normasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          
+          // Mostrar botón si hay normas
+          if (normasData.length > 0) {
+            document.getElementById('btn-normas').classList.add('visible');
+          } else {
+            document.getElementById('btn-normas').classList.remove('visible');
+          }
+        } else {
+          document.getElementById('btn-normas').classList.remove('visible');
+        }
+      } catch (e) {
+        console.log('Error cargando normas:', e.message);
+        document.getElementById('btn-normas').classList.remove('visible');
+      }
+    }
+
+    function abrirModalNormas() {
+      if (!bienActual) return;
+      
+      // Actualizar título
+      document.getElementById('modal-normas-titulo').textContent = 
+        `📋 Normas y procedimientos del ${bienActual.bien.nombre}`;
+      
+      // Renderizar contenido
+      renderNormasModal();
+      
+      // Mostrar modal
+      document.getElementById('modal-normas').classList.add('active');
+    }
+
+    function cerrarModalNormas() {
+      document.getElementById('modal-normas').classList.remove('active');
+    }
+
+    function renderNormasModal() {
+      const container = document.getElementById('modal-normas-body');
+      
+      if (normasData.length === 0) {
+        container.innerHTML = `
+          <div class="normas-empty">
+            <div class="normas-empty-icon">📋</div>
+            <p>No hay normas definidas para este bien</p>
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = normasData.map((cap, capIdx) => {
+        const preceptosDirectos = cap.preceptos || [];
+        const apartados = cap.apartados || [];
+        
+        let html = `
+          <div class="norma-capitulo">
+            <div class="norma-capitulo-titulo">
+              <span class="norma-capitulo-num">${capIdx + 1}</span>
+              <span>${cap.titulo || 'Sin título'}</span>
+            </div>
+        `;
+        
+        // Preceptos directos del capítulo
+        if (preceptosDirectos.length > 0) {
+          html += preceptosDirectos.map((prec, precIdx) => `
+            <div class="norma-precepto">
+              <span class="norma-precepto-num">${capIdx + 1}.${precIdx + 1}</span>
+              <span>${typeof prec === 'string' ? prec : prec.texto}</span>
+            </div>
+          `).join('');
+        }
+        
+        // Apartados
+        if (apartados.length > 0) {
+          html += apartados.map((ap, apIdx) => `
+            <div class="norma-apartado">
+              <div class="norma-apartado-titulo">${capIdx + 1}.${apIdx + 1} ${ap.titulo}</div>
+              ${(ap.preceptos || []).map((prec, precIdx) => `
+                <div class="norma-precepto">
+                  <span class="norma-precepto-num">${capIdx + 1}.${apIdx + 1}.${precIdx + 1}</span>
+                  <span>${typeof prec === 'string' ? prec : prec.texto}</span>
+                </div>
+              `).join('')}
+            </div>
+          `).join('');
+        }
+        
+        html += '</div>';
+        return html;
+      }).join('');
+    }
+
+    // Cerrar modal al hacer clic fuera
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('modal-normas').addEventListener('click', function(e) {
+        if (e.target === this) cerrarModalNormas();
+      });
+    });
   </script>
+
+  <!-- Modal Normas y Procedimientos -->
+  <div class="modal-normas-overlay" id="modal-normas">
+    <div class="modal-normas">
+      <div class="modal-normas-header">
+        <span class="modal-normas-title" id="modal-normas-titulo">📋 Normas y procedimientos</span>
+        <button class="modal-normas-close" onclick="cerrarModalNormas()">×</button>
+      </div>
+      <div class="modal-normas-body" id="modal-normas-body">
+        <!-- Se genera dinámicamente -->
+      </div>
+    </div>
+  </div>
 
   <!-- Modal Primeros Pasos Casero -->
   <div class="modal-overlay" id="modal-primeros-pasos-casero">
