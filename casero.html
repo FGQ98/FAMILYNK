@@ -1521,6 +1521,14 @@
 
     const tipoIcons = { inmueble: '🏠', terreno: '🌳', vehiculo: '🚗', ajuar: '🪑' };
     
+    // Helper para convertir fechas (Timestamp o string) a Date
+    function parseDate(fecha) {
+      if (!fecha) return null;
+      if (fecha.toDate) return fecha.toDate(); // Timestamp de Firestore
+      if (fecha instanceof Date) return fecha;
+      return new Date(fecha); // String ISO
+    }
+    
     // Iconos de zonas (mismo que limpieza.html)
     const ZONA_ICONS = {
       dormitorio: '🛏️', servicio: '🚿', aseo: '🚽', vestuario: '👔',
@@ -2207,8 +2215,9 @@
         itemsHtml = '<div class="modulo-card-empty">No hay pedidos pendientes</div>';
       } else {
         itemsHtml = pedidos.slice(0, 5).map(p => {
-          const fecha = p.fechaCreacion?.toDate ? 
-            p.fechaCreacion.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 
+          const fechaObj = parseDate(p.fechaCreacion);
+          const fecha = fechaObj ? 
+            fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 
             '';
           const esUrgente = p.estado === 'pendiente';
 
@@ -2394,15 +2403,18 @@
     function renderModuloReservas() {
       const p = permisosActuales.reservas;
       const hoy = new Date();
-      const proximas = datosModulos.reservas.filter(r => r.fechaFin?.toDate() >= hoy).slice(0, 5);
+      const proximas = datosModulos.reservas.filter(r => {
+        const fechaFin = parseDate(r.fechaFin);
+        return fechaFin && fechaFin >= hoy;
+      }).slice(0, 5);
 
       let itemsHtml = '';
       if (proximas.length === 0) {
         itemsHtml = '<div class="modulo-card-empty">No hay reservas próximas</div>';
       } else {
         itemsHtml = '<div class="item-list">' + proximas.map(r => {
-          const inicio = r.fechaInicio?.toDate();
-          const fin = r.fechaFin?.toDate();
+          const inicio = parseDate(r.fechaInicio);
+          const fin = parseDate(r.fechaFin);
           const fechaStr = inicio ? inicio.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
           return `
             <div class="item-row no-hover">
