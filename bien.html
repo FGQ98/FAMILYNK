@@ -2803,9 +2803,9 @@
           <label class="form-label">Tipo de plantilla</label>
           <select class="form-input" id="select-tipo-plantilla">
             <option value="">-- Selecciona tipo --</option>
-            <option value="mayordomo">🏠 Casero (Mayordomo)</option>
-            <option value="gerente">🏨 Hoster (Gerente)</option>
-            <option value="capataz">🌾 Guarda (Capataz)</option>
+            <option value="casero">🏠 Casero (Mayordomo)</option>
+            <option value="hoster">🏨 Hoster (Gerente)</option>
+            <option value="guarda">🌾 Guarda (Capataz)</option>
           </select>
         </div>
         <div id="plantilla-preview" style="display:none;">
@@ -2875,8 +2875,8 @@
           Selecciona la plantilla base según el tipo de este bien. Podrás editarlas después.
         </p>
         <div id="plantilla-miembros-auto-tipo" style="padding: 12px; background: var(--cream); border-radius: var(--radius-sm); margin-bottom: 16px;">
-          <div style="font-size: 0.8rem; color: var(--text-muted);">Tipo de bien detectado:</div>
-          <div style="font-weight: 700; margin-top: 4px;" id="plantilla-miembros-tipo-label">🏠 Inmueble</div>
+          <div style="font-size: 0.8rem; color: var(--text-muted);">Add-on activo detectado:</div>
+          <div style="font-weight: 700; margin-top: 4px;" id="plantilla-miembros-tipo-label">🏠 Mayordomo</div>
         </div>
         <div id="plantilla-miembros-preview" style="display:none;">
           <div class="form-label">Vista previa:</div>
@@ -6403,7 +6403,7 @@
         // Verificar si ya está en cache
         if (!plantillasNormasCache[tipo]) {
           const doc = await db.collection('familias').doc(familiaId)
-            .collection('plantillasNormas').doc(tipo).get();
+            .collection('plantillasNormasExternos').doc(tipo).get();
           
           if (doc.exists) {
             plantillasNormasCache[tipo] = doc.data();
@@ -6771,28 +6771,22 @@
 
     // ============ COPIAR PLANTILLA DE NORMAS PARA MIEMBROS ============
     
-    function getTipoBienParaPlantilla() {
-      const tipo = (bienData.tipo || '').toLowerCase();
-      if (['casa', 'piso', 'apartamento', 'chalet', 'inmueble', 'estudio', 'ático', 'duplex'].some(t => tipo.includes(t))) {
-        return 'inmueble';
-      }
-      if (['coche', 'moto', 'barco', 'vehiculo', 'furgoneta', 'camión', 'yate'].some(t => tipo.includes(t))) {
-        return 'vehiculo';
-      }
-      if (['finca', 'parcela', 'terreno', 'solar', 'huerto', 'campo'].some(t => tipo.includes(t))) {
-        return 'terreno';
-      }
-      return 'inmueble'; // Por defecto
+    function getAddonActivoParaPlantilla() {
+      // Detectar qué add-on está activo en el bien
+      if (bienData.mayordomo?.activo) return 'mayordomo';
+      if (bienData.gerente?.activo) return 'gerente';
+      if (bienData.capataz?.activo) return 'capataz';
+      return 'mayordomo'; // Por defecto
     }
 
     async function copiarPlantillaNormasMiembros() {
-      const tipoBien = getTipoBienParaPlantilla();
-      const tiposConfig = {
-        inmueble: { icono: '🏠', nombre: 'Inmueble' },
-        vehiculo: { icono: '🚗', nombre: 'Vehículo' },
-        terreno: { icono: '🌳', nombre: 'Terreno' }
+      const addonActivo = getAddonActivoParaPlantilla();
+      const addonsConfig = {
+        mayordomo: { icono: '🏠', nombre: 'Mayordomo' },
+        gerente: { icono: '🏨', nombre: 'Gerente' },
+        capataz: { icono: '🌾', nombre: 'Capataz' }
       };
-      const config = tiposConfig[tipoBien];
+      const config = addonsConfig[addonActivo];
       
       document.getElementById('plantilla-miembros-tipo-label').textContent = `${config.icono} ${config.nombre}`;
       document.getElementById('check-reemplazar-normas-miembros').checked = false;
@@ -6804,29 +6798,29 @@
       document.getElementById('modal-copiar-plantilla-miembros').classList.add('active');
       
       // Cargar plantilla
-      await cargarPreviewPlantillaMiembros(tipoBien);
+      await cargarPreviewPlantillaMiembros(addonActivo);
     }
 
     function cerrarModalCopiarPlantillaMiembros() {
       document.getElementById('modal-copiar-plantilla-miembros').classList.remove('active');
     }
 
-    async function cargarPreviewPlantillaMiembros(tipo) {
+    async function cargarPreviewPlantillaMiembros(addon) {
       const previewContainer = document.getElementById('plantilla-miembros-preview-content');
       const emptyContainer = document.getElementById('plantilla-miembros-empty');
       
       try {
-        if (!plantillasNormasMiembrosCache[tipo]) {
+        if (!plantillasNormasMiembrosCache[addon]) {
           const doc = await db.collection('familias').doc(familiaId)
-            .collection('plantillasNormasMiembros').doc(tipo).get();
+            .collection('plantillasNormasFamiliares').doc(addon).get();
           
-          plantillasNormasMiembrosCache[tipo] = doc.exists ? doc.data() : null;
+          plantillasNormasMiembrosCache[addon] = doc.exists ? doc.data() : null;
         }
         
-        const plantilla = plantillasNormasMiembrosCache[tipo];
+        const plantilla = plantillasNormasMiembrosCache[addon];
         
-        if (!plantilla || !plantilla.capitulos || plantilla.capitulos.length === 0) {
-          emptyContainer.innerHTML = '<p style="color: var(--text-muted);">No hay plantilla definida para este tipo de bien</p><p style="font-size:0.8rem;color:var(--text-muted);">Puedes crearla en Admin Rama → Plantillas</p>';
+        if (!plantilla || !plantilla.elementos || plantilla.elementos.length === 0) {
+          emptyContainer.innerHTML = '<p style="color: var(--text-muted);">No hay plantilla definida para este add-on</p><p style="font-size:0.8rem;color:var(--text-muted);">Puedes crearla en Admin Rama → Plantillas → Familiares</p>';
           document.getElementById('btn-confirmar-copiar-miembros').disabled = true;
           return;
         }
@@ -6834,15 +6828,29 @@
         emptyContainer.style.display = 'none';
         document.getElementById('plantilla-miembros-preview').style.display = 'block';
         
-        previewContainer.innerHTML = plantilla.capitulos.map((cap, idx) => `
-          <div style="margin-bottom: 10px;">
-            <strong>${idx + 1}. ${cap.titulo}</strong>
-            <ul style="margin: 4px 0 0 20px; font-size: 0.8rem; color: var(--text-light);">
-              ${(cap.preceptos || []).slice(0, 3).map(p => `<li>${typeof p === 'string' ? p : p.texto}</li>`).join('')}
-              ${(cap.preceptos || []).length > 3 ? `<li style="color:var(--text-muted);">... y ${cap.preceptos.length - 3} más</li>` : ''}
-            </ul>
-          </div>
-        `).join('');
+        // Filtrar solo capítulos y apartados para preview
+        const elementos = plantilla.elementos || [];
+        const capitulos = elementos.filter(el => el.tipo === 'capitulo');
+        
+        previewContainer.innerHTML = capitulos.length > 0 
+          ? capitulos.map((cap, idx) => {
+              const siguientes = elementos.slice(elementos.indexOf(cap) + 1);
+              const contenido = [];
+              for (const el of siguientes) {
+                if (el.tipo === 'capitulo') break;
+                if (el.tipo === 'linea' || el.tipo === 'apartado') contenido.push(el);
+              }
+              return `
+                <div style="margin-bottom: 10px;">
+                  <strong>${idx + 1}. ${cap.texto}</strong>
+                  <ul style="margin: 4px 0 0 20px; font-size: 0.8rem; color: var(--text-light);">
+                    ${contenido.slice(0, 3).map(p => `<li>${p.texto}</li>`).join('')}
+                    ${contenido.length > 3 ? `<li style="color:var(--text-muted);">... y ${contenido.length - 3} más</li>` : ''}
+                  </ul>
+                </div>
+              `;
+            }).join('')
+          : `<p style="color: var(--text-muted);">${elementos.length} elementos en la plantilla</p>`;
         
         document.getElementById('btn-confirmar-copiar-miembros').disabled = false;
         
@@ -6854,15 +6862,21 @@
     }
 
     async function confirmarCopiarPlantillaMiembros() {
-      const tipoBien = getTipoBienParaPlantilla();
+      const addonActivo = getAddonActivoParaPlantilla();
       const reemplazar = document.getElementById('check-reemplazar-normas-miembros').checked;
       
-      if (!plantillasNormasMiembrosCache[tipoBien]) {
+      if (!plantillasNormasMiembrosCache[addonActivo]) {
         alert('No hay plantilla disponible');
         return;
       }
       
-      const plantilla = plantillasNormasMiembrosCache[tipoBien];
+      const plantilla = plantillasNormasMiembrosCache[addonActivo];
+      const elementos = plantilla.elementos || [];
+      
+      if (elementos.length === 0) {
+        alert('La plantilla está vacía');
+        return;
+      }
       
       try {
         const batch = db.batch();
@@ -6876,26 +6890,53 @@
         
         const ordenInicial = reemplazar ? 1 : normasMiembrosData.length + 1;
         
-        plantilla.capitulos.forEach((cap, idx) => {
+        // Convertir elementos planos a estructura de capítulos
+        const capitulos = [];
+        let capituloActual = null;
+        
+        elementos.forEach(el => {
+          if (el.tipo === 'capitulo') {
+            if (capituloActual) capitulos.push(capituloActual);
+            capituloActual = { titulo: el.texto, preceptos: [], apartados: [] };
+          } else if (capituloActual) {
+            if (el.tipo === 'apartado') {
+              capituloActual.apartados.push({ titulo: el.texto, preceptos: [] });
+            } else if (el.tipo === 'linea' || el.tipo === 'sublinea' || el.tipo === 'detalle') {
+              if (capituloActual.apartados.length > 0) {
+                capituloActual.apartados[capituloActual.apartados.length - 1].preceptos.push({ texto: el.texto });
+              } else {
+                capituloActual.preceptos.push({ texto: el.texto });
+              }
+            }
+          }
+        });
+        if (capituloActual) capitulos.push(capituloActual);
+        
+        capitulos.forEach((cap, idx) => {
           const ref = db.collection('bienes').doc(bienId).collection('normasMiembros').doc();
           batch.set(ref, {
             titulo: cap.titulo,
             orden: ordenInicial + idx,
-            preceptos: cap.preceptos || [],
-            copiadoDePlantilla: tipoBien,
+            preceptos: cap.preceptos,
+            apartados: cap.apartados.map((ap, apIdx) => ({
+              orden: apIdx + 1,
+              titulo: ap.titulo,
+              preceptos: ap.preceptos
+            })),
+            copiadoDePlantilla: addonActivo,
             creadoEn: firebase.firestore.FieldValue.serverTimestamp()
           });
         });
         
         const bienRef = db.collection('bienes').doc(bienId);
-        batch.update(bienRef, { normasMiembrosUsanPlantilla: tipoBien });
+        batch.update(bienRef, { normasMiembrosUsanPlantilla: addonActivo });
         
         await batch.commit();
         
         cerrarModalCopiarPlantillaMiembros();
         await cargarNormasMiembros();
         
-        alert(`✅ Plantilla copiada: ${plantilla.capitulos.length} capítulos`);
+        alert(`✅ Plantilla copiada: ${capitulos.length} capítulos`);
         
       } catch (e) {
         console.error('Error copiando plantilla miembros:', e);
