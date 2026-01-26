@@ -8027,20 +8027,23 @@
       try {
         // Determinar si es admin
         const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
+        const familiaId = currentFamilia?.id || familiaData?.id;
+        
+        console.log('Cargando respondidas tablón - esAdmin:', esAdmin, 'familiaId:', familiaId);
         
         let snap;
-        if (esAdmin) {
+        if (esAdmin && familiaId) {
           // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
-            .where('familiaId', '==', currentFamilia?.id || familiaData?.id)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+            .where('familiaId', '==', familiaId)
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
         } else {
           // Usuario normal: mostrar MIS solicitudes respondidas
           snap = await db.collection('solicitudes')
             .where('solicitadoPor', '==', currentUser.uid)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
         }
@@ -8170,22 +8173,33 @@
       try {
         // Determinar si es admin
         const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
+        const familiaId = currentFamilia?.id || familiaData?.id;
+        
+        console.log('Cargando respondidas - esAdmin:', esAdmin, 'familiaId:', familiaId, 'uid:', currentUser?.uid);
+        
+        if (!familiaId && !currentUser?.uid) {
+          console.error('No hay familiaId ni uid para buscar respondidas');
+          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Error de datos</div>';
+          return;
+        }
         
         let snap;
-        if (esAdmin) {
+        if (esAdmin && familiaId) {
           // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
-            .where('familiaId', '==', currentFamilia?.id || familiaData?.id)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+            .where('familiaId', '==', familiaId)
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
+          console.log('Query admin - solicitudes encontradas:', snap.size);
         } else {
           // Usuario normal: mostrar MIS solicitudes respondidas
           snap = await db.collection('solicitudes')
             .where('solicitadoPor', '==', currentUser.uid)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
+          console.log('Query usuario - solicitudes encontradas:', snap.size);
         }
         
         if (snap.empty) {
