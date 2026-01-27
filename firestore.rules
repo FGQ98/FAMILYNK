@@ -140,9 +140,16 @@ service cloud.firestore {
       allow write: if isAuthenticated() && 
                      (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
       
+      // Subcolecciones de primer nivel (caseros, hosters, guardas, reservas, etc.)
       match /{subcollection}/{docId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
+        
+        // Subcolecciones de segundo nivel (gruposAjuar/{id}/articulos, etc.)
+        match /{nestedCollection}/{nestedDocId} {
+          allow read: if isAuthenticated();
+          allow write: if isAuthenticated();
+        }
       }
     }
     
