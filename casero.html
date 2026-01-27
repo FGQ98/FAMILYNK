@@ -1907,11 +1907,36 @@
         }
       }
 
-      // Inventario
+      // Inventario - Se guarda como campo del documento del bien, no como subcolección
       if (permisosActuales.inventario?.ver) {
         try {
-          const snap = await db.collection('bienes').doc(bienId).collection('inventario').get();
-          datosModulos.inventario = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const bienDoc = await db.collection('bienes').doc(bienId).get();
+          const inventarioData = bienDoc.data()?.inventario || {};
+          
+          // Transformar estructura anidada (lugar > grupo > artículos) en array plano
+          const itemsArray = [];
+          for (const [lugarKey, lugar] of Object.entries(inventarioData)) {
+            if (!lugar?.grupos) continue;
+            for (const [grupoKey, grupo] of Object.entries(lugar.grupos)) {
+              if (!grupo?.articulos) continue;
+              for (const [articuloKey, articulo] of Object.entries(grupo.articulos)) {
+                itemsArray.push({
+                  id: articuloKey,
+                  lugarKey,
+                  lugarNombre: lugar.nombre || lugarKey,
+                  grupoKey,
+                  grupoNombre: grupo.nombre || grupoKey,
+                  nombre: articulo.nombre || 'Sin nombre',
+                  stockActual: articulo.stock ?? articulo.stockActual ?? 0,
+                  stockMinimo: articulo.minimo ?? articulo.stockMinimo ?? 0,
+                  categoria: articulo.categoria || 'otro',
+                  unidad: articulo.unidad || ''
+                });
+              }
+            }
+          }
+          datosModulos.inventario = itemsArray;
+          console.log('Inventario cargado:', datosModulos.inventario.length, 'artículos');
         } catch (e) {
           console.log('Error cargando inventario:', e);
           datosModulos.inventario = [];
