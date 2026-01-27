@@ -389,6 +389,8 @@
       .tabs { flex-direction: column; }
     }
   </style>
+  <!-- Sistema de permisos CVEB para externos -->
+  <script src="permisos-externos.js"></script>
 </head>
 <body>
   <header class="header">
@@ -544,7 +546,17 @@
       currentUser = user;
       bienId = new URLSearchParams(window.location.search).get('id');
       if (!bienId) { alert('Bien no especificado'); return; }
+      
+      // Verificar si es externo y cargar permisos
+      await PermisosExt.init(db, user, bienId);
+      
       await cargarDatos();
+      
+      // Aplicar permisos CVEB si es externo
+      if (PermisosExt.esExterno) {
+        PermisosExt.aplicarUI('limpieza_zonasTareas');
+      }
+      
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('content').classList.remove('hidden');
     });
