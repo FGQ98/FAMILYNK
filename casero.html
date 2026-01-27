@@ -2807,30 +2807,51 @@
     // ========== MANTENIMIENTO ==========
     function renderModuloMantenimiento() {
       const p = permisosActuales.mantenimiento;
+      const urgenciaIcons = { baja: '🟢', media: '🟡', alta: '🔴' };
+      const urgenciaLabels = { baja: 'Baja', media: 'Media', alta: 'Alta' };
+      const estadoLabels = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
 
       let itemsHtml = '';
       if (datosModulos.mantenimiento.length === 0) {
         itemsHtml = '<div class="modulo-card-empty">Sin tareas de mantenimiento</div>';
       } else {
-        const items = datosModulos.mantenimiento.slice(0, 5);
-        itemsHtml = '<div class="item-list">' + items.map(m => `
-          <div class="item-row no-hover">
-            <span class="item-icon">🔧</span>
-            <div class="item-content">
-              <div class="item-title">${m.titulo}</div>
-              <div class="item-subtitle">${m.estado || 'Pendiente'}</div>
-            </div>
-          </div>
-        `).join('') + '</div>';
+        const items = datosModulos.mantenimiento;
+        itemsHtml = `
+          <table class="tabla-mantenimiento">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th style="text-align:center;">Urg.</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${items.map(m => {
+                const fecha = m.fecha?.toDate?.() ? m.fecha.toDate().toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : (m.fecha || '-');
+                const urgencia = m.urgencia || 'baja';
+                const estado = m.estado || 'pendiente';
+                return `
+                  <tr>
+                    <td class="td-titulo">${m.titulo || 'Sin título'}</td>
+                    <td style="text-align:center;" title="${urgenciaLabels[urgencia]}">${urgenciaIcons[urgencia] || '🟢'}</td>
+                    <td><span class="estado-badge ${estado}">${estadoLabels[estado] || estado}</span></td>
+                    <td class="td-fecha">${fecha}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        `;
       }
 
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">🔧 Mantenimiento</div>
+            <div class="modulo-card-title">🔧 Mantenimiento <span class="count-badge">${datosModulos.mantenimiento.length}</span></div>
             <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
           </div>
-          <div class="modulo-card-body">${itemsHtml}</div>
+          <div class="modulo-card-body" style="max-height: 300px; overflow-y: auto;">${itemsHtml}</div>
           ${p.crear ? `
             <div class="modulo-card-footer">
               <button class="btn btn-sm btn-primary" onclick="abrirModalMantenimiento()">+ Reportar</button>
@@ -4032,6 +4053,63 @@
       color: var(--mayordomo);
     }
     
+    /* Tabla de Mantenimiento */
+    .tabla-mantenimiento {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    .tabla-mantenimiento th {
+      text-align: left;
+      padding: 8px 10px;
+      background: var(--cream);
+      color: var(--text-light);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      border-bottom: 2px solid var(--cream-dark);
+    }
+    .tabla-mantenimiento td {
+      padding: 10px;
+      border-bottom: 1px solid var(--cream-dark);
+      vertical-align: middle;
+    }
+    .tabla-mantenimiento tr:hover {
+      background: var(--cream);
+    }
+    .tabla-mantenimiento .td-titulo {
+      font-weight: 600;
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tabla-mantenimiento .td-fecha {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    .estado-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .estado-badge.pendiente {
+      background: rgba(212, 105, 90, 0.15);
+      color: #D4695A;
+    }
+    .estado-badge.en_proceso {
+      background: rgba(232, 180, 77, 0.15);
+      color: #C4960F;
+    }
+    .estado-badge.completada {
+      background: rgba(125, 181, 154, 0.15);
+      color: #5A9B7B;
+    }
+
     /* Inventario mejorado */
     .inventario-lista { display: flex; flex-direction: column; gap: 6px; }
     .inventario-item {
