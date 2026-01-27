@@ -1717,7 +1717,9 @@
     async function cargarBien(index) {
       const acceso = bienesAcceso[index];
       bienActual = acceso;
-      permisosActuales = acceso.permisos;
+      
+      // Cargar permisos globales desde la familia (prioridad) o usar los del casero individual
+      permisosActuales = await cargarPermisosGlobales(acceso.bien.familiaId, 'casero', acceso.permisos);
 
       // Verificar que Mayordomo esté activo
       const mayordomoActivo = acceso.bien.mayordomoActivo === true;
@@ -1745,6 +1747,38 @@
       
       // Cargar normas y verificar visibilidad del botón
       await cargarNormasYConfig();
+    }
+
+    // Cargar permisos globales desde familias/{id}/permisosExternos
+    async function cargarPermisosGlobales(familiaId, tipoExterno, permisosFallback) {
+      try {
+        const familiaDoc = await db.collection('familias').doc(familiaId).get();
+        if (familiaDoc.exists) {
+          const data = familiaDoc.data();
+          const permisosGlobales = data.permisosExternos?.[tipoExterno];
+          
+          if (permisosGlobales) {
+            // Mapear CVEB (c,v,e,b) a (ver, crear, editar, borrar)
+            const permisosMapeados = {};
+            for (const [area, cveb] of Object.entries(permisosGlobales)) {
+              permisosMapeados[area] = {
+                ver: cveb.c || cveb.v || false,      // C (consultar) o V (ver todo) = ver
+                crear: cveb.e || false,              // E (editar/crear) = crear
+                editar: cveb.e || false,             // E (editar/crear) = editar
+                borrar: cveb.b || false              // B (borrar) = borrar
+              };
+            }
+            console.log('Permisos globales cargados:', permisosMapeados);
+            return permisosMapeados;
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando permisos globales:', error);
+      }
+      
+      // Fallback: usar permisos individuales del casero
+      console.log('Usando permisos individuales (fallback):', permisosFallback);
+      return permisosFallback || {};
     }
 
     // ========== FUNCIONES AUXILIARES PLAN SEMANAL ==========
