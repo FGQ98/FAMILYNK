@@ -1227,6 +1227,12 @@
     
     .hito-hora { color: var(--sage-dark); font-weight: 600; }
     
+    .hito-externo {
+      opacity: 0.75;
+      border-left: 3px dashed #607D8B;
+      background: linear-gradient(90deg, rgba(96,125,139,0.08) 0%, var(--white) 100%);
+    }
+    
     .dia-vacio {
       font-size: 0.75rem;
       color: var(--text-muted);
@@ -4869,6 +4875,7 @@
 
     // ============ CALENDARIO ============
     let eventosCalendario = [];
+    let configCalendarioCGI = null; // Config de tipos de reserva y colores
 
     // Helper para verificar visibilidad de un elemento
     function esVisibleParaUsuario(item, nidosMap) {
@@ -4914,6 +4921,15 @@
       const añoActual = new Date().getFullYear();
 
       try {
+        // Cargar config del calendario
+        try {
+          const configDoc = await db.collection('familias').doc(currentFamilia.id)
+            .collection('config').doc('calendarioFamiliar').get();
+          if (configDoc.exists) {
+            configCalendarioCGI = configDoc.data();
+          }
+        } catch (e) { console.warn('Config calendario no disponible'); }
+
         // Cargar mapa de nidos para verificar estirpes
         const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
         const nidosMap = {};
@@ -4986,52 +5002,171 @@
           console.warn('Error cargando citas (ignorado)');
         }
 
-        // RESERVAS de bienes
+        // RESERVAS de bienes (con colores dinámicos de config)
         try {
           const bienesSnap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
           for (const bienDoc of bienesSnap.docs) {
             const bien = bienDoc.data();
+            
+            // Determinar add-on activo
+            let addonActivo = null;
+            if (bien.mayordomoActivo) addonActivo = 'mayordomo';
+            else if (bien.gerenteActivo) addonActivo = 'gerente';
+            else if (bien.capatazActivo) addonActivo = 'capataz';
+            
             const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
             reservasSnap.docs.forEach(resDoc => {
               const r = { id: resDoc.id, ...resDoc.data() };
               if (!esVisibleParaUsuario(r, nidosMap)) return;
               
-              // Soportar ambos formatos: entrada/salida y fechaInicio/fechaFin
               const fechaEntrada = r.entrada || r.fechaInicio;
               const fechaSalida = r.salida || r.fechaFin;
               
               if (fechaEntrada) {
-                // Convertir Timestamp a string si es necesario
                 const fechaStr = fechaEntrada.toDate ? 
-                  fechaEntrada.toDate().toISOString().split('T')[0] : 
-                  fechaEntrada;
+                  fechaEntrada.toDate().toISOString().split('T')[0] : fechaEntrada;
                 const fechaFinStr = fechaSalida ? 
-                  (fechaSalida.toDate ? fechaSalida.toDate().toISOString().split('T')[0] : fechaSalida) : 
-                  null;
+                  (fechaSalida.toDate ? fechaSalida.toDate().toISOString().split('T')[0] : fechaSalida) : null;
                 
-                // Clasificar subtipo de reserva
-                const tipoReserva = (r.tipo || '').toLowerCase();
-                let subtipo = 'reserva';
-                if (tipoReserva.includes('huespedes') || tipoReserva.includes('huesped') || tipoReserva.includes('alquiler') || tipoReserva.includes('inquilino')) {
-                  subtipo = 'huespedes';
-                } else if (tipoReserva.includes('estancia') || tipoReserva.includes('familia') || tipoReserva.includes('familiar')) {
-                  subtipo = 'estancia';
-                } else if (tipoReserva.includes('zafarrancho')) {
-                  subtipo = 'zafarrancho';
-                } else if (tipoReserva.includes('monteria') || tipoReserva.includes('caceria')) {
-                  subtipo = 'monteria';
+                // Buscar color y emoji en config
+                const tipoId = r.tipo || '';
+                let color = '#9C27B0';
+                let emoji = '🏠';
+                
+                if (configCalendarioCGI?.tiposAddon && addonActivo) {
+                  const tiposAddon = configCalendarioCGI.tiposAddon[addonActivo] || [];
+                  const tipoConfig = tiposAddon.find(t => t.id === tipoId);
+                  if (tipoConfig) {
+                    color = tipoConfig.color || color;
+                    emoji = tipoConfig.emoji || emoji;
+                  }
                 }
+                
+                // Texto descriptivo
+                let descripcion = bien.nombre || 'Reserva';
+                if (r.nidoReservaNombre) descripcion += ` · ${r.nidoReservaNombre}`;
+                else if (r.otroGrupoNombre) descripcion += ` · ${r.otroGrupoNombre}`;
                 
                 eventosCalendario.push({ 
                   tipo: 'reserva',
-                  subtipo: subtipo,
-                  titulo: `🏠 ${bien.nombre || 'Reserva'}`, 
+                  subtipo: tipoId,
+                  color: color,
+                  titulo: `${emoji} ${descripcion}`, 
                   fecha: fechaStr,
                   fechaFin: fechaFinStr,
                   solicitante: r.solicitadoPorNombre || ''
                 });
               }
             });
+            
+            // EXTERNOS: Libranzas y Vacaciones (si están habilitados)
+            if (configCalendarioCGI?.externos?.mostrarLibranzas || configCalendarioCGI?.externos?.mostrarVacaciones) {
+              // Cargar caseros
+              try {
+                const caserosSnap = await db.collection('bienes').doc(bienDoc.id)
+                  .collection('caseros').where('activo', '==', true).get();
+                
+                caserosSnap.docs.forEach(caseroDoc => {
+                  const casero = caseroDoc.data();
+                  const nombreCasero = casero.nombre || 'Casero';
+                  
+                  // Libranzas semanales (próximos 14 días para CGI)
+                  if (configCalendarioCGI.externos.mostrarLibranzas && casero.libranzas?.diasSemana?.length > 0) {
+                    const diasSemanaMap = { 'L': 1, 'M': 2, 'X': 3, 'J': 4, 'V': 5, 'S': 6, 'D': 0 };
+                    
+                    casero.libranzas.diasSemana.forEach(dia => {
+                      const diaNum = diasSemanaMap[dia];
+                      if (diaNum === undefined) return;
+                      
+                      for (let i = 0; i < 14; i++) {
+                        const fechaCheck = new Date();
+                        fechaCheck.setDate(fechaCheck.getDate() + i);
+                        
+                        if (fechaCheck.getDay() === diaNum) {
+                          const fechaStr = fechaCheck.toISOString().split('T')[0];
+                          eventosCalendario.push({
+                            tipo: 'externo',
+                            subtipo: 'libranza',
+                            color: '#607D8B',
+                            titulo: `👤 Libranza: ${nombreCasero}`,
+                            fecha: fechaStr,
+                            esExterno: true
+                          });
+                        }
+                      }
+                    });
+                  }
+                  
+                  // Vacaciones
+                  if (configCalendarioCGI.externos.mostrarVacaciones && casero.vacaciones?.bloques?.length > 0) {
+                    casero.vacaciones.bloques.forEach(bloque => {
+                      if (!bloque.inicio) return;
+                      eventosCalendario.push({
+                        tipo: 'externo',
+                        subtipo: 'vacaciones',
+                        color: '#607D8B',
+                        titulo: `👤 Vacaciones: ${nombreCasero}`,
+                        fecha: bloque.inicio,
+                        fechaFin: bloque.fin,
+                        esExterno: true
+                      });
+                    });
+                  }
+                });
+              } catch (e) { console.warn('Error cargando caseros para calendario'); }
+              
+              // Cargar hosters
+              try {
+                const hostersSnap = await db.collection('bienes').doc(bienDoc.id)
+                  .collection('hosters').where('activo', '==', true).get();
+                
+                hostersSnap.docs.forEach(hosterDoc => {
+                  const hoster = hosterDoc.data();
+                  const nombreHoster = hoster.nombre || 'Hoster';
+                  
+                  if (configCalendarioCGI.externos.mostrarLibranzas && hoster.libranzas?.diasSemana?.length > 0) {
+                    const diasSemanaMap = { 'L': 1, 'M': 2, 'X': 3, 'J': 4, 'V': 5, 'S': 6, 'D': 0 };
+                    
+                    hoster.libranzas.diasSemana.forEach(dia => {
+                      const diaNum = diasSemanaMap[dia];
+                      if (diaNum === undefined) return;
+                      
+                      for (let i = 0; i < 14; i++) {
+                        const fechaCheck = new Date();
+                        fechaCheck.setDate(fechaCheck.getDate() + i);
+                        
+                        if (fechaCheck.getDay() === diaNum) {
+                          const fechaStr = fechaCheck.toISOString().split('T')[0];
+                          eventosCalendario.push({
+                            tipo: 'externo',
+                            subtipo: 'libranza',
+                            color: '#607D8B',
+                            titulo: `👤 Libranza: ${nombreHoster}`,
+                            fecha: fechaStr,
+                            esExterno: true
+                          });
+                        }
+                      }
+                    });
+                  }
+                  
+                  if (configCalendarioCGI.externos.mostrarVacaciones && hoster.vacaciones?.bloques?.length > 0) {
+                    hoster.vacaciones.bloques.forEach(bloque => {
+                      if (!bloque.inicio) return;
+                      eventosCalendario.push({
+                        tipo: 'externo',
+                        subtipo: 'vacaciones',
+                        color: '#607D8B',
+                        titulo: `👤 Vacaciones: ${nombreHoster}`,
+                        fecha: bloque.inicio,
+                        fechaFin: bloque.fin,
+                        esExterno: true
+                      });
+                    });
+                  }
+                });
+              } catch (e) { console.warn('Error cargando hosters para calendario'); }
+            }
           }
         } catch (e) {
           console.warn('Error cargando reservas (ignorado)');
@@ -5065,21 +5200,26 @@
       const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
       
-      const iconos = {
-        'cumple': '🎂',
-        'especial': '⭐',
-        'evento': '🎉',
-        'cita': '📋',
-        'reserva': '🏠',
-        'mantenimiento': '🔧',
-        'default': '📌'
-      };
-      
-      // Agrupar eventos por fecha
+      // Agrupar eventos por fecha (incluir eventos con rango)
       const eventosPorFecha = {};
       eventosCalendario.forEach(e => {
+        // Añadir a fecha de inicio
         if (!eventosPorFecha[e.fecha]) eventosPorFecha[e.fecha] = [];
         eventosPorFecha[e.fecha].push(e);
+        
+        // Si tiene fechaFin, añadir a todos los días del rango
+        if (e.fechaFin && e.fechaFin !== e.fecha) {
+          let fechaActual = new Date(e.fecha);
+          const fechaFinDate = new Date(e.fechaFin);
+          fechaActual.setDate(fechaActual.getDate() + 1);
+          
+          while (fechaActual <= fechaFinDate) {
+            const fechaStr = fechaActual.toISOString().split('T')[0];
+            if (!eventosPorFecha[fechaStr]) eventosPorFecha[fechaStr] = [];
+            eventosPorFecha[fechaStr].push({...e, esContinuacion: true});
+            fechaActual.setDate(fechaActual.getDate() + 1);
+          }
+        }
       });
       
       let html = '<div class="proximos-dias">';
@@ -5108,30 +5248,36 @@
         if (eventosDelDia.length === 0) {
           html += '<div class="dia-vacio">Sin eventos</div>';
         } else {
-          const eventosAMostrar = eventosDelDia.slice(0, 3);
+          const eventosAMostrar = eventosDelDia.slice(0, 4);
           
           eventosAMostrar.forEach(function(evento) {
-            const icono = iconos[evento.tipo] || iconos.default;
             var tituloLimpio = evento.titulo || 'Sin título';
             
-            html += '<div class="hito-item" onclick="verDetalleHito(\'' + (evento.id || '') + '\', \'' + evento.tipo + '\', \'' + fechaStr + '\')" title="' + tituloLimpio + '">';
-            html += '<span class="hito-icono">' + icono + '</span>';
-            html += '<div class="hito-info">';
-            html += '<div class="hito-titulo">' + tituloLimpio + '</div>';
-            html += '<div class="hito-meta">';
-            if (evento.hora) {
-              html += '<span class="hito-hora">' + evento.hora + '</span>';
+            // Indicador de color para reservas y externos
+            let colorIndicator = '';
+            if (evento.color) {
+              colorIndicator = '<span class="color-dot" style="background:' + evento.color + '; width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px;"></span>';
             }
-            if (evento.lugar) {
-              html += '<span>' + evento.lugar + '</span>';
+            
+            // Clase adicional para externos
+            let claseExtra = evento.esExterno ? 'hito-externo' : '';
+            
+            html += '<div class="hito-item ' + claseExtra + '" onclick="verDetalleHito(\'' + (evento.id || '') + '\', \'' + evento.tipo + '\', \'' + fechaStr + '\')" title="' + tituloLimpio + '">';
+            html += '<div class="hito-info" style="display:flex; align-items:center;">';
+            html += colorIndicator;
+            html += '<div class="hito-titulo" style="flex:1;">' + tituloLimpio + '</div>';
+            html += '</div>';
+            if (evento.hora || evento.lugar) {
+              html += '<div class="hito-meta">';
+              if (evento.hora) html += '<span class="hito-hora">' + evento.hora + '</span>';
+              if (evento.lugar) html += '<span>' + evento.lugar + '</span>';
+              html += '</div>';
             }
-            html += '</div>';
-            html += '</div>';
             html += '</div>';
           });
           
-          if (eventosDelDia.length > 3) {
-            html += '<div class="dia-mas" onclick="window.location.href=\'calendario.html\'">+' + (eventosDelDia.length - 3) + ' más</div>';
+          if (eventosDelDia.length > 4) {
+            html += '<div class="dia-mas" onclick="window.location.href=\'calendario.html\'">+' + (eventosDelDia.length - 4) + ' más</div>';
           }
         }
         
