@@ -167,6 +167,89 @@
     .leyenda-dot.reserva-monteria { background: var(--reserva-monteria); }
     .leyenda-dot.reserva-recoleccion { background: var(--reserva-recoleccion); }
     .leyenda-dot.reserva-actividad { background: var(--reserva-actividad); }
+    
+    /* Filtros */
+    .filtros-container {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-soft);
+    }
+    .filtros-titulo {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text-light);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filtros-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .filtro-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+      background: var(--cream);
+      color: var(--text-light);
+    }
+    .filtro-chip:hover {
+      background: var(--cream-dark);
+    }
+    .filtro-chip.active {
+      border-color: currentColor;
+      background: var(--white);
+    }
+    .filtro-chip .chip-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .filtro-chip.hito { color: var(--hito); }
+    .filtro-chip.cita { color: var(--cita); }
+    .filtro-chip.evento { color: var(--evento); }
+    .filtro-chip.reserva { color: var(--reserva); }
+    .filtro-chip.externo { color: #607D8B; }
+    .filtro-chip .chip-dot.hito { background: var(--hito); }
+    .filtro-chip .chip-dot.cita { background: var(--cita); }
+    .filtro-chip .chip-dot.evento { background: var(--evento); }
+    .filtro-chip .chip-dot.reserva { background: var(--reserva); }
+    .filtro-chip .chip-dot.externo { background: #607D8B; }
+    
+    /* Subtipos dinámicos */
+    .filtros-subtipos {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--cream-dark);
+      display: none;
+    }
+    .filtros-subtipos.visible {
+      display: block;
+    }
+    .filtros-subtipos-titulo {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    
+    /* Externos (libranzas/vacaciones) */
+    .evento-externo {
+      opacity: 0.7;
+      border-left: 3px dashed #607D8B !important;
+    }
+    .leyenda-dot.externo { background: #607D8B; }
 
     /* Panel móvil - Solo visible en móvil */
     .mobile-panel {
@@ -274,6 +357,34 @@
     <div id="loading" class="loading"><div class="spinner"></div></div>
 
     <div id="content" class="hidden">
+      <!-- Filtros -->
+      <div class="filtros-container">
+        <div class="filtros-titulo">🔍 Filtrar por tipo</div>
+        <div class="filtros-chips" id="filtros-principales">
+          <div class="filtro-chip hito active" data-tipo="hito" onclick="toggleFiltro(this)">
+            <span class="chip-dot hito"></span> Hitos
+          </div>
+          <div class="filtro-chip cita active" data-tipo="cita" onclick="toggleFiltro(this)">
+            <span class="chip-dot cita"></span> Citas
+          </div>
+          <div class="filtro-chip evento active" data-tipo="evento" onclick="toggleFiltro(this)">
+            <span class="chip-dot evento"></span> Eventos
+          </div>
+          <div class="filtro-chip reserva active" data-tipo="reserva" onclick="toggleFiltro(this)">
+            <span class="chip-dot reserva"></span> Reservas
+          </div>
+          <div class="filtro-chip externo" data-tipo="externo" onclick="toggleFiltro(this)" id="filtro-externo" style="display:none;">
+            <span class="chip-dot externo"></span> Externos
+          </div>
+        </div>
+        <div class="filtros-subtipos" id="filtros-subtipos">
+          <div class="filtros-subtipos-titulo">Tipos de reserva:</div>
+          <div class="filtros-chips" id="chips-subtipos">
+            <!-- Se cargan dinámicamente -->
+          </div>
+        </div>
+      </div>
+      
       <div class="calendar-card">
         <div class="calendar-header">
           <div class="calendar-nav">
@@ -293,14 +404,11 @@
           <div class="calendar-weekday">Dom</div>
         </div>
 
-        <div class="leyenda">
+        <div class="leyenda" id="leyenda-dinamica">
+          <!-- Se carga dinámicamente según config -->
           <div class="leyenda-item"><div class="leyenda-dot hito"></div> Hitos</div>
           <div class="leyenda-item"><div class="leyenda-dot cita"></div> Citas</div>
           <div class="leyenda-item"><div class="leyenda-dot evento"></div> Eventos</div>
-          <div class="leyenda-item"><div class="leyenda-dot reserva-estancia"></div> Familia</div>
-          <div class="leyenda-item"><div class="leyenda-dot reserva-huespedes"></div> Huéspedes</div>
-          <div class="leyenda-item"><div class="leyenda-dot reserva-zafarrancho"></div> Zafarrancho</div>
-          <div class="leyenda-item"><div class="leyenda-dot reserva-monteria"></div> Montería</div>
         </div>
       </div>
 
@@ -325,9 +433,21 @@
     let currentFamilia = null;
     let miNidoPrincipal = null;
     let todosEventos = [];
+    let eventosFiltrados = [];
     let fechaActual = new Date();
     let fechaSeleccionada = new Date();
     const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    
+    // Config y filtros
+    let configCalendario = null;
+    let filtrosActivos = {
+      hito: true,
+      cita: true,
+      evento: true,
+      reserva: true,
+      externo: false
+    };
+    let subtiposFiltro = {}; // Subtipos de reserva activos
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -349,13 +469,157 @@
           if (nidoDoc.exists) miNidoPrincipal = { id: nidoDoc.id, ...nidoDoc.data() };
         }
 
+        // Cargar config del calendario
+        await cargarConfigCalendario();
         await cargarTodosEventos();
+        aplicarFiltros();
         renderCalendario();
+        renderLeyendaDinamica();
 
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
       } catch(e) { console.error('Error:', e); }
     });
+
+    async function cargarConfigCalendario() {
+      if (!currentFamilia?.id) return;
+      
+      try {
+        const configDoc = await db.collection('familias').doc(currentFamilia.id)
+          .collection('config').doc('calendarioFamiliar').get();
+        
+        if (configDoc.exists) {
+          configCalendario = configDoc.data();
+          
+          // Inicializar filtros de subtipos desde config
+          if (configCalendario.tiposAddon) {
+            ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
+              const tipos = configCalendario.tiposAddon[addon] || [];
+              tipos.filter(t => t.mostrarEnCal).forEach(t => {
+                subtiposFiltro[t.id] = true;
+              });
+            });
+          }
+          
+          // Mostrar chip de externos si están habilitados
+          if (configCalendario.externos?.mostrarLibranzas || configCalendario.externos?.mostrarVacaciones) {
+            document.getElementById('filtro-externo').style.display = 'inline-flex';
+            filtrosActivos.externo = true;
+            document.getElementById('filtro-externo').classList.add('active');
+          }
+          
+          renderChipsSubtipos();
+        }
+      } catch (e) {
+        console.warn('Error cargando config calendario:', e);
+      }
+    }
+
+    function renderChipsSubtipos() {
+      const container = document.getElementById('chips-subtipos');
+      if (!configCalendario?.tiposAddon) {
+        document.getElementById('filtros-subtipos').style.display = 'none';
+        return;
+      }
+      
+      let html = '';
+      let hayTipos = false;
+      
+      ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
+        const tipos = configCalendario.tiposAddon[addon] || [];
+        tipos.filter(t => t.mostrarEnCal).forEach(t => {
+          hayTipos = true;
+          const activo = subtiposFiltro[t.id] !== false;
+          html += `
+            <div class="filtro-chip ${activo ? 'active' : ''}" 
+                 data-subtipo="${t.id}" 
+                 onclick="toggleSubtipo(this)"
+                 style="color: ${t.color || '#7A9E7E'}">
+              <span class="chip-dot" style="background: ${t.color || '#7A9E7E'}"></span>
+              ${t.emoji || ''} ${t.nombre}
+            </div>
+          `;
+        });
+      });
+      
+      container.innerHTML = html;
+      
+      if (hayTipos) {
+        document.getElementById('filtros-subtipos').classList.add('visible');
+      }
+    }
+
+    function renderLeyendaDinamica() {
+      const leyenda = document.getElementById('leyenda-dinamica');
+      
+      let html = `
+        <div class="leyenda-item"><div class="leyenda-dot hito"></div> Hitos</div>
+        <div class="leyenda-item"><div class="leyenda-dot cita"></div> Citas</div>
+        <div class="leyenda-item"><div class="leyenda-dot evento"></div> Eventos</div>
+      `;
+      
+      // Añadir tipos de reserva desde config
+      if (configCalendario?.tiposAddon) {
+        ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
+          const tipos = configCalendario.tiposAddon[addon] || [];
+          tipos.filter(t => t.mostrarEnCal).forEach(t => {
+            html += `
+              <div class="leyenda-item">
+                <div class="leyenda-dot" style="background: ${t.color || '#7A9E7E'}"></div>
+                ${t.emoji || ''} ${t.nombre}
+              </div>
+            `;
+          });
+        });
+      }
+      
+      // Añadir externos si están habilitados
+      if (configCalendario?.externos?.mostrarLibranzas || configCalendario?.externos?.mostrarVacaciones) {
+        html += `<div class="leyenda-item"><div class="leyenda-dot externo"></div> Externos</div>`;
+      }
+      
+      leyenda.innerHTML = html;
+    }
+
+    function toggleFiltro(chip) {
+      const tipo = chip.dataset.tipo;
+      filtrosActivos[tipo] = !filtrosActivos[tipo];
+      chip.classList.toggle('active');
+      
+      // Mostrar/ocultar subtipos si toggle es de reserva
+      if (tipo === 'reserva') {
+        document.getElementById('filtros-subtipos').classList.toggle('visible', filtrosActivos.reserva);
+      }
+      
+      aplicarFiltros();
+      renderCalendario();
+    }
+
+    function toggleSubtipo(chip) {
+      const subtipo = chip.dataset.subtipo;
+      subtiposFiltro[subtipo] = !subtiposFiltro[subtipo];
+      chip.classList.toggle('active');
+      
+      aplicarFiltros();
+      renderCalendario();
+    }
+
+    function aplicarFiltros() {
+      eventosFiltrados = todosEventos.filter(ev => {
+        // Filtro principal por tipo
+        if (!filtrosActivos[ev.tipo]) return false;
+        
+        // Si es externo, verificar filtro de externos
+        if (ev.esExterno && !filtrosActivos.externo) return false;
+        
+        // Si es reserva, verificar subtipo
+        if (ev.tipo === 'reserva' && ev.tipoConfigId) {
+          if (subtiposFiltro[ev.tipoConfigId] === false) return false;
+        }
+        
+        return true;
+      });
+    }
 
     function esVisibleParaUsuario(item) {
       if (!item.visibilidad || item.visibilidad === 'rama') return true;
@@ -528,33 +792,31 @@
         for (const bienDoc of bienesSnap.docs) {
           const bien = bienDoc.data();
           const visible = esVisibleParaUsuario(bien);
-          console.log(`- Bien: "${bien.nombre}" | Visibilidad: ${bien.visibilidad || 'rama'} | Mostrar: ${visible}`);
           
           if (!visible) continue;
           
           const bienNombre = bien.nombre || 'Bien';
           
+          // Determinar add-on activo
+          let addonActivo = null;
+          if (bien.mayordomoActivo) addonActivo = 'mayordomo';
+          else if (bien.gerenteActivo) addonActivo = 'gerente';
+          else if (bien.capatazActivo) addonActivo = 'capataz';
+          
           try {
-            // Cargar TODAS las reservas (sin filtro de estado)
+            // Cargar reservas
             const reservasSnap = await db.collection('bienes').doc(bienDoc.id)
               .collection('reservas')
               .get();
             
-            console.log(`Reservas en ${bienNombre}:`, reservasSnap.size);
-            if (reservasSnap.size > 0) {
-              console.log('Primera reserva:', reservasSnap.docs[0].data());
-            }
-            
             reservasSnap.docs.forEach(resDoc => {
               const r = resDoc.data();
               
-              // Manejar Timestamps de Firestore y strings
               let fechaEntrada = r.entrada || r.fechaInicio;
               let fechaSalida = r.salida || r.fechaFin;
               
               if (!fechaEntrada) return;
               
-              // Convertir Timestamp a string si es necesario
               if (fechaEntrada.toDate) {
                 fechaEntrada = fechaEntrada.toDate().toISOString().split('T')[0];
               }
@@ -563,33 +825,34 @@
               }
               
               const fecha = new Date(fechaEntrada);
-              const tipoReserva = (r.tipo || '').toLowerCase();
+              const tipoReservaId = r.tipo || '';
               
-              let subtipo = 'reserva';
-              if (tipoReserva.includes('huespedes') || tipoReserva.includes('huesped') || tipoReserva.includes('alquiler') || tipoReserva.includes('inquilino')) {
-                subtipo = 'huespedes';
-              } else if (tipoReserva.includes('estancia') || tipoReserva.includes('familia') || tipoReserva.includes('familiar')) {
-                subtipo = 'estancia';
-              } else if (tipoReserva.includes('zafarrancho')) {
-                subtipo = 'zafarrancho';
-              } else if (tipoReserva.includes('monteria') || tipoReserva.includes('caceria')) {
-                subtipo = 'monteria';
-              } else if (tipoReserva.includes('recoleccion') || tipoReserva.includes('cosecha')) {
-                subtipo = 'recoleccion';
-              } else if (tipoReserva.includes('actividad')) {
-                subtipo = 'actividad';
+              // Buscar color en config
+              let color = '#9C27B0'; // Default
+              let tipoConfigId = tipoReservaId;
+              
+              if (configCalendario?.tiposAddon && addonActivo) {
+                const tiposAddon = configCalendario.tiposAddon[addonActivo] || [];
+                const tipoConfig = tiposAddon.find(t => t.id === tipoReservaId);
+                if (tipoConfig) {
+                  color = tipoConfig.color || color;
+                  tipoConfigId = tipoConfig.id;
+                }
               }
               
+              // Texto descriptivo
               let textoLargo = bienNombre;
-              if (r.quien) textoLargo += ` — ${r.quien}`;
+              if (r.nidoReservaNombre) textoLargo += ` — ${r.nidoReservaNombre}`;
+              else if (r.otroGrupoNombre) textoLargo += ` — ${r.otroGrupoNombre}`;
+              else if (r.quien) textoLargo += ` — ${r.quien}`;
               else if (r.motivo) textoLargo += ` — ${r.motivo}`;
               else if (r.solicitadoPorNombre) textoLargo += ` — ${r.solicitadoPorNombre}`;
               
-              console.log('Reserva añadida:', fechaEntrada, bienNombre, 'tipo:', 'reserva');
-              
               todosEventos.push({
                 tipo: 'reserva',
-                subtipo: subtipo,
+                subtipo: tipoReservaId,
+                tipoConfigId: tipoConfigId,
+                color: color,
                 titulo: textoLargo,
                 textoCorto: bienNombre.substring(0, 12),
                 fecha: fechaEntrada,
@@ -603,6 +866,158 @@
                 id: resDoc.id
               });
             });
+            
+            // ========================================
+            // 5. EXTERNOS: Libranzas y Vacaciones
+            // ========================================
+            if (configCalendario?.externos?.mostrarLibranzas || configCalendario?.externos?.mostrarVacaciones) {
+              // Cargar caseros
+              try {
+                const caserosSnap = await db.collection('bienes').doc(bienDoc.id)
+                  .collection('caseros').where('activo', '==', true).get();
+                
+                caserosSnap.docs.forEach(caseroDoc => {
+                  const casero = caseroDoc.data();
+                  const nombreCasero = casero.nombre || 'Casero';
+                  
+                  // Libranzas semanales
+                  if (configCalendario.externos.mostrarLibranzas && casero.libranzas?.diasSemana?.length > 0) {
+                    // Marcar días de libranza para el mes actual y siguiente
+                    const diasSemanaMap = { 'L': 1, 'M': 2, 'X': 3, 'J': 4, 'V': 5, 'S': 6, 'D': 0 };
+                    
+                    casero.libranzas.diasSemana.forEach(dia => {
+                      const diaNum = diasSemanaMap[dia];
+                      if (diaNum === undefined) return;
+                      
+                      // Generar eventos para los próximos 60 días
+                      for (let i = 0; i < 60; i++) {
+                        const fechaCheck = new Date();
+                        fechaCheck.setDate(fechaCheck.getDate() + i);
+                        
+                        if (fechaCheck.getDay() === diaNum) {
+                          const fechaStr = fechaCheck.toISOString().split('T')[0];
+                          todosEventos.push({
+                            tipo: 'reserva',
+                            subtipo: 'libranza',
+                            tipoConfigId: 'libranza',
+                            esExterno: true,
+                            color: '#607D8B',
+                            titulo: `Libranza: ${nombreCasero}`,
+                            textoCorto: `Lib. ${nombreCasero.substring(0, 8)}`,
+                            fecha: fechaStr,
+                            mesNum: fechaCheck.getMonth() + 1,
+                            diaNum: fechaCheck.getDate(),
+                            anioNum: fechaCheck.getFullYear(),
+                            anual: false,
+                            origen: bienNombre,
+                            bienId: bienDoc.id
+                          });
+                        }
+                      }
+                    });
+                  }
+                  
+                  // Vacaciones
+                  if (configCalendario.externos.mostrarVacaciones && casero.vacaciones?.bloques?.length > 0) {
+                    casero.vacaciones.bloques.forEach(bloque => {
+                      if (!bloque.inicio) return;
+                      
+                      const fechaInicio = new Date(bloque.inicio);
+                      todosEventos.push({
+                        tipo: 'reserva',
+                        subtipo: 'vacaciones',
+                        tipoConfigId: 'vacaciones',
+                        esExterno: true,
+                        color: '#607D8B',
+                        titulo: `Vacaciones: ${nombreCasero}`,
+                        textoCorto: `Vac. ${nombreCasero.substring(0, 8)}`,
+                        fecha: bloque.inicio,
+                        fechaFin: bloque.fin,
+                        mesNum: fechaInicio.getMonth() + 1,
+                        diaNum: fechaInicio.getDate(),
+                        anioNum: fechaInicio.getFullYear(),
+                        anual: false,
+                        origen: bienNombre,
+                        bienId: bienDoc.id
+                      });
+                    });
+                  }
+                });
+              } catch (e) { console.warn('Error cargando caseros:', e); }
+              
+              // Cargar hosters
+              try {
+                const hostersSnap = await db.collection('bienes').doc(bienDoc.id)
+                  .collection('hosters').where('activo', '==', true).get();
+                
+                hostersSnap.docs.forEach(hosterDoc => {
+                  const hoster = hosterDoc.data();
+                  const nombreHoster = hoster.nombre || 'Hoster';
+                  
+                  // Libranzas semanales
+                  if (configCalendario.externos.mostrarLibranzas && hoster.libranzas?.diasSemana?.length > 0) {
+                    const diasSemanaMap = { 'L': 1, 'M': 2, 'X': 3, 'J': 4, 'V': 5, 'S': 6, 'D': 0 };
+                    
+                    hoster.libranzas.diasSemana.forEach(dia => {
+                      const diaNum = diasSemanaMap[dia];
+                      if (diaNum === undefined) return;
+                      
+                      for (let i = 0; i < 60; i++) {
+                        const fechaCheck = new Date();
+                        fechaCheck.setDate(fechaCheck.getDate() + i);
+                        
+                        if (fechaCheck.getDay() === diaNum) {
+                          const fechaStr = fechaCheck.toISOString().split('T')[0];
+                          todosEventos.push({
+                            tipo: 'reserva',
+                            subtipo: 'libranza',
+                            tipoConfigId: 'libranza',
+                            esExterno: true,
+                            color: '#607D8B',
+                            titulo: `Libranza: ${nombreHoster}`,
+                            textoCorto: `Lib. ${nombreHoster.substring(0, 8)}`,
+                            fecha: fechaStr,
+                            mesNum: fechaCheck.getMonth() + 1,
+                            diaNum: fechaCheck.getDate(),
+                            anioNum: fechaCheck.getFullYear(),
+                            anual: false,
+                            origen: bienNombre,
+                            bienId: bienDoc.id
+                          });
+                        }
+                      }
+                    });
+                  }
+                  
+                  // Vacaciones
+                  if (configCalendario.externos.mostrarVacaciones && hoster.vacaciones?.bloques?.length > 0) {
+                    hoster.vacaciones.bloques.forEach(bloque => {
+                      if (!bloque.inicio) return;
+                      
+                      const fechaInicio = new Date(bloque.inicio);
+                      todosEventos.push({
+                        tipo: 'reserva',
+                        subtipo: 'vacaciones',
+                        tipoConfigId: 'vacaciones',
+                        esExterno: true,
+                        color: '#607D8B',
+                        titulo: `Vacaciones: ${nombreHoster}`,
+                        textoCorto: `Vac. ${nombreHoster.substring(0, 8)}`,
+                        fecha: bloque.inicio,
+                        fechaFin: bloque.fin,
+                        mesNum: fechaInicio.getMonth() + 1,
+                        diaNum: fechaInicio.getDate(),
+                        anioNum: fechaInicio.getFullYear(),
+                        anual: false,
+                        origen: bienNombre,
+                        bienId: bienDoc.id
+                      });
+                    });
+                  }
+                });
+              } catch (e) { console.warn('Error cargando hosters:', e); }
+            }
+            
           } catch(e) { console.error('Error reservas bien:', bienDoc.id, e); }
         }
       } catch(e) { console.error('Error bienes:', e); }
@@ -644,9 +1059,21 @@
         let eventsHtml = '';
         
         eventosDelDia.slice(0, maxVisibles).forEach((e, idx) => {
-          // Usar subtipo para reservas (reserva-estancia, reserva-huespedes, etc.)
-          const claseColor = e.tipo === 'reserva' && e.subtipo ? `reserva-${e.subtipo}` : e.tipo;
-          eventsHtml += `<div class="day-event ${claseColor}" title="${e.titulo}" data-dia="${dia}" data-idx="${idx}">${e.textoCorto}</div>`;
+          // Usar color dinámico si existe, sino clase CSS
+          let styleAttr = '';
+          let claseColor = e.tipo;
+          
+          if (e.tipo === 'reserva') {
+            if (e.color) {
+              // Color dinámico desde config
+              styleAttr = `style="background: ${e.color}; color: white;"`;
+              claseColor = e.esExterno ? 'evento-externo' : '';
+            } else {
+              claseColor = e.subtipo ? `reserva-${e.subtipo}` : 'reserva';
+            }
+          }
+          
+          eventsHtml += `<div class="day-event ${claseColor}" ${styleAttr} title="${e.titulo}" data-dia="${dia}" data-idx="${idx}">${e.textoCorto}</div>`;
         });
         
         if (eventosDelDia.length > maxVisibles) {
@@ -722,7 +1149,12 @@
     }
 
     function getEventosDelDia(dia, mes, anio) {
-      return todosEventos.filter(e => {
+      // Usar eventosFiltrados si hay filtros aplicados, sino todosEventos
+      const eventos = eventosFiltrados.length > 0 || Object.values(filtrosActivos).some(v => !v) 
+        ? eventosFiltrados 
+        : todosEventos;
+      
+      return eventos.filter(e => {
         // Eventos anuales (hitos principalmente)
         if (e.anual) {
           return e.mesNum === mes && e.diaNum === dia;
@@ -787,13 +1219,24 @@
       });
       
       container.innerHTML = eventos.map((e, idx) => {
-        const claseColor = e.tipo === 'reserva' && e.subtipo ? `reserva-${e.subtipo}` : e.tipo;
+        let styleAttr = '';
+        let claseColor = e.tipo;
+        
+        if (e.tipo === 'reserva') {
+          if (e.color) {
+            styleAttr = `style="background: ${e.color};"`;
+            claseColor = e.esExterno ? 'externo' : '';
+          } else {
+            claseColor = e.subtipo ? `reserva-${e.subtipo}` : 'reserva';
+          }
+        }
+        
         return `
-        <div class="mobile-event-item ${highlightIdx === idx ? 'highlighted' : ''}"> 
-          <div class="mobile-event-color ${claseColor}"></div>
+        <div class="mobile-event-item ${highlightIdx === idx ? 'highlighted' : ''} ${e.esExterno ? 'evento-externo' : ''}"> 
+          <div class="mobile-event-color ${claseColor}" ${styleAttr}></div>
           <div class="mobile-event-info">
             <div class="mobile-event-titulo">${e.titulo}</div>
-            <div class="mobile-event-meta">${e.hora || 'Todo el día'}${e.lugar ? ' • ' + e.lugar : ''}</div>
+            <div class="mobile-event-meta">${e.hora || 'Todo el día'}${e.lugar ? ' • ' + e.lugar : ''}${e.esExterno ? ' • 👤 Externo' : ''}</div>
           </div>
         </div>
       `}).join('');
