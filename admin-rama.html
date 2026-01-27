@@ -701,9 +701,9 @@
     .matriz-permisos-ext tr:hover { background: var(--cream); }
 
     /* Filas de módulo (cabecera) */
-    .matriz-permisos-ext tr.modulo-header { background: var(--mayordomo-muted); }
-    .matriz-permisos-ext tr.modulo-header td { font-weight: 700; color: var(--mayordomo); padding: 10px 8px; }
-    .matriz-permisos-ext tr.modulo-header:hover { background: rgba(139, 115, 85, 0.2); }
+    .matriz-permisos-ext tr.modulo-header { background: rgba(139, 115, 85, 0.15); }
+    .matriz-permisos-ext tr.modulo-header td { font-weight: 700; color: #6B5A45; padding: 10px 8px; }
+    .matriz-permisos-ext tr.modulo-header:hover { background: rgba(139, 115, 85, 0.25); }
 
     /* Filas de card (indentadas) */
     .matriz-permisos-ext tr.card-row td:first-child { padding-left: 32px; }
@@ -1770,20 +1770,30 @@
         invitacionesData = [];
       }
 
-      // Cargar solicitudes de la familia (colección raíz)
+      // Cargar solicitudes de todos los bienes de la familia
       try {
-        const solSnap = await db.collection('solicitudes')
-          .where('familiaId', '==', familiaData.id)
-          .orderBy('fechaCreacion', 'desc')
-          .limit(100)
-          .get();
-        
-        solicitudesData = solSnap.docs.map(d => ({
-          id: d.id,
-          ...d.data()
-        }));
-        
-        console.log('✅ Solicitudes cargadas:', solicitudesData.length);
+        solicitudesData = [];
+        for (const bien of bienesData) {
+          const solSnap = await db.collection('bienes').doc(bien.id).collection('solicitudes')
+            .orderBy('fechaCreacion', 'desc')
+            .limit(50)
+            .get();
+          solSnap.docs.forEach(d => {
+            solicitudesData.push({ 
+              id: d.id, 
+              bienId: bien.id, 
+              bienNombre: bien.nombre,
+              bienTipo: bien.tipo,
+              ...d.data() 
+            });
+          });
+        }
+        // Ordenar por fecha más reciente
+        solicitudesData.sort((a, b) => {
+          const fa = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fb = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fb - fa;
+        });
       } catch (e) {
         console.log('No se pudieron cargar solicitudes:', e.message);
         solicitudesData = [];
@@ -2485,7 +2495,7 @@
 
     // ========== ESTRUCTURA PERMISOS CVEB GRANULARES ==========
     
-    // MAYORDOMO: Módulo → Cards
+    // MAYORDOMO (Casero): Módulo → Cards
     const estructuraPermisosMayordomo = {
       reservas: { icon: '📅', nombre: 'Reservas', cards: null },
       inventario: { icon: '📦', nombre: 'Inventario', cards: [
@@ -2515,7 +2525,7 @@
       prepararSemana: { icon: '📋', nombre: 'Preparar semana', cards: null }
     };
 
-    // GERENTE: Módulo → Cards
+    // GERENTE (Hoster): Módulo → Cards
     const estructuraPermisosGerente = {
       reservas: { icon: '📅', nombre: 'Reservas', cards: null },
       habitaciones: { icon: '🛏️', nombre: 'Habitaciones', cards: null },
@@ -2532,7 +2542,7 @@
       menus: { icon: '🍽️', nombre: 'Menús', cards: null }
     };
 
-    // CAPATAZ: Módulo → Cards
+    // CAPATAZ (Guarda): Módulo → Cards
     const estructuraPermisosCapataz = {
       parcelas: { icon: '🗺️', nombre: 'Parcelas', cards: null },
       instalaciones: { icon: '🏭', nombre: 'Instalaciones', cards: null },
@@ -2676,6 +2686,7 @@
           const tipo = checkbox.dataset.tipo;
           const area = checkbox.dataset.area;
           const permiso = checkbox.dataset.permiso;
+          if (!tipo || !area || !permiso) return;
           if (!nuevosPermisos[tipo][area]) {
             nuevosPermisos[tipo][area] = { c: false, v: false, e: false, b: false };
           }
@@ -4109,36 +4120,32 @@
         const tipoLabel = tipoSolicitudLabels[sol.tipoSolicitud] || sol.tipoSolicitud;
         
         // Formatear fechas
-        const fechaInicio = sol.fechaInicio?.toDate?.() || (sol.fechaInicio ? new Date(sol.fechaInicio) : null);
-        const fechaFin = sol.fechaFin?.toDate?.() || (sol.fechaFin ? new Date(sol.fechaFin) : null);
+        const fechaInicio = sol.fechaInicio?.toDate?.() || new Date(sol.fechaInicio);
+        const fechaFin = sol.fechaFin?.toDate?.() || new Date(sol.fechaFin);
         const fechaCreacion = sol.fechaCreacion?.toDate?.() || new Date();
         
-        const formatFecha = (d) => d ? d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '—';
+        const formatFecha = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         const formatFechaCompleta = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
         // Buscar quien solicitó
-        const solicitanteId = sol.solicitadoPor || sol.creadoPor;
-        const solicitante = usuariosData.find(u => u.id === solicitanteId);
-        const nombreSolicitante = sol.solicitadoPorNombre || solicitante?.nombre || solicitante?.email || 'Usuario';
+        const solicitante = usuariosData.find(u => u.id === sol.creadoPor);
+        const nombreSolicitante = solicitante?.nombre || solicitante?.email || 'Usuario';
 
         const estadoClass = sol.estado || 'pendiente';
         const acciones = sol.estado === 'pendiente' ? `
-          <button class="btn btn-sm btn-aprobar" onclick="aprobarSolicitud('${sol.id}')">✓ Aprobar</button>
-          <button class="btn btn-sm btn-rechazar" onclick="rechazarSolicitud('${sol.id}')">✗ Rechazar</button>
+          <button class="btn btn-sm btn-aprobar" onclick="aprobarSolicitud('${sol.bienId}', '${sol.id}')">✓ Aprobar</button>
+          <button class="btn btn-sm btn-rechazar" onclick="rechazarSolicitud('${sol.bienId}', '${sol.id}')">✗ Rechazar</button>
         ` : `<span style="font-size:0.8rem;color:var(--text-muted)">${sol.estado === 'aprobada' ? '✅ Aprobada' : '❌ Rechazada'}</span>`;
-
-        // Info de quién reserva (nido u otro grupo)
-        const quienReserva = sol.nidoReservaNombre || sol.familiaReservaNombre || '';
 
         return `
           <div class="solicitud-item ${estadoClass}">
             <div class="solicitud-icono">${icono}</div>
             <div class="solicitud-info">
               <div class="solicitud-tipo">${tipoLabel}</div>
-              <div class="solicitud-titulo">${sol.bienNombre || 'Bien'} · ${sol.tipoReservaNombre || sol.tipoNombre || sol.descripcion || 'Solicitud'}${quienReserva ? ` · ${quienReserva}` : ''}</div>
+              <div class="solicitud-titulo">${sol.bienNombre} · ${sol.tipoNombre || sol.descripcion || 'Solicitud'}</div>
               <div class="solicitud-detalle">
-                ${fechaInicio ? `📅 ${formatFecha(fechaInicio)} - ${formatFecha(fechaFin)}` : ''}
-                ${sol.motivo ? ` · "${sol.motivo}"` : (sol.notas ? ` · "${sol.notas}"` : '')}
+                📅 ${formatFecha(fechaInicio)} - ${formatFecha(fechaFin)}
+                ${sol.notas ? ` · "${sol.notas}"` : ''}
               </div>
               <div class="solicitud-meta">
                 <span>👤 ${nombreSolicitante}</span>
@@ -4153,11 +4160,11 @@
       }).join('');
     }
 
-    async function aprobarSolicitud(solicitudId) {
+    async function aprobarSolicitud(bienId, solicitudId) {
       if (!confirm('¿Aprobar esta solicitud?')) return;
 
       try {
-        const solRef = db.collection('solicitudes').doc(solicitudId);
+        const solRef = db.collection('bienes').doc(bienId).collection('solicitudes').doc(solicitudId);
         const solDoc = await solRef.get();
         
         if (!solDoc.exists) {
@@ -4166,32 +4173,16 @@
         }
 
         const solData = solDoc.data();
-        const bienId = solData.bienId;
 
-        if (!bienId) {
-          alert('Error: La solicitud no tiene bien asociado');
-          return;
-        }
-
-        // Crear la reserva real en la colección del bien
+        // Crear la reserva real en la colección correspondiente
         const reservaData = {
-          tipo: solData.tipoReserva || solData.tipo,
-          tipoNombre: solData.tipoReservaNombre || solData.tipoNombre || '',
-          familiaReservaId: solData.familiaReservaId || null,
-          familiaReservaNombre: solData.familiaReservaNombre || '',
-          nidoReservaId: solData.nidoReservaId || null,
-          nidoReservaNombre: solData.nidoReservaNombre || '',
+          tipo: solData.tipo,
+          tipoNombre: solData.tipoNombre,
           fechaInicio: solData.fechaInicio,
           fechaFin: solData.fechaFin,
-          numFamiliares: solData.numFamiliares || 0,
-          numInvitados: solData.numInvitados || 0,
-          motivo: solData.motivo || '',
-          visibilidad: solData.visibilidad || 'rama',
           notas: solData.notas || '',
-          creadoPor: solData.solicitadoPor,
-          creadoPorNombre: solData.solicitadoPorNombre || '',
+          creadoPor: solData.creadoPor,
           aprobadoPor: currentUser.uid,
-          aprobadoPorNombre: userData?.nombre || '',
           fechaCreacion: solData.fechaCreacion,
           fechaAprobacion: firebase.firestore.FieldValue.serverTimestamp(),
           origenSolicitud: solicitudId
@@ -4203,26 +4194,9 @@
         // Actualizar estado de la solicitud
         await solRef.update({ 
           estado: 'aprobada',
-          respondidoPor: currentUser.uid,
-          respondidoPorNombre: userData?.nombre || '',
-          fechaRespuesta: firebase.firestore.FieldValue.serverTimestamp()
+          aprobadoPor: currentUser.uid,
+          fechaAprobacion: firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        // Crear notificación para el solicitante
-        if (solData.solicitadoPor) {
-          await db.collection('notificaciones').add({
-            tipo: 'respuesta',
-            categoria: solData.tipoSolicitud || 'reserva',
-            titulo: '✅ Solicitud aprobada',
-            mensaje: `Tu reserva en ${solData.bienNombre || 'el bien'} ha sido aprobada`,
-            familiaId: familiaData.id,
-            destinatarios: [solData.solicitadoPor],
-            leidoPor: [],
-            origen: { tipo: 'solicitud', id: solicitudId },
-            estado: 'activa',
-            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
 
         await cargarDatos();
         alert('✅ Solicitud aprobada. La reserva está activa.');
@@ -4232,45 +4206,17 @@
       }
     }
 
-    async function rechazarSolicitud(solicitudId) {
+    async function rechazarSolicitud(bienId, solicitudId) {
       const motivo = prompt('Motivo del rechazo (opcional):');
       if (motivo === null) return; // Canceló el prompt
 
       try {
-        const solRef = db.collection('solicitudes').doc(solicitudId);
-        const solDoc = await solRef.get();
-        
-        if (!solDoc.exists) {
-          alert('Solicitud no encontrada');
-          return;
-        }
-
-        const solData = solDoc.data();
-
-        // Actualizar estado de la solicitud
-        await solRef.update({
+        await db.collection('bienes').doc(bienId).collection('solicitudes').doc(solicitudId).update({
           estado: 'rechazada',
-          respondidoPor: currentUser.uid,
-          respondidoPorNombre: userData?.nombre || '',
-          motivoRechazo: motivo || '',
-          fechaRespuesta: firebase.firestore.FieldValue.serverTimestamp()
+          rechazadoPor: currentUser.uid,
+          motivoRechazo: motivo,
+          fechaRechazo: firebase.firestore.FieldValue.serverTimestamp()
         });
-
-        // Crear notificación para el solicitante
-        if (solData.solicitadoPor) {
-          await db.collection('notificaciones').add({
-            tipo: 'respuesta',
-            categoria: solData.tipoSolicitud || 'reserva',
-            titulo: '❌ Solicitud rechazada',
-            mensaje: motivo ? `Motivo: ${motivo}` : `Tu solicitud para ${solData.bienNombre || 'el bien'} ha sido rechazada`,
-            familiaId: familiaData.id,
-            destinatarios: [solData.solicitadoPor],
-            leidoPor: [],
-            origen: { tipo: 'solicitud', id: solicitudId },
-            estado: 'activa',
-            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
 
         await cargarDatos();
         alert('❌ Solicitud rechazada');
