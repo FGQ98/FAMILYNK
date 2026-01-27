@@ -4028,9 +4028,9 @@
           <label class="form-label">Tu respuesta</label>
           <div class="respuesta-opciones" style="display: flex; gap: 8px; flex-wrap: wrap;">
             <label class="respuesta-opcion" style="flex: 1; min-width: 100px;">
-              <input type="radio" name="respuesta-estado" value="aceptada" style="display: none;">
-              <div class="respuesta-btn aceptada" onclick="seleccionarRespuesta(this, 'aceptada')">
-                <span>✅</span> Aceptada
+              <input type="radio" name="respuesta-estado" value="aprobada" style="display: none;">
+              <div class="respuesta-btn aceptada" onclick="seleccionarRespuesta(this, 'aprobada')">
+                <span>✅</span> Aprobada
               </div>
             </label>
             <label class="respuesta-opcion" style="flex: 1; min-width: 100px;">
@@ -5539,10 +5539,13 @@
       const misDatos = miUsuario.exists ? miUsuario.data() : {};
       const rolLower = String(misDatos.rol || '').toLowerCase();
       const credencialLower = String(misDatos.credencial || '').toLowerCase();
+      // Incluir admin, matriarca y patriarca
       const soyAdmin = rolLower.includes('admin') || credencialLower.includes('admin') || 
+                       rolLower === 'matriarca' || rolLower === 'patriarca' ||
+                       credencialLower === 'matriarca' || credencialLower === 'patriarca' ||
                        misDatos.esAdmin === true || misDatos.adminRama === true || misDatos.superAdmin === true;
       
-      console.log('Soy admin:', soyAdmin, 'Rol:', misDatos.rol);
+      console.log('Soy admin/matriarca/patriarca:', soyAdmin, 'Rol:', misDatos.rol, 'Credencial:', misDatos.credencial);
 
       try {
         let itemsAccion = [];
@@ -5592,7 +5595,7 @@
         try {
           const misRespondidas = await db.collection('solicitudes')
             .where('solicitadoPor', '==', miUid)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio'])
+            .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio'])
             .orderBy('fechaRespuesta', 'desc')
             .limit(10)
             .get();
@@ -5601,7 +5604,7 @@
           
           misRespondidas.docs.forEach(doc => {
             const data = doc.data();
-            const esAprobada = data.estado === 'aceptada';
+            const esAprobada = data.estado === 'aprobada';
             
             itemsInfo.push({
               id: doc.id,
@@ -5736,7 +5739,18 @@
 
     function getTituloSolicitud(data) {
       switch(data.tipo) {
-        case 'reserva': return `Reserva: ${data.bienNombre || 'Bien'}`;
+        case 'reserva': 
+          // Incluir info de quién reserva si es familiar
+          let tituloReserva = `Reserva: ${data.bienNombre || 'Bien'}`;
+          if (data.tipoReservaNombre) {
+            tituloReserva = `${data.tipoReservaNombre}: ${data.bienNombre || 'Bien'}`;
+          }
+          if (data.nidoReservaNombre) {
+            tituloReserva += ` · ${data.nidoReservaNombre}`;
+          } else if (data.otroGrupoNombre) {
+            tituloReserva += ` · ${data.otroGrupoNombre}`;
+          }
+          return tituloReserva;
         case 'evento': return `Evento: ${data.nombre || data.titulo || 'Sin nombre'}`;
         case 'iniciativa': return `Propuesta: ${data.titulo || 'Sin título'}`;
         case 'averia': return `Avería: ${data.bienNombre || data.descripcion?.substring(0, 30) || 'Ver detalle'}`;
@@ -6093,7 +6107,20 @@
             '<p><strong>👤 Solicitante:</strong> ' + (sol.solicitadoPorNombre || 'Usuario') + '</p>';
           
           if (notifData.categoria === 'reserva') {
-            if (sol.tipoReserva) html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoReserva + '</p>';
+            // Tipo de reserva con nombre
+            if (sol.tipoReservaNombre) {
+              html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoReservaNombre + '</p>';
+            } else if (sol.tipoReserva) {
+              html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoReserva + '</p>';
+            }
+            
+            // Quién reserva (nido u otro grupo)
+            if (sol.nidoReservaNombre) {
+              html += '<p><strong>🏠 Reserva:</strong> ' + sol.nidoReservaNombre + '</p>';
+            } else if (sol.otroGrupoNombre) {
+              html += '<p><strong>👨‍👩‍👧‍👦 Reserva:</strong> ' + sol.otroGrupoNombre + '</p>';
+            }
+            
             html += '<p><strong>📅 Fechas:</strong> ' + (sol.fechaInicio || '?') + ' → ' + (sol.fechaFin || '?') + '</p>';
             if (sol.numFamiliares || sol.numInvitados) {
               html += '<p><strong>👥 Asistentes:</strong> ' + (sol.numFamiliares || 0) + ' familiares';
@@ -6214,12 +6241,12 @@
         const solicitanteUid = solData.solicitadoPor;
         if (solicitanteUid && solicitudId) {
           const estadoEmoji = {
-            'aceptada': '✅',
+            'aprobada': '✅',
             'rechazada': '❌',
             'en_estudio': '🔍'
           };
           const estadoTexto = {
-            'aceptada': 'Aceptada',
+            'aprobada': 'Aceptada',
             'rechazada': 'Rechazada',
             'en_estudio': 'En estudio'
           };
@@ -6238,18 +6265,27 @@
           });
         }
         
-        // 4. Si es ACEPTADA, añadir al calendario
-        if (estadoSeleccionado === 'aceptada' && solicitudId) {
+        // 4. Si es APROBADA, añadir al calendario
+        if (estadoSeleccionado === 'aprobada' && solicitudId) {
           if (solicitudActual.categoria === 'reserva' && solData.bienId) {
-            // Crear reserva en el bien
+            // Crear reserva en el bien con todos los campos
             await db.collection('bienes').doc(solData.bienId).collection('reservas').add({
-              tipo: 'estancia',
+              tipo: solData.tipoReserva || 'estancia',
+              tipoNombre: solData.tipoReservaNombre || 'Estancia',
+              nidoReservaId: solData.nidoReservaId || null,
+              nidoReservaNombre: solData.nidoReservaNombre || '',
+              otroGrupoId: solData.otroGrupoId || null,
+              otroGrupoNombre: solData.otroGrupoNombre || '',
               fechaInicio: solData.fechaInicio,
               fechaFin: solData.fechaFin,
+              numFamiliares: solData.numFamiliares || 0,
+              numInvitados: solData.numInvitados || 0,
               motivo: solData.motivo || '',
+              visibilidad: solData.visibilidad || 'rama',
               solicitadoPor: solData.solicitadoPor,
               solicitadoPorNombre: solData.solicitadoPorNombre,
               aprobadoPor: currentUser.uid,
+              aprobadoPorNombre: userData?.nombre || '',
               estado: 'confirmada',
               fechaAprobacion: fechaActual,
               origenSolicitud: solicitudId
@@ -6278,7 +6314,7 @@
         cerrarModalRespuesta();
         await renderTablon();
         
-        const mensajeExito = estadoSeleccionado === 'aceptada' 
+        const mensajeExito = estadoSeleccionado === 'aprobada' 
           ? '✅ Solicitud aceptada y añadida al calendario'
           : estadoSeleccionado === 'rechazada'
           ? '❌ Solicitud rechazada'
@@ -8189,14 +8225,14 @@
           // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
             .where('familiaId', '==', familiaId)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
+            .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
         } else {
           // Usuario normal: mostrar MIS solicitudes respondidas
           snap = await db.collection('solicitudes')
             .where('solicitadoPor', '==', currentUser.uid)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
+            .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
         }
@@ -8218,7 +8254,7 @@
         
         container.innerHTML = docs.map(doc => {
           const data = doc.data();
-          const esAceptada = data.estado === 'aceptada';
+          const esAceptada = data.estado === 'aprobada';
           const esRechazada = data.estado === 'rechazada';
           const fechaResp = data.fechaRespuesta?.toDate?.() || data.fechaCreacion?.toDate?.() || new Date();
           const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -8341,7 +8377,7 @@
           // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
             .where('familiaId', '==', familiaId)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
+            .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
           console.log('Query admin - solicitudes encontradas:', snap.size);
@@ -8349,7 +8385,7 @@
           // Usuario normal: mostrar MIS solicitudes respondidas
           snap = await db.collection('solicitudes')
             .where('solicitadoPor', '==', currentUser.uid)
-            .where('estado', 'in', ['aceptada', 'rechazada', 'en_estudio', 'respondida'])
+            .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
             .limit(30)
             .get();
           console.log('Query usuario - solicitudes encontradas:', snap.size);
@@ -8378,7 +8414,7 @@
         
         container.innerHTML = docs.map(doc => {
           const data = doc.data();
-          const esAceptada = data.estado === 'aceptada';
+          const esAceptada = data.estado === 'aprobada';
           const esRechazada = data.estado === 'rechazada';
           const fechaResp = data.fechaRespuesta?.toDate?.() || data.fechaCreacion?.toDate?.() || new Date();
           const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -8436,7 +8472,7 @@
         if (!doc.exists) return;
         
         const data = doc.data();
-        const esAceptada = data.estado === 'aceptada';
+        const esAceptada = data.estado === 'aprobada';
         const fechaResp = data.fechaRespuesta?.toDate?.() || new Date();
         
         // Crear modal de detalle
