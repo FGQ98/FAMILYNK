@@ -3601,10 +3601,22 @@
           </div>
           <div class="form-group" id="reserva-tipo-container" style="display: none;">
             <label class="form-label">Tipo de reserva *</label>
-            <select class="form-select" id="reserva-tipo" required>
+            <select class="form-select" id="reserva-tipo" required onchange="mostrarSelectorQuienReserva()">
               <option value="">Selecciona tipo...</option>
             </select>
           </div>
+          
+          <!-- Selector de quién reserva (solo para tipos familiares) -->
+          <div class="form-group" id="reserva-quien-container" style="display: none;">
+            <label class="form-label">¿Quién reserva? *</label>
+            <select class="form-select" id="reserva-quien" required>
+              <option value="">Selecciona...</option>
+            </select>
+            <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">
+              Selecciona el nido o grupo que hace la reserva
+            </p>
+          </div>
+          
           <div class="form-group">
             <label class="form-label">Fecha inicio *</label>
             <input type="date" class="form-input" id="reserva-inicio" required>
@@ -7088,6 +7100,96 @@
     let bienesUsuario = [];
     let bienesConGestion = []; // Solo bienes con add-on activo para reservas
     let adminsEstirpe = [];
+    let nidosData = []; // Nidos de la rama
+    let otrosGruposData = []; // Otros grupos de reserva
+    let configCalendarioData = null; // Configuración del calendario familiar
+    let tiposReservaActuales = []; // Tipos cargados para el bien seleccionado
+
+    // Cargar configuración del calendario (tipos de reserva y otros grupos)
+    async function cargarConfigCalendario() {
+      if (!currentFamilia?.id) return;
+      
+      try {
+        // Cargar config del calendario
+        const configDoc = await db.collection('familias').doc(currentFamilia.id)
+          .collection('config').doc('calendarioFamiliar').get();
+        
+        if (configDoc.exists) {
+          configCalendarioData = configDoc.data();
+        } else {
+          configCalendarioData = null;
+        }
+        
+        // Cargar otros grupos de reserva
+        const otrosSnap = await db.collection('familias').doc(currentFamilia.id)
+          .collection('otrosGruposReserva').orderBy('orden', 'asc').get();
+        otrosGruposData = otrosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        console.log('✅ Config calendario cargada, otros grupos:', otrosGruposData.length);
+      } catch (e) {
+        console.warn('Error cargando config calendario:', e);
+      }
+    }
+
+    // Cargar nidos de la rama
+    async function cargarNidosRama() {
+      if (!currentFamilia?.id) return;
+      
+      try {
+        const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
+        nidosData = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('✅ Nidos cargados:', nidosData.length);
+      } catch (e) {
+        console.warn('Error cargando nidos:', e);
+      }
+    }
+
+    // Mostrar/ocultar selector de quién reserva
+    function mostrarSelectorQuienReserva() {
+      const tipoId = document.getElementById('reserva-tipo').value;
+      const container = document.getElementById('reserva-quien-container');
+      const select = document.getElementById('reserva-quien');
+      
+      if (!tipoId) {
+        container.style.display = 'none';
+        return;
+      }
+      
+      // Buscar si el tipo es familiar
+      const tipoActual = tiposReservaActuales.find(t => t.id === tipoId);
+      
+      if (tipoActual?.esFamiliar) {
+        // Mostrar selector con nidos + otros grupos
+        let options = '<option value="">¿Quién reserva?</option>';
+        
+        // Añadir nidos
+        if (nidosData.length > 0) {
+          options += '<optgroup label="🏠 Nidos">';
+          nidosData.forEach(nido => {
+            const label = nido.nombre || 'Nido sin nombre';
+            options += `<option value="nido:${nido.id}" data-tipo="nido">${label}</option>`;
+          });
+          options += '</optgroup>';
+        }
+        
+        // Añadir otros grupos
+        if (otrosGruposData.length > 0) {
+          options += '<optgroup label="📋 Otros grupos">';
+          otrosGruposData.forEach(grupo => {
+            const emoji = grupo.emoji || '📋';
+            options += `<option value="otro:${grupo.id}" data-tipo="otro">${emoji} ${grupo.nombre}</option>`;
+          });
+          options += '</optgroup>';
+        }
+        
+        select.innerHTML = options;
+        container.style.display = 'block';
+        select.required = true;
+      } else {
+        container.style.display = 'none';
+        select.required = false;
+      }
+    }
 
     // Cargar bienes filtrados por visibilidad del usuario
     async function cargarBienesUsuario() {
@@ -7421,9 +7523,14 @@
       const bienId = document.getElementById('reserva-bien').value;
       const container = document.getElementById('reserva-tipo-container');
       const select = document.getElementById('reserva-tipo');
+      const quienContainer = document.getElementById('reserva-quien-container');
+      
+      // Ocultar selector de quién reserva al cambiar bien
+      quienContainer.style.display = 'none';
       
       if (!bienId) {
         container.style.display = 'none';
+        tiposReservaActuales = [];
         return;
       }
       
@@ -7431,64 +7538,65 @@
       const bien = bienesConGestion.find(b => b.id === bienId);
       if (!bien) {
         container.style.display = 'none';
+        tiposReservaActuales = [];
         return;
       }
       
-      // Determinar qué add-on tiene activo y cargar sus tipos
+      // Cargar config y nidos si no están cargados
+      if (!configCalendarioData) {
+        await cargarConfigCalendario();
+      }
+      if (nidosData.length === 0) {
+        await cargarNidosRama();
+      }
+      
+      // Determinar qué add-on tiene activo
+      let addon = null;
+      if (bien.mayordomoActivo) addon = 'mayordomo';
+      else if (bien.gerenteActivo) addon = 'gerente';
+      else if (bien.capatazActivo) addon = 'capataz';
+      
       let tipos = [];
       
-      try {
-        if (bien.mayordomoActivo) {
-          // Tipos de estancia (Mayordomo)
-          const tiposSnap = await db.collection('familias').doc(currentFamilia.id)
-            .collection('tiposReserva').where('addon', '==', 'mayordomo').get();
-          tipos = tiposSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-          
-          // Si no hay tipos configurados, usar los por defecto
-          if (tipos.length === 0) {
-            tipos = [
-              { id: 'estancia', nombre: 'Estancia', icono: '🏠' },
-              { id: 'visita', nombre: 'Visita de día', icono: '☀️' }
-            ];
-          }
-        } else if (bien.gerenteActivo) {
-          // Tipos de reserva (Gerente)
-          const tiposSnap = await db.collection('familias').doc(currentFamilia.id)
-            .collection('tiposReserva').where('addon', '==', 'gerente').get();
-          tipos = tiposSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-          
-          if (tipos.length === 0) {
-            tipos = [
-              { id: 'alquiler', nombre: 'Alquiler vacacional', icono: '🏨' },
-              { id: 'evento_externo', nombre: 'Evento externo', icono: '🎊' }
-            ];
-          }
-        } else if (bien.capatazActivo) {
-          // Tipos de actividad (Capataz)
-          const tiposSnap = await db.collection('familias').doc(currentFamilia.id)
-            .collection('tiposReserva').where('addon', '==', 'capataz').get();
-          tipos = tiposSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-          
-          if (tipos.length === 0) {
-            tipos = [
-              { id: 'actividad_campo', nombre: 'Actividad de campo', icono: '🌾' },
-              { id: 'jornada', nombre: 'Jornada de trabajo', icono: '👷' }
-            ];
-          }
-        }
-      } catch (e) {
-        console.warn('Error cargando tipos de reserva:', e);
-        // Tipos genéricos por defecto
-        tipos = [
-          { id: 'estancia', nombre: 'Estancia', icono: '🏠' },
-          { id: 'visita', nombre: 'Visita', icono: '☀️' }
-        ];
+      // Cargar tipos desde la nueva config
+      if (addon && configCalendarioData?.tiposAddon?.[addon]) {
+        tipos = configCalendarioData.tiposAddon[addon].map(t => ({
+          id: t.id,
+          nombre: t.nombre,
+          icono: t.emoji || '',
+          color: t.color || '#7A9E7E',
+          esFamiliar: t.esFamiliar || false,
+          mostrarEnCal: t.mostrarEnCal !== false
+        }));
       }
+      
+      // Si no hay tipos en config, usar tipos por defecto
+      if (tipos.length === 0) {
+        if (addon === 'mayordomo') {
+          tipos = [
+            { id: 'estancia-familiar', nombre: 'Estancias familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true },
+            { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false }
+          ];
+        } else if (addon === 'gerente') {
+          tipos = [
+            { id: 'reserva-familiar', nombre: 'Reservas familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true },
+            { id: 'reserva-huespedes', nombre: 'Reservas de huéspedes', icono: '👥', esFamiliar: false }
+          ];
+        } else if (addon === 'capataz') {
+          tipos = [
+            { id: 'caceria', nombre: 'Cacerías', icono: '🦌', esFamiliar: false },
+            { id: 'actividad', nombre: 'Otras actividades', icono: '🎯', esFamiliar: false }
+          ];
+        }
+      }
+      
+      // Almacenar para usar en mostrarSelectorQuienReserva
+      tiposReservaActuales = tipos;
       
       // Popular el select
       if (tipos.length > 0) {
         select.innerHTML = '<option value="">Selecciona tipo...</option>' +
-          tipos.map(t => '<option value="' + t.id + '">' + (t.icono || '📌') + ' ' + t.nombre + '</option>').join('');
+          tipos.map(t => `<option value="${t.id}">${t.icono || '📌'} ${t.nombre}</option>`).join('');
         container.style.display = 'block';
       } else {
         container.style.display = 'none';
@@ -7859,7 +7967,7 @@
       }
       
       const bien = bienesConGestion.find(b => b.id === bienId) || bienesUsuario.find(b => b.id === bienId);
-      const tipoReserva = document.getElementById('reserva-tipo').value || 'estancia';
+      const tipoReservaId = document.getElementById('reserva-tipo').value || 'estancia';
       const fechaInicio = document.getElementById('reserva-inicio').value;
       const fechaFin = document.getElementById('reserva-fin').value;
       const numFamiliares = parseInt(document.getElementById('reserva-familiares').value) || 0;
@@ -7880,11 +7988,56 @@
         return;
       }
 
+      // Buscar info del tipo de reserva
+      const tipoInfo = tiposReservaActuales.find(t => t.id === tipoReservaId) || {};
+      const tipoReservaNombre = tipoInfo.nombre || tipoReservaId;
+      const esFamiliar = tipoInfo.esFamiliar || false;
+      
+      // Si es familiar, obtener quién reserva
+      let nidoReservaId = null;
+      let nidoReservaNombre = '';
+      let otroGrupoId = null;
+      let otroGrupoNombre = '';
+      
+      if (esFamiliar) {
+        const quienReserva = document.getElementById('reserva-quien').value;
+        if (!quienReserva) {
+          alert('Por favor, selecciona quién hace la reserva');
+          return;
+        }
+        
+        const [tipoQuien, idQuien] = quienReserva.split(':');
+        
+        if (tipoQuien === 'nido') {
+          nidoReservaId = idQuien;
+          const nido = nidosData.find(n => n.id === idQuien);
+          nidoReservaNombre = nido?.nombre || 'Nido';
+        } else if (tipoQuien === 'otro') {
+          otroGrupoId = idQuien;
+          const grupo = otrosGruposData.find(g => g.id === idQuien);
+          otroGrupoNombre = grupo?.nombre || 'Grupo';
+        }
+      }
+
+      // Determinar qué add-on tiene activo
+      let addonActivo = null;
+      if (bien?.mayordomoActivo) addonActivo = 'mayordomo';
+      else if (bien?.gerenteActivo) addonActivo = 'gerente';
+      else if (bien?.capatazActivo) addonActivo = 'capataz';
+
       try {
         await enviarNotificacionAdmins('reserva', {
+          tipoSolicitud: 'reserva',
+          tipoReserva: tipoReservaId,
+          tipoReservaNombre: tipoReservaNombre,
+          esFamiliar: esFamiliar,
+          nidoReservaId: nidoReservaId,
+          nidoReservaNombre: nidoReservaNombre,
+          otroGrupoId: otroGrupoId,
+          otroGrupoNombre: otroGrupoNombre,
           bienId,
           bienNombre: bien?.nombre || '',
-          tipoReserva,
+          addonActivo: addonActivo,
           fechaInicio,
           fechaFin,
           numFamiliares,
