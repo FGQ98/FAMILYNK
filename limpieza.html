@@ -223,6 +223,11 @@
     .modulo-card.plan-semanal:hover { border-color: #8B7355; }
     .modulo-card.plan-semanal .modulo-stat-value { color: #6B5A45; }
 
+    /* Card Limpieza Programada */
+    .modulo-card.programada .modulo-card-header { background: linear-gradient(135deg, #9B7EB8 0%, #7A5F96 100%); }
+    .modulo-card.programada:hover { border-color: #9B7EB8; }
+    .modulo-card.programada .modulo-stat-value { color: #7A5F96; }
+
     /* Cards interactivas con tareas */
     .plan-card-content { padding: 12px 16px; max-height: 280px; overflow-y: auto; }
     .plan-tarea {
@@ -352,6 +357,28 @@
             <div class="plan-empty">Cargando...</div>
           </div>
         </div>
+
+        <!-- Limpieza Programada -->
+        <div class="modulo-card programada" id="card-programada">
+          <div class="modulo-card-header">
+            <div class="modulo-card-icon">📋</div>
+            <div class="modulo-card-title">Limpieza Programada</div>
+          </div>
+          <div class="modulo-card-body">
+            <p class="modulo-card-desc">Tareas recurrentes de limpieza profunda y mantenimiento periódico.</p>
+            <div class="modulo-stats">
+              <div class="modulo-stat">
+                <span class="modulo-stat-value" id="stat-programadas">0</span>
+                <span class="modulo-stat-label">tareas</span>
+              </div>
+              <div class="modulo-stat">
+                <span class="modulo-stat-value" id="stat-frecuencias">0</span>
+                <span class="modulo-stat-label">frecuencias</span>
+              </div>
+            </div>
+            <a href="#" class="modulo-card-action" id="link-programada">Gestionar →</a>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -381,6 +408,7 @@
     // Configurar links de cards
     document.getElementById('link-lavanderia').href = `lavanderia.html?id=${bienId}&origen=limpieza`;
     document.getElementById('link-tareas').href = `zonas-tareas.html?id=${bienId}&origen=limpieza`;
+    document.getElementById('link-programada').href = `limpieza-programada.html?id=${bienId}&origen=limpieza`;
 
     if (!bienId) window.location.href = 'lo-comun.html';
 
@@ -453,6 +481,9 @@
         // Cargar stats lavandería
         await cargarStatsLavanderia();
 
+        // Cargar stats limpieza programada
+        await cargarStatsProgramadas();
+
         // Cargar plan semanal
         await cargarPlanSemanal();
 
@@ -498,6 +529,23 @@
       } catch (error) {
         document.getElementById('stat-pendientes').textContent = '0';
         document.getElementById('stat-completados').textContent = '0';
+      }
+    }
+
+    async function cargarStatsProgramadas() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
+        const tareas = snap.docs.map(d => d.data());
+        
+        // Contar tareas
+        document.getElementById('stat-programadas').textContent = tareas.length;
+        
+        // Contar frecuencias únicas
+        const frecuencias = new Set(tareas.map(t => t.frecuencia || t.dia));
+        document.getElementById('stat-frecuencias').textContent = frecuencias.size;
+      } catch (error) {
+        document.getElementById('stat-programadas').textContent = '0';
+        document.getElementById('stat-frecuencias').textContent = '0';
       }
     }
 
