@@ -213,7 +213,7 @@
     .modulo-card.lavanderia:hover { border-color: #6B8E8E; }
     .modulo-card.lavanderia .modulo-stat-value { color: #507878; }
 
-    /* Card Tareas Limpieza */
+    /* Card Zonas y Tareas */
     .modulo-card.tareas .modulo-card-header { background: linear-gradient(135deg, #7A9E7E 0%, #5C7D5F 100%); }
     .modulo-card.tareas:hover { border-color: #7A9E7E; }
     .modulo-card.tareas .modulo-stat-value { color: #5C7D5F; }
@@ -222,6 +222,11 @@
     .modulo-card.plan-semanal .modulo-card-header { background: linear-gradient(135deg, #8B7355 0%, #6B5A45 100%); }
     .modulo-card.plan-semanal:hover { border-color: #8B7355; }
     .modulo-card.plan-semanal .modulo-stat-value { color: #6B5A45; }
+
+    /* Card Limpieza Programada */
+    .modulo-card.programada .modulo-card-header { background: linear-gradient(135deg, #9575CD 0%, #7E57C2 100%); }
+    .modulo-card.programada:hover { border-color: #9575CD; }
+    .modulo-card.programada .modulo-stat-value { color: #7E57C2; }
 
     /* Cards interactivas con tareas */
     .plan-card-content { padding: 12px 16px; max-height: 280px; overflow-y: auto; }
@@ -350,6 +355,28 @@
             <div class="plan-empty">Cargando...</div>
           </div>
         </div>
+
+        <!-- Limpieza Programada -->
+        <div class="modulo-card programada">
+          <div class="modulo-card-header">
+            <div class="modulo-card-icon">📋</div>
+            <div class="modulo-card-title">Limpieza programada</div>
+          </div>
+          <div class="modulo-card-body">
+            <p class="modulo-card-desc">Configura tareas recurrentes con frecuencias periódicas por zona.</p>
+            <div class="modulo-stats">
+              <div class="modulo-stat">
+                <span class="modulo-stat-value" id="stat-programadas">0</span>
+                <span class="modulo-stat-label">tareas</span>
+              </div>
+              <div class="modulo-stat">
+                <span class="modulo-stat-value" id="stat-frecuencias">0</span>
+                <span class="modulo-stat-label">frecuencias</span>
+              </div>
+            </div>
+            <a href="#" class="modulo-card-action" id="link-programada">Configurar →</a>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -379,6 +406,7 @@
     // Configurar links de cards
     document.getElementById('link-lavanderia').href = `lavanderia.html?id=${bienId}&origen=limpieza`;
     document.getElementById('link-tareas').href = `zonas-tareas.html?id=${bienId}&origen=limpieza`;
+    document.getElementById('link-programada').href = `limpieza-programada.html?id=${bienId}&origen=limpieza`;
 
     if (!bienId) window.location.href = 'lo-comun.html';
 
@@ -407,6 +435,9 @@
 
         // Cargar stats lavandería
         await cargarStatsLavanderia();
+
+        // Cargar stats limpieza programada
+        await cargarStatsProgramadas();
 
         // Cargar plan semanal
         await cargarPlanSemanal();
@@ -453,6 +484,23 @@
       } catch (error) {
         document.getElementById('stat-pendientes').textContent = '0';
         document.getElementById('stat-completados').textContent = '0';
+      }
+    }
+
+    async function cargarStatsProgramadas() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
+        const tareas = snap.docs.map(d => d.data());
+        
+        // Contar tareas
+        document.getElementById('stat-programadas').textContent = tareas.length;
+        
+        // Contar frecuencias únicas
+        const frecuencias = new Set(tareas.map(t => t.frecuencia || t.dia));
+        document.getElementById('stat-frecuencias').textContent = frecuencias.size;
+      } catch (error) {
+        document.getElementById('stat-programadas').textContent = '0';
+        document.getElementById('stat-frecuencias').textContent = '0';
       }
     }
 
@@ -578,6 +626,26 @@
             });
           }
         });
+
+        // 2b. Cargar tareas de LIMPIEZA PROGRAMADA
+        try {
+          const progSnap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
+          progSnap.docs.forEach(doc => {
+            const tarea = { id: doc.id, ...doc.data() };
+            if (tarea.dia) {
+              planSemanalData.push({
+                id: `prog_${tarea.id}`,
+                tipo: 'programada',
+                nombre: tarea.nombre || tarea.tarea,
+                zona: tarea.zona || 'General',
+                zonaIcon: '📋',
+                dia: tarea.dia,
+                tiempo: parseInt(tarea.tiempo) || 15,
+                dependencia: tarea.dependencia
+              });
+            }
+          });
+        } catch (e) { console.log('Sin tareas programadas'); }
 
         // 3. Cargar estado de completados de esta semana
         try {
