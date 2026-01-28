@@ -3769,25 +3769,38 @@
           
           <div class="form-group">
             <label class="form-label">¿A qué casa vas? *</label>
-            <select class="form-select" id="finde-bien" required>
+            <select class="form-select" id="finde-bien" required onchange="cargarHabitacionesBien()">
               <option value="">Selecciona...</option>
             </select>
           </div>
           
-          <div class="form-group">
-            <label class="form-label">🕐 Hora prevista de llegada *</label>
-            <input type="time" class="form-input" id="finde-hora-llegada" required>
-          </div>
-          
           <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
-              <label class="form-label">👥 Personas</label>
-              <input type="number" class="form-input" id="finde-personas" min="1" max="20" value="1" required>
+              <label class="form-label">🕐 Hora de llegada *</label>
+              <input type="time" class="form-input" id="finde-hora-llegada" required>
             </div>
             <div class="form-group">
-              <label class="form-label">🛏️ Habitaciones</label>
-              <input type="number" class="form-input" id="finde-habitaciones" min="1" max="10" value="1" required>
+              <label class="form-label">🕐 Hora de salida</label>
+              <input type="time" class="form-input" id="finde-hora-salida" placeholder="Estimada">
             </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">👥 Personas *</label>
+            <input type="number" class="form-input" id="finde-personas" min="1" max="20" value="1" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">🛏️ Habitaciones</label>
+            <div id="finde-habitaciones-container" style="display: none;">
+              <select class="form-select" id="finde-habitaciones-select" onchange="addHabitacionFinde()">
+                <option value="">+ Añadir habitación...</option>
+              </select>
+              <div id="finde-habitaciones-chips" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+            </div>
+            <p id="finde-habitaciones-empty" style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+              Selecciona primero una casa para ver sus habitaciones
+            </p>
           </div>
           
           <div class="form-group">
@@ -3860,6 +3873,29 @@
     .finde-toggle-option input { display: none; }
     .finde-toggle-label { font-weight: 600; font-size: 0.9rem; color: var(--text); }
     .finde-toggle-option:has(input:checked) .finde-toggle-label { color: #00897B; }
+    
+    .habitacion-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #E0F2F1;
+      border: 1px solid #26A69A;
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #00897B;
+    }
+    .habitacion-chip-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      opacity: 0.6;
+      padding: 0;
+      line-height: 1;
+    }
+    .habitacion-chip-remove:hover { opacity: 1; }
   </style>
 
   <!-- Modal Convocatoria -->
@@ -7997,6 +8033,9 @@
     }
 
     // ============ MODAL CONFIRMACIÓN FINDE ============
+    let habitacionesSeleccionadas = [];
+    let habitacionesBienActual = [];
+
     async function abrirModalConfirmacionFinde() {
       await cargarBienesConGestion();
       
@@ -8015,8 +8054,90 @@
       document.getElementById('form-confirmacion-finde').reset();
       document.getElementById('finde-menus-detalle').style.display = 'none';
       
+      // Reset habitaciones
+      habitacionesSeleccionadas = [];
+      habitacionesBienActual = [];
+      document.getElementById('finde-habitaciones-container').style.display = 'none';
+      document.getElementById('finde-habitaciones-empty').style.display = 'block';
+      document.getElementById('finde-habitaciones-chips').innerHTML = '';
+      
       document.getElementById('modal-confirmacion-finde').classList.add('active');
       track.iniciar('finde');
+    }
+
+    async function cargarHabitacionesBien() {
+      const bienId = document.getElementById('finde-bien').value;
+      const container = document.getElementById('finde-habitaciones-container');
+      const emptyMsg = document.getElementById('finde-habitaciones-empty');
+      const select = document.getElementById('finde-habitaciones-select');
+      
+      // Reset
+      habitacionesSeleccionadas = [];
+      habitacionesBienActual = [];
+      document.getElementById('finde-habitaciones-chips').innerHTML = '';
+      
+      if (!bienId) {
+        container.style.display = 'none';
+        emptyMsg.style.display = 'block';
+        emptyMsg.textContent = 'Selecciona primero una casa para ver sus habitaciones';
+        return;
+      }
+      
+      // Buscar el bien y sus habitaciones
+      const bien = bienesConGestion.find(b => b.id === bienId);
+      if (!bien || !bien.habitaciones || bien.habitaciones.length === 0) {
+        container.style.display = 'none';
+        emptyMsg.style.display = 'block';
+        emptyMsg.textContent = 'Este bien no tiene habitaciones definidas';
+        return;
+      }
+      
+      habitacionesBienActual = bien.habitaciones;
+      
+      // Popular select
+      select.innerHTML = '<option value="">+ Añadir habitación...</option>' +
+        habitacionesBienActual.map((h, idx) => {
+          const nombre = typeof h === 'string' ? h : h.nombre;
+          return `<option value="${idx}">${nombre}</option>`;
+        }).join('');
+      
+      container.style.display = 'block';
+      emptyMsg.style.display = 'none';
+    }
+
+    function addHabitacionFinde() {
+      const select = document.getElementById('finde-habitaciones-select');
+      const idx = select.value;
+      
+      if (idx === '') return;
+      
+      const habitacion = habitacionesBienActual[idx];
+      const nombre = typeof habitacion === 'string' ? habitacion : habitacion.nombre;
+      
+      // Evitar duplicados
+      if (habitacionesSeleccionadas.includes(nombre)) {
+        select.value = '';
+        return;
+      }
+      
+      habitacionesSeleccionadas.push(nombre);
+      renderHabitacionesChips();
+      select.value = '';
+    }
+
+    function removeHabitacionFinde(nombre) {
+      habitacionesSeleccionadas = habitacionesSeleccionadas.filter(h => h !== nombre);
+      renderHabitacionesChips();
+    }
+
+    function renderHabitacionesChips() {
+      const container = document.getElementById('finde-habitaciones-chips');
+      container.innerHTML = habitacionesSeleccionadas.map(nombre => `
+        <span class="habitacion-chip">
+          🛏️ ${nombre}
+          <button type="button" class="habitacion-chip-remove" onclick="removeHabitacionFinde('${nombre}')">✕</button>
+        </span>
+      `).join('');
     }
 
     function toggleMenusNuevos() {
@@ -8040,8 +8161,9 @@
           bienId: bienId,
           bienNombre: bien?.nombre || '',
           horaLlegada: document.getElementById('finde-hora-llegada').value,
+          horaSalida: document.getElementById('finde-hora-salida').value || null,
           personas: parseInt(document.getElementById('finde-personas').value) || 1,
-          habitaciones: parseInt(document.getElementById('finde-habitaciones').value) || 1,
+          habitaciones: habitacionesSeleccionadas,
           menusNuevos: document.querySelector('input[name="finde-menus-nuevos"]:checked').value === 'si',
           menusCuales: document.getElementById('finde-menus-cuales')?.value || '',
           sujetarPerros: document.querySelector('input[name="finde-sujetar-perros"]:checked').value === 'si',

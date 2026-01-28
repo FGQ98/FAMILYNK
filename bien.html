@@ -2078,6 +2078,14 @@
             <div class="collapsible-body"><div class="info-list" id="lista-mascotas"><div class="empty-mini">Sin mascotas</div></div></div>
           </div>
 
+          <div class="collapsible-section" id="section-habitaciones">
+            <div class="collapsible-header" onclick="toggleSection('habitaciones')">
+              <div class="collapsible-title"><span>🛏️</span><span>Habitaciones</span><span class="collapsible-count" id="count-habitaciones">0</span></div>
+              <span class="collapsible-toggle">▼</span>
+            </div>
+            <div class="collapsible-body"><div class="info-list" id="lista-habitaciones"><div class="empty-mini">Sin habitaciones definidas</div></div></div>
+          </div>
+
           <div class="collapsible-section" id="section-contactos">
             <div class="collapsible-header" onclick="toggleSection('contactos')">
               <div class="collapsible-title"><span>📞</span><span>Contactos</span><span class="collapsible-count" id="count-contactos">0</span></div>
@@ -2694,6 +2702,7 @@
         <!-- Tabs -->
         <div class="modal-tabs" style="display:flex;border-bottom:1px solid var(--cream-dark);padding:0 24px;">
           <button type="button" class="modal-tab active" data-tab="datos">📋 Datos</button>
+          <button type="button" class="modal-tab" data-tab="habitaciones">🛏️ Habitaciones</button>
           <button type="button" class="modal-tab" data-tab="personal">👷 Personal</button>
           <button type="button" class="modal-tab" data-tab="contactos">📞 Contactos</button>
           <button type="button" class="modal-tab" data-tab="normas">📜 Normas</button>
@@ -2788,6 +2797,16 @@
             <div class="form-group">
               <label class="form-label">Notas</label>
               <textarea class="form-input" id="edit-notas" rows="3" placeholder="Información adicional..."></textarea>
+            </div>
+          </div>
+
+          <!-- Tab Habitaciones -->
+          <div class="tab-content" id="tab-habitaciones">
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">Define las habitaciones disponibles en este bien para las confirmaciones de finde</p>
+            <div id="habitaciones-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <input type="text" class="form-input" id="nueva-habitacion-nombre" placeholder="Nombre de la habitación" style="flex:1;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addHabitacionItem()">+ Añadir</button>
             </div>
           </div>
 
@@ -3536,6 +3555,21 @@
             </div>
           </div>
         `).join('');
+      }
+
+      const habitaciones = bienData.habitaciones || [];
+      document.getElementById('count-habitaciones').textContent = habitaciones.length;
+      if (habitaciones.length > 0) {
+        document.getElementById('lista-habitaciones').innerHTML = habitaciones.map(h => `
+          <div class="info-item">
+            <span class="info-item-icon">🛏️</span>
+            <div class="info-item-content">
+              <div class="info-item-title">${h.nombre || h}</div>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        document.getElementById('lista-habitaciones').innerHTML = '<div class="empty-mini">Sin habitaciones definidas</div>';
       }
 
       const contactos = bienData.contactos || [];
@@ -4396,6 +4430,13 @@
         bienData.contactos.forEach(c => addContactoItem(c));
       }
       
+      // Cargar habitaciones
+      document.getElementById('habitaciones-list').innerHTML = '';
+      document.getElementById('nueva-habitacion-nombre').value = '';
+      if (bienData.habitaciones && bienData.habitaciones.length > 0) {
+        bienData.habitaciones.forEach(h => addHabitacionItemFromData(h));
+      }
+      
       // Reset tabs
       document.querySelectorAll('#modal-editar-bien .modal-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('#modal-editar-bien .tab-content').forEach(t => t.classList.remove('active'));
@@ -4575,6 +4616,43 @@
       return items;
     }
 
+    // ========== HABITACIONES ==========
+    function addHabitacionItem() {
+      const input = document.getElementById('nueva-habitacion-nombre');
+      const nombre = input.value.trim();
+      if (!nombre) return;
+      
+      addHabitacionItemFromData({ nombre });
+      input.value = '';
+      input.focus();
+    }
+
+    function addHabitacionItemFromData(data) {
+      const list = document.getElementById('habitaciones-list');
+      const nombre = typeof data === 'string' ? data : data.nombre;
+      
+      const item = document.createElement('div');
+      item.className = 'habitacion-item';
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--cream);border-radius:var(--radius-md);';
+      item.innerHTML = `
+        <span style="font-size:1.2rem;">🛏️</span>
+        <span class="habitacion-nombre" style="flex:1;font-weight:500;">${nombre}</span>
+        <button type="button" onclick="this.parentElement.remove()" style="background:none;border:none;cursor:pointer;font-size:1rem;opacity:0.5;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">🗑️</button>
+      `;
+      list.appendChild(item);
+    }
+
+    function getHabitacionesFromForm() {
+      const items = [];
+      document.querySelectorAll('#habitaciones-list .habitacion-item').forEach(item => {
+        const nombre = item.querySelector('.habitacion-nombre').textContent;
+        if (nombre) {
+          items.push({ nombre });
+        }
+      });
+      return items;
+    }
+
     // Cerrar modal editar
     document.getElementById('modal-editar-close').addEventListener('click', () => {
       document.getElementById('modal-editar-bien').classList.remove('active');
@@ -4610,6 +4688,7 @@
           normasConvivencia: document.getElementById('edit-normas').value,
           personal: getPersonalFromForm(),
           contactos: getContactosFromForm(),
+          habitaciones: getHabitacionesFromForm(),
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
 
