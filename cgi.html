@@ -3776,6 +3776,17 @@
           
           <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             <div class="form-group">
+              <label class="form-label">📅 Día de entrada *</label>
+              <input type="date" class="form-input" id="finde-fecha-entrada" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">📅 Día de salida *</label>
+              <input type="date" class="form-input" id="finde-fecha-salida" required>
+            </div>
+          </div>
+          
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
               <label class="form-label">🕐 Hora de llegada *</label>
               <input type="time" class="form-input" id="finde-hora-llegada" required>
             </div>
@@ -7917,7 +7928,9 @@
         case 'reserva': return `📅 Solicitud de reserva: ${datos.bienNombre || 'Bien'}`;
         case 'averia': return `🔧 Avería reportada: ${datos.bienNombre || datos.descripcion?.substring(0, 30) || 'Ver detalle'}`;
         case 'encargo': return `🛒 Nuevo encargo: ${datos.bienNombre || 'Bien'}`;
-        case 'confirmacion-finde': return `🏡 Confirmación finde: ${datos.bienNombre || 'Llegada'} - ${datos.personas} pers.`;
+        case 'confirmacion-finde': 
+          const fechaCorta = datos.fechaEntrada ? new Date(datos.fechaEntrada).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+          return `🏡 Confirmación finde: ${datos.bienNombre || 'Llegada'} ${fechaCorta} (${datos.personas} pers.)`;
         default: return '📌 Nueva solicitud';
       }
     }
@@ -8054,6 +8067,11 @@
       document.getElementById('form-confirmacion-finde').reset();
       document.getElementById('finde-menus-detalle').style.display = 'none';
       
+      // Configurar fechas mínimas (hoy)
+      const hoy = new Date().toISOString().split('T')[0];
+      document.getElementById('finde-fecha-entrada').min = hoy;
+      document.getElementById('finde-fecha-salida').min = hoy;
+      
       // Reset habitaciones
       habitacionesSeleccionadas = [];
       habitacionesBienActual = [];
@@ -8160,6 +8178,8 @@
         const datos = {
           bienId: bienId,
           bienNombre: bien?.nombre || '',
+          fechaEntrada: document.getElementById('finde-fecha-entrada').value,
+          fechaSalida: document.getElementById('finde-fecha-salida').value,
           horaLlegada: document.getElementById('finde-hora-llegada').value,
           horaSalida: document.getElementById('finde-hora-salida').value || null,
           personas: parseInt(document.getElementById('finde-personas').value) || 1,
