@@ -359,10 +359,11 @@
     .form-textarea { resize: vertical; min-height: 80px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-    .tipo-selector { display: flex; gap: 8px; }
+    .tipo-selector { display: flex; gap: 8px; flex-wrap: wrap; }
 
     .tipo-option {
       flex: 1;
+      min-width: 90px;
       padding: 12px;
       border: 2px solid var(--cream-dark);
       border-radius: var(--radius-md);
@@ -375,22 +376,10 @@
 
     .tipo-option:hover { border-color: var(--mayordomo-light); }
 
-    .tipo-option.active.familia {
-      border-color: var(--reserva-familia);
-      background: var(--reserva-familia-muted);
-      color: var(--reserva-familia);
-    }
-
-    .tipo-option.active.huespedes {
-      border-color: var(--reserva-huespedes);
-      background: var(--reserva-huespedes-muted);
-      color: var(--reserva-huespedes);
-    }
-
-    .tipo-option.active.nodisponible {
-      border-color: var(--reserva-nodisponible);
-      background: var(--reserva-nodisponible-muted);
-      color: var(--reserva-nodisponible);
+    .tipo-option.active {
+      border-color: var(--tipo-color, var(--mayordomo));
+      background: color-mix(in srgb, var(--tipo-color, var(--mayordomo)) 15%, white);
+      color: var(--tipo-color, var(--mayordomo));
     }
 
     .tipo-option-icon { font-size: 1.5rem; margin-bottom: 4px; }
@@ -478,23 +467,24 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Tipo de reserva</label>
-            <div class="tipo-selector">
-              <div class="tipo-option familia active" data-tipo="familia" onclick="seleccionarTipo('familia')">
-                <div class="tipo-option-icon">👨‍👩‍👧‍👦</div>Familia
-              </div>
-              <div class="tipo-option huespedes" data-tipo="huespedes" onclick="seleccionarTipo('huespedes')">
-                <div class="tipo-option-icon">🏠</div>Huéspedes
-              </div>
-              <div class="tipo-option nodisponible" data-tipo="nodisponible" onclick="seleccionarTipo('nodisponible')">
-                <div class="tipo-option-icon">🚫</div>No disponible
-              </div>
+            <div class="tipo-selector" id="tipo-selector-container">
+              <!-- Se renderiza dinámicamente según add-on -->
             </div>
-            <input type="hidden" id="item-tipo" value="familia">
+            <input type="hidden" id="item-tipo" value="estancias">
           </div>
+          
           <div class="form-group">
-            <label class="form-label">¿Quién?</label>
-            <input type="text" class="form-input" id="item-quien" placeholder="Nombre o motivo" required>
+            <label class="form-label">¿Quiénes?</label>
+            <select class="form-input" id="item-quienes" required onchange="onQuienesChange()">
+              <option value="">-- Seleccionar --</option>
+            </select>
           </div>
+          
+          <div class="form-group" id="representado-por-group" style="display:none;">
+            <label class="form-label">¿Representado por?</label>
+            <input type="text" class="form-input" id="item-representado" placeholder="Nombre del responsable">
+          </div>
+          
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Entrada</label>
@@ -529,9 +519,12 @@
   <script>
     let currentUser = null;
     let bienId = null;
+    let bienData = null;
+    let familiaId = null;
     let origen = 'mayordomo';
     let reservas = [];
     let eventos = [];
+    let nidosData = [];
     let mesActual = new Date();
 
     const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
@@ -541,6 +534,25 @@
     const EVENTO_ICONS = {
       fiesta: '🎊', celebracion: '🎂', caceria: '🦌', torneo: '🏆',
       cumple: '🎈', familiar: '👨‍👩‍👧‍👦', cita: '📌', reunion: '👥', otro: '📋'
+    };
+    
+    // Tipos de reserva por add-on (según Racional)
+    const TIPOS_POR_ADDON = {
+      mayordomo: [
+        { id: 'estancias', nombre: 'Estancias', emoji: '🏠', color: '#9C27B0' },
+        { id: 'celebraciones', nombre: 'Celebraciones', emoji: '🎊', color: '#FF9800' },
+        { id: 'zafarrancho', nombre: 'Zafarrancho', emoji: '🧹', color: '#66BB6A' }
+      ],
+      gerente: [
+        { id: 'reservasFamiliares', nombre: 'Familiares', emoji: '👨‍👩‍👧', color: '#9C27B0' },
+        { id: 'reservasHuespedes', nombre: 'Huéspedes', emoji: '🏠', color: '#FF7043' },
+        { id: 'actividad', nombre: 'Actividad', emoji: '📌', color: '#42A5F5' }
+      ],
+      capataz: [
+        { id: 'cacerias', nombre: 'Cacerías', emoji: '🦌', color: '#8D6E63' },
+        { id: 'recolecciones', nombre: 'Recolecciones', emoji: '🌾', color: '#FFA726' },
+        { id: 'otrasActividades', nombre: 'Otras', emoji: '📋', color: '#78909C' }
+      ]
     };
 
     auth.onAuthStateChanged(async (user) => {
@@ -554,17 +566,80 @@
       if (!bienId) { alert('No se especificó el bien'); window.location.href = 'lo-comun.html'; return; }
 
       await cargarBien();
+      await cargarNidos();
       await cargarReservas();
       await cargarEventos();
+      renderTiposReserva();
+      renderSelectorQuienes();
     });
 
     async function cargarBien() {
       const doc = await db.collection('bienes').doc(bienId).get();
       if (!doc.exists) { alert('Bien no encontrado'); window.location.href = 'lo-comun.html'; return; }
       
-      const data = doc.data();
-      document.getElementById('bien-nombre').textContent = data.nombre || 'Sin nombre';
+      bienData = doc.data();
+      familiaId = bienData.familiaId;
+      document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
       document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+    }
+    
+    async function cargarNidos() {
+      if (!familiaId) return;
+      try {
+        const snap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
+        nidosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        nidosData.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+      } catch (e) { console.error('Error cargando nidos:', e); }
+    }
+    
+    function getAddonActivo() {
+      if (bienData?.mayordomo?.activo || bienData?.mayordomoActivo) return 'mayordomo';
+      if (bienData?.gerente?.activo || bienData?.gerenteActivo) return 'gerente';
+      if (bienData?.capataz?.activo || bienData?.capatazActivo) return 'capataz';
+      return 'mayordomo';
+    }
+    
+    function renderTiposReserva() {
+      const addon = getAddonActivo();
+      const tipos = TIPOS_POR_ADDON[addon] || TIPOS_POR_ADDON.mayordomo;
+      const container = document.getElementById('tipo-selector-container');
+      
+      container.innerHTML = tipos.map((t, idx) => `
+        <div class="tipo-option ${idx === 0 ? 'active' : ''}" data-tipo="${t.id}" style="--tipo-color: ${t.color};" onclick="seleccionarTipo('${t.id}')">
+          <div class="tipo-option-icon">${t.emoji}</div>${t.nombre}
+        </div>
+      `).join('');
+      
+      document.getElementById('item-tipo').value = tipos[0]?.id || 'estancias';
+    }
+    
+    function renderSelectorQuienes() {
+      const select = document.getElementById('item-quienes');
+      let options = '<option value="">-- Seleccionar --</option>';
+      
+      nidosData.forEach(n => {
+        options += `<option value="nido:${n.id}">${n.nombre || 'Sin nombre'}</option>`;
+      });
+      
+      options += '<option disabled>──────────</option>';
+      options += '<option value="huespedes">🏠 Huéspedes</option>';
+      options += '<option value="otros">📋 Otros</option>';
+      
+      select.innerHTML = options;
+    }
+    
+    function onQuienesChange() {
+      const val = document.getElementById('item-quienes').value;
+      const group = document.getElementById('representado-por-group');
+      
+      if (val.startsWith('nido:') || val === 'otros') {
+        group.style.display = 'block';
+        document.getElementById('item-representado').required = true;
+      } else {
+        group.style.display = 'none';
+        document.getElementById('item-representado').required = false;
+        document.getElementById('item-representado').value = '';
+      }
     }
 
     async function cargarReservas() {
@@ -682,11 +757,12 @@
         const entrada = new Date(r.entrada);
         const salida = new Date(r.salida);
         const fechaStr = `${entrada.getDate()}/${entrada.getMonth() + 1} - ${salida.getDate()}/${salida.getMonth() + 1}`;
+        const nombreMostrar = r.quienesNombre || r.quien || 'Sin asignar';
         
         return `<div class="reserva-item" onclick="editar('${r.id}')">
           <div class="reserva-tipo-indicator ${r.tipo}"></div>
           <div class="reserva-info">
-            <div class="reserva-quien">${r.quien}</div>
+            <div class="reserva-quien">${nombreMostrar}</div>
             <div class="reserva-fechas">${fechaStr}</div>
           </div>
         </div>`;
@@ -696,7 +772,16 @@
     function abrirModal(fecha = null) {
       document.getElementById('form').reset();
       document.getElementById('item-id').value = '';
-      seleccionarTipo('familia');
+      
+      // Resetear tipo al primero del add-on activo
+      const addon = getAddonActivo();
+      const primerTipo = TIPOS_POR_ADDON[addon]?.[0]?.id || 'estancias';
+      seleccionarTipo(primerTipo);
+      
+      // Resetear selector quiénes
+      document.getElementById('item-quienes').value = '';
+      document.getElementById('representado-por-group').style.display = 'none';
+      document.getElementById('item-representado').value = '';
       
       if (fecha) {
         document.getElementById('item-entrada').value = fecha;
@@ -717,8 +802,17 @@
       if (!r) return;
       
       document.getElementById('item-id').value = id;
-      seleccionarTipo(r.tipo || 'familia');
-      document.getElementById('item-quien').value = r.quien || '';
+      seleccionarTipo(r.tipo || 'estancias');
+      
+      // Cargar quiénes
+      if (r.quienes) {
+        document.getElementById('item-quienes').value = r.quienes;
+        onQuienesChange();
+      }
+      if (r.representadoPor) {
+        document.getElementById('item-representado').value = r.representadoPor;
+      }
+      
       document.getElementById('item-entrada').value = r.entrada || '';
       document.getElementById('item-salida').value = r.salida || '';
       document.getElementById('item-notas').value = r.notas || '';
@@ -742,12 +836,29 @@
       e.preventDefault();
       
       const id = document.getElementById('item-id').value;
+      const quienes = document.getElementById('item-quienes').value;
+      
+      // Obtener nombre legible de quiénes
+      let quienesNombre = '';
+      if (quienes.startsWith('nido:')) {
+        const nidoId = quienes.replace('nido:', '');
+        const nido = nidosData.find(n => n.id === nidoId);
+        quienesNombre = nido?.nombre || 'Nido';
+      } else if (quienes === 'huespedes') {
+        quienesNombre = 'Huéspedes';
+      } else if (quienes === 'otros') {
+        quienesNombre = 'Otros';
+      }
+      
       const data = {
         tipo: document.getElementById('item-tipo').value,
-        quien: document.getElementById('item-quien').value.trim(),
+        quienes: quienes,
+        quienesNombre: quienesNombre,
+        representadoPor: document.getElementById('item-representado').value.trim(),
         entrada: document.getElementById('item-entrada').value,
         salida: document.getElementById('item-salida').value,
         notas: document.getElementById('item-notas').value.trim(),
+        addon: getAddonActivo(),
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
       };
       
