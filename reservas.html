@@ -428,20 +428,8 @@
             <div class="sidebar-card-title">Tipos de reserva</div>
           </div>
           <div class="sidebar-card-body">
-            <div class="leyenda">
-              <div class="leyenda-item"><div class="leyenda-color familia"></div><span>Familia</span></div>
-              <div class="leyenda-item"><div class="leyenda-color huespedes"></div><span>Huéspedes</span></div>
-              <div class="leyenda-item"><div class="leyenda-color nodisponible"></div><span>No disponible</span></div>
-              
-              <div class="leyenda-section">
-                <div class="leyenda-section-title">Eventos</div>
-                <div class="leyenda-item"><div class="leyenda-color fiesta"></div><span>🎊 Fiestas / 🎂 Celebraciones</span></div>
-                <div class="leyenda-item"><div class="leyenda-color caceria"></div><span>🦌 Cacerías</span></div>
-                <div class="leyenda-item"><div class="leyenda-color torneo"></div><span>🏆 Torneos</span></div>
-                <div class="leyenda-item"><div class="leyenda-color cumple"></div><span>🎈 Cumpleaños</span></div>
-                <div class="leyenda-item"><div class="leyenda-color familiar"></div><span>👨‍👩‍👧‍👦 Días Familiares</span></div>
-                <div class="leyenda-item"><div class="leyenda-color cita"></div><span>📌 Citas</span></div>
-              </div>
+            <div class="leyenda" id="leyenda-tipos">
+              <!-- Se renderiza dinámicamente según add-on -->
             </div>
           </div>
         </div>
@@ -571,6 +559,7 @@
       await cargarEventos();
       renderTiposReserva();
       renderSelectorQuienes();
+      renderLeyenda();
     });
 
     async function cargarBien() {
@@ -641,6 +630,27 @@
         document.getElementById('item-representado').value = '';
       }
     }
+    
+    function renderLeyenda() {
+      const addon = getAddonActivo();
+      const tipos = TIPOS_POR_ADDON[addon] || TIPOS_POR_ADDON.mayordomo;
+      const container = document.getElementById('leyenda-tipos');
+      
+      let html = tipos.map(t => `
+        <div class="leyenda-item">
+          <div class="leyenda-color" style="background: ${t.color};"></div>
+          <span>${t.emoji} ${t.nombre}</span>
+        </div>
+      `).join('');
+      
+      container.innerHTML = html;
+    }
+    
+    function getTipoInfo(tipoId) {
+      const addon = getAddonActivo();
+      const tipos = TIPOS_POR_ADDON[addon] || TIPOS_POR_ADDON.mayordomo;
+      return tipos.find(t => t.id === tipoId) || { color: '#9C27B0', emoji: '📋', nombre: 'Reserva' };
+    }
 
     async function cargarReservas() {
       try {
@@ -705,14 +715,25 @@
 
         // Combinar reservas y eventos
         const itemsDia = [
-          ...reservasDia.map(r => ({ tipo: 'reserva', clase: r.tipo, label: r.quien })),
-          ...eventosDia.map(e => ({ tipo: 'evento', clase: e.tipo, label: `${EVENTO_ICONS[e.tipo] || '📌'} ${e.nombre}` }))
+          ...reservasDia.map(r => {
+            const tipoInfo = getTipoInfo(r.tipo);
+            return { 
+              tipo: 'reserva', 
+              color: tipoInfo.color, 
+              label: r.quienesNombre || r.quien || 'Reserva'
+            };
+          }),
+          ...eventosDia.map(e => ({ 
+            tipo: 'evento', 
+            color: e.color || '#E91E63', 
+            label: `${EVENTO_ICONS[e.tipo] || '📌'} ${e.nombre}` 
+          }))
         ];
         
         html += `<div class="calendario-dia ${esHoy ? 'hoy' : ''}" onclick="clickDia('${fechaStr}')">
           <span class="calendario-dia-numero">${dia}</span>
           <div class="calendario-dia-eventos">
-            ${itemsDia.slice(0, 2).map(item => `<div class="calendario-evento ${item.clase}">${item.label}</div>`).join('')}
+            ${itemsDia.slice(0, 2).map(item => `<div class="calendario-evento" style="background:${item.color};">${item.label}</div>`).join('')}
             ${itemsDia.length > 2 ? `<div class="calendario-evento" style="background:var(--text-muted)">+${itemsDia.length - 2}</div>` : ''}
           </div>
         </div>`;
@@ -758,9 +779,10 @@
         const salida = new Date(r.salida);
         const fechaStr = `${entrada.getDate()}/${entrada.getMonth() + 1} - ${salida.getDate()}/${salida.getMonth() + 1}`;
         const nombreMostrar = r.quienesNombre || r.quien || 'Sin asignar';
+        const tipoInfo = getTipoInfo(r.tipo);
         
         return `<div class="reserva-item" onclick="editar('${r.id}')">
-          <div class="reserva-tipo-indicator ${r.tipo}"></div>
+          <div class="reserva-tipo-indicator" style="background: ${tipoInfo.color};"></div>
           <div class="reserva-info">
             <div class="reserva-quien">${nombreMostrar}</div>
             <div class="reserva-fechas">${fechaStr}</div>
