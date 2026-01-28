@@ -489,23 +489,58 @@
           .collection('config').doc('calendarioFamiliar').get();
         
         if (configDoc.exists) {
-          configCalendario = configDoc.data();
+          const rawConfig = configDoc.data();
           
-          // Inicializar filtros de subtipos desde config
-          if (configCalendario.tiposAddon) {
+          // Convertir estructura {tiposAddon: {addon: {tipo: {visibleCGI, color}}}} 
+          // a formato usable por el calendario
+          configCalendario = {
+            hitos: {},
+            tiposAddon: {},
+            externos: {}
+          };
+          
+          if (rawConfig.tiposAddon) {
+            // Hitos familiares
+            if (rawConfig.tiposAddon.hitos) {
+              configCalendario.hitos = rawConfig.tiposAddon.hitos;
+            }
+            
+            // Add-ons de reserva
             ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
-              const tipos = configCalendario.tiposAddon[addon] || [];
-              tipos.filter(t => t.mostrarEnCal).forEach(t => {
-                subtiposFiltro[t.id] = true;
-              });
+              if (rawConfig.tiposAddon[addon]) {
+                configCalendario.tiposAddon[addon] = [];
+                Object.entries(rawConfig.tiposAddon[addon]).forEach(([tipoId, tipoData]) => {
+                  configCalendario.tiposAddon[addon].push({
+                    id: tipoId,
+                    visibleCGI: tipoData.visibleCGI || false,
+                    color: tipoData.color || '#9C27B0',
+                    emoji: tipoData.emoji || '📋',
+                    nombre: tipoData.nombre || tipoId
+                  });
+                  
+                  // Inicializar filtros
+                  if (tipoData.visibleCGI) {
+                    subtiposFiltro[tipoId] = true;
+                  }
+                });
+              }
             });
+            
+            // Externos
+            if (rawConfig.tiposAddon.externos) {
+              configCalendario.externos = {
+                mostrarLibranzas: rawConfig.tiposAddon.externos.libranzas?.visibleCGI || false,
+                mostrarVacaciones: rawConfig.tiposAddon.externos.vacaciones?.visibleCGI || false
+              };
+            }
           }
           
           // Mostrar chip de externos si están habilitados
-          if (configCalendario.externos?.mostrarLibranzas || configCalendario.externos?.mostrarVacaciones) {
-            document.getElementById('filtro-externo').style.display = 'inline-flex';
+          const extChip = document.getElementById('filtro-externo');
+          if (extChip && (configCalendario.externos?.mostrarLibranzas || configCalendario.externos?.mostrarVacaciones)) {
+            extChip.style.display = 'inline-flex';
             filtrosActivos.externo = true;
-            document.getElementById('filtro-externo').classList.add('active');
+            extChip.classList.add('active');
           }
           
           renderChipsSubtipos();
@@ -527,7 +562,7 @@
       
       ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
         const tipos = configCalendario.tiposAddon[addon] || [];
-        tipos.filter(t => t.mostrarEnCal).forEach(t => {
+        tipos.filter(t => t.visibleCGI).forEach(t => {
           hayTipos = true;
           const activo = subtiposFiltro[t.id] !== false;
           html += `
@@ -552,17 +587,39 @@
     function renderLeyendaDinamica() {
       const leyenda = document.getElementById('leyenda-dinamica');
       
-      let html = `
-        <div class="leyenda-item"><div class="leyenda-dot hito"></div> Hitos</div>
-        <div class="leyenda-item"><div class="leyenda-dot cita"></div> Citas</div>
-        <div class="leyenda-item"><div class="leyenda-dot evento"></div> Eventos</div>
-      `;
+      let html = '';
+      
+      // Hitos familiares (si están habilitados)
+      if (configCalendario?.hitos) {
+        if (configCalendario.hitos.cumpleanos?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.cumpleanos.color || '#E91E63'}"></div> 🎂 Cumpleaños</div>`;
+        }
+        if (configCalendario.hitos.uniones?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.uniones.color || '#9C27B0'}"></div> 💒 Aniversarios</div>`;
+        }
+        if (configCalendario.hitos.fallecimientos?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.fallecimientos.color || '#607D8B'}"></div> 🕯️ Recordatorios</div>`;
+        }
+        if (configCalendario.hitos.eventosYCitas?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.eventosYCitas.color || '#FF9800'}"></div> 🎉 Eventos y Citas</div>`;
+        }
+        if (configCalendario.hitos.solicitudesCTAs?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.solicitudesCTAs.color || '#4CAF50'}"></div> ✅ Solicitudes</div>`;
+        }
+      } else {
+        // Fallback si no hay config
+        html += `
+          <div class="leyenda-item"><div class="leyenda-dot hito"></div> Hitos</div>
+          <div class="leyenda-item"><div class="leyenda-dot cita"></div> Citas</div>
+          <div class="leyenda-item"><div class="leyenda-dot evento"></div> Eventos</div>
+        `;
+      }
       
       // Añadir tipos de reserva desde config
       if (configCalendario?.tiposAddon) {
         ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
           const tipos = configCalendario.tiposAddon[addon] || [];
-          tipos.filter(t => t.mostrarEnCal).forEach(t => {
+          tipos.filter(t => t.visibleCGI).forEach(t => {
             html += `
               <div class="leyenda-item">
                 <div class="leyenda-dot" style="background: ${t.color || '#7A9E7E'}"></div>
@@ -575,7 +632,7 @@
       
       // Añadir externos si están habilitados
       if (configCalendario?.externos?.mostrarLibranzas || configCalendario?.externos?.mostrarVacaciones) {
-        html += `<div class="leyenda-item"><div class="leyenda-dot externo"></div> Externos</div>`;
+        html += `<div class="leyenda-item"><div class="leyenda-dot externo"></div> 📅 Externos</div>`;
       }
       
       leyenda.innerHTML = html;
@@ -635,6 +692,12 @@
 
       // Set para deduplicar hitos (persona puede estar en varios nidos)
       const hitosUnicos = new Set();
+      
+      // Helper para verificar visibilidad de hitos según config
+      const esHitoVisible = (tipoHito) => {
+        if (!configCalendario?.hitos) return true; // Sin config = todo visible
+        return configCalendario.hitos[tipoHito]?.visibleCGI !== false;
+      };
 
       // ========================================
       // 1. HITOS (automáticos desde nidos)
@@ -647,14 +710,16 @@
           if (!esVisibleParaUsuario({ visibilidad: nido.visibilidad, nidoId: nidoDoc.id })) return;
           
           // 1a. Aniversario de unión del nido (fechaFormacion)
-          if (nido.fechaFormacion) {
+          if (nido.fechaFormacion && esHitoVisible('uniones')) {
             const [anio, mes, dia] = nido.fechaFormacion.split('-');
             const claveUnica = `aniv-${nido.nombre}-${mes}-${dia}`;
             if (!hitosUnicos.has(claveUnica)) {
               hitosUnicos.add(claveUnica);
+              const colorUniones = configCalendario?.hitos?.uniones?.color || '#9C27B0';
               todosEventos.push({
                 tipo: 'hito',
                 subtipo: 'aniversario',
+                color: colorUniones,
                 titulo: `Aniversario ${nido.nombre}`,
                 textoCorto: `Aniv. ${(nido.nombre || '').substring(0, 8)}`,
                 anual: true,
@@ -670,16 +735,18 @@
           const miembros = nido.miembrosData || [];
           miembros.forEach(m => {
             // Cumpleaños - DEDUPLICAR por nombre+fecha
-            if (m.fechaNacimiento) {
+            if (m.fechaNacimiento && esHitoVisible('cumpleanos')) {
               const [anio, mes, dia] = m.fechaNacimiento.split('-');
               const nombreCorto = m.nombre.split(' ')[0];
               const claveUnica = `cumple-${m.nombre}-${mes}-${dia}`;
+              const colorCumple = configCalendario?.hitos?.cumpleanos?.color || '#E91E63';
               
               if (!hitosUnicos.has(claveUnica)) {
                 hitosUnicos.add(claveUnica);
                 todosEventos.push({
                   tipo: 'hito',
                   subtipo: 'cumpleaños',
+                  color: colorCumple,
                   titulo: `Cumpleaños de ${m.nombre}`,
                   textoCorto: `Cumple ${nombreCorto}`,
                   anual: true,
@@ -692,16 +759,18 @@
             }
             
             // Aniversario de defunción - DEDUPLICAR
-            if (m.fechaDefuncion) {
+            if (m.fechaDefuncion && esHitoVisible('fallecimientos')) {
               const [anio, mes, dia] = m.fechaDefuncion.split('-');
               const nombreCorto = m.nombre.split(' ')[0];
               const claveUnica = `defun-${m.nombre}-${mes}-${dia}`;
+              const colorFallec = configCalendario?.hitos?.fallecimientos?.color || '#607D8B';
               
               if (!hitosUnicos.has(claveUnica)) {
                 hitosUnicos.add(claveUnica);
                 todosEventos.push({
                   tipo: 'hito',
                   subtipo: 'defuncion',
+                  color: colorFallec,
                   titulo: `Recordatorio ${m.nombre}`,
                   textoCorto: `Rec. ${nombreCorto}`,
                   anual: true,
@@ -717,67 +786,77 @@
       } catch(e) { console.error('Error hitos:', e); }
 
       // ========================================
-      // 2. CITAS (manuales)
+      // 2. CITAS (manuales) - verificar visibilidad eventosYCitas
       // ========================================
-      try {
-        const citasSnap = await db.collection('citas').where('familiaId','==',currentFamilia.id).get();
-        citasSnap.docs.forEach(doc => {
-          const c = doc.data();
-          if (!esVisibleParaUsuario(c)) return;
-          if (c.creadoPor !== currentUser.uid && c.nidoId !== miNidoPrincipal?.id) return;
-          if (!c.fecha) return;
+      if (esHitoVisible('eventosYCitas')) {
+        try {
+          const citasSnap = await db.collection('citas').where('familiaId','==',currentFamilia.id).get();
+          const colorEventosCitas = configCalendario?.hitos?.eventosYCitas?.color || '#FF9800';
           
-          const fecha = new Date(c.fecha);
-          const titulo = c.titulo || 'Cita';
-          
-          todosEventos.push({
-            tipo: 'cita',
-            subtipo: c.subtipo || c.categoria || 'reunion',
-            titulo: titulo,
-            textoCorto: titulo.substring(0, 15),
-            fecha: c.fecha,
-            mesNum: fecha.getMonth() + 1,
-            diaNum: fecha.getDate(),
-            anioNum: fecha.getFullYear(),
-            hora: c.hora,
-            lugar: c.lugar,
-            anual: false,
-            origen: 'Citas',
-            id: doc.id
+          citasSnap.docs.forEach(doc => {
+            const c = doc.data();
+            if (!esVisibleParaUsuario(c)) return;
+            if (c.creadoPor !== currentUser.uid && c.nidoId !== miNidoPrincipal?.id) return;
+            if (!c.fecha) return;
+            
+            const fecha = new Date(c.fecha);
+            const titulo = c.titulo || 'Cita';
+            
+            todosEventos.push({
+              tipo: 'cita',
+              subtipo: c.subtipo || c.categoria || 'reunion',
+              color: colorEventosCitas,
+              titulo: titulo,
+              textoCorto: titulo.substring(0, 15),
+              fecha: c.fecha,
+              mesNum: fecha.getMonth() + 1,
+              diaNum: fecha.getDate(),
+              anioNum: fecha.getFullYear(),
+              hora: c.hora,
+              lugar: c.lugar,
+              anual: false,
+              origen: 'Citas',
+              id: doc.id
+            });
           });
-        });
-      } catch(e) { console.error('Error citas:', e); }
+        } catch(e) { console.error('Error citas:', e); }
+      }
 
       // ========================================
-      // 3. EVENTOS (manuales)
+      // 3. EVENTOS (manuales) - verificar visibilidad eventosYCitas
       // ========================================
-      try {
-        const eventosSnap = await db.collection('eventos').where('familiaId','==',currentFamilia.id).get();
-        eventosSnap.docs.forEach(doc => {
-          const e = doc.data();
-          if (!esVisibleParaUsuario(e)) return;
-          if (!e.fecha) return;
+      if (esHitoVisible('eventosYCitas')) {
+        try {
+          const eventosSnap = await db.collection('eventos').where('familiaId','==',currentFamilia.id).get();
+          const colorEventos = configCalendario?.hitos?.eventosYCitas?.color || '#FF9800';
           
-          const fecha = new Date(e.fecha);
-          const nombre = e.nombre || e.titulo || 'Evento';
-          
-          todosEventos.push({
-            tipo: 'evento',
-            subtipo: e.subtipo || e.tipo || 'fiesta',
-            titulo: nombre,
-            textoCorto: nombre.substring(0, 15),
-            fecha: e.fecha,
-            mesNum: fecha.getMonth() + 1,
-            diaNum: fecha.getDate(),
-            anioNum: fecha.getFullYear(),
-            hora: e.hora,
-            lugar: e.lugar,
-            anual: e.recurrente || false,
-            origen: 'Eventos',
-            id: doc.id
+          eventosSnap.docs.forEach(doc => {
+            const e = doc.data();
+            if (!esVisibleParaUsuario(e)) return;
+            if (!e.fecha) return;
+            
+            const fecha = new Date(e.fecha);
+            const nombre = e.nombre || e.titulo || 'Evento';
+            
+            todosEventos.push({
+              tipo: 'evento',
+              subtipo: e.subtipo || e.tipo || 'fiesta',
+              color: colorEventos,
+              titulo: nombre,
+              textoCorto: nombre.substring(0, 15),
+              fecha: e.fecha,
+              mesNum: fecha.getMonth() + 1,
+              diaNum: fecha.getDate(),
+              anioNum: fecha.getFullYear(),
+              hora: e.hora,
+              lugar: e.lugar,
+              anual: e.recurrente || false,
+              origen: 'Eventos',
+              id: doc.id
+            });
           });
-        });
-      } catch(e) { console.error('Error eventos:', e); }
+        } catch(e) { console.error('Error eventos:', e); }
+      }
 
       // ========================================
       // 4. RESERVAS (desde bienes con add-on)
@@ -842,7 +921,8 @@
               
               // Texto descriptivo
               let textoLargo = bienNombre;
-              if (r.nidoReservaNombre) textoLargo += ` — ${r.nidoReservaNombre}`;
+              if (r.quienesNombre) textoLargo += ` — ${r.quienesNombre}`;
+              else if (r.nidoReservaNombre) textoLargo += ` — ${r.nidoReservaNombre}`;
               else if (r.otroGrupoNombre) textoLargo += ` — ${r.otroGrupoNombre}`;
               else if (r.quien) textoLargo += ` — ${r.quien}`;
               else if (r.motivo) textoLargo += ` — ${r.motivo}`;
@@ -1063,14 +1143,12 @@
           let styleAttr = '';
           let claseColor = e.tipo;
           
-          if (e.tipo === 'reserva') {
-            if (e.color) {
-              // Color dinámico desde config
-              styleAttr = `style="background: ${e.color}; color: white;"`;
-              claseColor = e.esExterno ? 'evento-externo' : '';
-            } else {
-              claseColor = e.subtipo ? `reserva-${e.subtipo}` : 'reserva';
-            }
+          if (e.color) {
+            // Color dinámico desde config (aplica a hitos, citas, eventos, reservas)
+            styleAttr = `style="background: ${e.color}; color: white;"`;
+            claseColor = e.esExterno ? 'evento-externo' : '';
+          } else if (e.tipo === 'reserva' && e.subtipo) {
+            claseColor = `reserva-${e.subtipo}`;
           }
           
           eventsHtml += `<div class="day-event ${claseColor}" ${styleAttr} title="${e.titulo}" data-dia="${dia}" data-idx="${idx}">${e.textoCorto}</div>`;
