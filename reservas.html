@@ -21,6 +21,14 @@
       --mayordomo-light: #A69076;
       --mayordomo-dark: #6B5A45;
       --mayordomo-muted: rgba(139, 115, 85, 0.15);
+      --gerente: #5B7B9A;
+      --gerente-light: #7A9AB8;
+      --gerente-dark: #3D5A73;
+      --gerente-muted: rgba(91, 123, 154, 0.15);
+      --capataz: #6B8E23;
+      --capataz-light: #8BAD43;
+      --capataz-dark: #556B2F;
+      --capataz-muted: rgba(107, 142, 35, 0.15);
       --text: #3D3D3D;
       --text-light: #6B6B6B;
       --text-muted: #9A9A9A;
@@ -69,6 +77,8 @@
       top: 0;
       z-index: 100;
     }
+    .header.gerente { background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%); }
+    .header.capataz { background: linear-gradient(135deg, var(--capataz) 0%, var(--capataz-dark) 100%); }
 
     .header-left { display: flex; align-items: center; gap: 16px; }
 
@@ -292,6 +302,27 @@
       width: 100%;
     }
     .btn-mayordomo:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    
+    .btn-gerente {
+      background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%);
+      color: white;
+      width: 100%;
+    }
+    .btn-gerente:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    
+    .btn-capataz {
+      background: linear-gradient(135deg, var(--capataz) 0%, var(--capataz-dark) 100%);
+      color: white;
+      width: 100%;
+    }
+    .btn-capataz:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    
+    .btn-addon {
+      background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-dark) 100%);
+      color: white;
+      width: 100%;
+    }
+    .btn-addon:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
 
     .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
     .btn-secondary:hover { background: var(--cream-dark); }
@@ -396,7 +427,7 @@
   </style>
 </head>
 <body>
-  <header class="header">
+  <header class="header" id="page-header">
     <div class="header-left">
       <a href="#" class="back-btn" id="btn-volver">← Volver</a>
       <div class="header-title">
@@ -421,7 +452,7 @@
       </div>
 
       <div class="sidebar">
-        <button class="btn btn-mayordomo" onclick="abrirModal()">+ Nueva reserva</button>
+        <button class="btn btn-addon" id="btn-nueva-reserva" onclick="abrirModal()">+ Nueva reserva</button>
 
         <div class="sidebar-card">
           <div class="sidebar-card-header">
@@ -492,7 +523,7 @@
           <button type="button" class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminar()">Eliminar</button>
           <div style="display:flex;gap:12px;">
             <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
-            <button type="submit" class="btn btn-mayordomo">Guardar</button>
+            <button type="submit" class="btn btn-addon" id="btn-guardar">Guardar</button>
           </div>
         </div>
       </form>
@@ -560,6 +591,7 @@
       renderTiposReserva();
       renderSelectorQuienes();
       renderLeyenda();
+      aplicarTemaAddon();
     });
 
     async function cargarBien() {
@@ -582,10 +614,29 @@
     }
     
     function getAddonActivo() {
-      if (bienData?.mayordomo?.activo || bienData?.mayordomoActivo) return 'mayordomo';
-      if (bienData?.gerente?.activo || bienData?.gerenteActivo) return 'gerente';
-      if (bienData?.capataz?.activo || bienData?.capatazActivo) return 'capataz';
-      return 'mayordomo';
+      if (!bienData) return 'mayordomo';
+      
+      // Debug temporal
+      console.log('bienData addons:', {
+        mayordomoActivo: bienData.mayordomoActivo,
+        gerenteActivo: bienData.gerenteActivo,
+        capatazActivo: bienData.capatazActivo,
+        mayordomo: bienData.mayordomo,
+        gerente: bienData.gerente,
+        capataz: bienData.capataz
+      });
+      
+      // Verificar en orden: primero los campos directos, luego objetos anidados
+      if (bienData.mayordomoActivo === true || bienData.mayordomo?.activo === true) return 'mayordomo';
+      if (bienData.gerenteActivo === true || bienData.gerente?.activo === true) return 'gerente';
+      if (bienData.capatazActivo === true || bienData.capataz?.activo === true) return 'capataz';
+      
+      // Si ninguno está activo explícitamente, verificar si hay algún add-on con datos
+      if (bienData.mayordomoActivo || bienData.mayordomo) return 'mayordomo';
+      if (bienData.gerenteActivo || bienData.gerente) return 'gerente';
+      if (bienData.capatazActivo || bienData.capataz) return 'capataz';
+      
+      return 'mayordomo'; // Default
     }
     
     function renderTiposReserva() {
@@ -650,6 +701,32 @@
       const addon = getAddonActivo();
       const tipos = TIPOS_POR_ADDON[addon] || TIPOS_POR_ADDON.mayordomo;
       return tipos.find(t => t.id === tipoId) || { color: '#9C27B0', emoji: '📋', nombre: 'Reserva' };
+    }
+    
+    function aplicarTemaAddon() {
+      const addon = getAddonActivo();
+      const header = document.getElementById('page-header');
+      const btnNueva = document.getElementById('btn-nueva-reserva');
+      const btnGuardar = document.getElementById('btn-guardar');
+      
+      // Colores por add-on
+      const colores = {
+        mayordomo: { primary: '#8B7355', dark: '#6B5A45' },
+        gerente: { primary: '#5B7B9A', dark: '#3D5A73' },
+        capataz: { primary: '#6B8E23', dark: '#556B2F' }
+      };
+      
+      const color = colores[addon] || colores.mayordomo;
+      
+      // Aplicar clase al header
+      header.className = 'header ' + addon;
+      
+      // Aplicar colores a botones
+      const gradiente = `linear-gradient(135deg, ${color.primary} 0%, ${color.dark} 100%)`;
+      if (btnNueva) btnNueva.style.background = gradiente;
+      if (btnGuardar) btnGuardar.style.background = gradiente;
+      
+      console.log('Tema aplicado:', addon);
     }
 
     async function cargarReservas() {
