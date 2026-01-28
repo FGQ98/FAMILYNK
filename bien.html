@@ -1993,7 +1993,7 @@
           <!-- Normas para miembros de la familia -->
           <div class="collapsible-section open" id="section-normas-uso">
             <div class="collapsible-header" onclick="toggleSection('normas-uso')">
-              <div class="collapsible-title"><span>📖</span><span>Normas para familiares</span><span class="collapsible-count" id="count-normas-uso">0</span></div>
+              <div class="collapsible-title"><span>📖</span><span>Pautas de uso y convivencia de familiares</span><span class="collapsible-count" id="count-normas-uso">0</span></div>
               <span class="collapsible-toggle">▼</span>
             </div>
             <div class="collapsible-body">
@@ -2009,7 +2009,7 @@
               <div id="normas-miembros-container">
                 <div class="normas-empty">
                   <div class="normas-empty-icon">📖</div>
-                  <p>Sin normas para familiares</p>
+                  <p>Sin pautas de uso y convivencia</p>
                   <p style="font-size: 0.8rem;">Añade capítulos o copia una plantilla base</p>
                 </div>
               </div>
@@ -3226,6 +3226,7 @@
     let caserosData = [];
     let editingCaseroId = null;
     let esAdminRama = false;
+    let puedeEditar = false; // Solo creador del bien o adminRama
     
     // Normas de externos
     let normasExternosData = [];
@@ -3269,6 +3270,9 @@
             esAdminRama = userData.rol === 'adminRama' || userData.rol === 'adminSistema';
           }
         } catch (e) { console.error('Error verificando rol:', e); }
+        
+        // Determinar si puede editar: creador del bien O adminRama
+        puedeEditar = esAdminRama || bienData.creadoPor === currentUser.uid;
         
         await loadNidos();
         await loadTiposReserva();
@@ -3572,6 +3576,49 @@
 
       // Renderizar estado de gestión (Mayordomo/Gerente)
       renderGestionCards();
+      
+      // Control de permisos: ocultar elementos de edición si no puede editar
+      aplicarPermisosEdicion();
+    }
+    
+    function aplicarPermisosEdicion() {
+      // Botón principal de editar bien
+      const btnEditar = document.getElementById('btn-editar');
+      if (btnEditar) {
+        btnEditar.style.display = puedeEditar ? '' : 'none';
+      }
+      
+      // Botones de añadir en secciones de normas
+      const botonesNormas = document.querySelectorAll('.normas-externos-actions');
+      botonesNormas.forEach(el => {
+        el.style.display = puedeEditar ? '' : 'none';
+      });
+      
+      // Botón de añadir casero
+      const btnAddCasero = document.querySelector('button[onclick="abrirModalCasero()"]');
+      if (btnAddCasero) {
+        btnAddCasero.style.display = puedeEditar ? '' : 'none';
+      }
+      
+      // Botón de añadir hoster
+      const btnAddHoster = document.querySelector('button[onclick="abrirModalHoster()"]');
+      if (btnAddHoster) {
+        btnAddHoster.style.display = puedeEditar ? '' : 'none';
+      }
+      
+      // Botones de grupos y artículos de ajuar
+      const btnAddGrupo = document.querySelector('button[onclick="abrirModalGrupoAjuar()"]');
+      const btnAddLugares = document.querySelector('button[onclick="abrirModalLugaresAjuar()"]');
+      if (btnAddGrupo) btnAddGrupo.style.display = puedeEditar ? '' : 'none';
+      if (btnAddLugares) btnAddLugares.style.display = puedeEditar ? '' : 'none';
+      
+      // Botones de activar add-ons (Mayordomo, Gerente, Capataz)
+      const btnsActivar = document.querySelectorAll('[id^="btn-mayordomo"], [id^="btn-gerente"], [id^="btn-capataz"]');
+      btnsActivar.forEach(btn => {
+        if (btn && btn.id.includes('btn-') && !btn.id.includes('abrir')) {
+          btn.style.display = puedeEditar ? '' : 'none';
+        }
+      });
     }
 
     function renderGestionCards() {
@@ -4302,6 +4349,12 @@
     function formatDateInput(d) { return d.toISOString().split('T')[0]; }
     function formatDateRange(i, f) { const o = { day: 'numeric', month: 'short' }; return `${i.toLocaleDateString('es-ES', o)} - ${f.toLocaleDateString('es-ES', o)}`; }
     function editarBien() {
+      // Verificar permisos de edición
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       // Abrir modal de edición
       const modal = document.getElementById('modal-editar-bien');
       
@@ -5618,6 +5671,12 @@
     const formCasero = document.getElementById('form-casero');
 
     function abrirModalCasero(casero = null) {
+      // Verificar permisos de edición
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       editingCaseroId = casero?.id || null;
       formCasero.reset();
       document.getElementById('btn-eliminar-casero').classList.toggle('hidden', !casero);
@@ -6729,7 +6788,7 @@
                 <span>${cap.titulo || 'Sin título'}</span>
                 <span style="font-size: 0.75rem; color: var(--text-muted);">(${total}${apartados.length > 0 ? `, ${apartados.length} apt.` : ''})</span>
               </div>
-              <div class="normas-capitulo-actions" onclick="event.stopPropagation()">
+              <div class="normas-capitulo-actions" onclick="event.stopPropagation()" ${!puedeEditar ? 'style="display:none;"' : ''}>
                 <button onclick="editarCapituloNorma(${capIdx})" title="Editar">✏️</button>
                 <button onclick="moverCapituloNorma(${capIdx}, -1)" title="Subir" ${capIdx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
                 <button onclick="moverCapituloNorma(${capIdx}, 1)" title="Bajar" ${capIdx === normasExternosData.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
@@ -6766,6 +6825,11 @@
     }
 
     function abrirModalCapituloNorma() {
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       editingCapituloNormaIdx = null;
       apartadosExternosTemp = [];
       document.getElementById('modal-capitulo-norma-titulo').textContent = '➕ Nuevo capítulo';
@@ -6777,6 +6841,11 @@
     }
 
     function editarCapituloNorma(idx) {
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       const cap = normasExternosData[idx];
       if (!cap) return;
       
@@ -6950,6 +7019,11 @@
     // ============ COPIAR PLANTILLA DE NORMAS ============
     
     function copiarPlantillaNormas() {
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       document.getElementById('select-tipo-plantilla').value = '';
       document.getElementById('plantilla-preview').style.display = 'none';
       document.getElementById('check-reemplazar-normas').checked = false;
@@ -7156,7 +7230,7 @@
         container.innerHTML = `
           <div class="normas-empty">
             <div class="normas-empty-icon">📖</div>
-            <p>Sin normas para familiares</p>
+            <p>Sin pautas de uso y convivencia</p>
             <p style="font-size: 0.8rem;">Añade capítulos o copia una plantilla base</p>
           </div>
         `;
@@ -7177,7 +7251,7 @@
                 <span>${cap.titulo || 'Sin título'}</span>
                 <span style="font-size: 0.75rem; color: var(--text-muted);">(${total}${apartados.length > 0 ? `, ${apartados.length} apt.` : ''})</span>
               </div>
-              <div class="normas-capitulo-actions" onclick="event.stopPropagation()">
+              <div class="normas-capitulo-actions" onclick="event.stopPropagation()" ${!puedeEditar ? 'style="display:none;"' : ''}>
                 <button onclick="editarCapituloNormaMiembros(${capIdx})" title="Editar">✏️</button>
                 <button onclick="moverCapituloNormaMiembros(${capIdx}, -1)" title="Subir" ${capIdx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
                 <button onclick="moverCapituloNormaMiembros(${capIdx}, 1)" title="Bajar" ${capIdx === normasMiembrosData.length - 1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
@@ -7214,6 +7288,11 @@
     }
 
     function abrirModalCapituloNormaMiembros() {
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       editingCapituloNormaMiembrosIdx = null;
       apartadosMiembrosTemp = [];
       document.getElementById('modal-capitulo-norma-miembros-titulo').textContent = '➕ Nuevo capítulo';
@@ -7225,6 +7304,11 @@
     }
 
     function editarCapituloNormaMiembros(idx) {
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       const cap = normasMiembrosData[idx];
       if (!cap) return;
       
@@ -7406,6 +7490,11 @@
     }
 
     async function copiarPlantillaNormasMiembros() {
+      if (!puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede editar esta información.');
+        return;
+      }
+      
       const addonActivo = getAddonActivoParaPlantilla();
       const addonsConfig = {
         mayordomo: { icono: '🏠', nombre: 'Mayordomo' },
