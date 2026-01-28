@@ -4921,14 +4921,58 @@
       const añoActual = new Date().getFullYear();
 
       try {
-        // Cargar config del calendario
+        // Cargar y parsear config del calendario
         try {
           const configDoc = await db.collection('familias').doc(currentFamilia.id)
             .collection('config').doc('calendarioFamiliar').get();
           if (configDoc.exists) {
-            configCalendarioCGI = configDoc.data();
+            const rawConfig = configDoc.data();
+            
+            // Parsear estructura {tiposAddon: {addon: {tipo: {visibleCGI, color}}}}
+            configCalendarioCGI = {
+              hitos: {},
+              tiposAddon: {},
+              externos: {}
+            };
+            
+            if (rawConfig.tiposAddon) {
+              // Hitos familiares
+              if (rawConfig.tiposAddon.hitos) {
+                configCalendarioCGI.hitos = rawConfig.tiposAddon.hitos;
+              }
+              
+              // Add-ons de reserva
+              ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
+                if (rawConfig.tiposAddon[addon]) {
+                  configCalendarioCGI.tiposAddon[addon] = [];
+                  Object.entries(rawConfig.tiposAddon[addon]).forEach(([tipoId, tipoData]) => {
+                    configCalendarioCGI.tiposAddon[addon].push({
+                      id: tipoId,
+                      visibleCGI: tipoData.visibleCGI || false,
+                      color: tipoData.color || '#9C27B0',
+                      emoji: tipoData.emoji || '📋',
+                      nombre: tipoData.nombre || tipoId
+                    });
+                  });
+                }
+              });
+              
+              // Externos
+              if (rawConfig.tiposAddon.externos) {
+                configCalendarioCGI.externos = {
+                  mostrarLibranzas: rawConfig.tiposAddon.externos.libranzas?.visibleCGI || false,
+                  mostrarVacaciones: rawConfig.tiposAddon.externos.vacaciones?.visibleCGI || false
+                };
+              }
+            }
           }
         } catch (e) { console.warn('Config calendario no disponible'); }
+        
+        // Helper para verificar visibilidad de hitos
+        const esHitoVisible = (tipoHito) => {
+          if (!configCalendarioCGI?.hitos) return true; // Sin config = todo visible
+          return configCalendarioCGI.hitos[tipoHito]?.visibleCGI !== false;
+        };
 
         // Cargar mapa de nidos para verificar estirpes
         const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
@@ -4937,69 +4981,92 @@
           nidosMap[doc.id] = { id: doc.id, ...doc.data() };
         });
 
-        // CUMPLEAÑOS desde miembros de nidos (solo de nidos visibles según estirpe)
-        nidosSnap.docs.forEach(doc => {
-          const nido = { id: doc.id, ...doc.data() };
-          // Verificar si este nido es visible (usando visibilidad 'estirpe')
-          const nidoVisible = esVisibleParaUsuario({ visibilidad: 'estirpe', nidoId: nido.id }, nidosMap);
-          if (!nidoVisible) return;
-          
-          (nido.miembrosData || []).forEach(m => {
-            if (m.fechaNacimiento) {
-              const partes = m.fechaNacimiento.split('-');
-              if (partes.length >= 3) {
-                const mes = partes[1], dia = partes[2];
-                [añoActual, añoActual+1].forEach(y => {
-                  eventosCalendario.push({ tipo:'cumple', titulo:`🎂 ${m.nombre || 'Cumpleaños'}`, fecha:`${y}-${mes}-${dia}` });
-                });
-              }
-            }
-          });
-        });
-
-        // DÍAS ESPECIALES
-        try {
-          const diasSnap = await db.collection('diasEspeciales').where('familiaId', '==', currentFamilia.id).get();
-          diasSnap.docs.forEach(doc => {
-            const d = { id: doc.id, ...doc.data() };
-            if (!esVisibleParaUsuario(d, nidosMap)) return;
+        // CUMPLEAÑOS desde miembros de nidos (solo si visibleCGI)
+        if (esHitoVisible('cumpleanos')) {
+          const colorCumple = configCalendarioCGI?.hitos?.cumpleanos?.color || '#E91E63';
+          nidosSnap.docs.forEach(doc => {
+            const nido = { id: doc.id, ...doc.data() };
+            const nidoVisible = esVisibleParaUsuario({ visibilidad: 'estirpe', nidoId: nido.id }, nidosMap);
+            if (!nidoVisible) return;
             
-            [añoActual, añoActual+1].forEach(y => {
-              eventosCalendario.push({ 
-                tipo: 'especial', 
-                titulo: `🎉 ${d.nombre}`, 
-                fecha: `${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` 
-              });
+            (nido.miembrosData || []).forEach(m => {
+              if (m.fechaNacimiento) {
+                const partes = m.fechaNacimiento.split('-');
+                if (partes.length >= 3) {
+                  const mes = partes[1], dia = partes[2];
+                  [añoActual, añoActual+1].forEach(y => {
+                    eventosCalendario.push({ 
+                      tipo:'cumple', 
+                      color: colorCumple,
+                      titulo:`🎂 ${m.nombre || 'Cumpleaños'}`, 
+                      fecha:`${y}-${mes}-${dia}` 
+                    });
+                  });
+                }
+              }
             });
           });
-        } catch (e) {
-          console.warn('Error cargando días especiales (ignorado)');
         }
 
-        // EVENTOS
-        try {
-          const eventosSnap = await db.collection('eventos').where('familiaId', '==', currentFamilia.id).get();
-          eventosSnap.docs.forEach(doc => {
-            const e = { id: doc.id, ...doc.data() };
-            if (!esVisibleParaUsuario(e, nidosMap)) return;
-            
-            if (e.fecha) eventosCalendario.push({ tipo:'evento', titulo: `🎊 ${e.nombre}`, fecha: e.fecha, hora: e.hora });
-          });
-        } catch (e) {
-          console.warn('Error cargando eventos (ignorado)');
-        }
+        // DÍAS ESPECIALES (solo si eventosYCitas visible)
+        if (esHitoVisible('eventosYCitas')) {
+          const colorEventos = configCalendarioCGI?.hitos?.eventosYCitas?.color || '#FF9800';
+          try {
+            const diasSnap = await db.collection('diasEspeciales').where('familiaId', '==', currentFamilia.id).get();
+            diasSnap.docs.forEach(doc => {
+              const d = { id: doc.id, ...doc.data() };
+              if (!esVisibleParaUsuario(d, nidosMap)) return;
+              
+              [añoActual, añoActual+1].forEach(y => {
+                eventosCalendario.push({ 
+                  tipo: 'especial',
+                  color: colorEventos,
+                  titulo: `🎉 ${d.nombre}`, 
+                  fecha: `${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` 
+                });
+              });
+            });
+          } catch (e) {
+            console.warn('Error cargando días especiales (ignorado)');
+          }
 
-        // CITAS
-        try {
-          const citasSnap = await db.collection('citas').where('familiaId', '==', currentFamilia.id).get();
-          citasSnap.docs.forEach(doc => {
-            const c = { id: doc.id, ...doc.data() };
-            if (!esVisibleParaUsuario(c, nidosMap)) return;
-            
-            if (c.fecha) eventosCalendario.push({ tipo:'cita', titulo: `📋 ${c.titulo}`, fecha: c.fecha, hora: c.hora });
-          });
-        } catch (e) {
-          console.warn('Error cargando citas (ignorado)');
+          // EVENTOS
+          try {
+            const eventosSnap = await db.collection('eventos').where('familiaId', '==', currentFamilia.id).get();
+            eventosSnap.docs.forEach(doc => {
+              const e = { id: doc.id, ...doc.data() };
+              if (!esVisibleParaUsuario(e, nidosMap)) return;
+              
+              if (e.fecha) eventosCalendario.push({ 
+                tipo:'evento', 
+                color: colorEventos,
+                titulo: `🎊 ${e.nombre}`, 
+                fecha: e.fecha, 
+                hora: e.hora 
+              });
+            });
+          } catch (e) {
+            console.warn('Error cargando eventos (ignorado)');
+          }
+
+          // CITAS
+          try {
+            const citasSnap = await db.collection('citas').where('familiaId', '==', currentFamilia.id).get();
+            citasSnap.docs.forEach(doc => {
+              const c = { id: doc.id, ...doc.data() };
+              if (!esVisibleParaUsuario(c, nidosMap)) return;
+              
+              if (c.fecha) eventosCalendario.push({ 
+                tipo:'cita', 
+                color: colorEventos,
+                titulo: `📋 ${c.titulo}`, 
+                fecha: c.fecha, 
+                hora: c.hora 
+              });
+            });
+          } catch (e) {
+            console.warn('Error cargando citas (ignorado)');
+          }
         }
 
         // RESERVAS de bienes (con colores dinámicos de config)
@@ -5044,7 +5111,8 @@
                 
                 // Texto descriptivo
                 let descripcion = bien.nombre || 'Reserva';
-                if (r.nidoReservaNombre) descripcion += ` · ${r.nidoReservaNombre}`;
+                if (r.quienesNombre) descripcion += ` · ${r.quienesNombre}`;
+                else if (r.nidoReservaNombre) descripcion += ` · ${r.nidoReservaNombre}`;
                 else if (r.otroGrupoNombre) descripcion += ` · ${r.otroGrupoNombre}`;
                 
                 eventosCalendario.push({ 
@@ -7297,7 +7365,46 @@
           .collection('config').doc('calendarioFamiliar').get();
         
         if (configDoc.exists) {
-          configCalendarioData = configDoc.data();
+          const rawConfig = configDoc.data();
+          
+          // Parsear estructura {tiposAddon: {addon: {tipo: {visibleCGI, color}}}}
+          configCalendarioData = {
+            hitos: {},
+            tiposAddon: {},
+            externos: {}
+          };
+          
+          if (rawConfig.tiposAddon) {
+            // Hitos familiares
+            if (rawConfig.tiposAddon.hitos) {
+              configCalendarioData.hitos = rawConfig.tiposAddon.hitos;
+            }
+            
+            // Add-ons de reserva
+            ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
+              if (rawConfig.tiposAddon[addon]) {
+                configCalendarioData.tiposAddon[addon] = [];
+                Object.entries(rawConfig.tiposAddon[addon]).forEach(([tipoId, tipoData]) => {
+                  configCalendarioData.tiposAddon[addon].push({
+                    id: tipoId,
+                    visibleCGI: tipoData.visibleCGI || false,
+                    color: tipoData.color || '#9C27B0',
+                    emoji: tipoData.emoji || '📋',
+                    nombre: tipoData.nombre || tipoId,
+                    esFamiliar: tipoData.esFamiliar || false
+                  });
+                });
+              }
+            });
+            
+            // Externos
+            if (rawConfig.tiposAddon.externos) {
+              configCalendarioData.externos = {
+                mostrarLibranzas: rawConfig.tiposAddon.externos.libranzas?.visibleCGI || false,
+                mostrarVacaciones: rawConfig.tiposAddon.externos.vacaciones?.visibleCGI || false
+              };
+            }
+          }
         } else {
           configCalendarioData = null;
         }
@@ -7740,7 +7847,7 @@
       
       let tipos = [];
       
-      // Cargar tipos desde la nueva config
+      // Cargar tipos desde la nueva config (ya parseada como array)
       if (addon && configCalendarioData?.tiposAddon?.[addon]) {
         tipos = configCalendarioData.tiposAddon[addon].map(t => ({
           id: t.id,
@@ -7748,7 +7855,7 @@
           icono: t.emoji || '',
           color: t.color || '#7A9E7E',
           esFamiliar: t.esFamiliar || false,
-          mostrarEnCal: t.mostrarEnCal !== false
+          visibleCGI: t.visibleCGI !== false
         }));
       }
       
