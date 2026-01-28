@@ -3786,6 +3786,7 @@
         const m = bienData.mayordomoModulos || {};
         const modulosConfig = [
           { key: 'reservas', icon: '📅', label: 'Reservas', url: `reservas.html?id=${bienId}&origen=bien` },
+          { key: 'habitaciones', icon: '🛏️', label: 'Habitaciones', url: null },
           { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario.html?id=${bienId}&origen=bien` },
           { key: 'ajuar', icon: '🪑', label: 'Ajuar', url: `ajuar.html?id=${bienId}&origen=bien` },
           { key: 'menus', icon: '🍽️', label: 'Menús', url: `menus-nidos.html?id=${bienId}&origen=bien` },
@@ -3800,7 +3801,12 @@
         
         modulosConfig.forEach(mod => {
           if (m[mod.key]) {
-            botonesHtml += `<a href="${mod.url}" class="btn-modulo-activo">${mod.icon} ${mod.label}</a>`;
+            if (mod.key === 'habitaciones') {
+              // Habitaciones: hace scroll a la sección de habitaciones
+              botonesHtml += `<button onclick="scrollToSection('section-habitaciones')" class="btn-modulo-activo">${mod.icon} ${mod.label}</button>`;
+            } else {
+              botonesHtml += `<a href="${mod.url}" class="btn-modulo-activo">${mod.icon} ${mod.label}</a>`;
+            }
           }
         });
       } else if (tipo === 'gerente') {
@@ -4384,6 +4390,16 @@
     function formatDate(d) { return new Date(d).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }); }
     function formatDateInput(d) { return d.toISOString().split('T')[0]; }
     function formatDateRange(i, f) { const o = { day: 'numeric', month: 'short' }; return `${i.toLocaleDateString('es-ES', o)} - ${f.toLocaleDateString('es-ES', o)}`; }
+    function scrollToSection(sectionId) {
+      const section = document.getElementById(sectionId);
+      if (section) {
+        // Si es colapsable, abrirla primero
+        if (section.classList.contains('collapsible-section') && !section.classList.contains('open')) {
+          section.classList.add('open');
+        }
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
     function editarBien() {
       // Verificar permisos de edición
       if (!puedeEditar) {
