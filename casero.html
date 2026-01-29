@@ -1922,8 +1922,8 @@
       console.log('Cargando datos para bienId:', bienId);
       console.log('Permisos actuales:', permisosActuales);
 
-      // Reservas
-      if (permisosActuales.reservas?.ver) {
+      // Reservas (permiso: calendario)
+      if (permisosActuales.calendario?.ver || permisosActuales.reservas?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('fechaInicio', 'asc').get();
           datosModulos.reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1934,8 +1934,8 @@
         }
       }
 
-      // Inventario - Se guarda como campo del documento del bien, no como subcolección
-      if (permisosActuales.inventario?.ver) {
+      // Inventario (permiso: tomaInventario)
+      if (permisosActuales.tomaInventario?.ver || permisosActuales.inventario?.ver) {
         try {
           const bienDoc = await db.collection('bienes').doc(bienId).get();
           const inventarioData = bienDoc.data()?.inventario || {};
@@ -1970,8 +1970,8 @@
         }
       }
 
-      // Gastos - SIN orderBy para evitar necesidad de índice
-      if (permisosActuales.gastos?.ver) {
+      // Gastos (permiso: registro)
+      if (permisosActuales.registro?.ver || permisosActuales.gastos?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('gastos').get();
           datosModulos.gastos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1989,8 +1989,8 @@
         }
       }
 
-      // Limpieza (checklist del bien)
-      if (permisosActuales.limpieza?.ver) {
+      // Limpieza (permiso: limpieza)
+      if (permisosActuales.limpieza?.ver || permisosActuales.programa?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('limpieza').get();
           datosModulos.limpieza = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2035,8 +2035,8 @@
         await cargarPlanSemanalLimpieza(bienId);
       }
 
-      // Mantenimiento
-      if (permisosActuales.mantenimiento?.ver) {
+      // Mantenimiento (permiso: mantenimiento)
+      if (permisosActuales.mantenimiento?.ver || permisosActuales.programa?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('mantenimiento').get();
           datosModulos.mantenimiento = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2052,8 +2052,8 @@
         }
       }
 
-      // Reparaciones (si tiene permiso de mantenimiento)
-      if (permisosActuales.mantenimiento?.ver) {
+      // Reparaciones (permiso: reparaciones)
+      if (permisosActuales.reparaciones?.ver || permisosActuales.inventario?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('reparaciones').get();
           datosModulos.reparaciones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2069,8 +2069,8 @@
         }
       }
 
-      // Herramientas (si tiene permiso de mantenimiento)
-      if (permisosActuales.mantenimiento?.ver) {
+      // Herramientas (permiso: herramientas)
+      if (permisosActuales.herramientas?.ver || permisosActuales.inventario?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('herramientas').get();
           datosModulos.herramientas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2501,7 +2501,7 @@
 
     // ========== RESERVAS ==========
     function renderModuloReservas() {
-      const p = permisosActuales.reservas;
+      const p = permisosActuales.calendario || permisosActuales.reservas;
       const hoy = new Date();
       const proximas = datosModulos.reservas.filter(r => {
         const fechaFin = parseDate(r.fechaFin);
@@ -2532,7 +2532,7 @@
         <div class="modulo-card">
           <div class="modulo-card-header">
             <div class="modulo-card-title">📅 Reservas</div>
-            <div class="modulo-card-permisos">${renderPermisosBadges('reservas')}</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('calendario')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
         </div>
@@ -2541,7 +2541,7 @@
 
     // ========== INVENTARIO ==========
     function renderModuloInventario() {
-      const p = permisosActuales.inventario;
+      const p = permisosActuales.tomaInventario || permisosActuales.inventario;
       const catIcons = { limpieza: '🧹', bano: '🚿', cocina: '🍳', alimentos: '🥫', bebidas: '🍷', otro: '📦' };
 
       let itemsHtml = '';
@@ -2629,7 +2629,7 @@
         <div class="modulo-card" id="card-inventario">
           <div class="modulo-card-header">
             <div class="modulo-card-title">📦 Inventario <span class="count-badge">${datosModulos.inventario.length}</span></div>
-            <div class="modulo-card-permisos">${renderPermisosBadges('inventario')}</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('tomaInventario')}</div>
           </div>
           <div class="modulo-card-body" style="max-height: 350px; overflow-y: auto;">
             ${datosModulos.inventario.length > 0 ? leyendaHtml : ''}
@@ -2803,7 +2803,7 @@
 
     // ========== GASTOS ==========
     function renderModuloGastos() {
-      const p = permisosActuales.gastos;
+      const p = permisosActuales.registro || permisosActuales.gastos;
       const catIcons = { suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧', limpieza: '🧹', compras: '🛒', impuestos: '📋', otro: '📦' };
       const medioPagoIcons = { efectivo: '💵', tarjeta: '💳', factura: '📄' };
       const total = datosModulos.gastos.length;
@@ -2834,7 +2834,7 @@
         <div class="modulo-card">
           <div class="modulo-card-header">
             <div class="modulo-card-title">💶 Gastos <span class="count-badge">${total}</span></div>
-            <div class="modulo-card-permisos">${renderPermisosBadges('gastos')}</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('registro')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
           <div class="modulo-card-footer">
@@ -2904,7 +2904,7 @@
 
     // ========== REPARACIONES ==========
     function renderModuloReparaciones() {
-      const p = permisosActuales.mantenimiento;
+      const p = permisosActuales.reparaciones || permisosActuales.inventario;
       const estadoIcons = { pendiente: '🔴', en_proceso: '🟡', completada: '🟢' };
       const estadoLabels = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
 
@@ -2938,7 +2938,7 @@
         <div class="modulo-card">
           <div class="modulo-card-header">
             <div class="modulo-card-title">🔩 Reparaciones <span class="count-badge">${total}</span></div>
-            <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('reparaciones')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
           <div class="modulo-card-footer">
@@ -2951,7 +2951,7 @@
 
     // ========== HERRAMIENTAS ==========
     function renderModuloHerramientas() {
-      const p = permisosActuales.mantenimiento;
+      const p = permisosActuales.herramientas || permisosActuales.inventario;
       const catIcons = { manual: '🔧', electrica: '⚡', jardin: '🌱', limpieza: '🧹', medicion: '📏', seguridad: '🦺', otro: '🔨' };
       const total = datosModulos.herramientas.length;
 
@@ -2979,7 +2979,7 @@
         <div class="modulo-card">
           <div class="modulo-card-header">
             <div class="modulo-card-title">🛠️ Herramientas <span class="count-badge">${total}</span></div>
-            <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('herramientas')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
           ${total > 6 ? `
