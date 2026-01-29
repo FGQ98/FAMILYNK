@@ -1758,17 +1758,61 @@
           const permisosGlobales = data.permisosExternos?.[tipoExterno];
           
           if (permisosGlobales) {
-            // Mapear VCEB (v,c,e,b) a (ver, crear, editar, borrar)
+            // Estructura de módulos → cards (mismo que admin-rama.html)
+            const estructuraModulos = {
+              reservas: ['reservas'],
+              inventario: ['inventario', 'gestionar', 'toma'],
+              ajuar: ['ajuar'],
+              menus: ['menus'],
+              gastos: ['gastos', 'registro', 'reparto'],
+              mantenimiento: ['mantenimiento', 'inventarioTaller', 'reparaciones', 'programado', 'manual', 'planSemanal'],
+              limpieza: ['limpieza', 'lavanderia', 'zonasTareas', 'planSemanal', 'programada'],
+              eventos: ['eventos'],
+              prepararSemana: ['prepararSemana'],
+              documentos: ['documentos']
+            };
+            
+            // Agrupar permisos por módulo (si cualquier card tiene V, el módulo tiene V)
             const permisosMapeados = {};
-            for (const [area, vceb] of Object.entries(permisosGlobales)) {
-              permisosMapeados[area] = {
-                ver: vceb.v || false,       // V = ver
-                crear: vceb.c || false,     // C = crear
-                editar: vceb.e || false,    // E = editar
-                borrar: vceb.b || false     // B = borrar
-              };
+            
+            for (const [modulo, cards] of Object.entries(estructuraModulos)) {
+              let tieneVer = false, tieneCrear = false, tieneEditar = false, tieneBorrar = false;
+              
+              // Revisar cada card del módulo
+              for (const cardId of cards) {
+                const cardPermisos = permisosGlobales[cardId];
+                if (cardPermisos) {
+                  if (cardPermisos.v) tieneVer = true;
+                  if (cardPermisos.c) tieneCrear = true;
+                  if (cardPermisos.e) tieneEditar = true;
+                  if (cardPermisos.b) tieneBorrar = true;
+                }
+              }
+              
+              // Solo añadir si tiene algún permiso
+              if (tieneVer || tieneCrear || tieneEditar || tieneBorrar) {
+                permisosMapeados[modulo] = {
+                  ver: tieneVer,
+                  crear: tieneCrear,
+                  editar: tieneEditar,
+                  borrar: tieneBorrar
+                };
+              }
             }
-            console.log('Permisos globales cargados:', permisosMapeados);
+            
+            // También guardar permisos granulares por card para uso específico
+            for (const [cardId, vceb] of Object.entries(permisosGlobales)) {
+              if (!permisosMapeados[cardId]) {
+                permisosMapeados[cardId] = {
+                  ver: vceb.v || false,
+                  crear: vceb.c || false,
+                  editar: vceb.e || false,
+                  borrar: vceb.b || false
+                };
+              }
+            }
+            
+            console.log('Permisos globales cargados (agrupados):', permisosMapeados);
             return permisosMapeados;
           }
         }
