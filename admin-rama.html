@@ -2747,34 +2747,47 @@
 
     // ========== ESTRUCTURA PERMISOS CVEB GRANULARES ==========
     
-    // MAYORDOMO (Casero): Módulo → Cards
-    const estructuraPermisosMayordomo = {
-      reservas: { icon: '📅', nombre: 'Reservas', cards: null },
-      inventario: { icon: '📦', nombre: 'Inventario', cards: [
-        { id: 'gestionar', nombre: 'Gestionar inventario' },
-        { id: 'toma', nombre: 'Toma de inventario' }
-      ]},
-      ajuar: { icon: '🪑', nombre: 'Ajuar', cards: null },
-      menus: { icon: '🍽️', nombre: 'Menús', cards: null },
-      gastos: { icon: '💰', nombre: 'Gastos', cards: [
-        { id: 'registro', nombre: 'Gestionar registro' },
-        { id: 'reparto', nombre: 'Gestionar reparto' }
-      ]},
-      mantenimiento: { icon: '🔧', nombre: 'Mantenimiento', cards: [
-        { id: 'inventarioTaller', nombre: 'Inventario del taller' },
-        { id: 'reparaciones', nombre: 'Lista de reparaciones' },
-        { id: 'programado', nombre: 'Mto. programado' },
-        { id: 'manual', nombre: 'Manual mantenimiento' },
-        { id: 'planSemanal', nombre: 'Plan semanal' }
-      ]},
-      limpieza: { icon: '🧹', nombre: 'Limpieza', cards: [
-        { id: 'lavanderia', nombre: 'Lavandería' },
-        { id: 'zonasTareas', nombre: 'Zonas y tareas' },
-        { id: 'planSemanal', nombre: 'Plan semanal' },
-        { id: 'programada', nombre: 'Limpieza programada' }
-      ]},
-      eventos: { icon: '🎉', nombre: 'Eventos', cards: null },
-      prepararSemana: { icon: '📋', nombre: 'Preparar semana', cards: null }
+    // CASERO: Bloque → Cards (según tabla del usuario)
+    const estructuraPermisosCasero = {
+      // BLOQUE RESERVAS
+      reservas: { 
+        icon: '📅', 
+        nombre: 'RESERVAS', 
+        esBloque: true,
+        cards: [
+          { id: 'calendario', nombre: 'Calendario', acciones: ['v'], desc: 'Ver reservas y confirmaciones' }
+        ]
+      },
+      // BLOQUE INVENTARIO
+      inventario: { 
+        icon: '📦', 
+        nombre: 'INVENTARIO', 
+        esBloque: true,
+        cards: [
+          { id: 'tomaInventario', nombre: 'Toma inventario', acciones: ['v', 'e'], desc: 'Ver y editar inventario' },
+          { id: 'reparaciones', nombre: 'Reparaciones', acciones: ['v', 'c', 'e'], desc: 'Lista de reparaciones' },
+          { id: 'herramientas', nombre: 'Herramientas', acciones: ['v', 'c', 'e'], desc: 'Lista de herramientas' }
+        ]
+      },
+      // BLOQUE PROGRAMA
+      programa: { 
+        icon: '📋', 
+        nombre: 'PROGRAMA', 
+        esBloque: true,
+        cards: [
+          { id: 'mantenimiento', nombre: 'Mantenimiento', acciones: ['v'], desc: 'Mto. programado y plan semanal' },
+          { id: 'limpieza', nombre: 'Limpieza', acciones: ['v'], desc: 'Zonas, tareas y plan semanal' }
+        ]
+      },
+      // BLOQUE GASTOS
+      gastos: { 
+        icon: '💶', 
+        nombre: 'GASTOS', 
+        esBloque: true,
+        cards: [
+          { id: 'registro', nombre: 'Registro gastos', acciones: ['v', 'c', 'e'], desc: 'Registro de gastos' }
+        ]
+      }
     };
 
     // GERENTE (Hoster): Módulo → Cards
@@ -2805,7 +2818,7 @@
     };
 
     const estructurasPermisos = {
-      casero: estructuraPermisosMayordomo,
+      casero: estructuraPermisosCasero,
       hoster: estructuraPermisosGerente,
       guarda: estructuraPermisosCapataz
     };
@@ -2818,43 +2831,41 @@
       const permisosActuales = permisosExternosData[tipo] || {};
       let html = '';
 
-      for (const [modId, modInfo] of Object.entries(estructura)) {
-        if (modInfo.cards && modInfo.cards.length > 0) {
-          // Módulo con cards: header del módulo (sin checkboxes)
-          html += `
-            <tr class="modulo-header">
-              <td colspan="5"><div class="area-info"><span class="area-icon">${modInfo.icon}</span><div><div class="area-nombre">${modInfo.nombre}</div></div></div></td>
-            </tr>
-          `;
-          
-          // Cards del módulo
-          modInfo.cards.forEach(card => {
-            const permKey = `${modId}_${card.id}`;
-            const perm = permisosActuales[permKey] || { c: false, v: true, e: false, b: false };
-            
+      for (const [bloqueId, bloqueInfo] of Object.entries(estructura)) {
+        // Header del bloque
+        html += `
+          <tr class="modulo-header">
+            <td colspan="5">
+              <div class="area-info">
+                <span class="area-icon">${bloqueInfo.icon}</span>
+                <div><div class="area-nombre">${bloqueInfo.nombre}</div></div>
+              </div>
+            </td>
+          </tr>
+        `;
+        
+        // Cards del bloque
+        if (bloqueInfo.cards && bloqueInfo.cards.length > 0) {
+          for (const card of bloqueInfo.cards) {
+            const perm = permisosActuales[card.id] || { c: false, v: false, e: false, b: false };
             html += `
               <tr class="card-row">
-                <td><div class="area-info"><span class="area-icon">↳</span><div><div class="area-nombre">${card.nombre}</div></div></div></td>
-                <td><label class="mini-slider permiso-c"><input type="checkbox" data-tipo="${tipo}" data-area="${permKey}" data-permiso="c" ${perm.c ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
-                <td><label class="mini-slider permiso-v"><input type="checkbox" data-tipo="${tipo}" data-area="${permKey}" data-permiso="v" ${perm.v ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
-                <td><label class="mini-slider permiso-e"><input type="checkbox" data-tipo="${tipo}" data-area="${permKey}" data-permiso="e" ${perm.e ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
-                <td><label class="mini-slider permiso-b"><input type="checkbox" data-tipo="${tipo}" data-area="${permKey}" data-permiso="b" ${perm.b ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
+                <td>
+                  <div class="area-info">
+                    <span class="area-icon-sub">↳</span>
+                    <div>
+                      <div class="area-nombre">${card.nombre}</div>
+                      <div class="area-desc">${card.desc || ''}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><label class="mini-slider permiso-c"><input type="checkbox" data-tipo="${tipo}" data-area="${card.id}" data-permiso="c" ${perm.c ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
+                <td><label class="mini-slider permiso-v"><input type="checkbox" data-tipo="${tipo}" data-area="${card.id}" data-permiso="v" ${perm.v ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
+                <td><label class="mini-slider permiso-e"><input type="checkbox" data-tipo="${tipo}" data-area="${card.id}" data-permiso="e" ${perm.e ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
+                <td><label class="mini-slider permiso-b"><input type="checkbox" data-tipo="${tipo}" data-area="${card.id}" data-permiso="b" ${perm.b ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
               </tr>
             `;
-          });
-        } else {
-          // Módulo sin cards: fila simple
-          const perm = permisosActuales[modId] || { c: false, v: true, e: false, b: false };
-          
-          html += `
-            <tr>
-              <td><div class="area-info"><span class="area-icon">${modInfo.icon}</span><div><div class="area-nombre">${modInfo.nombre}</div></div></div></td>
-              <td><label class="mini-slider permiso-c"><input type="checkbox" data-tipo="${tipo}" data-area="${modId}" data-permiso="c" ${perm.c ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
-              <td><label class="mini-slider permiso-v"><input type="checkbox" data-tipo="${tipo}" data-area="${modId}" data-permiso="v" ${perm.v ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
-              <td><label class="mini-slider permiso-e"><input type="checkbox" data-tipo="${tipo}" data-area="${modId}" data-permiso="e" ${perm.e ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
-              <td><label class="mini-slider permiso-b"><input type="checkbox" data-tipo="${tipo}" data-area="${modId}" data-permiso="b" ${perm.b ? 'checked' : ''} onchange="marcarCambioPermisos()"><span class="mini-slider-track"></span></label></td>
-            </tr>
-          `;
+          }
         }
       }
 

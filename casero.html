@@ -1751,68 +1751,52 @@
 
     // Cargar permisos globales desde familias/{id}/permisosExternos
     async function cargarPermisosGlobales(familiaId, tipoExterno, permisosFallback) {
+      console.log('=== cargarPermisosGlobales ===');
+      console.log('familiaId:', familiaId);
+      
       try {
         const familiaDoc = await db.collection('familias').doc(familiaId).get();
+        
         if (familiaDoc.exists) {
           const data = familiaDoc.data();
           const permisosGlobales = data.permisosExternos?.[tipoExterno];
+          console.log('Permisos desde Firestore:', permisosGlobales);
           
-          if (permisosGlobales) {
-            // Estructura de módulos → cards (mismo que admin-rama.html)
-            const estructuraModulos = {
-              reservas: ['reservas'],
-              inventario: ['inventario', 'gestionar', 'toma'],
-              ajuar: ['ajuar'],
-              menus: ['menus'],
-              gastos: ['gastos', 'registro', 'reparto'],
-              mantenimiento: ['mantenimiento', 'inventarioTaller', 'reparaciones', 'programado', 'manual', 'planSemanal'],
-              limpieza: ['limpieza', 'lavanderia', 'zonasTareas', 'planSemanal', 'programada'],
-              eventos: ['eventos'],
-              prepararSemana: ['prepararSemana'],
-              documentos: ['documentos']
+          if (permisosGlobales && Object.keys(permisosGlobales).length > 0) {
+            // Mapear cards a bloques según nueva estructura
+            // Cards: calendario, tomaInventario, reparaciones, herramientas, mantenimiento, limpieza, registro
+            const mapeoCardABloque = {
+              calendario: 'reservas',
+              tomaInventario: 'inventario',
+              reparaciones: 'inventario',
+              herramientas: 'inventario',
+              mantenimiento: 'programa',
+              limpieza: 'programa',
+              registro: 'gastos'
             };
             
-            // Agrupar permisos por módulo (si cualquier card tiene V, el módulo tiene V)
             const permisosMapeados = {};
             
-            for (const [modulo, cards] of Object.entries(estructuraModulos)) {
-              let tieneVer = false, tieneCrear = false, tieneEditar = false, tieneBorrar = false;
-              
-              // Revisar cada card del módulo
-              for (const cardId of cards) {
-                const cardPermisos = permisosGlobales[cardId];
-                if (cardPermisos) {
-                  if (cardPermisos.v) tieneVer = true;
-                  if (cardPermisos.c) tieneCrear = true;
-                  if (cardPermisos.e) tieneEditar = true;
-                  if (cardPermisos.b) tieneBorrar = true;
-                }
-              }
-              
-              // Solo añadir si tiene algún permiso
-              if (tieneVer || tieneCrear || tieneEditar || tieneBorrar) {
-                permisosMapeados[modulo] = {
-                  ver: tieneVer,
-                  crear: tieneCrear,
-                  editar: tieneEditar,
-                  borrar: tieneBorrar
-                };
-              }
-            }
-            
-            // También guardar permisos granulares por card para uso específico
+            // Primero pasar todas las cards individuales
             for (const [cardId, vceb] of Object.entries(permisosGlobales)) {
-              if (!permisosMapeados[cardId]) {
-                permisosMapeados[cardId] = {
-                  ver: vceb.v || false,
-                  crear: vceb.c || false,
-                  editar: vceb.e || false,
-                  borrar: vceb.b || false
-                };
+              permisosMapeados[cardId] = {
+                ver: vceb.v || false,
+                crear: vceb.c || false,
+                editar: vceb.e || false,
+                borrar: vceb.b || false
+              };
+              
+              // Además, activar el bloque padre si alguna card tiene "ver"
+              const bloque = mapeoCardABloque[cardId];
+              if (bloque && vceb.v) {
+                if (!permisosMapeados[bloque]) {
+                  permisosMapeados[bloque] = { ver: false, crear: false, editar: false, borrar: false };
+                }
+                permisosMapeados[bloque].ver = true;
               }
             }
             
-            console.log('Permisos globales cargados (agrupados):', permisosMapeados);
+            console.log('Permisos mapeados:', permisosMapeados);
             return permisosMapeados;
           }
         }
@@ -1820,8 +1804,7 @@
         console.error('Error cargando permisos globales:', error);
       }
       
-      // Fallback: usar permisos individuales del casero
-      console.log('Usando permisos individuales (fallback):', permisosFallback);
+      console.log('Usando fallback');
       return permisosFallback || {};
     }
 
@@ -2154,42 +2137,44 @@
     function renderModulos() {
       console.log('renderModulos - permisosActuales:', JSON.stringify(permisosActuales, null, 2));
       
-      // TAB RESERVAS: Pedidos, Reservas, Menús
+      // TAB RESERVAS: Si tiene permiso "calendario" o "reservas" (bloque)
       let htmlReservas = '';
       htmlReservas += renderModuloPedidos();
-      if (permisosActuales.reservas?.ver) {
+      if (permisosActuales.calendario?.ver || permisosActuales.reservas?.ver) {
         htmlReservas += renderModuloReservas();
       }
       htmlReservas += renderModuloMenus();
       document.getElementById('grid-reservas').innerHTML = htmlReservas || '<div class="modulo-card-empty">Sin módulos disponibles</div>';
       console.log('grid-reservas tiene contenido:', !!htmlReservas);
 
-      // TAB INVENTARIO: Inventario, Herramientas
+      // TAB INVENTARIO: tomaInventario, reparaciones, herramientas
       let htmlInventario = '';
-      if (permisosActuales.inventario?.ver) {
+      if (permisosActuales.tomaInventario?.ver || permisosActuales.inventario?.ver) {
         htmlInventario += renderModuloInventario();
       }
-      if (permisosActuales.mantenimiento?.ver) {
+      if (permisosActuales.reparaciones?.ver || permisosActuales.inventario?.ver) {
+        htmlInventario += renderModuloReparaciones();
+      }
+      if (permisosActuales.herramientas?.ver || permisosActuales.inventario?.ver) {
         htmlInventario += renderModuloHerramientas();
       }
       document.getElementById('grid-inventario').innerHTML = htmlInventario || '<div class="modulo-card-empty">Sin módulos de inventario asignados</div>';
       console.log('grid-inventario tiene contenido:', !!htmlInventario);
 
-      // TAB PROGRAMA: Limpieza, Mantenimiento, Reparaciones
+      // TAB PROGRAMA: mantenimiento, limpieza
       let htmlPrograma = '';
-      if (permisosActuales.limpieza?.ver) {
+      if (permisosActuales.limpieza?.ver || permisosActuales.programa?.ver) {
         htmlPrograma += renderModuloLimpieza();
       }
-      if (permisosActuales.mantenimiento?.ver) {
+      if (permisosActuales.mantenimiento?.ver || permisosActuales.programa?.ver) {
         htmlPrograma += renderModuloMantenimiento();
-        htmlPrograma += renderModuloReparaciones();
       }
       document.getElementById('grid-programa').innerHTML = htmlPrograma || '<div class="modulo-card-empty">Sin módulos de programa asignados</div>';
       console.log('grid-programa tiene contenido:', !!htmlPrograma);
 
-      // TAB GASTOS: Gastos
+      // TAB GASTOS: registro
       let htmlGastos = '';
-      if (permisosActuales.gastos?.ver) {
+      if (permisosActuales.registro?.ver || permisosActuales.gastos?.ver) {
         htmlGastos += renderModuloGastos();
       }
       document.getElementById('grid-gastos').innerHTML = htmlGastos || '<div class="modulo-card-empty">Sin acceso al módulo de gastos</div>';
