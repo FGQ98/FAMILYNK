@@ -783,6 +783,29 @@
     .limpieza-seccion.prioritaria .limpieza-seccion-titulo {
       color: var(--terracotta);
     }
+    
+    /* Estilos para cards de PROGRAMA */
+    .plan-seccion {
+      margin-bottom: 12px;
+    }
+    .plan-seccion-titulo {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--sage-dark);
+      margin-bottom: 8px;
+      padding-left: 4px;
+    }
+    .plan-resumen {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 8px;
+      background: var(--cream);
+      border-radius: 6px;
+      margin-top: 8px;
+    }
 
     /* Zonas prioritarias (de preparar-semana) */
     .zona-prioritaria {
@@ -1764,14 +1787,20 @@
           
           if (permisosGlobales && Object.keys(permisosGlobales).length > 0) {
             // Mapear cards a bloques según nueva estructura
-            // Cards: calendario, tomaInventario, reparaciones, herramientas, mantenimiento, limpieza, registro
             const mapeoCardABloque = {
+              // RESERVAS
               calendario: 'reservas',
+              // INVENTARIO
               tomaInventario: 'inventario',
               reparaciones: 'inventario',
               herramientas: 'inventario',
-              mantenimiento: 'programa',
-              limpieza: 'programa',
+              // PROGRAMA
+              planSemanalMto: 'programa',
+              manualMto: 'programa',
+              mtoProgramado: 'programa',
+              planSemanalLimp: 'programa',
+              zonasTareas: 'programa',
+              // GASTOS
               registro: 'gastos'
             };
             
@@ -1989,26 +2018,33 @@
         }
       }
 
-      // Limpieza (permiso: limpieza)
-      if (permisosActuales.limpieza?.ver || permisosActuales.programa?.ver) {
-        try {
-          const snap = await db.collection('bienes').doc(bienId).collection('limpieza').get();
-          datosModulos.limpieza = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        } catch (e) {
-          console.log('Error cargando limpieza:', e);
-          datosModulos.limpieza = [];
-        }
-        
-        // Cargar zonas de limpieza
+      // ========== PROGRAMA: LIMPIEZA ==========
+      
+      // Plan Semanal Limpieza (permiso: planSemanalLimp)
+      if (permisosActuales.planSemanalLimp?.ver || permisosActuales.programa?.ver) {
+        await cargarPlanSemanalLimpieza(bienId);
+      }
+      
+      // Zonas y Tareas (permiso: zonasTareas)
+      if (permisosActuales.zonasTareas?.ver || permisosActuales.programa?.ver) {
         try {
           const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
           datosModulos.zonasLimpieza = zonasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          
+          // También cargar configuración de tareas por tipo
+          const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').get();
+          datosModulos.tareasConfig = configDoc.exists ? configDoc.data() : {};
         } catch (e) {
-          console.log('Error cargando zonas:', e);
+          console.log('Error cargando zonas/tareas:', e);
           datosModulos.zonasLimpieza = [];
+          datosModulos.tareasConfig = {};
         }
-        
-        // Cargar preparación semanal actual
+      }
+
+      // ========== PROGRAMA: MANTENIMIENTO ==========
+      
+      // Plan Semanal Mantenimiento (permiso: planSemanalMto)
+      if (permisosActuales.planSemanalMto?.ver || permisosActuales.programa?.ver) {
         try {
           const hoy = new Date();
           const diaHoy = hoy.getDay();
@@ -2018,37 +2054,43 @@
           const numSemana = getNumeroSemana(lunes);
           const semanaKey = `${lunes.getFullYear()}-W${String(numSemana).padStart(2, '0')}`;
           
-          const prepDoc = await db.collection('bienes').doc(bienId)
-            .collection('preparacionSemanal').doc(semanaKey).get();
+          const planDoc = await db.collection('bienes').doc(bienId)
+            .collection('planSemanalMto').doc(semanaKey).get();
           
-          if (prepDoc.exists) {
-            datosModulos.preparacionSemanal = prepDoc.data();
-          } else {
-            datosModulos.preparacionSemanal = null;
-          }
+          datosModulos.planSemanalMto = planDoc.exists ? planDoc.data() : null;
         } catch (e) {
-          console.log('Error cargando preparación semanal:', e);
-          datosModulos.preparacionSemanal = null;
+          console.log('Error cargando plan semanal mto:', e);
+          datosModulos.planSemanalMto = null;
         }
-        
-        // Cargar plan semanal de tareas de limpieza
-        await cargarPlanSemanalLimpieza(bienId);
       }
-
-      // Mantenimiento (permiso: mantenimiento)
-      if (permisosActuales.mantenimiento?.ver || permisosActuales.programa?.ver) {
+      
+      // Manual Mantenimiento (permiso: manualMto)
+      if (permisosActuales.manualMto?.ver || permisosActuales.programa?.ver) {
         try {
-          const snap = await db.collection('bienes').doc(bienId).collection('mantenimiento').get();
-          datosModulos.mantenimiento = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          // Ordenar por fecha
-          datosModulos.mantenimiento.sort((a, b) => {
-            const fechaA = a.fecha?.toDate?.() || new Date(a.fecha || 0);
-            const fechaB = b.fecha?.toDate?.() || new Date(b.fecha || 0);
-            return fechaB - fechaA;
+          const manualDoc = await db.collection('bienes').doc(bienId)
+            .collection('configMto').doc('manual').get();
+          
+          datosModulos.manualMto = manualDoc.exists ? manualDoc.data() : null;
+        } catch (e) {
+          console.log('Error cargando manual mto:', e);
+          datosModulos.manualMto = null;
+        }
+      }
+      
+      // Mantenimiento Programado (permiso: mtoProgramado)
+      if (permisosActuales.mtoProgramado?.ver || permisosActuales.programa?.ver) {
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('mtoProgramado').get();
+          datosModulos.mtoProgramado = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Ordenar por próxima fecha
+          datosModulos.mtoProgramado.sort((a, b) => {
+            const fechaA = a.proximaFecha || a.fecha || '';
+            const fechaB = b.proximaFecha || b.fecha || '';
+            return fechaA.localeCompare(fechaB);
           });
         } catch (e) {
-          console.log('Error cargando mantenimiento:', e);
-          datosModulos.mantenimiento = [];
+          console.log('Error cargando mto programado:', e);
+          datosModulos.mtoProgramado = [];
         }
       }
 
@@ -2161,13 +2203,24 @@
       document.getElementById('grid-inventario').innerHTML = htmlInventario || '<div class="modulo-card-empty">Sin módulos de inventario asignados</div>';
       console.log('grid-inventario tiene contenido:', !!htmlInventario);
 
-      // TAB PROGRAMA: mantenimiento, limpieza
+      // TAB PROGRAMA: 5 cards (Plan Semanal Mto, Manual Mto, Mto Programado, Plan Semanal Limp, Zonas y Tareas)
       let htmlPrograma = '';
-      if (permisosActuales.limpieza?.ver || permisosActuales.programa?.ver) {
-        htmlPrograma += renderModuloLimpieza();
+      // MANTENIMIENTO
+      if (permisosActuales.planSemanalMto?.ver || permisosActuales.programa?.ver) {
+        htmlPrograma += renderModuloPlanSemanalMto();
       }
-      if (permisosActuales.mantenimiento?.ver || permisosActuales.programa?.ver) {
-        htmlPrograma += renderModuloMantenimiento();
+      if (permisosActuales.manualMto?.ver || permisosActuales.programa?.ver) {
+        htmlPrograma += renderModuloManualMto();
+      }
+      if (permisosActuales.mtoProgramado?.ver || permisosActuales.programa?.ver) {
+        htmlPrograma += renderModuloMtoProgramado();
+      }
+      // LIMPIEZA
+      if (permisosActuales.planSemanalLimp?.ver || permisosActuales.programa?.ver) {
+        htmlPrograma += renderModuloPlanSemanalLimp();
+      }
+      if (permisosActuales.zonasTareas?.ver || permisosActuales.programa?.ver) {
+        htmlPrograma += renderModuloZonasTareas();
       }
       document.getElementById('grid-programa').innerHTML = htmlPrograma || '<div class="modulo-card-empty">Sin módulos de programa asignados</div>';
       console.log('grid-programa tiene contenido:', !!htmlPrograma);
@@ -2672,97 +2725,262 @@
     }
 
     // ========== LIMPIEZA ==========
-    function renderModuloLimpieza() {
-      const p = permisosActuales.limpieza;
+    // ========== PROGRAMA: MANTENIMIENTO ==========
+    
+    // Card 1: Plan Semanal Mantenimiento
+    function renderModuloPlanSemanalMto() {
+      const p = permisosActuales.planSemanalMto || { ver: true };
+      const plan = datosModulos.planSemanalMto;
       const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       const hoyNum = new Date().getDay();
-
+      
       let itemsHtml = '';
       
-      // 1. ZONAS DE PREPARAR SEMANA (prioritarias - terracotta)
-      const prep = datosModulos.preparacionSemanal;
-      if (prep && prep.zonas && prep.zonas.length > 0) {
-        const zonasSeleccionadas = prep.zonas.map(zid => 
-          datosModulos.zonasLimpieza.find(z => z.id === zid)
-        ).filter(Boolean);
+      if (!plan || !plan.tareas || plan.tareas.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin plan semanal de mantenimiento</div>';
+      } else {
+        // Mostrar tareas de hoy primero
+        const tareasHoy = plan.tareas.filter(t => parseInt(t.dia) === hoyNum);
+        const otrasTareas = plan.tareas.filter(t => parseInt(t.dia) !== hoyNum);
         
-        if (zonasSeleccionadas.length > 0) {
-          itemsHtml += '<div class="limpieza-seccion prioritaria"><div class="limpieza-seccion-titulo">⭐ Esta semana preparar</div>';
-          itemsHtml += '<div class="item-list">';
-          itemsHtml += zonasSeleccionadas.map(z => {
-            // Determinar icono
-            const deps = z.dependencias || {};
-            let icono = '🏠';
-            let maxDeps = 0;
-            for (const [tipo, cantidad] of Object.entries(deps)) {
-              if (cantidad > maxDeps) {
-                maxDeps = cantidad;
-                icono = ZONA_ICONS[tipo] || '🏠';
-              }
-            }
-            return `
-              <div class="check-item zona-prioritaria">
-                <span class="zona-icon">${icono}</span>
-                <span class="check-texto">${z.nombre}</span>
-              </div>
-            `;
-          }).join('');
-          itemsHtml += '</div></div>';
+        if (tareasHoy.length > 0) {
+          itemsHtml += '<div class="plan-seccion"><div class="plan-seccion-titulo">📅 Hoy</div>';
+          itemsHtml += '<div class="item-list">' + tareasHoy.map(t => `
+            <div class="check-item ${t.completada ? 'done' : ''}">
+              <div class="check-box">${t.completada ? '✓' : ''}</div>
+              <span class="check-texto">${t.titulo || t.nombre}</span>
+            </div>
+          `).join('') + '</div></div>';
         }
         
-        // Mostrar tareas extra de preparar-semana
-        if (prep.tareas && prep.tareas.length > 0) {
-          itemsHtml += '<div class="limpieza-seccion prioritaria"><div class="limpieza-seccion-titulo">📋 Tareas adicionales</div>';
-          itemsHtml += '<div class="item-list">';
-          itemsHtml += prep.tareas.map(t => `
-            <div class="check-item zona-prioritaria">
-              <span class="zona-icon">✅</span>
-              <span class="check-texto">${t.titulo}${t.notas ? ' - ' + t.notas : ''}</span>
-            </div>
-          `).join('');
-          itemsHtml += '</div></div>';
+        // Resumen resto de semana
+        const pendientes = otrasTareas.filter(t => !t.completada).length;
+        if (pendientes > 0) {
+          itemsHtml += `<div class="plan-resumen">${pendientes} tareas pendientes resto de semana</div>`;
         }
       }
       
-      // 2. PLAN SEMANAL DE LIMPIEZA (tareas normales - sage)
-      const tareasHoy = datosModulos.planSemanal.filter(t => parseInt(t.dia) === hoyNum);
-      if (tareasHoy.length > 0) {
-        itemsHtml += '<div class="limpieza-seccion"><div class="limpieza-seccion-titulo">📅 Plan de hoy</div>';
-        itemsHtml += '<div class="item-list">';
-        itemsHtml += tareasHoy.slice(0, 6).map(t => `
-          <div class="check-item tarea-plan ${t.completada ? 'done' : ''}" onclick="${p.editar ? `toggleTareaPlan('${t.id}')` : ''}">
-            <div class="check-box">${t.completada ? '✓' : ''}</div>
-            <div class="tarea-plan-info">
-              <span class="check-texto">${t.zonaIcon} ${t.nombre}</span>
-              <span class="tarea-plan-zona">${t.zona}</span>
-            </div>
-          </div>
-        `).join('');
-        itemsHtml += '</div></div>';
-      }
-      
-      // 3. Si no hay nada, mostrar mensaje
-      if (itemsHtml === '') {
-        itemsHtml = '<div class="modulo-card-empty">Sin tareas de limpieza programadas</div>';
-      }
-
-      // Contar totales
-      const totalZonas = (prep?.zonas?.length || 0);
-      const totalTareasHoy = tareasHoy.length;
-      const totalPendientes = totalZonas + tareasHoy.filter(t => !t.completada).length;
-
       return `
-        <div class="modulo-card" style="grid-column: span 2;">
+        <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">🧹 Limpieza ${totalPendientes > 0 ? `<span class="count-badge">${totalPendientes}</span>` : ''}</div>
-            <div class="modulo-card-permisos">${renderPermisosBadges('limpieza')}</div>
+            <div class="modulo-card-title">📅 Plan Semanal Mto.</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('planSemanalMto')}</div>
           </div>
-          <div class="modulo-card-body" style="max-height: 400px; overflow-y: auto;">${itemsHtml}</div>
-          <div class="modulo-card-footer">
-            <a href="limpieza.html?id=${bienActual.bienId}&origen=casero" class="btn btn-sm btn-secondary">Ver todo</a>
-          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
         </div>
       `;
+    }
+    
+    // Card 2: Manual Mantenimiento
+    function renderModuloManualMto() {
+      const p = permisosActuales.manualMto || { ver: true };
+      const manual = datosModulos.manualMto;
+      
+      let itemsHtml = '';
+      
+      if (!manual || !manual.secciones || manual.secciones.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin manual de mantenimiento configurado</div>';
+      } else {
+        itemsHtml = '<div class="item-list">' + manual.secciones.slice(0, 5).map(s => `
+          <div class="item-row no-hover">
+            <span class="item-icon">📖</span>
+            <div class="item-content">
+              <div class="item-title">${s.titulo}</div>
+              ${s.descripcion ? `<div class="item-subtitle">${s.descripcion.substring(0, 60)}...</div>` : ''}
+            </div>
+          </div>
+        `).join('') + '</div>';
+        
+        if (manual.secciones.length > 5) {
+          itemsHtml += `<div class="plan-resumen">+${manual.secciones.length - 5} secciones más</div>`;
+        }
+      }
+      
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">📖 Manual Mto.</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('manualMto')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+          ${manual && manual.secciones?.length > 0 ? `
+            <div class="modulo-card-footer">
+              <button class="btn btn-sm btn-secondary" onclick="verManualMto()">Ver completo</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+    
+    // Card 3: Mantenimiento Programado
+    function renderModuloMtoProgramado() {
+      const p = permisosActuales.mtoProgramado || { ver: true };
+      const tareas = datosModulos.mtoProgramado || [];
+      const frecuenciaLabels = { diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual' };
+      
+      let itemsHtml = '';
+      
+      if (tareas.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin mantenimiento programado</div>';
+      } else {
+        // Mostrar próximas tareas
+        const hoy = new Date().toISOString().split('T')[0];
+        const proximas = tareas.filter(t => (t.proximaFecha || t.fecha) >= hoy).slice(0, 5);
+        
+        itemsHtml = '<div class="item-list">' + proximas.map(t => {
+          const fecha = t.proximaFecha || t.fecha;
+          const fechaStr = fecha ? new Date(fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+          return `
+            <div class="item-row no-hover">
+              <span class="item-icon">🔧</span>
+              <div class="item-content">
+                <div class="item-title">${t.titulo || t.nombre}</div>
+                <div class="item-subtitle">${frecuenciaLabels[t.frecuencia] || t.frecuencia || ''} · ${fechaStr}</div>
+              </div>
+            </div>
+          `;
+        }).join('') + '</div>';
+        
+        if (tareas.length > 5) {
+          itemsHtml += `<div class="plan-resumen">+${tareas.length - 5} tareas programadas</div>`;
+        }
+      }
+      
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🔧 Mto. Programado <span class="count-badge">${tareas.length}</span></div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('mtoProgramado')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+        </div>
+      `;
+    }
+    
+    // ========== PROGRAMA: LIMPIEZA ==========
+    
+    // Card 4: Plan Semanal Limpieza
+    function renderModuloPlanSemanalLimp() {
+      const p = permisosActuales.planSemanalLimp || { ver: true };
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const hoyNum = new Date().getDay();
+      
+      let itemsHtml = '';
+      
+      // Plan semanal de limpieza
+      const tareasHoy = (datosModulos.planSemanal || []).filter(t => parseInt(t.dia) === hoyNum);
+      const totalTareas = (datosModulos.planSemanal || []).length;
+      
+      if (tareasHoy.length === 0 && totalTareas === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin plan semanal de limpieza</div>';
+      } else {
+        if (tareasHoy.length > 0) {
+          itemsHtml += '<div class="plan-seccion"><div class="plan-seccion-titulo">📅 Hoy - ' + diasSemana[hoyNum] + '</div>';
+          itemsHtml += '<div class="item-list">' + tareasHoy.slice(0, 6).map(t => `
+            <div class="check-item ${t.completada ? 'done' : ''}">
+              <div class="check-box">${t.completada ? '✓' : ''}</div>
+              <div class="tarea-plan-info">
+                <span class="check-texto">${t.zonaIcon || '🏠'} ${t.nombre}</span>
+                <span class="tarea-plan-zona">${t.zona || ''}</span>
+              </div>
+            </div>
+          `).join('') + '</div></div>';
+        }
+        
+        // Resumen
+        const pendientes = (datosModulos.planSemanal || []).filter(t => !t.completada).length;
+        if (pendientes > tareasHoy.filter(t => !t.completada).length) {
+          const restoPendientes = pendientes - tareasHoy.filter(t => !t.completada).length;
+          itemsHtml += `<div class="plan-resumen">${restoPendientes} tareas pendientes resto de semana</div>`;
+        }
+      }
+      
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🧹 Plan Semanal Limp. ${tareasHoy.length > 0 ? `<span class="count-badge">${tareasHoy.filter(t => !t.completada).length}</span>` : ''}</div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('planSemanalLimp')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+          ${totalTareas > 0 ? `
+            <div class="modulo-card-footer">
+              <a href="limpieza.html?id=${bienActual.bienId}&origen=casero" class="btn btn-sm btn-secondary">Ver todo</a>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+    
+    // Card 5: Zonas y Tareas
+    function renderModuloZonasTareas() {
+      const p = permisosActuales.zonasTareas || { ver: true };
+      const zonas = datosModulos.zonasLimpieza || [];
+      const ZONA_ICONS = {
+        dormitorio: '🛏️', servicio: '🚿', aseo: '🚽', vestuario: '👔',
+        cocina: '🍳', salon: '🛋️', comedor: '🍽️', almacen: '📦',
+        camara: '❄️', taller: '🔧', instalacion: '⚡', porche: '🌿', otro: '🏠'
+      };
+      
+      let itemsHtml = '';
+      
+      if (zonas.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin zonas configuradas</div>';
+      } else {
+        itemsHtml = '<div class="item-list">' + zonas.slice(0, 6).map(z => {
+          // Calcular icono principal
+          const deps = z.dependencias || {};
+          let icono = '🏠';
+          let totalDeps = 0;
+          for (const [tipo, cantidad] of Object.entries(deps)) {
+            totalDeps += cantidad || 0;
+            if (cantidad > 0) icono = ZONA_ICONS[tipo] || '🏠';
+          }
+          return `
+            <div class="item-row no-hover">
+              <span class="item-icon">${icono}</span>
+              <div class="item-content">
+                <div class="item-title">${z.nombre}</div>
+                <div class="item-subtitle">${totalDeps} dependencias</div>
+              </div>
+            </div>
+          `;
+        }).join('') + '</div>';
+        
+        if (zonas.length > 6) {
+          itemsHtml += `<div class="plan-resumen">+${zonas.length - 6} zonas más</div>`;
+        }
+      }
+      
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🗺️ Zonas y Tareas <span class="count-badge">${zonas.length}</span></div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('zonasTareas')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+        </div>
+      `;
+    }
+    
+    // Función auxiliar para ver manual completo
+    function verManualMto() {
+      const manual = datosModulos.manualMto;
+      if (!manual) return;
+      
+      let contenido = '<div class="manual-completo">';
+      manual.secciones.forEach(s => {
+        contenido += `
+          <div class="manual-seccion">
+            <h3>${s.titulo}</h3>
+            <p>${s.descripcion || ''}</p>
+            ${s.pasos ? '<ol>' + s.pasos.map(p => `<li>${p}</li>`).join('') + '</ol>' : ''}
+          </div>
+        `;
+      });
+      contenido += '</div>';
+      
+      // Mostrar en modal simple
+      alert('Manual de Mantenimiento:\n\n' + manual.secciones.map(s => '• ' + s.titulo).join('\n'));
     }
 
     async function toggleTareaPlan(tareaId) {
@@ -2846,62 +3064,6 @@
     }
 
     // ========== MANTENIMIENTO ==========
-    function renderModuloMantenimiento() {
-      const p = permisosActuales.mantenimiento;
-      const urgenciaIcons = { baja: '🟢', media: '🟡', alta: '🔴' };
-      const urgenciaLabels = { baja: 'Baja', media: 'Media', alta: 'Alta' };
-      const estadoLabels = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
-
-      let itemsHtml = '';
-      if (datosModulos.mantenimiento.length === 0) {
-        itemsHtml = '<div class="modulo-card-empty">Sin tareas de mantenimiento</div>';
-      } else {
-        const items = datosModulos.mantenimiento;
-        itemsHtml = `
-          <table class="tabla-mantenimiento">
-            <thead>
-              <tr>
-                <th>Descripción</th>
-                <th style="text-align:center;">Urg.</th>
-                <th>Estado</th>
-                <th>Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${items.map(m => {
-                const fecha = m.fecha?.toDate?.() ? m.fecha.toDate().toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : (m.fecha || '-');
-                const urgencia = m.urgencia || 'baja';
-                const estado = m.estado || 'pendiente';
-                return `
-                  <tr>
-                    <td class="td-titulo">${m.titulo || 'Sin título'}</td>
-                    <td style="text-align:center;" title="${urgenciaLabels[urgencia]}">${urgenciaIcons[urgencia] || '🟢'}</td>
-                    <td><span class="estado-badge ${estado}">${estadoLabels[estado] || estado}</span></td>
-                    <td class="td-fecha">${fecha}</td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        `;
-      }
-
-      return `
-        <div class="modulo-card">
-          <div class="modulo-card-header">
-            <div class="modulo-card-title">🔧 Mantenimiento <span class="count-badge">${datosModulos.mantenimiento.length}</span></div>
-            <div class="modulo-card-permisos">${renderPermisosBadges('mantenimiento')}</div>
-          </div>
-          <div class="modulo-card-body" style="max-height: 300px; overflow-y: auto;">${itemsHtml}</div>
-          ${p.crear ? `
-            <div class="modulo-card-footer">
-              <button class="btn btn-sm btn-primary" onclick="abrirModalMantenimiento()">+ Reportar</button>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    }
-
     // ========== REPARACIONES ==========
     function renderModuloReparaciones() {
       const p = permisosActuales.reparaciones || permisosActuales.inventario;
