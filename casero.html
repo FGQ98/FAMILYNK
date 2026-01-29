@@ -1347,9 +1347,9 @@
           <span class="tab-icon">📦</span>
           <span class="tab-label">Inventario</span>
         </button>
-        <button type="button" class="casero-tab" data-tab="programa" onclick="cambiarTabCasero('programa', this)">
+        <button type="button" class="casero-tab" data-tab="planesSem" onclick="cambiarTabCasero('planesSem', this)">
           <span class="tab-icon">📋</span>
-          <span class="tab-label">Programa</span>
+          <span class="tab-label">Planes Semanales</span>
         </button>
         <button type="button" class="casero-tab" data-tab="gastos" onclick="cambiarTabCasero('gastos', this)">
           <span class="tab-icon">💶</span>
@@ -1368,9 +1368,9 @@
         <div class="modulos-grid" id="grid-inventario"></div>
       </div>
 
-      <div class="casero-tab-content" id="tab-programa">
-        <div class="tab-section-title">📋 Limpieza, Mantenimiento y Reparaciones</div>
-        <div class="modulos-grid" id="grid-programa"></div>
+      <div class="casero-tab-content" id="tab-planesSem">
+        <div class="tab-section-title">📋 Planes Semanales de Mantenimiento y Limpieza</div>
+        <div class="modulos-grid" id="grid-planesSem"></div>
       </div>
 
       <div class="casero-tab-content" id="tab-gastos">
@@ -1794,12 +1794,13 @@
               tomaInventario: 'inventario',
               reparaciones: 'inventario',
               herramientas: 'inventario',
-              // PROGRAMA
-              planSemanalMto: 'programa',
-              manualMto: 'programa',
-              mtoProgramado: 'programa',
-              planSemanalLimp: 'programa',
-              zonasTareas: 'programa',
+              // PLANES SEMANALES
+              planSemanalMto: 'planesSem',
+              manualMto: 'planesSem',
+              mtoProgramado: 'planesSem',
+              planSemanalLimp: 'planesSem',
+              zonasTareas: 'planesSem',
+              limpiezaProg: 'planesSem',
               // GASTOS
               registro: 'gastos'
             };
@@ -2018,15 +2019,15 @@
         }
       }
 
-      // ========== PROGRAMA: LIMPIEZA ==========
+      // ========== PLANES SEMANALES: LIMPIEZA ==========
       
       // Plan Semanal Limpieza (permiso: planSemanalLimp)
-      if (permisosActuales.planSemanalLimp?.ver || permisosActuales.programa?.ver) {
+      if (permisosActuales.planSemanalLimp?.ver || permisosActuales.planesSem?.ver) {
         await cargarPlanSemanalLimpieza(bienId);
       }
       
       // Zonas y Tareas (permiso: zonasTareas)
-      if (permisosActuales.zonasTareas?.ver || permisosActuales.programa?.ver) {
+      if (permisosActuales.zonasTareas?.ver || permisosActuales.planesSem?.ver) {
         try {
           const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
           datosModulos.zonasLimpieza = zonasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2040,11 +2041,25 @@
           datosModulos.tareasConfig = {};
         }
       }
+      
+      // Limpieza Programada (permiso: limpiezaProg)
+      if (permisosActuales.limpiezaProg?.ver || permisosActuales.planesSem?.ver) {
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
+          datosModulos.limpiezaProgramada = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Ordenar por día de semana
+          datosModulos.limpiezaProgramada.sort((a, b) => parseInt(a.dia || 0) - parseInt(b.dia || 0));
+          console.log('Limpieza programada cargada:', datosModulos.limpiezaProgramada.length);
+        } catch (e) {
+          console.log('Error cargando limpieza programada:', e);
+          datosModulos.limpiezaProgramada = [];
+        }
+      }
 
-      // ========== PROGRAMA: MANTENIMIENTO ==========
+      // ========== PLANES SEMANALES: MANTENIMIENTO ==========
       
       // Plan Semanal Mantenimiento (permiso: planSemanalMto)
-      if (permisosActuales.planSemanalMto?.ver || permisosActuales.programa?.ver) {
+      if (permisosActuales.planSemanalMto?.ver || permisosActuales.planesSem?.ver) {
         try {
           const hoy = new Date();
           const diaHoy = hoy.getDay();
@@ -2065,7 +2080,7 @@
       }
       
       // Manual Mantenimiento (permiso: manualMto)
-      if (permisosActuales.manualMto?.ver || permisosActuales.programa?.ver) {
+      if (permisosActuales.manualMto?.ver || permisosActuales.planesSem?.ver) {
         try {
           const manualDoc = await db.collection('bienes').doc(bienId)
             .collection('configMto').doc('manual').get();
@@ -2078,7 +2093,7 @@
       }
       
       // Mantenimiento Programado (permiso: mtoProgramado)
-      if (permisosActuales.mtoProgramado?.ver || permisosActuales.programa?.ver) {
+      if (permisosActuales.mtoProgramado?.ver || permisosActuales.planesSem?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('mtoProgramado').get();
           datosModulos.mtoProgramado = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2203,27 +2218,30 @@
       document.getElementById('grid-inventario').innerHTML = htmlInventario || '<div class="modulo-card-empty">Sin módulos de inventario asignados</div>';
       console.log('grid-inventario tiene contenido:', !!htmlInventario);
 
-      // TAB PROGRAMA: 5 cards (Plan Semanal Mto, Manual Mto, Mto Programado, Plan Semanal Limp, Zonas y Tareas)
-      let htmlPrograma = '';
-      // MANTENIMIENTO
-      if (permisosActuales.planSemanalMto?.ver || permisosActuales.programa?.ver) {
-        htmlPrograma += renderModuloPlanSemanalMto();
+      // TAB PLANES SEMANALES: 6 cards
+      let htmlPlanesSem = '';
+      // PLAN DE MANTENIMIENTO
+      if (permisosActuales.planSemanalMto?.ver || permisosActuales.planesSem?.ver) {
+        htmlPlanesSem += renderModuloPlanSemanalMto();
       }
-      if (permisosActuales.manualMto?.ver || permisosActuales.programa?.ver) {
-        htmlPrograma += renderModuloManualMto();
+      if (permisosActuales.manualMto?.ver || permisosActuales.planesSem?.ver) {
+        htmlPlanesSem += renderModuloManualMto();
       }
-      if (permisosActuales.mtoProgramado?.ver || permisosActuales.programa?.ver) {
-        htmlPrograma += renderModuloMtoProgramado();
+      if (permisosActuales.mtoProgramado?.ver || permisosActuales.planesSem?.ver) {
+        htmlPlanesSem += renderModuloMtoProgramado();
       }
-      // LIMPIEZA
-      if (permisosActuales.planSemanalLimp?.ver || permisosActuales.programa?.ver) {
-        htmlPrograma += renderModuloPlanSemanalLimp();
+      // PLAN DE LIMPIEZA
+      if (permisosActuales.planSemanalLimp?.ver || permisosActuales.planesSem?.ver) {
+        htmlPlanesSem += renderModuloPlanSemanalLimp();
       }
-      if (permisosActuales.zonasTareas?.ver || permisosActuales.programa?.ver) {
-        htmlPrograma += renderModuloZonasTareas();
+      if (permisosActuales.zonasTareas?.ver || permisosActuales.planesSem?.ver) {
+        htmlPlanesSem += renderModuloZonasTareas();
       }
-      document.getElementById('grid-programa').innerHTML = htmlPrograma || '<div class="modulo-card-empty">Sin módulos de programa asignados</div>';
-      console.log('grid-programa tiene contenido:', !!htmlPrograma);
+      if (permisosActuales.limpiezaProg?.ver || permisosActuales.planesSem?.ver) {
+        htmlPlanesSem += renderModuloLimpiezaProgramada();
+      }
+      document.getElementById('grid-planesSem').innerHTML = htmlPlanesSem || '<div class="modulo-card-empty">Sin planes semanales asignados</div>';
+      console.log('grid-planesSem tiene contenido:', !!htmlPlanesSem);
 
       // TAB GASTOS: registro
       let htmlGastos = '';
@@ -2763,7 +2781,7 @@
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">📅 Plan Semanal Mto.</div>
+            <div class="modulo-card-title">🔧 Plan de Mantenimiento</div>
             <div class="modulo-card-permisos">${renderPermisosBadges('planSemanalMto')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
@@ -2898,7 +2916,7 @@
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">🧹 Plan Semanal Limp. ${tareasHoy.length > 0 ? `<span class="count-badge">${tareasHoy.filter(t => !t.completada).length}</span>` : ''}</div>
+            <div class="modulo-card-title">🧹 Plan de Limpieza ${tareasHoy.length > 0 ? `<span class="count-badge">${tareasHoy.filter(t => !t.completada).length}</span>` : ''}</div>
             <div class="modulo-card-permisos">${renderPermisosBadges('planSemanalLimp')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
@@ -2956,6 +2974,94 @@
           <div class="modulo-card-header">
             <div class="modulo-card-title">🗺️ Zonas y Tareas <span class="count-badge">${zonas.length}</span></div>
             <div class="modulo-card-permisos">${renderPermisosBadges('zonasTareas')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+        </div>
+      `;
+    }
+    
+    // Card 6: Limpieza Programada (tareas profundas)
+    function renderModuloLimpiezaProgramada() {
+      const p = permisosActuales.limpiezaProg || { ver: true };
+      const tareas = datosModulos.limpiezaProgramada || [];
+      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const hoyNum = new Date().getDay();
+      
+      const zonaIcons = {
+        cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
+        bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
+        entrada: '🚪', general: '🏠'
+      };
+      const tareaIcons = {
+        'barrer-fregar': '🧹', 'cambiar-sabanas': '🛏️', 'desinfectar': '🧴',
+        'revisar-consumibles': '📦', 'planchar': '👔', 'lavar-ropa': '🧺',
+        'limpiar-cristales': '🪟', 'aspirar': '🔌', 'quitar-polvo': '✨',
+        'limpiar-electrodomesticos': '🔧', 'ordenar': '📂', 'otra': '📋'
+      };
+      
+      let itemsHtml = '';
+      
+      if (tareas.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin limpieza programada</div>';
+      } else {
+        // Mostrar tareas de hoy primero
+        const tareasHoy = tareas.filter(t => parseInt(t.dia) === hoyNum);
+        const totalTareas = tareas.length;
+        
+        if (tareasHoy.length > 0) {
+          itemsHtml += '<div class="plan-seccion"><div class="plan-seccion-titulo">📅 Hoy - ' + diasSemana[hoyNum] + '</div>';
+          itemsHtml += '<div class="item-list">' + tareasHoy.slice(0, 4).map(t => {
+            const zonaIcon = zonaIcons[t.zona] || '🏠';
+            const tareaIcon = tareaIcons[t.tipo] || '📋';
+            const tiempo = parseInt(t.tiempo) || 0;
+            const tiempoStr = tiempo >= 60 ? `${Math.floor(tiempo/60)}h` : `${tiempo}min`;
+            return `
+              <div class="item-row no-hover">
+                <span class="item-icon">${tareaIcon}</span>
+                <div class="item-content">
+                  <div class="item-title">${zonaIcon} ${t.zona || 'General'}${t.dependencia ? ' - ' + t.dependencia : ''}</div>
+                  <div class="item-subtitle">⏱️ ${tiempoStr}</div>
+                </div>
+              </div>
+            `;
+          }).join('') + '</div></div>';
+        }
+        
+        // Resumen
+        const otrosDias = tareas.filter(t => parseInt(t.dia) !== hoyNum).length;
+        if (otrosDias > 0) {
+          itemsHtml += `<div class="plan-resumen">${otrosDias} tareas resto de semana</div>`;
+        }
+        
+        if (tareasHoy.length === 0 && totalTareas > 0) {
+          // Si no hay tareas hoy, mostrar las primeras
+          itemsHtml = '<div class="item-list">' + tareas.slice(0, 4).map(t => {
+            const zonaIcon = zonaIcons[t.zona] || '🏠';
+            const dia = diasSemana[parseInt(t.dia) || 0];
+            const tiempo = parseInt(t.tiempo) || 0;
+            const tiempoStr = tiempo >= 60 ? `${Math.floor(tiempo/60)}h` : `${tiempo}min`;
+            return `
+              <div class="item-row no-hover">
+                <span class="item-icon">${zonaIcon}</span>
+                <div class="item-content">
+                  <div class="item-title">${t.zona || 'General'}</div>
+                  <div class="item-subtitle">${dia} · ⏱️ ${tiempoStr}</div>
+                </div>
+              </div>
+            `;
+          }).join('') + '</div>';
+          
+          if (totalTareas > 4) {
+            itemsHtml += `<div class="plan-resumen">+${totalTareas - 4} tareas más</div>`;
+          }
+        }
+      }
+      
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🧼 Limpieza Programada <span class="count-badge">${tareas.length}</span></div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('limpiezaProg')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
         </div>
