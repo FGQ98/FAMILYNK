@@ -282,6 +282,8 @@
       .main { padding: 16px; }
     }
   </style>
+  <!-- Sistema de permisos CVEB para externos -->
+  <script src="permisos-externos.js"></script>
 </head>
 <body>
   <header class="header">
@@ -309,11 +311,11 @@
             <div class="modulo-stats">
               <div class="modulo-stat">
                 <span class="modulo-stat-value" id="stat-pendientes">0</span>
-                <span class="modulo-stat-label">pendientes</span>
+                <span class="modulo-stat-label">tintorería</span>
               </div>
               <div class="modulo-stat">
                 <span class="modulo-stat-value" id="stat-completados">0</span>
-                <span class="modulo-stat-label">completados</span>
+                <span class="modulo-stat-label">en casa</span>
               </div>
             </div>
             <a href="#" class="modulo-card-action" id="link-lavanderia">Ver lavandería →</a>
@@ -385,8 +387,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
-  <!-- Sistema de permisos CVEB para externos -->
-  <script src="permisos-externos.js"></script>
 
   <script>
     let currentUser = null;
@@ -519,13 +519,12 @@
 
     async function cargarStatsLavanderia() {
       try {
-        const snap = await db.collection('bienes').doc(bienId).collection('lavanderia')
-          .where('completado', '==', false).get();
-        const completadosSnap = await db.collection('bienes').doc(bienId).collection('lavanderia')
-          .where('completado', '==', true).get();
+        const snap = await db.collection('bienes').doc(bienId).collection('lavanderia').get();
+        const total = snap.docs.length;
+        const enTintoreria = snap.docs.filter(d => d.data().lugar === 'tintoreria').length;
         
-        document.getElementById('stat-pendientes').textContent = snap.docs.length;
-        document.getElementById('stat-completados').textContent = completadosSnap.docs.length;
+        document.getElementById('stat-pendientes').textContent = enTintoreria;
+        document.getElementById('stat-completados').textContent = total - enTintoreria;
       } catch (error) {
         document.getElementById('stat-pendientes').textContent = '0';
         document.getElementById('stat-completados').textContent = '0';

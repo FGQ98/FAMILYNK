@@ -369,7 +369,7 @@
         </div>
         <div class="stat-card">
           <div class="stat-value" id="stat-horas">0h</div>
-          <div class="stat-label">Tiempo/mes</div>
+          <div class="stat-label">Con detalles</div>
         </div>
       </div>
 
@@ -403,9 +403,8 @@
             <tr>
               <th>Título</th>
               <th>Zona</th>
-              <th>Frecuencia</th>
-              <th>Duración</th>
               <th>Responsable</th>
+              <th>Detalles</th>
             </tr>
           </thead>
           <tbody id="tabla-body">
@@ -452,26 +451,6 @@
             </select>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Frecuencia *</label>
-              <select class="form-select" id="tarea-frecuencia" required>
-                <option value="">Seleccionar</option>
-                <option value="diaria">Diaria</option>
-                <option value="semanal">Semanal</option>
-                <option value="quincenal">Quincenal</option>
-                <option value="mensual">Mensual</option>
-                <option value="trimestral">Trimestral</option>
-                <option value="semestral">Semestral</option>
-                <option value="anual">Anual</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Duración (min) *</label>
-              <input type="number" class="form-input" id="tarea-duracion" min="5" step="5" value="30" required>
-            </div>
-          </div>
-
           <div class="form-group">
             <label class="form-label">Responsable</label>
             <select class="form-select" id="tarea-responsable">
@@ -480,6 +459,21 @@
               <option value="propietario">Propietario</option>
               <option value="profesional">Profesional externo</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">📋 Descripción de tareas</label>
+            <textarea class="form-textarea" id="tarea-descripcion" rows="3" placeholder="Describe paso a paso las tareas a realizar..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">🔩 Repuestos</label>
+            <textarea class="form-textarea" id="tarea-repuestos" rows="2" placeholder="Lista de repuestos necesarios..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">🧴 Consumibles</label>
+            <textarea class="form-textarea" id="tarea-consumibles" rows="2" placeholder="Productos y consumibles necesarios..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -638,10 +632,13 @@
       tbody.innerHTML = tareasFiltradas.map(t => {
         const zonaIcon = zonaIcons[t.zona] || '🏠';
         const zonaNombre = zonaNombres[t.zona] || t.zona || 'General';
-        const frecNombre = frecuenciaNombres[t.frecuencia] || t.frecuencia || '-';
-        const duracion = parseInt(t.duracion) || 30;
-        const duracionStr = duracion >= 60 ? `${Math.floor(duracion/60)}h ${duracion%60 ? duracion%60+'min' : ''}` : `${duracion} min`;
         const responsable = t.responsable ? (t.responsable.charAt(0).toUpperCase() + t.responsable.slice(1)) : '-';
+        
+        // Indicadores de detalles
+        const tieneDesc = t.descripcion ? '📋' : '';
+        const tieneRep = t.repuestos ? '🔩' : '';
+        const tieneCons = t.consumibles ? '🧴' : '';
+        const detalles = [tieneDesc, tieneRep, tieneCons].filter(Boolean).join(' ') || '-';
 
         return `
           <tr onclick="editarTarea('${t.id}')">
@@ -649,11 +646,8 @@
             <td class="td-zona">
               <span class="zona-badge">${zonaIcon} ${zonaNombre}</span>
             </td>
-            <td>
-              <span class="frecuencia-badge ${t.frecuencia || ''}">${frecNombre}</span>
-            </td>
-            <td class="td-duracion">${duracionStr}</td>
             <td class="td-responsable">${responsable}</td>
+            <td class="td-detalles">${detalles}</td>
           </tr>
         `;
       }).join('');
@@ -665,16 +659,11 @@
       const zonas = new Set(tareasData.map(t => t.zona).filter(Boolean));
       document.getElementById('stat-zonas').textContent = zonas.size;
 
-      // Calcular tiempo mensual estimado
-      let tiempoMensual = 0;
+      // Contar tareas con detalles
+      const conDetalles = tareasData.filter(t => t.descripcion || t.repuestos || t.consumibles).length;
       tareasData.forEach(t => {
-        const duracion = parseInt(t.duracion) || 30;
-        const mult = frecuenciaMultiplicador[t.frecuencia] || 1;
-        tiempoMensual += duracion * mult;
       });
-      const horas = Math.floor(tiempoMensual / 60);
-      const mins = Math.round(tiempoMensual % 60);
-      document.getElementById('stat-horas').textContent = horas > 0 ? `${horas}h${mins ? ' ' + mins + 'm' : ''}` : `${mins}m`;
+      document.getElementById('stat-horas').textContent = `${conDetalles}/${tareasData.length}`;
     }
 
     // Modal
@@ -682,7 +671,6 @@
       tareaEditando = null;
       document.getElementById('modal-titulo').textContent = '🔧 Nueva tarea programada';
       document.getElementById('form-tarea').reset();
-      document.getElementById('tarea-duracion').value = '30';
       document.getElementById('btn-eliminar').style.display = 'none';
       document.getElementById('modal-tarea').classList.add('active');
     }
@@ -695,9 +683,10 @@
       document.getElementById('modal-titulo').textContent = '✏️ Editar tarea';
       document.getElementById('tarea-titulo').value = tarea.titulo || '';
       document.getElementById('tarea-zona').value = tarea.zona || '';
-      document.getElementById('tarea-frecuencia').value = tarea.frecuencia || '';
-      document.getElementById('tarea-duracion').value = tarea.duracion || '30';
       document.getElementById('tarea-responsable').value = tarea.responsable || '';
+      document.getElementById('tarea-descripcion').value = tarea.descripcion || '';
+      document.getElementById('tarea-repuestos').value = tarea.repuestos || '';
+      document.getElementById('tarea-consumibles').value = tarea.consumibles || '';
       
       document.getElementById('btn-eliminar').style.display = 'block';
       document.getElementById('modal-tarea').classList.add('active');
@@ -715,9 +704,10 @@
       const datos = {
         titulo: document.getElementById('tarea-titulo').value.trim(),
         zona: document.getElementById('tarea-zona').value,
-        frecuencia: document.getElementById('tarea-frecuencia').value,
-        duracion: document.getElementById('tarea-duracion').value,
         responsable: document.getElementById('tarea-responsable').value,
+        descripcion: document.getElementById('tarea-descripcion').value.trim(),
+        repuestos: document.getElementById('tarea-repuestos').value.trim(),
+        consumibles: document.getElementById('tarea-consumibles').value.trim(),
         actualizadoPor: currentUser.uid,
         fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
       };
@@ -728,19 +718,13 @@
           await db.collection('bienes').doc(bienId)
             .collection('mtoProgramado').doc(tareaEditando.id)
             .update(datos);
-          
-          // Actualizar también la ficha en el manual
-          await actualizarFichaManual(tareaEditando.id, datos);
         } else {
           // Crear nueva tarea
           datos.creadoPor = currentUser.uid;
           datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           
-          const docRef = await db.collection('bienes').doc(bienId)
+          await db.collection('bienes').doc(bienId)
             .collection('mtoProgramado').add(datos);
-          
-          // Crear ficha en el Manual de Mantenimiento
-          await crearFichaManual(docRef.id, datos);
         }
 
         cerrarModal();
