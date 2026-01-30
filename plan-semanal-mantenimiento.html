@@ -414,6 +414,162 @@
       .main { padding: 16px; }
       .form-row { grid-template-columns: 1fr; }
       .semana-option { min-width: 45px; }
+      .tabs { flex-wrap: wrap; }
+      .semanas-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* Pestañas */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--cream-dark);
+      padding: 4px;
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      background: transparent;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+    .tab:hover { background: rgba(255,255,255,0.5); }
+    .tab.active {
+      background: var(--white);
+      color: var(--mayordomo);
+      box-shadow: var(--shadow-soft);
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Vista 52 semanas */
+    .year-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .year-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--mayordomo);
+    }
+    .year-stats {
+      display: flex;
+      gap: 16px;
+    }
+    .year-stat {
+      text-align: center;
+      padding: 8px 16px;
+      background: var(--white);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-soft);
+    }
+    .year-stat-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--mayordomo);
+    }
+    .year-stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .meses-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .mes-section {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+    .mes-header {
+      background: var(--mayordomo);
+      color: var(--white);
+      padding: 12px 16px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mes-horas {
+      font-size: 0.85rem;
+      opacity: 0.9;
+    }
+    .semanas-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+    .semana-card {
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      border: 1px solid var(--cream-dark);
+    }
+    .semana-card.actual {
+      border-color: var(--mayordomo);
+      background: var(--mayordomo-muted);
+    }
+    .semana-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--cream-dark);
+    }
+    .semana-num {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .semana-horas {
+      font-size: 0.8rem;
+      color: var(--mayordomo);
+      font-weight: 600;
+    }
+    .semana-tareas {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .semana-tarea {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      background: var(--white);
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .semana-tarea-titulo {
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+    .semana-tarea-tiempo {
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+    .semana-vacia {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-style: italic;
     }
   </style>
 </head>
@@ -432,12 +588,39 @@
     <div id="loading" class="loading"><div class="spinner"></div></div>
 
     <div id="content" class="hidden">
-      <div class="info-box">
-        <h3>💡 ¿Cómo funciona?</h3>
-        <p>Las tareas de <strong>Mto. Programado</strong> aparecen aquí automáticamente. Haz clic en cada una para configurar <strong>cuándo</strong> se ejecuta: frecuencia, día, semana del mes, duración y notas.</p>
+      <!-- Pestañas -->
+      <div class="tabs">
+        <button class="tab active" onclick="cambiarTab('config')">⚙️ Configurar Tareas</button>
+        <button class="tab" onclick="cambiarTab('plan52')">📅 Plan Anual (52 semanas)</button>
       </div>
 
-      <div id="tareas-container"></div>
+      <!-- Tab: Configurar Tareas -->
+      <div id="tab-config" class="tab-content active">
+        <div class="info-box">
+          <h3>💡 ¿Cómo funciona?</h3>
+          <p>Las tareas de <strong>Mto. Programado</strong> aparecen aquí automáticamente. Haz clic en cada una para configurar <strong>cuándo</strong> se ejecuta: frecuencia, mes, semana del mes, duración y notas.</p>
+        </div>
+
+        <div id="tareas-container"></div>
+      </div>
+
+      <!-- Tab: Plan 52 Semanas -->
+      <div id="tab-plan52" class="tab-content">
+        <div class="year-header">
+          <div class="year-title">📅 Plan Anual <span id="year-numero"></span></div>
+          <div class="year-stats">
+            <div class="year-stat">
+              <div class="year-stat-value" id="stat-total-horas">0h</div>
+              <div class="year-stat-label">Total año</div>
+            </div>
+            <div class="year-stat">
+              <div class="year-stat-value" id="stat-tareas-config">0</div>
+              <div class="year-stat-label">Tareas config.</div>
+            </div>
+          </div>
+        </div>
+        <div id="meses-container" class="meses-container"></div>
+      </div>
     </div>
 
     <div id="empty-state" class="empty-state hidden">
@@ -482,16 +665,21 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Día preferido</label>
-            <select class="form-select" id="config-dia">
-              <option value="">Cualquier día</option>
-              <option value="1">Lunes</option>
-              <option value="2">Martes</option>
-              <option value="3">Miércoles</option>
-              <option value="4">Jueves</option>
-              <option value="5">Viernes</option>
-              <option value="6">Sábado</option>
-              <option value="0">Domingo</option>
+            <label class="form-label">Mes de inicio</label>
+            <select class="form-select" id="config-mes">
+              <option value="">Cualquier mes</option>
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
             </select>
           </div>
 
@@ -573,7 +761,8 @@
       trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual', bianual: 'Bianual'
     };
 
-    const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
     // Obtener parámetros URL
     const params = new URLSearchParams(window.location.search);
@@ -676,7 +865,7 @@
       if (config) {
         const chips = [];
         if (config.frecuencia) chips.push(frecuenciaNombres[config.frecuencia] || config.frecuencia);
-        if (config.dia) chips.push(diasSemana[parseInt(config.dia)]);
+        if (config.mes) chips.push(mesesNombres[parseInt(config.mes) - 1]);
         if (config.semanaMes && config.semanaMes !== 'todas') chips.push(`${config.semanaMes}ª sem`);
         if (config.duracion) {
           const unidad = config.unidadDuracion === 'h' ? 'h' : config.unidadDuracion === 'd' ? 'd' : 'min';
@@ -715,7 +904,7 @@
       const config = planConfig[tareaId] || {
         activo: true,
         frecuencia: 'mensual',
-        dia: '',
+        mes: '',
         semanaMes: 'todas',
         duracion: 30,
         unidadDuracion: 'min',
@@ -736,7 +925,7 @@
       document.getElementById('config-frecuencia').value = config.frecuencia || 'mensual';
       
       // Día
-      document.getElementById('config-dia').value = config.dia || '';
+      document.getElementById('config-mes').value = config.mes || '';
       
       // Semana del mes
       seleccionarSemana(config.semanaMes || 'todas');
@@ -782,7 +971,7 @@
         const config = {
           activo: document.getElementById('toggle-activo').classList.contains('active'),
           frecuencia: document.getElementById('config-frecuencia').value,
-          dia: document.getElementById('config-dia').value,
+          mes: document.getElementById('config-mes').value,
           semanaMes: getSemanaSeleccionada(),
           duracion: parseInt(document.getElementById('config-duracion').value) || 30,
           unidadDuracion: document.getElementById('config-unidad').value,
@@ -823,6 +1012,246 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') cerrarModal();
     });
+
+    // ========== PESTAÑAS ==========
+    function cambiarTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      
+      if (tab === 'config') {
+        document.querySelector('.tab:first-child').classList.add('active');
+        document.getElementById('tab-config').classList.add('active');
+      } else {
+        document.querySelector('.tab:last-child').classList.add('active');
+        document.getElementById('tab-plan52').classList.add('active');
+        renderPlan52Semanas();
+      }
+    }
+
+    // ========== PLAN 52 SEMANAS ==========
+    function renderPlan52Semanas() {
+      const year = new Date().getFullYear();
+      document.getElementById('year-numero').textContent = year;
+
+      // Calcular semana actual
+      const hoy = new Date();
+      const inicioAno = new Date(year, 0, 1);
+      const diasTranscurridos = Math.floor((hoy - inicioAno) / (24 * 60 * 60 * 1000));
+      const semanaActual = Math.ceil((diasTranscurridos + inicioAno.getDay() + 1) / 7);
+
+      // Generar estructura de 52 semanas agrupadas por mes
+      const semanasPorMes = generarSemanasPorMes(year);
+      
+      // Asignar tareas a cada semana según configuración
+      const tareasAsignadas = asignarTareasASemanas(semanasPorMes);
+      
+      // Calcular estadísticas
+      let totalHorasAnual = 0;
+      let tareasConfiguradas = 0;
+      
+      Object.values(planConfig).forEach(config => {
+        if (config.activo !== false) tareasConfiguradas++;
+      });
+
+      // Renderizar meses
+      const container = document.getElementById('meses-container');
+      let html = '';
+
+      mesesNombres.forEach((mes, mesIndex) => {
+        const semanasDelMes = tareasAsignadas.filter(s => s.mes === mesIndex + 1);
+        let horasMes = 0;
+        
+        semanasDelMes.forEach(sem => {
+          sem.tareas.forEach(t => {
+            horasMes += convertirAMinutos(t.duracion, t.unidad);
+          });
+        });
+        
+        totalHorasAnual += horasMes;
+        const horasMesStr = formatearTiempo(horasMes);
+
+        html += `
+          <div class="mes-section">
+            <div class="mes-header">
+              <span>📅 ${mes}</span>
+              <span class="mes-horas">⏱️ ${horasMesStr}</span>
+            </div>
+            <div class="semanas-grid">
+              ${semanasDelMes.map(sem => {
+                const esActual = sem.semanaAnual === semanaActual;
+                let horasSemana = 0;
+                sem.tareas.forEach(t => {
+                  horasSemana += convertirAMinutos(t.duracion, t.unidad);
+                });
+                const horasSemStr = formatearTiempo(horasSemana);
+
+                return `
+                  <div class="semana-card ${esActual ? 'actual' : ''}">
+                    <div class="semana-card-header">
+                      <span class="semana-num">Sem ${sem.semanaAnual} ${esActual ? '(Actual)' : ''}</span>
+                      <span class="semana-horas">${horasSemStr}</span>
+                    </div>
+                    <div class="semana-tareas">
+                      ${sem.tareas.length > 0 ? sem.tareas.map(t => `
+                        <div class="semana-tarea">
+                          <span class="semana-tarea-titulo" title="${t.titulo}">${t.titulo}</span>
+                          <span class="semana-tarea-tiempo">${t.duracion}${t.unidad}</span>
+                        </div>
+                      `).join('') : '<div class="semana-vacia">Sin tareas</div>'}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+      
+      // Actualizar estadísticas
+      document.getElementById('stat-total-horas').textContent = formatearTiempo(totalHorasAnual);
+      document.getElementById('stat-tareas-config').textContent = tareasConfiguradas;
+    }
+
+    function generarSemanasPorMes(year) {
+      const semanas = [];
+      let semanaAnual = 1;
+
+      for (let mes = 0; mes < 12; mes++) {
+        // Cuántas semanas tiene este mes (aprox 4-5)
+        const primerDia = new Date(year, mes, 1);
+        const ultimoDia = new Date(year, mes + 1, 0);
+        const diasMes = ultimoDia.getDate();
+        
+        // Calcular semanas del mes
+        const semanasEnMes = Math.ceil((diasMes + primerDia.getDay()) / 7);
+        
+        for (let semMes = 1; semMes <= Math.min(semanasEnMes, 5); semMes++) {
+          if (semanaAnual <= 52) {
+            semanas.push({
+              semanaAnual: semanaAnual,
+              mes: mes + 1,
+              semanaMes: semMes,
+              tareas: []
+            });
+            semanaAnual++;
+          }
+        }
+      }
+
+      return semanas;
+    }
+
+    function asignarTareasASemanas(semanas) {
+      // Frecuencias y sus intervalos en meses
+      const frecuenciaIntervalos = {
+        'puntual': 0,      // Solo una vez
+        'diario': 0,       // Todas las semanas
+        'semanal': 0,      // Todas las semanas
+        'quincenal': 0,    // Cada 2 semanas
+        'mensual': 1,      // Cada mes
+        'bimensual': 2,    // Cada 2 meses
+        'trimestral': 3,   // Cada 3 meses
+        'semestral': 6,    // Cada 6 meses
+        'anual': 12,       // Una vez al año
+        'bianual': 24      // Cada 2 años
+      };
+
+      tareasData.forEach(tarea => {
+        const config = planConfig[tarea.id];
+        if (!config || config.activo === false) return;
+
+        const mesInicio = parseInt(config.mes) || 1;
+        const semanaMes = config.semanaMes;
+        const frecuencia = config.frecuencia || 'mensual';
+        const intervalo = frecuenciaIntervalos[frecuencia];
+
+        // Determinar en qué semanas aparece esta tarea
+        if (frecuencia === 'diario' || frecuencia === 'semanal') {
+          // Todas las semanas
+          semanas.forEach(sem => {
+            sem.tareas.push({
+              titulo: tarea.titulo,
+              duracion: config.duracion || 30,
+              unidad: config.unidadDuracion || 'min'
+            });
+          });
+        } else if (frecuencia === 'quincenal') {
+          // Cada 2 semanas
+          semanas.forEach((sem, idx) => {
+            if (idx % 2 === 0) {
+              sem.tareas.push({
+                titulo: tarea.titulo,
+                duracion: config.duracion || 30,
+                unidad: config.unidadDuracion || 'min'
+              });
+            }
+          });
+        } else if (frecuencia === 'puntual') {
+          // Solo en el mes y semana especificados
+          const semana = semanas.find(s => 
+            s.mes === mesInicio && 
+            (semanaMes === 'todas' || s.semanaMes === parseInt(semanaMes))
+          );
+          if (semana) {
+            semana.tareas.push({
+              titulo: tarea.titulo,
+              duracion: config.duracion || 30,
+              unidad: config.unidadDuracion || 'min'
+            });
+          }
+        } else {
+          // Tareas con intervalo mensual o mayor
+          let mesActual = mesInicio;
+          while (mesActual <= 12) {
+            const semanasDelMes = semanas.filter(s => s.mes === mesActual);
+            
+            if (semanaMes === 'todas') {
+              // En la primera semana del mes
+              if (semanasDelMes[0]) {
+                semanasDelMes[0].tareas.push({
+                  titulo: tarea.titulo,
+                  duracion: config.duracion || 30,
+                  unidad: config.unidadDuracion || 'min'
+                });
+              }
+            } else {
+              // En la semana específica
+              const semEspecifica = semanasDelMes.find(s => s.semanaMes === parseInt(semanaMes));
+              if (semEspecifica) {
+                semEspecifica.tareas.push({
+                  titulo: tarea.titulo,
+                  duracion: config.duracion || 30,
+                  unidad: config.unidadDuracion || 'min'
+                });
+              }
+            }
+
+            if (intervalo === 0 || intervalo >= 12) break;
+            mesActual += intervalo;
+          }
+        }
+      });
+
+      return semanas;
+    }
+
+    function convertirAMinutos(duracion, unidad) {
+      const d = parseInt(duracion) || 0;
+      switch (unidad) {
+        case 'h': return d * 60;
+        case 'd': return d * 60 * 8; // 8 horas por día
+        default: return d; // minutos
+      }
+    }
+
+    function formatearTiempo(minutos) {
+      if (minutos < 60) return `${minutos}min`;
+      const horas = Math.floor(minutos / 60);
+      const mins = minutos % 60;
+      return mins > 0 ? `${horas}h ${mins}min` : `${horas}h`;
+    }
   </script>
 </body>
 </html>
