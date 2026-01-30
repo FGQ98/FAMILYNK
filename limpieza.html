@@ -222,20 +222,6 @@
     .modulo-card.plan-semanal .modulo-card-header { background: linear-gradient(135deg, #8B7355 0%, #6B5A45 100%); }
     .modulo-card.plan-semanal:hover { border-color: #8B7355; }
     .modulo-card.plan-semanal .modulo-stat-value { color: #6B5A45; }
-    .plan-config-btn {
-      margin-left: auto;
-      background: rgba(255,255,255,0.2);
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      font-size: 1rem;
-      transition: all 0.2s;
-    }
-    .plan-config-btn:hover { background: rgba(255,255,255,0.35); transform: rotate(90deg); }
 
     /* Card Limpieza Programada */
     .modulo-card.programada .modulo-card-header { background: linear-gradient(135deg, #9B7EB8 0%, #7A5F96 100%); }
@@ -361,7 +347,6 @@
           <div class="modulo-card-header">
             <div class="modulo-card-icon">📅</div>
             <div class="modulo-card-title">Plan Semanal</div>
-            <a href="#" class="plan-config-btn" id="link-plan-config" title="Configurar plan">⚙️</a>
           </div>
           <div class="plan-progreso">
             <div class="plan-progreso-bar" id="progreso-semanal" style="width: 0%"></div>
@@ -400,7 +385,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
-  <!-- Sistema de permisos CVEB para externos (DEBE ir después de Firebase) -->
+  <!-- Sistema de permisos CVEB para externos -->
   <script src="permisos-externos.js"></script>
 
   <script>
@@ -424,7 +409,6 @@
     document.getElementById('link-lavanderia').href = `lavanderia.html?id=${bienId}&origen=limpieza`;
     document.getElementById('link-tareas').href = `zonas-tareas.html?id=${bienId}&origen=limpieza`;
     document.getElementById('link-programada').href = `limpieza-programada.html?id=${bienId}&origen=limpieza`;
-    document.getElementById('link-plan-config').href = `plan-semanal-limpieza.html?id=${bienId}&origen=limpieza`;
 
     if (!bienId) window.location.href = 'lo-comun.html';
 
@@ -613,14 +597,12 @@
 
         planSemanalData = [];
 
-        // 1. Cargar zonas, configuración de tareas Y configuración del plan semanal
+        // 1. Cargar zonas y configuración de tareas
         const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
         const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').get();
-        const planDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('planSemanal').get();
         const tareasConfig = configDoc.exists ? configDoc.data() : {};
-        const planConfig = planDoc.exists ? planDoc.data() : {};
 
-        // Generar tareas basadas en zonas + config + planConfig
+        // Generar tareas basadas en zonas + config
         zonasSnap.docs.forEach(doc => {
           const zona = { id: doc.id, ...doc.data() };
           const deps = zona.dependencias || {};
@@ -634,20 +616,8 @@
                 const tareaInfo = TAREAS_INFO[tareaConfig.tareaId];
                 if (!tareaInfo) return;
                 
-                // Buscar configuración específica del plan
-                const planKey = `${zona.id}_${tipoKey}_${tareaConfig.tareaId}`;
-                const config = planConfig[planKey] || {
-                  activo: true,
-                  duracion: 15,
-                  frecuencia: 'semanal',
-                  dia: String((zona.id.charCodeAt(0) + tipoKey.charCodeAt(0)) % 6 + 1)
-                };
-
-                // Si no está activo en el plan, no incluir
-                if (!config.activo) return;
-                
-                // Según frecuencia del plan, asignar días
-                if (config.frecuencia === 'diario') {
+                // Según frecuencia, asignar días
+                if (tareaConfig.frecuencia === 'diario') {
                   for (let d = 1; d <= 6; d++) {
                     planSemanalData.push({
                       id: `lim_${zona.id}_${tipoKey}_${tareaConfig.tareaId}_${d}`,
@@ -656,23 +626,23 @@
                       zona: `${zona.nombre} - ${TIPOS_DEP[tipoKey]?.label || tipoKey}`,
                       zonaIcon: tareaInfo.icon,
                       dia: d.toString(),
-                      tiempo: config.duracion || 15,
-                      notas: config.notas || ''
+                      tiempo: 15
                     });
                   }
-                } else if (config.frecuencia === 'semanal' || config.frecuencia === 'quincenal') {
+                } else if (tareaConfig.frecuencia === 'semanal') {
+                  // Asignar un día fijo basado en hash simple
+                  const diaHash = (zona.id.charCodeAt(0) + tipoKey.charCodeAt(0) + tareaConfig.tareaId.charCodeAt(0)) % 6 + 1;
                   planSemanalData.push({
                     id: `lim_${zona.id}_${tipoKey}_${tareaConfig.tareaId}`,
                     tipo: 'limpieza',
                     nombre: tareaInfo.nombre,
                     zona: `${zona.nombre} - ${TIPOS_DEP[tipoKey]?.label || tipoKey}`,
                     zonaIcon: tareaInfo.icon,
-                    dia: config.dia || '1',
-                    tiempo: config.duracion || 15,
-                    notas: config.notas || ''
+                    dia: diaHash.toString(),
+                    tiempo: 15
                   });
                 }
-                // 'cuando_use' y 'mensual' no se muestran en plan semanal
+                // Mensual no se muestra en plan semanal
               });
             }
           }
