@@ -746,11 +746,19 @@
         bienData = bienDoc.data();
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
-        // Cargar informes
-        const informesSnap = await db.collection('bienes').doc(bienId)
-          .collection('informesEstancias')
-          .orderBy('fecha', 'desc')
-          .get();
+        // Cargar informes (con fallback sin índice)
+        let informesSnap;
+        try {
+          informesSnap = await db.collection('bienes').doc(bienId)
+            .collection('informesEstancias')
+            .orderBy('fecha', 'desc')
+            .get();
+        } catch (e) {
+          console.log('Cargando informes sin índice:', e);
+          informesSnap = await db.collection('bienes').doc(bienId)
+            .collection('informesEstancias')
+            .get();
+        }
         informesData = informesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // Cargar reservas para asociar
