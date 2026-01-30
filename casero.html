@@ -1534,6 +1534,7 @@
       documentos: [],
       pedidos: [],
       menus: [],
+      informesEstancias: [],
       // Nuevos para integración con preparar-semana
       preparacionSemanal: null,
       zonasLimpieza: [],
@@ -2189,6 +2190,27 @@
         console.log('Cargando menús sin índice o error:', error);
         datosModulos.menus = [];
       }
+
+      // Informes de Estancias (permiso: informeEstancias o reservas)
+      if (permisosActuales.informeEstancias?.ver || permisosActuales.reservas?.ver) {
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('informesEstancias')
+            .orderBy('fecha', 'desc')
+            .limit(20)
+            .get();
+          datosModulos.informesEstancias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('Informes de estancias cargados:', datosModulos.informesEstancias.length);
+        } catch (error) {
+          console.log('Cargando informes sin índice:', error);
+          // Intentar sin orderBy
+          try {
+            const snap = await db.collection('bienes').doc(bienId).collection('informesEstancias').get();
+            datosModulos.informesEstancias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch (e2) {
+            datosModulos.informesEstancias = [];
+          }
+        }
+      }
     }
 
     function renderModulos() {
@@ -2201,6 +2223,8 @@
         htmlReservas += renderModuloReservas();
       }
       htmlReservas += renderModuloMenus();
+      // Informe de Estancias - siempre visible para caseros
+      htmlReservas += renderModuloInformeEstancias();
       document.getElementById('grid-reservas').innerHTML = htmlReservas || '<div class="modulo-card-empty">Sin módulos disponibles</div>';
       console.log('grid-reservas tiene contenido:', !!htmlReservas);
 
@@ -2218,21 +2242,18 @@
       document.getElementById('grid-inventario').innerHTML = htmlInventario || '<div class="modulo-card-empty">Sin módulos de inventario asignados</div>';
       console.log('grid-inventario tiene contenido:', !!htmlInventario);
 
-      // TAB PLANES SEMANALES: 6 cards
+      // TAB PLANES SEMANALES: Primero los dos planes semanales, luego el resto
       let htmlPlanesSem = '';
-      // PLAN DE MANTENIMIENTO
+      // PRIMERA FILA: Los dos Planes Semanales (a 2 columnas)
       if (permisosActuales.planSemanalMto?.ver || permisosActuales.planesSem?.ver) {
         htmlPlanesSem += renderModuloPlanSemanalMto();
       }
-      if (permisosActuales.manualMto?.ver || permisosActuales.planesSem?.ver) {
-        htmlPlanesSem += renderModuloManualMto();
-      }
-      if (permisosActuales.mtoProgramado?.ver || permisosActuales.planesSem?.ver) {
-        htmlPlanesSem += renderModuloMtoProgramado();
-      }
-      // PLAN DE LIMPIEZA
       if (permisosActuales.planSemanalLimp?.ver || permisosActuales.planesSem?.ver) {
         htmlPlanesSem += renderModuloPlanSemanalLimp();
+      }
+      // RESTO: Mto Programado, Zonas/Tareas, Limpieza Programada (sin Manual Mto)
+      if (permisosActuales.mtoProgramado?.ver || permisosActuales.planesSem?.ver) {
+        htmlPlanesSem += renderModuloMtoProgramado();
       }
       if (permisosActuales.zonasTareas?.ver || permisosActuales.planesSem?.ver) {
         htmlPlanesSem += renderModuloZonasTareas();
@@ -2608,6 +2629,56 @@
           <div class="modulo-card-body">${itemsHtml}</div>
         </div>
       `;
+    }
+
+    // ========== INFORME DE ESTANCIAS ==========
+    function renderModuloInformeEstancias() {
+      // Siempre visible para caseros - pueden crear informes
+      const informes = datosModulos.informesEstancias || [];
+      const recientes = informes.slice(0, 5);
+
+      const tipoIcons = {
+        checkin: '✅', checkout: '🚪', incidencia: '⚠️',
+        averia: '🔧', revision: '🔍', otro: '📝'
+      };
+
+      let itemsHtml = '';
+      if (recientes.length === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin informes registrados</div>';
+      } else {
+        itemsHtml = '<div class="item-list">' + recientes.map(inf => {
+          const fecha = inf.fecha?.toDate ? inf.fecha.toDate() : new Date(inf.fecha);
+          const fechaStr = fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+          const icon = tipoIcons[inf.tipo] || '📝';
+          const tipoLabel = inf.tipo?.charAt(0).toUpperCase() + inf.tipo?.slice(1) || 'Informe';
+          
+          return `
+            <div class="item-row no-hover">
+              <span class="item-icon">${icon}</span>
+              <div class="item-content">
+                <div class="item-title">${tipoLabel} - ${fechaStr}</div>
+                <div class="item-subtitle">${(inf.apartados || []).length} apartados</div>
+              </div>
+            </div>
+          `;
+        }).join('') + '</div>';
+      }
+
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">📋 Informe de Estancias</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+          <div class="modulo-card-footer">
+            <button class="btn btn-sm btn-primary" onclick="irAInformeEstancias()">Ver / Crear Informes</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function irAInformeEstancias() {
+      window.location.href = 'informe-estancias.html?id=' + bienActual.bienId + '&origen=casero';
     }
 
     // ========== INVENTARIO ==========
