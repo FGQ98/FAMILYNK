@@ -715,7 +715,7 @@
               <select class="form-select" id="config-unidad">
                 <option value="min" selected>minutos</option>
                 <option value="h">horas</option>
-                <option value="d">días</option>
+                <option value="d">Días (máx 3/semana)</option>
               </select>
             </div>
           </div>
@@ -1133,7 +1133,8 @@
               semanaAnual: semanaAnual,
               mes: mes + 1,
               semanaMes: semMes,
-              tareas: []
+              tareas: [],
+              diasUsados: 0
             });
             semanaAnual++;
           }
@@ -1146,17 +1147,12 @@
     function asignarTareasASemanas(semanas) {
       // Frecuencias y sus intervalos en meses
       const frecuenciaIntervalos = {
-        'puntual': 0,      // Solo una vez
-        'diario': 0,       // Todas las semanas
-        'semanal': 0,      // Todas las semanas
-        'quincenal': 0,    // Cada 2 semanas
-        'mensual': 1,      // Cada mes
-        'bimensual': 2,    // Cada 2 meses
-        'trimestral': 3,   // Cada 3 meses
-        'semestral': 6,    // Cada 6 meses
-        'anual': 12,       // Una vez al año
-        'bianual': 24      // Cada 2 años
+        'puntual': 0, 'diario': 0, 'semanal': 0, 'quincenal': 0,
+        'mensual': 1, 'bimensual': 2, 'trimestral': 3,
+        'semestral': 6, 'anual': 12, 'bianual': 24
       };
+
+      const MAX_DIAS_POR_SEMANA = 3;
 
       tareasData.forEach(tarea => {
         const config = planConfig[tarea.id];
@@ -1166,67 +1162,66 @@
         const semanaMes = config.semanaMes;
         const frecuencia = config.frecuencia || 'mensual';
         const intervalo = frecuenciaIntervalos[frecuencia];
+        const esDias = config.unidadDuracion === 'd';
+        const duracionTotal = parseInt(config.duracion) || (esDias ? 1 : 30);
 
-        // Determinar en qué semanas aparece esta tarea
-        if (frecuencia === 'diario' || frecuencia === 'semanal') {
-          // Todas las semanas
-          semanas.forEach(sem => {
-            sem.tareas.push({
-              titulo: tarea.titulo,
-              duracion: config.duracion || 30,
-              unidad: config.unidadDuracion || 'min'
-            });
-          });
-        } else if (frecuencia === 'quincenal') {
-          // Cada 2 semanas
-          semanas.forEach((sem, idx) => {
-            if (idx % 2 === 0) {
-              sem.tareas.push({
-                titulo: tarea.titulo,
-                duracion: config.duracion || 30,
-                unidad: config.unidadDuracion || 'min'
-              });
+        // Función para agregar tarea con límite de días
+        function agregarTarea(semanaTarget) {
+          if (!semanaTarget) return;
+          
+          if (esDias) {
+            // Distribuir días entre semanas (máx 3 días/semana)
+            let diasRestantes = duracionTotal;
+            let idx = semanas.indexOf(semanaTarget);
+            
+            while (diasRestantes > 0 && idx < semanas.length) {
+              const sem = semanas[idx];
+              const disponibles = MAX_DIAS_POR_SEMANA - sem.diasUsados;
+              
+              if (disponibles > 0) {
+                const asignar = Math.min(diasRestantes, disponibles);
+                sem.diasUsados += asignar;
+                sem.tareas.push({
+                  titulo: tarea.titulo + (duracionTotal > asignar ? ` (${asignar}/${duracionTotal}d)` : ''),
+                  duracion: asignar,
+                  unidad: 'd'
+                });
+                diasRestantes -= asignar;
+              }
+              idx++;
             }
-          });
-        } else if (frecuencia === 'puntual') {
-          // Solo en el mes y semana especificados
-          const semana = semanas.find(s => 
-            s.mes === mesInicio && 
-            (semanaMes === 'todas' || s.semanaMes === parseInt(semanaMes))
-          );
-          if (semana) {
-            semana.tareas.push({
+          } else {
+            semanaTarget.tareas.push({
               titulo: tarea.titulo,
-              duracion: config.duracion || 30,
+              duracion: duracionTotal,
               unidad: config.unidadDuracion || 'min'
             });
           }
+        }
+
+        // Determinar en qué semanas aparece esta tarea
+        if (frecuencia === 'diario' || frecuencia === 'semanal') {
+          semanas.forEach(sem => agregarTarea(sem));
+        } else if (frecuencia === 'quincenal') {
+          semanas.forEach((sem, idx) => {
+            if (idx % 2 === 0) agregarTarea(sem);
+          });
+        } else if (frecuencia === 'puntual') {
+          const sem = semanas.find(s => 
+            s.mes === mesInicio && 
+            (semanaMes === 'todas' || s.semanaMes === parseInt(semanaMes))
+          );
+          agregarTarea(sem);
         } else {
           // Tareas con intervalo mensual o mayor
           let mesActual = mesInicio;
           while (mesActual <= 12) {
             const semanasDelMes = semanas.filter(s => s.mes === mesActual);
+            const semTarget = semanaMes === 'todas' 
+              ? semanasDelMes[0] 
+              : semanasDelMes.find(s => s.semanaMes === parseInt(semanaMes));
             
-            if (semanaMes === 'todas') {
-              // En la primera semana del mes
-              if (semanasDelMes[0]) {
-                semanasDelMes[0].tareas.push({
-                  titulo: tarea.titulo,
-                  duracion: config.duracion || 30,
-                  unidad: config.unidadDuracion || 'min'
-                });
-              }
-            } else {
-              // En la semana específica
-              const semEspecifica = semanasDelMes.find(s => s.semanaMes === parseInt(semanaMes));
-              if (semEspecifica) {
-                semEspecifica.tareas.push({
-                  titulo: tarea.titulo,
-                  duracion: config.duracion || 30,
-                  unidad: config.unidadDuracion || 'min'
-                });
-              }
-            }
+            agregarTarea(semTarget);
 
             if (intervalo === 0 || intervalo >= 12) break;
             mesActual += intervalo;

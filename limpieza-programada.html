@@ -503,10 +503,18 @@
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
         // Cargar tareas de limpieza programadas
-        const tareasSnap = await db.collection('bienes').doc(bienId)
-          .collection('limpiezaProgramada')
-          .orderBy('dia', 'asc')
-          .get();
+        let tareasSnap;
+        try {
+          tareasSnap = await db.collection('bienes').doc(bienId)
+            .collection('limpiezaProgramada')
+            .orderBy('dia', 'asc')
+            .get();
+        } catch (e) {
+          console.log('Cargando sin índice:', e);
+          tareasSnap = await db.collection('bienes').doc(bienId)
+            .collection('limpiezaProgramada')
+            .get();
+        }
         tareasData = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         renderDias();
