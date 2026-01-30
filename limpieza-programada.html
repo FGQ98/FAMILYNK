@@ -416,8 +416,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <!-- Sistema de permisos CVEB para externos (DEBE ir después de Firebase) -->
-  <script src="permisos-externos.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBN1JSfcwqOi_6d1WIgtYiZQqJKyVjZTHU",
@@ -478,16 +476,7 @@
         return;
       }
       currentUser = user;
-      
-      // Verificar si es externo y cargar permisos
-      await PermisosExt.init(db, user, bienId);
-      
       await cargarDatos();
-      
-      // Aplicar permisos CVEB si es externo
-      if (PermisosExt.esExterno) {
-        PermisosExt.aplicarUI('limpieza_programada');
-      }
     });
 
     async function cargarDatos() {
@@ -502,7 +491,7 @@
         bienData = bienDoc.data();
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
-        // Cargar tareas de limpieza programadas
+        // Cargar tareas de limpieza programadas (con fallback sin orderBy)
         let tareasSnap;
         try {
           tareasSnap = await db.collection('bienes').doc(bienId)
