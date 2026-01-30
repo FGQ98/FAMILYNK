@@ -271,13 +271,6 @@
     .tarea-icon { font-size: 1.2rem; }
     .tarea-info { flex: 1; }
     .tarea-nombre { font-weight: 600; font-size: 0.9rem; }
-    .tarea-frecuencia {
-      font-size: 0.75rem;
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: var(--sage-muted);
-      color: var(--sage-dark);
-    }
 
     /* Modal */
     .modal-overlay {
@@ -389,8 +382,6 @@
       .tabs { flex-direction: column; }
     }
   </style>
-  <!-- Sistema de permisos CVEB para externos -->
-  <script src="permisos-externos.js"></script>
 </head>
 <body>
   <header class="header">
@@ -492,6 +483,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <!-- Sistema de permisos CVEB para externos (DEBE ir después de Firebase) -->
+  <script src="permisos-externos.js"></script>
 
   <script>
     // Tipos de dependencia
@@ -525,19 +518,11 @@
       { id: 'cristales', nombre: 'Hacer cristales', icon: '🪟' }
     ];
 
-    // Frecuencias
-    const FRECUENCIAS = {
-      despues_usar: 'Después de usar',
-      diario: 'Diario',
-      semanal: 'Semanal',
-      mensual: 'Mensual'
-    };
-
     let currentUser = null;
     let bienId = null;
     let bienData = null;
     let zonasData = [];
-    let tareasTipoData = {}; // { tipo: [{ tareaId, frecuencia }] }
+    let tareasTipoData = {}; // { tipo: [{ tareaId, activo }] }
     let editingZonaId = null;
     let editingTipo = null;
 
@@ -754,7 +739,6 @@
                         <div class="tarea-info">
                           <div class="tarea-nombre">${tarea.nombre}</div>
                         </div>
-                        <span class="tarea-frecuencia">${FRECUENCIAS[t.frecuencia] || t.frecuencia}</span>
                       </div>
                     ` : '';
                   }).join('')
@@ -784,17 +768,11 @@
       container.innerHTML = TAREAS_PREDEFINIDAS.map(tarea => {
         const config = tareasConfig.find(t => t.tareaId === tarea.id);
         const activo = config?.activo || false;
-        const frecuencia = config?.frecuencia || 'semanal';
 
         return `
           <div class="tarea-check-row">
             <input type="checkbox" id="check-${tarea.id}" ${activo ? 'checked' : ''}>
             <span class="tarea-check-label">${tarea.icon} ${tarea.nombre}</span>
-            <select class="tarea-check-freq" id="freq-${tarea.id}">
-              ${Object.entries(FRECUENCIAS).map(([k, v]) => 
-                `<option value="${k}" ${frecuencia === k ? 'selected' : ''}>${v}</option>`
-              ).join('')}
-            </select>
           </div>
         `;
       }).join('');
@@ -807,8 +785,7 @@
 
       const tareas = TAREAS_PREDEFINIDAS.map(tarea => ({
         tareaId: tarea.id,
-        activo: document.getElementById(`check-${tarea.id}`).checked,
-        frecuencia: document.getElementById(`freq-${tarea.id}`).value
+        activo: document.getElementById(`check-${tarea.id}`).checked
       }));
 
       try {
