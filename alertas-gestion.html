@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Alertas de Gestión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --terracotta: #C17757;
+      --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --rojo: #c0392b;
+      --rojo-dark: #a5281b;
+      --amarillo: #f39c12;
+      --verde: #27ae60;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.1);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* Header */
+    .header {
+      background: var(--rojo);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .btn-volver {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: var(--radius-md);
+      color: white;
+      font-size: 0.85rem;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .btn-volver:hover { background: rgba(255,255,255,0.2); }
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    /* Main */
+    .main { max-width: 1000px; margin: 0 auto; padding: 24px; }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+      color: var(--text-muted);
+    }
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--cream-dark);
+      border-top-color: var(--terracotta);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* Stats cards */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+    .stat-card.urgente { border-left: 4px solid var(--rojo); }
+    .stat-card.media { border-left: 4px solid var(--amarillo); }
+    .stat-card.baja { border-left: 4px solid var(--sage); }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: 'Quicksand', sans-serif;
+    }
+    .stat-value.urgente { color: var(--rojo); }
+    .stat-value.media { color: var(--amarillo); }
+    .stat-value.baja { color: var(--sage); }
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Filtros */
+    .filtros-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filtro-grupo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filtro-label {
+      font-size: 0.85rem;
+      color: var(--text-light);
+      font-weight: 600;
+    }
+    .filtro-select {
+      padding: 8px 12px;
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      background: var(--white);
+      font-size: 0.85rem;
+      color: var(--text);
+      min-width: 150px;
+    }
+
+    /* Card contenedor */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Tabla de alertas */
+    .tabla-alertas {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .tabla-alertas th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--cream-dark);
+      background: var(--cream);
+    }
+    .tabla-alertas td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      font-size: 0.9rem;
+      vertical-align: middle;
+    }
+    .tabla-alertas tr:hover { background: var(--cream); }
+    .tabla-alertas tr:last-child td { border-bottom: none; }
+
+    /* Gravedad badges */
+    .gravedad-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .gravedad-badge.urgente { background: rgba(192, 57, 43, 0.1); color: var(--rojo); }
+    .gravedad-badge.media { background: rgba(243, 156, 18, 0.1); color: var(--amarillo); }
+    .gravedad-badge.baja { background: var(--sage-muted); color: var(--sage-dark); }
+
+    /* Tipo badge */
+    .tipo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+    }
+
+    /* Bien badge */
+    .bien-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    .bien-badge .icono {
+      width: 28px;
+      height: 28px;
+      background: var(--sage-muted);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Estado vacío */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .empty-state-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .empty-state-desc {
+      font-size: 0.9rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* Botón acción */
+    .btn-accion {
+      padding: 6px 12px;
+      background: var(--sage);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-accion:hover { background: var(--sage-dark); }
+    .btn-accion.secundario {
+      background: transparent;
+      color: var(--text-light);
+      border: 1px solid var(--cream-dark);
+    }
+    .btn-accion.secundario:hover { background: var(--cream); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header { padding: 12px 16px; }
+      .header-title { font-size: 1rem; }
+      .main { padding: 16px; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+      .filtros-bar { flex-direction: column; align-items: stretch; }
+      .filtro-select { width: 100%; }
+      .tabla-alertas th, .tabla-alertas td { padding: 10px 12px; font-size: 0.85rem; }
+      .tabla-alertas th:nth-child(4), .tabla-alertas td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="admin-rama.html" class="btn-volver">← Admin Rama</a>
+      <h1 class="header-title">🚨 Alertas de Gestión</h1>
+    </div>
+  </header>
+
+  <main class="main">
+    <!-- Loading -->
+    <div class="loading" id="loading">
+      <div class="loading-spinner"></div>
+      <p style="margin-top: 16px;">Cargando alertas...</p>
+    </div>
+
+    <!-- Contenido -->
+    <div id="content" class="hidden">
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card urgente">
+          <div class="stat-value urgente" id="stat-urgentes">0</div>
+          <div class="stat-label">🔴 Urgentes</div>
+        </div>
+        <div class="stat-card media">
+          <div class="stat-value media" id="stat-medias">0</div>
+          <div class="stat-label">🟡 Media</div>
+        </div>
+        <div class="stat-card baja">
+          <div class="stat-value baja" id="stat-bajas">0</div>
+          <div class="stat-label">🟢 Baja</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-bienes">0</div>
+          <div class="stat-label">Bienes afectados</div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filtros-bar">
+        <div class="filtro-grupo">
+          <span class="filtro-label">Bien:</span>
+          <select class="filtro-select" id="filtro-bien" onchange="aplicarFiltros()">
+            <option value="">Todos los bienes</option>
+          </select>
+        </div>
+        <div class="filtro-grupo">
+          <span class="filtro-label">Gravedad:</span>
+          <select class="filtro-select" id="filtro-gravedad" onchange="aplicarFiltros()">
+            <option value="">Todas</option>
+            <option value="urgente">🔴 Urgente</option>
+            <option value="media">🟡 Media</option>
+            <option value="baja">🟢 Baja</option>
+          </select>
+        </div>
+        <div class="filtro-grupo">
+          <span class="filtro-label">Tipo:</span>
+          <select class="filtro-select" id="filtro-tipo" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabla de alertas -->
+      <div class="card">
+        <div class="card-title">📋 Listado de alertas</div>
+        <div style="overflow-x: auto;">
+          <table class="tabla-alertas" id="tabla-alertas">
+            <thead>
+              <tr>
+                <th>Gravedad</th>
+                <th>Bien</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Fecha</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-alertas">
+              <!-- Se genera dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Estado vacío -->
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state-icon">✅</div>
+          <div class="empty-state-title">Sin alertas pendientes</div>
+          <p class="empty-state-desc">
+            Todos los bienes con gestión activa están al día. 
+            Las alertas se generarán automáticamente según los criterios de cumplimiento configurados.
+          </p>
+        </div>
+      </div>
+      
+      <!-- Info de criterios (placeholder) -->
+      <div class="card" style="border-left: 4px solid var(--sage);">
+        <div class="card-title">ℹ️ Criterios de cumplimiento</div>
+        <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 12px;">
+          Los criterios de alerta se configurarán individualmente para cada bien con add-on activo:
+        </p>
+        <ul style="font-size: 0.85rem; color: var(--text-light); padding-left: 20px; line-height: 1.8;">
+          <li><strong>Mayordomo:</strong> Mantenimiento vencido, limpieza incumplida, inventario bajo mínimo</li>
+          <li><strong>Gerente:</strong> Contratos por vencer, pagos pendientes, reservas sin confirmar</li>
+          <li><strong>Capataz:</strong> Maquinaria sin revisión, labores atrasadas, personal sin asignar</li>
+        </ul>
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 12px; font-style: italic;">
+          Esta funcionalidad se irá completando progresivamente.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let currentUser = null;
+    let familiaId = null;
+    let familiaData = null;
+    let bienesData = [];
+    let alertasData = [];
+
+    // Iconos de tipos de bien
+    const tipoIconos = {
+      casa: '🏠', piso: '🏢', chalet: '🏡', finca: '🌳', 
+      terreno: '🗺️', local: '🏪', nave: '🏭', otro: '📦'
+    };
+
+    // Tipos de alerta (placeholder para futuro)
+    const tiposAlerta = {
+      mtoVencido: { icon: '🔧', nombre: 'Mantenimiento vencido' },
+      limpiezaIncumplida: { icon: '🧹', nombre: 'Limpieza incumplida' },
+      inventarioBajo: { icon: '📦', nombre: 'Inventario bajo' },
+      contratoVence: { icon: '📝', nombre: 'Contrato por vencer' },
+      pagoPendiente: { icon: '💰', nombre: 'Pago pendiente' },
+      reservaSinConfirmar: { icon: '📅', nombre: 'Reserva sin confirmar' },
+      maquinariaSinRevision: { icon: '🚜', nombre: 'Maquinaria sin revisión' },
+      laborAtrasada: { icon: '📋', nombre: 'Labor atrasada' }
+    };
+
+    // Obtener parámetros URL
+    const params = new URLSearchParams(window.location.search);
+    familiaId = params.get('familia');
+
+    if (!familiaId) {
+      alert('No se especificó la familia');
+      window.location.href = 'admin-rama.html';
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        // Cargar datos de familia
+        const familiaDoc = await db.collection('familias').doc(familiaId).get();
+        if (!familiaDoc.exists) {
+          alert('Familia no encontrada');
+          window.location.href = 'admin-rama.html';
+          return;
+        }
+        familiaData = { id: familiaDoc.id, ...familiaDoc.data() };
+
+        // Cargar bienes con add-on activo
+        const bienesSnap = await db.collection('bienes')
+          .where('familiaId', '==', familiaId)
+          .get();
+        bienesData = bienesSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(b => b.mayordomoActivo || b.gerenteActivo || b.capatazActivo);
+
+        // Cargar alertas (placeholder - por ahora vacío)
+        // TODO: Implementar lógica de generación de alertas
+        alertasData = [];
+
+        // Llenar filtro de bienes
+        const filtroBien = document.getElementById('filtro-bien');
+        filtroBien.innerHTML = '<option value="">Todos los bienes</option>' +
+          bienesData.map(b => `<option value="${b.id}">${tipoIconos[b.tipo] || '📦'} ${b.nombre}</option>`).join('');
+
+        // Llenar filtro de tipos
+        const filtroTipo = document.getElementById('filtro-tipo');
+        filtroTipo.innerHTML = '<option value="">Todos</option>' +
+          Object.entries(tiposAlerta).map(([k, v]) => `<option value="${k}">${v.icon} ${v.nombre}</option>`).join('');
+
+        renderAlertas();
+        actualizarStats();
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar los datos');
+      }
+    }
+
+    function aplicarFiltros() {
+      renderAlertas();
+    }
+
+    function renderAlertas() {
+      const tbody = document.getElementById('tbody-alertas');
+      const emptyState = document.getElementById('empty-state');
+      const tabla = document.getElementById('tabla-alertas');
+
+      const filtroBien = document.getElementById('filtro-bien').value;
+      const filtroGravedad = document.getElementById('filtro-gravedad').value;
+      const filtroTipo = document.getElementById('filtro-tipo').value;
+
+      let alertasFiltradas = alertasData;
+
+      if (filtroBien) {
+        alertasFiltradas = alertasFiltradas.filter(a => a.bienId === filtroBien);
+      }
+      if (filtroGravedad) {
+        alertasFiltradas = alertasFiltradas.filter(a => a.gravedad === filtroGravedad);
+      }
+      if (filtroTipo) {
+        alertasFiltradas = alertasFiltradas.filter(a => a.tipo === filtroTipo);
+      }
+
+      if (alertasFiltradas.length === 0) {
+        tabla.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      tabla.style.display = 'table';
+      emptyState.style.display = 'none';
+
+      // Ordenar por gravedad (urgente primero) y luego por fecha
+      const ordenGravedad = { urgente: 0, media: 1, baja: 2 };
+      alertasFiltradas.sort((a, b) => {
+        if (ordenGravedad[a.gravedad] !== ordenGravedad[b.gravedad]) {
+          return ordenGravedad[a.gravedad] - ordenGravedad[b.gravedad];
+        }
+        return (b.fechaGenerada?.toDate?.() || new Date()) - (a.fechaGenerada?.toDate?.() || new Date());
+      });
+
+      tbody.innerHTML = alertasFiltradas.map(a => {
+        const bien = bienesData.find(b => b.id === a.bienId) || {};
+        const tipoInfo = tiposAlerta[a.tipo] || { icon: '⚠️', nombre: a.tipo };
+        const fecha = a.fechaGenerada?.toDate?.() 
+          ? a.fechaGenerada.toDate().toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+          : '-';
+
+        return `
+          <tr>
+            <td>
+              <span class="gravedad-badge ${a.gravedad}">
+                ${a.gravedad === 'urgente' ? '🔴' : a.gravedad === 'media' ? '🟡' : '🟢'}
+                ${a.gravedad.charAt(0).toUpperCase() + a.gravedad.slice(1)}
+              </span>
+            </td>
+            <td>
+              <span class="bien-badge">
+                <span class="icono">${tipoIconos[bien.tipo] || '📦'}</span>
+                ${bien.nombre || 'Desconocido'}
+              </span>
+            </td>
+            <td>
+              <span class="tipo-badge">${tipoInfo.icon} ${tipoInfo.nombre}</span>
+            </td>
+            <td>${a.mensaje || '-'}</td>
+            <td style="color: var(--text-muted); font-size: 0.85rem;">${fecha}</td>
+            <td>
+              <button class="btn-accion" onclick="verAlerta('${a.id}')">Ver</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function actualizarStats() {
+      const urgentes = alertasData.filter(a => a.gravedad === 'urgente').length;
+      const medias = alertasData.filter(a => a.gravedad === 'media').length;
+      const bajas = alertasData.filter(a => a.gravedad === 'baja').length;
+      const bienesAfectados = new Set(alertasData.map(a => a.bienId)).size;
+
+      document.getElementById('stat-urgentes').textContent = urgentes;
+      document.getElementById('stat-medias').textContent = medias;
+      document.getElementById('stat-bajas').textContent = bajas;
+      document.getElementById('stat-bienes').textContent = bienesAfectados;
+    }
+
+    function verAlerta(alertaId) {
+      // TODO: Implementar modal o navegación al detalle
+      alert('Funcionalidad en desarrollo');
+    }
+  </script>
+</body>
+</html>
