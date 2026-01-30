@@ -2,18 +2,25 @@
 <html lang="es">
 <head>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FAMILYNK — Plan Semanal Limpieza</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --sage: #7A9E7E;
+      --sage-dark: #5C7D5F;
       --cream: #FDF8F3;
       --cream-dark: #F5EDE4;
       --limpieza: #5B8BD4;
       --limpieza-light: #7BA3E0;
-      --limpieza-muted: rgba(91, 139, 212, 0.1);
+      --limpieza-muted: rgba(91, 139, 212, 0.15);
       --text: #3D3D3D;
       --text-light: #6B6B6B;
       --text-muted: #9A9A9A;
@@ -25,144 +32,489 @@
       --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
       --radius-sm: 8px;
       --radius-md: 12px;
-      --radius-lg: 16px;
     }
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
-    .header { background: var(--white); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100; }
+
+    .header {
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
     .header-left { display: flex; align-items: center; gap: 16px; }
-    .back-btn { display: flex; align-items: center; gap: 6px; color: var(--limpieza); text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-    .header-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--limpieza); }
-    .bien-nombre { font-size: 0.85rem; color: var(--text-muted); }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--limpieza);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--limpieza);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bien-nombre {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
     .main { max-width: 900px; margin: 0 auto; padding: 24px; }
-    .tabs { display: flex; gap: 4px; background: var(--cream-dark); padding: 4px; border-radius: var(--radius-md); margin-bottom: 24px; }
-    .tab { flex: 1; padding: 12px 16px; border: none; background: transparent; font-family: 'Quicksand', sans-serif; font-size: 0.95rem; font-weight: 600; color: var(--text-light); cursor: pointer; border-radius: var(--radius-sm); transition: all 0.2s; }
-    .tab:hover { background: rgba(255,255,255,0.5); }
-    .tab.active { background: var(--white); color: var(--limpieza); box-shadow: var(--shadow-soft); }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .loading { display: flex; justify-content: center; align-items: center; min-height: 200px; }
-    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--limpieza); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--cream-dark);
+      border-top-color: var(--limpieza);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
     .hidden { display: none !important; }
-    .empty-state { text-align: center; padding: 48px 24px; background: var(--white); border-radius: var(--radius-lg); }
-    .empty-state-icon { font-size: 3rem; margin-bottom: 16px; }
 
-    /* Vista Semana */
-    .semana-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    .semana-nav { display: flex; align-items: center; gap: 12px; }
-    .semana-nav button { background: var(--white); border: 1px solid var(--cream-dark); padding: 8px 12px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; }
-    .semana-nav button:hover { background: var(--limpieza-muted); }
-    .semana-titulo { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--limpieza); }
-    .semana-stats { display: flex; gap: 16px; }
-    .semana-stat { text-align: center; padding: 8px 16px; background: var(--white); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
-    .semana-stat-value { font-size: 1.2rem; font-weight: 700; color: var(--limpieza); }
-    .semana-stat-label { font-size: 0.75rem; color: var(--text-muted); }
-    .dias-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
-    @media (max-width: 768px) { .dias-grid { grid-template-columns: repeat(2, 1fr); } }
-    .dia-card { background: var(--white); border-radius: var(--radius-md); padding: 12px; box-shadow: var(--shadow-soft); min-height: 120px; }
-    .dia-card.hoy { border: 2px solid var(--limpieza); }
-    .dia-header { font-weight: 700; color: var(--text); margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--cream-dark); font-size: 0.85rem; }
-    .dia-tareas { display: flex; flex-direction: column; gap: 6px; }
-    .tarea-item { font-size: 0.8rem; padding: 6px 8px; background: var(--limpieza-muted); border-radius: 4px; display: flex; justify-content: space-between; }
-    .tarea-titulo { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
-    .tarea-tiempo { color: var(--text-muted); font-size: 0.7rem; }
-    .dia-vacio { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+    .info-box {
+      background: var(--limpieza-muted);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .info-box h3 {
+      font-family: 'Quicksand', sans-serif;
+      color: var(--limpieza);
+      margin-bottom: 6px;
+      font-size: 1rem;
+    }
+    .info-box p {
+      font-size: 0.85rem;
+      color: var(--text-light);
+      line-height: 1.5;
+    }
 
-    /* Vista Mes */
-    .mes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    .mes-nav { display: flex; align-items: center; gap: 12px; }
-    .mes-nav button { background: var(--white); border: 1px solid var(--cream-dark); padding: 8px 12px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; }
-    .mes-titulo { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--limpieza); }
-    .mes-stats { display: flex; gap: 16px; }
-    .semanas-mes-grid { display: flex; flex-direction: column; gap: 12px; }
-    .semana-mes-card { background: var(--white); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-soft); }
-    .semana-mes-header { background: var(--limpieza); color: var(--white); padding: 10px 16px; font-weight: 600; display: flex; justify-content: space-between; }
-    .semana-mes-body { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .semana-mes-tarea { font-size: 0.85rem; padding: 6px 10px; background: var(--limpieza-muted); border-radius: 4px; }
-    .semana-mes-vacia { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--white);
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+    .stat-value {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--limpieza);
+    }
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .tareas-table {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow-soft);
+    }
+    .table-header {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr 50px;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--limpieza);
+      color: var(--white);
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+    @media (max-width: 768px) {
+      .table-header { display: none; }
+    }
+    .table-body {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .table-row {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr 50px;
+      gap: 8px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .table-row:hover { background: var(--cream); }
+    @media (max-width: 768px) {
+      .table-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+    }
+    .cell-zona { font-weight: 600; color: var(--text); }
+    .cell-tarea { color: var(--text-light); }
+    .cell-frecuencia, .cell-duracion, .cell-mes, .cell-semana {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+    .cell-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .btn-edit {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+    .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state h3 { margin-bottom: 8px; color: var(--text); }
+
+    .btn-add {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--limpieza);
+      color: var(--white);
+      border: none;
+      font-size: 2rem;
+      cursor: pointer;
+      box-shadow: var(--shadow-medium);
+      transition: transform 0.2s, background 0.2s;
+      z-index: 50;
+    }
+    .btn-add:hover { background: var(--limpieza-light); transform: scale(1.05); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.1rem;
+      color: var(--limpieza);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .modal-body { padding: 20px; }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: var(--limpieza);
+    }
+    .form-textarea { resize: vertical; min-height: 60px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--limpieza); color: var(--white); }
+    .btn-primary:hover { background: var(--limpieza-light); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-danger { background: var(--error); color: var(--white); }
   </style>
 </head>
 <body>
   <header class="header">
     <div class="header-left">
       <a href="#" class="back-btn" id="btn-volver">← Volver</a>
-      <div>
-        <h1 class="header-title">🧹 Plan Semanal Limpieza</h1>
-        <span class="bien-nombre" id="bien-nombre"></span>
+      <div class="header-title">
+        🧹 Plan Semanal Limpieza
+        <span class="bien-nombre" id="bien-nombre">...</span>
       </div>
     </div>
   </header>
+
   <main class="main">
     <div id="loading" class="loading"><div class="spinner"></div></div>
+
     <div id="content" class="hidden">
-      <div class="tabs">
-        <button class="tab active" onclick="cambiarTab('semana')">📅 Semana</button>
-        <button class="tab" onclick="cambiarTab('mes')">🗓️ Mes</button>
+      <div class="info-box">
+        <h3>📋 Plan Semanal de Limpieza</h3>
+        <p>Define las tareas de limpieza programadas. Relaciona cada tarea con una zona, frecuencia, duración y período de ejecución.</p>
       </div>
-      <!-- Tab Semana -->
-      <div id="tab-semana" class="tab-content active">
-        <div class="semana-header">
-          <div class="semana-nav">
-            <button onclick="cambiarSemana(-1)">← Anterior</button>
-            <span class="semana-titulo" id="semana-titulo">Semana 5 · Enero 2026</span>
-            <button onclick="cambiarSemana(1)">Siguiente →</button>
-          </div>
-          <div class="semana-stats">
-            <div class="semana-stat"><div class="semana-stat-value" id="stat-tareas">0</div><div class="semana-stat-label">Tareas</div></div>
-            <div class="semana-stat"><div class="semana-stat-value" id="stat-horas">0h</div><div class="semana-stat-label">Tiempo</div></div>
-          </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-label">Total tareas</div>
         </div>
-        <div class="dias-grid" id="dias-grid"></div>
-      </div>
-      <!-- Tab Mes -->
-      <div id="tab-mes" class="tab-content">
-        <div class="mes-header">
-          <div class="mes-nav">
-            <button onclick="cambiarMes(-1)">← Anterior</button>
-            <span class="mes-titulo" id="mes-titulo">Enero 2026</span>
-            <button onclick="cambiarMes(1)">Siguiente →</button>
-          </div>
-          <div class="mes-stats">
-            <div class="semana-stat"><div class="semana-stat-value" id="stat-mes-tareas">0</div><div class="semana-stat-label">Tareas</div></div>
-            <div class="semana-stat"><div class="semana-stat-value" id="stat-mes-horas">0h</div><div class="semana-stat-label">Tiempo</div></div>
-          </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-zonas">0</div>
+          <div class="stat-label">Zonas</div>
         </div>
-        <div class="semanas-mes-grid" id="semanas-mes-grid"></div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-tiempo">0h</div>
+          <div class="stat-label">Tiempo semanal</div>
+        </div>
       </div>
-    </div>
-    <div id="empty-state" class="empty-state hidden">
-      <div class="empty-state-icon">🧹</div>
-      <h3>No hay tareas programadas</h3>
-      <p>Configura tareas en Limpieza Programada.</p>
+
+      <div class="tareas-table">
+        <div class="table-header">
+          <span>Zona</span>
+          <span>Tarea / Acción</span>
+          <span>Frecuencia</span>
+          <span>Duración</span>
+          <span>Mes</span>
+          <span>Semana</span>
+          <span></span>
+        </div>
+        <div class="table-body" id="tareas-body"></div>
+      </div>
+
+      <div id="empty-state" class="empty-state hidden">
+        <div class="empty-state-icon">🧹</div>
+        <h3>Sin tareas programadas</h3>
+        <p>Añade tareas de limpieza al plan semanal</p>
+      </div>
     </div>
   </main>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script>
-    const firebaseConfig = { apiKey: "AIzaSyA5GtzPbvLJwJI9DWoWClf5k4lQ8MLGxJA", authDomain: "familynk-app.firebaseapp.com", projectId: "familynk-app", storageBucket: "familynk-app.firebasestorage.app", messagingSenderId: "143638140027", appId: "1:143638140027:web:8b0f77966deff28bb9ae55" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const bienId = urlParams.get('id');
-    const origen = urlParams.get('origen') || 'limpieza';
+  <button class="btn-add" onclick="abrirModalNuevo()">+</button>
+
+  <div class="modal-overlay" id="modal-tarea">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">🧹 Nueva tarea</h3>
+        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+      </div>
+      <form id="form-tarea">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Zona *</label>
+            <select class="form-select" id="tarea-zona" required>
+              <option value="">Selecciona zona...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Tarea / Acción Programada *</label>
+            <select class="form-select" id="tarea-accion" required>
+              <option value="">Selecciona tarea...</option>
+              <option value="barrer-fregar">🧹 Barrer y fregar</option>
+              <option value="aspirar">🔌 Aspirar</option>
+              <option value="quitar-polvo">✨ Quitar polvo</option>
+              <option value="limpiar-cristales">🪟 Limpiar cristales</option>
+              <option value="desinfectar">🧴 Desinfectar</option>
+              <option value="cambiar-sabanas">🛏️ Cambiar sábanas</option>
+              <option value="lavar-ropa">🧺 Lavar ropa</option>
+              <option value="planchar">👔 Planchar</option>
+              <option value="ordenar">📂 Ordenar</option>
+              <option value="revisar-consumibles">📦 Revisar consumibles</option>
+              <option value="limpieza-profunda">🧼 Limpieza profunda</option>
+              <option value="otra">📋 Otra (especificar)</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="grupo-otra" style="display: none;">
+            <label class="form-label">Especificar tarea</label>
+            <input type="text" class="form-input" id="tarea-otra" placeholder="Describe la tarea...">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Frecuencia *</label>
+              <select class="form-select" id="tarea-frecuencia" required>
+                <option value="semanal">Semanal</option>
+                <option value="quincenal">Quincenal</option>
+                <option value="mensual">Mensual</option>
+                <option value="trimestral">Trimestral</option>
+                <option value="semestral">Semestral</option>
+                <option value="anual">Anual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duración *</label>
+              <select class="form-select" id="tarea-duracion" required>
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hora</option>
+                <option value="90">1h 30min</option>
+                <option value="120">2 horas</option>
+                <option value="180">3 horas</option>
+                <option value="240">4 horas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Mes inicio</label>
+              <select class="form-select" id="tarea-mes">
+                <option value="">Cualquiera</option>
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Semana</label>
+              <select class="form-select" id="tarea-semana">
+                <option value="">Cualquiera</option>
+                <option value="1">Semana 1</option>
+                <option value="2">Semana 2</option>
+                <option value="3">Semana 3</option>
+                <option value="4">Semana 4</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nota</label>
+            <textarea class="form-textarea" id="tarea-nota" placeholder="Instrucciones especiales..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="button" class="btn btn-danger" id="btn-eliminar" style="display: none;" onclick="eliminarTarea()">Eliminar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let tareasData = [];
+    let zonasData = [];
+    let tareaEditando = null;
+
+    const accionLabels = {
+      'barrer-fregar': 'Barrer y fregar', 'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo',
+      'limpiar-cristales': 'Limpiar cristales', 'desinfectar': 'Desinfectar',
+      'cambiar-sabanas': 'Cambiar sábanas', 'lavar-ropa': 'Lavar ropa', 'planchar': 'Planchar',
+      'ordenar': 'Ordenar', 'revisar-consumibles': 'Revisar consumibles',
+      'limpieza-profunda': 'Limpieza profunda', 'otra': 'Otra'
+    };
+    const frecuenciaLabels = {
+      semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual',
+      trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual'
+    };
+    const mesesLabels = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('id');
+    const origen = params.get('origen') || 'bien';
+
     document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
 
-    let currentUser = null, bienData = null, tareasData = [], planConfig = {};
-    let semanaActual = getNumeroSemana(new Date());
-    let mesActual = new Date().getMonth();
-    let anoActual = new Date().getFullYear();
-
-    const diasNombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-    const mesesNombres = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-
-    if (!bienId) { alert('No se especificó el bien'); window.location.href = 'cgi.html'; }
+    if (!bienId) {
+      alert('No se especificó el bien');
+      window.location.href = 'cgi.html';
+    }
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user) { window.location.href = 'login.html'; return; }
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
       currentUser = user;
       await cargarDatos();
     });
@@ -170,153 +522,219 @@
     async function cargarDatos() {
       try {
         const bienDoc = await db.collection('bienes').doc(bienId).get();
-        if (!bienDoc.exists) { alert('Bien no encontrado'); window.location.href = `${origen}.html`; return; }
+        if (!bienDoc.exists) {
+          alert('Bien no encontrado');
+          window.location.href = 'cgi.html';
+          return;
+        }
         bienData = bienDoc.data();
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
+        // Cargar zonas definidas
+        try {
+          const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
+          zonasData = zonasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          poblarSelectZonas();
+        } catch (e) {
+          console.log('Error cargando zonas:', e);
+          poblarSelectZonas();
+        }
+
+        // Cargar tareas del plan semanal
         let tareasSnap;
-        try { tareasSnap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get(); }
-        catch (e) { tareasSnap = { docs: [] }; }
+        try {
+          tareasSnap = await db.collection('bienes').doc(bienId)
+            .collection('planSemanalLimpieza')
+            .orderBy('zona', 'asc')
+            .get();
+        } catch (e) {
+          tareasSnap = await db.collection('bienes').doc(bienId)
+            .collection('planSemanalLimpieza')
+            .get();
+        }
         tareasData = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('planSemanal').get();
-        planConfig = configDoc.exists ? configDoc.data() : {};
+        renderTareas();
+        actualizarStats();
 
         document.getElementById('loading').classList.add('hidden');
-        if (tareasData.length === 0) { document.getElementById('empty-state').classList.remove('hidden'); }
-        else { document.getElementById('content').classList.remove('hidden'); renderSemana(); }
-      } catch (error) { console.error('Error:', error); alert('Error al cargar'); }
-    }
+        document.getElementById('content').classList.remove('hidden');
 
-    function getNumeroSemana(date) {
-      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-      const dayNum = d.getUTCDay() || 7;
-      d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-      const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-      return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
-    }
-
-    function getFechasDeSemana(semana, ano) {
-      const simple = new Date(ano, 0, 1 + (semana - 1) * 7);
-      const dow = simple.getDay();
-      const ISOweekStart = simple;
-      if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-      else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-      const fechas = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(ISOweekStart);
-        d.setDate(ISOweekStart.getDate() + i);
-        fechas.push(d);
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar los datos: ' + error.message);
       }
-      return fechas;
     }
 
-    function getTareasParaDia(diaSemana) {
-      // diaSemana: 0=Dom, 1=Lun, ..., 6=Sab
-      const tareas = [];
-      tareasData.forEach(tarea => {
-        if (tarea.dia === diaSemana || tarea.dia === undefined) {
-          const config = planConfig[tarea.id] || {};
-          tareas.push({ 
-            titulo: tarea.titulo, 
-            duracion: config.duracion || tarea.duracion || 30, 
-            unidad: config.unidadDuracion || 'min',
-            zona: tarea.zona 
-          });
-        }
-      });
-      return tareas;
-    }
-
-    function getTareasParaSemana() {
-      const tareas = [];
-      tareasData.forEach(tarea => {
-        const config = planConfig[tarea.id];
-        if (!config || config.activo === false) {
-          // Si no tiene config, mostrar igual
-          tareas.push({ titulo: tarea.titulo, duracion: tarea.duracion || 30, unidad: 'min', zona: tarea.zona, dia: tarea.dia });
-        } else {
-          tareas.push({ titulo: tarea.titulo, duracion: config.duracion || 30, unidad: config.unidadDuracion || 'min', zona: tarea.zona, dia: tarea.dia });
-        }
-      });
-      return tareas;
-    }
-
-    function renderSemana() {
-      const fechas = getFechasDeSemana(semanaActual, anoActual);
-      const hoy = new Date();
-      const todasTareas = getTareasParaSemana();
+    function poblarSelectZonas() {
+      const select = document.getElementById('tarea-zona');
+      select.innerHTML = '<option value="">Selecciona zona...</option>';
       
-      document.getElementById('semana-titulo').textContent = `Semana ${semanaActual} · ${mesesNombres[fechas[0].getMonth()]} ${anoActual}`;
-      document.getElementById('stat-tareas').textContent = todasTareas.length;
-      document.getElementById('stat-horas').textContent = formatearTiempo(todasTareas.reduce((sum, t) => sum + convertirAMinutos(t.duracion, t.unidad), 0));
+      if (zonasData.length === 0) {
+        const zonasDefault = [
+          { id: 'cocina', nombre: 'Cocina' },
+          { id: 'salon', nombre: 'Salón' },
+          { id: 'dormitorio', nombre: 'Dormitorio' },
+          { id: 'bano', nombre: 'Baño' },
+          { id: 'terraza', nombre: 'Terraza' },
+          { id: 'general', nombre: 'General' }
+        ];
+        zonasDefault.forEach(z => {
+          select.innerHTML += `<option value="${z.id}">${z.nombre}</option>`;
+        });
+      } else {
+        zonasData.forEach(z => {
+          select.innerHTML += `<option value="${z.id}">${z.nombre || z.id}</option>`;
+        });
+      }
+    }
 
-      const grid = document.getElementById('dias-grid');
-      grid.innerHTML = fechas.map((fecha, i) => {
-        const esHoy = fecha.toDateString() === hoy.toDateString();
-        const diaSemana = fecha.getDay();
-        const tareasDelDia = todasTareas.filter(t => t.dia === diaSemana || t.dia === undefined);
+    function renderTareas() {
+      const container = document.getElementById('tareas-body');
+      const emptyState = document.getElementById('empty-state');
+
+      if (tareasData.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        document.querySelector('.tareas-table').style.display = 'none';
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      document.querySelector('.tareas-table').style.display = 'block';
+
+      container.innerHTML = tareasData.map(t => {
+        const zonaNombre = getZonaNombre(t.zona);
+        const accionNombre = t.accion === 'otra' ? (t.otraAccion || 'Otra') : (accionLabels[t.accion] || t.accion);
+        const frecuencia = frecuenciaLabels[t.frecuencia] || t.frecuencia;
+        const duracion = formatearDuracion(t.duracion);
+        const mes = t.mesInicio ? mesesLabels[parseInt(t.mesInicio)] : '-';
+        const semana = t.semana ? `S${t.semana}` : '-';
+
         return `
-          <div class="dia-card ${esHoy ? 'hoy' : ''}">
-            <div class="dia-header">${diasNombres[diaSemana]} ${fecha.getDate()}</div>
-            <div class="dia-tareas">
-              ${tareasDelDia.length > 0 ? tareasDelDia.slice(0, 4).map(t => `
-                <div class="tarea-item">
-                  <span class="tarea-titulo" title="${t.titulo}">${t.titulo}</span>
-                  <span class="tarea-tiempo">${t.duracion}${t.unidad}</span>
-                </div>
-              `).join('') + (tareasDelDia.length > 4 ? `<div class="tarea-item">+${tareasDelDia.length - 4} más</div>` : '') : '<div class="dia-vacio">Sin tareas</div>'}
-            </div>
+          <div class="table-row" onclick="editarTarea('${t.id}')">
+            <span class="cell-zona">${zonaNombre}</span>
+            <span class="cell-tarea">${accionNombre}</span>
+            <span class="cell-frecuencia">${frecuencia}</span>
+            <span class="cell-duracion">${duracion}</span>
+            <span class="cell-mes">${mes}</span>
+            <span class="cell-semana">${semana}</span>
+            <span class="cell-actions"><button class="btn-edit">✏️</button></span>
           </div>
         `;
       }).join('');
     }
 
-    function renderMes() {
-      document.getElementById('mes-titulo').textContent = `${mesesNombres[mesActual]} ${anoActual}`;
-      
-      const primerDia = new Date(anoActual, mesActual, 1);
-      const ultimoDia = new Date(anoActual, mesActual + 1, 0);
-      const semanaInicio = getNumeroSemana(primerDia);
-      const semanaFin = getNumeroSemana(ultimoDia);
-      
-      const todasTareas = getTareasParaSemana();
-      let totalTareas = 0, totalMinutos = 0;
-      const semanasHtml = [];
-      
-      for (let sem = semanaInicio; sem <= semanaFin; sem++) {
-        totalTareas += todasTareas.length;
-        totalMinutos += todasTareas.reduce((sum, t) => sum + convertirAMinutos(t.duracion, t.unidad), 0);
-        
-        semanasHtml.push(`
-          <div class="semana-mes-card">
-            <div class="semana-mes-header">
-              <span>Semana ${sem}</span>
-              <span>${todasTareas.length} tareas · ${formatearTiempo(todasTareas.reduce((s, t) => s + convertirAMinutos(t.duracion, t.unidad), 0))}</span>
-            </div>
-            <div class="semana-mes-body">
-              ${todasTareas.length > 0 ? todasTareas.slice(0, 8).map(t => `<span class="semana-mes-tarea">${t.titulo} (${t.duracion}${t.unidad})</span>`).join('') + (todasTareas.length > 8 ? `<span class="semana-mes-tarea">+${todasTareas.length - 8} más</span>` : '') : '<span class="semana-mes-vacia">Sin tareas programadas</span>'}
-            </div>
-          </div>
-        `);
-      }
-      
-      document.getElementById('stat-mes-tareas').textContent = totalTareas;
-      document.getElementById('stat-mes-horas').textContent = formatearTiempo(totalMinutos);
-      document.getElementById('semanas-mes-grid').innerHTML = semanasHtml.join('');
+    function getZonaNombre(zonaId) {
+      const zona = zonasData.find(z => z.id === zonaId);
+      return zona ? zona.nombre : zonaId;
     }
 
-    function cambiarSemana(delta) { semanaActual += delta; if (semanaActual < 1) { semanaActual = 52; anoActual--; } if (semanaActual > 52) { semanaActual = 1; anoActual++; } renderSemana(); }
-    function cambiarMes(delta) { mesActual += delta; if (mesActual < 0) { mesActual = 11; anoActual--; } if (mesActual > 11) { mesActual = 0; anoActual++; } renderMes(); }
-    function cambiarTab(tab) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-      document.querySelector(`.tab:nth-child(${tab === 'semana' ? 1 : 2})`).classList.add('active');
-      document.getElementById(`tab-${tab}`).classList.add('active');
-      if (tab === 'mes') renderMes();
+    function formatearDuracion(min) {
+      min = parseInt(min) || 0;
+      if (min < 60) return `${min}min`;
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      return m > 0 ? `${h}h ${m}m` : `${h}h`;
     }
-    function convertirAMinutos(d, u) { d = parseInt(d) || 0; return u === 'h' ? d * 60 : u === 'd' ? d * 480 : d; }
-    function formatearTiempo(m) { if (m < 60) return `${m}min`; const h = Math.floor(m / 60); const min = m % 60; return min > 0 ? `${h}h ${min}min` : `${h}h`; }
+
+    function actualizarStats() {
+      document.getElementById('stat-total').textContent = tareasData.length;
+      const zonasUnicas = new Set(tareasData.map(t => t.zona));
+      document.getElementById('stat-zonas').textContent = zonasUnicas.size;
+      const tiempoTotal = tareasData.reduce((sum, t) => sum + (parseInt(t.duracion) || 0), 0);
+      document.getElementById('stat-tiempo').textContent = formatearDuracion(tiempoTotal);
+    }
+
+    function abrirModalNuevo() {
+      tareaEditando = null;
+      document.getElementById('modal-titulo').textContent = '🧹 Nueva tarea';
+      document.getElementById('form-tarea').reset();
+      document.getElementById('btn-eliminar').style.display = 'none';
+      document.getElementById('grupo-otra').style.display = 'none';
+      document.getElementById('modal-tarea').classList.add('active');
+    }
+
+    function editarTarea(tareaId) {
+      const tarea = tareasData.find(t => t.id === tareaId);
+      if (!tarea) return;
+
+      tareaEditando = tarea;
+      document.getElementById('modal-titulo').textContent = '✏️ Editar tarea';
+      document.getElementById('tarea-zona').value = tarea.zona || '';
+      document.getElementById('tarea-accion').value = tarea.accion || '';
+      document.getElementById('tarea-otra').value = tarea.otraAccion || '';
+      document.getElementById('tarea-frecuencia').value = tarea.frecuencia || 'semanal';
+      document.getElementById('tarea-duracion').value = tarea.duracion || '30';
+      document.getElementById('tarea-mes').value = tarea.mesInicio || '';
+      document.getElementById('tarea-semana').value = tarea.semana || '';
+      document.getElementById('tarea-nota').value = tarea.nota || '';
+      
+      document.getElementById('grupo-otra').style.display = tarea.accion === 'otra' ? 'block' : 'none';
+      document.getElementById('btn-eliminar').style.display = 'block';
+      document.getElementById('modal-tarea').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-tarea').classList.remove('active');
+      tareaEditando = null;
+    }
+
+    document.getElementById('tarea-accion').addEventListener('change', (e) => {
+      document.getElementById('grupo-otra').style.display = e.target.value === 'otra' ? 'block' : 'none';
+    });
+
+    document.getElementById('form-tarea').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const datos = {
+        zona: document.getElementById('tarea-zona').value,
+        accion: document.getElementById('tarea-accion').value,
+        otraAccion: document.getElementById('tarea-otra').value.trim(),
+        frecuencia: document.getElementById('tarea-frecuencia').value,
+        duracion: document.getElementById('tarea-duracion').value,
+        mesInicio: document.getElementById('tarea-mes').value,
+        semana: document.getElementById('tarea-semana').value,
+        nota: document.getElementById('tarea-nota').value.trim(),
+        actualizadoPor: currentUser.uid,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        if (tareaEditando) {
+          await db.collection('bienes').doc(bienId)
+            .collection('planSemanalLimpieza').doc(tareaEditando.id)
+            .update(datos);
+        } else {
+          datos.creadoPor = currentUser.uid;
+          datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId)
+            .collection('planSemanalLimpieza').add(datos);
+        }
+
+        cerrarModal();
+        await cargarDatos();
+      } catch (error) {
+        console.error('Error guardando:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    });
+
+    async function eliminarTarea() {
+      if (!tareaEditando) return;
+      if (!confirm('¿Eliminar esta tarea del plan?')) return;
+
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('planSemanalLimpieza').doc(tareaEditando.id)
+          .delete();
+        cerrarModal();
+        await cargarDatos();
+      } catch (error) {
+        console.error('Error eliminando:', error);
+        alert('Error al eliminar');
+      }
+    }
   </script>
 </body>
 </html>

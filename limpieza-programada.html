@@ -413,22 +413,11 @@
   </div>
 
   <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBN1JSfcwqOi_6d1WIgtYiZQqJKyVjZTHU",
-      authDomain: "familynk-dfadb.firebaseapp.com",
-      projectId: "familynk-dfadb",
-      storageBucket: "familynk-dfadb.firebasestorage.app",
-      messagingSenderId: "1039790137920",
-      appId: "1:1039790137920:web:c67b318a3700594c8e2d03"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
     // Variables globales
     let currentUser = null;
     let bienId = null;
@@ -491,7 +480,7 @@
         bienData = bienDoc.data();
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
-        // Cargar tareas de limpieza programadas (con fallback sin orderBy)
+        // Cargar tareas de limpieza programadas (con fallback)
         let tareasSnap;
         try {
           tareasSnap = await db.collection('bienes').doc(bienId)
@@ -505,6 +494,8 @@
             .get();
         }
         tareasData = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Ordenar manualmente si no había índice
+        tareasData.sort((a, b) => parseInt(a.dia || 0) - parseInt(b.dia || 0));
 
         renderDias();
         actualizarStats();
@@ -514,7 +505,7 @@
 
       } catch (error) {
         console.error('Error cargando datos:', error);
-        alert('Error al cargar los datos');
+        alert('Error al cargar los datos: ' + error.message);
       }
     }
 
