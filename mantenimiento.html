@@ -428,22 +428,22 @@
             <p class="modulo-card-desc">Tareas de mantenimiento preventivo con calendario y recordatorios.</p>
             <div class="modulo-card-stats">
               <div class="modulo-stat">
-                <span class="modulo-stat-value" id="count-proximos">0</span>
-                <span>próximos</span>
+                <span class="modulo-stat-value" id="count-tareas-mto">0</span>
+                <span>tareas</span>
               </div>
               <div class="modulo-stat">
-                <span class="modulo-stat-value" id="count-vencidos">0</span>
-                <span>vencidos</span>
+                <span class="modulo-stat-value" id="count-zonas-mto">0</span>
+                <span>zonas</span>
               </div>
             </div>
           </div>
           <div class="modulo-card-footer">
-            <span class="modulo-card-action">Ver calendario →</span>
+            <span class="modulo-card-action">Ver tareas →</span>
           </div>
         </a>
 
         <!-- Plan Semanal de Mantenimiento -->
-        <div class="modulo-card plan-semanal" id="card-plan-semanal">
+        <a href="#" class="modulo-card plan-semanal" id="card-plan-semanal" style="text-decoration: none; color: inherit;">
           <div class="modulo-card-header">
             <div class="modulo-card-icon">📋</div>
             <div class="modulo-card-title">Plan Semanal</div>
@@ -454,7 +454,10 @@
           <div class="plan-card-content" id="tareas-semanales">
             <div class="plan-empty">Cargando...</div>
           </div>
-        </div>
+          <div class="modulo-card-footer" style="padding: 10px 16px; border-top: 1px solid var(--cream-dark);">
+            <span class="modulo-card-action">Configurar plan →</span>
+          </div>
+        </a>
       </div>
     </div>
   </main>
@@ -516,6 +519,7 @@
         document.getElementById('card-taller').href = `taller.html?${baseParams}`;
         document.getElementById('card-reparaciones').href = `reparaciones.html?${baseParams}`;
         document.getElementById('card-programado').href = `mant-programado.html?${baseParams}`;
+        document.getElementById('card-plan-semanal').href = `plan-semanal-mto.html?${baseParams}`;
 
         // Mostrar contenido primero, luego cargar estadísticas en background
         document.getElementById('loading').classList.add('hidden');
@@ -562,20 +566,14 @@
       // Mantenimiento programado
       try {
         const mantSnap = await db.collection('bienes').doc(bienId).collection('mtoProgramado').get();
-        let proximos = 0, vencidos = 0;
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-        
+        const totalTareas = mantSnap.size;
+        const zonasSet = new Set();
         mantSnap.docs.forEach(doc => {
-          const mant = doc.data();
-          if (mant.proximaFecha) {
-            const fecha = mant.proximaFecha.toDate ? mant.proximaFecha.toDate() : new Date(mant.proximaFecha);
-            if (fecha < hoy) vencidos++;
-            else proximos++;
-          }
+          const zona = doc.data().zona;
+          if (zona) zonasSet.add(zona);
         });
-        document.getElementById('count-proximos').textContent = proximos;
-        document.getElementById('count-vencidos').textContent = vencidos;
+        document.getElementById('count-tareas-mto').textContent = totalTareas;
+        document.getElementById('count-zonas-mto').textContent = zonasSet.size;
       } catch (e) { console.log('Sin datos de mant programado'); }
 
       // Plan Semanal de Mantenimiento
