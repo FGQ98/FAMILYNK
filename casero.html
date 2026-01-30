@@ -1323,31 +1323,66 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 300px;
+      max-height: 350px;
       overflow-y: auto;
     }
     .tarea-item {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 12px;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px;
       background: var(--cream);
       border-radius: var(--radius-sm);
-      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .tarea-item.completada {
+      background: rgba(125, 181, 154, 0.15);
+    }
+    .tarea-item.completada .tarea-item-titulo {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    .tarea-check {
+      width: 20px;
+      height: 20px;
+      min-width: 20px;
+      accent-color: var(--sage);
+      margin-top: 2px;
+      cursor: pointer;
+    }
+    .tarea-item-content {
+      flex: 1;
+      min-width: 0;
     }
     .tarea-item-titulo {
+      font-size: 0.9rem;
+      font-weight: 600;
       color: var(--text);
-      flex: 1;
+      margin-bottom: 4px;
+    }
+    .tarea-item-detalle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .tarea-item-detalle span {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
     }
     .tarea-item-tiempo {
-      color: var(--text-muted);
+      background: var(--white);
+      padding: 4px 8px;
+      border-radius: 4px;
       font-size: 0.75rem;
+      color: var(--text-light);
       white-space: nowrap;
-      margin-left: 8px;
     }
     .tareas-vacio {
       text-align: center;
-      padding: 20px;
+      padding: 24px;
       color: var(--text-muted);
       font-style: italic;
       font-size: 0.85rem;
@@ -3108,30 +3143,45 @@
     function formatearTiempo(m) { if (m < 60) return `${m}min`; const h = Math.floor(m / 60); const min = m % 60; return min > 0 ? `${h}h ${min}m` : `${h}h`; }
     
     // ========== RENDER MANTENIMIENTO ==========
+    const frecuenciaLabels = { diaria: 'Diaria', semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual' };
+    
     function getTareasMto() {
       const tareas = datosModulos.mtoProgramado || [];
-      return tareas.map(t => ({
-        titulo: t.titulo || t.nombre,
+      return tareas.map((t, i) => ({
+        id: t.id || `mto-${i}`,
+        titulo: t.titulo || t.nombre || 'Tarea',
         duracion: parseInt(t.tiempo) || 30,
-        unidad: 'min',
-        frecuencia: t.frecuencia || 'mensual'
+        unidad: t.unidadTiempo || 'min',
+        frecuencia: t.frecuencia || 'mensual',
+        zona: t.zona || t.instalacion || '',
+        descripcion: t.descripcion || t.notas || '',
+        completada: t.completadaSemana || false
       }));
     }
     
     function renderMtoSemana() {
       const tareas = getTareasMto();
+      const completadas = tareas.filter(t => t.completada).length;
       
       document.getElementById('mto-semana-titulo').textContent = `Semana ${mtoSemanaActual}`;
-      document.getElementById('mto-sem-tareas').textContent = tareas.length;
+      document.getElementById('mto-sem-tareas').textContent = `${completadas}/${tareas.length}`;
       document.getElementById('mto-sem-horas').textContent = formatearTiempo(tareas.reduce((sum, t) => sum + convertirAMinutos(t.duracion, t.unidad), 0));
 
       const lista = document.getElementById('mto-tareas-lista');
       if (tareas.length === 0) {
-        lista.innerHTML = '<div class="tareas-vacio">Sin tareas de mantenimiento</div>';
+        lista.innerHTML = '<div class="tareas-vacio">Sin tareas de mantenimiento programadas</div>';
       } else {
         lista.innerHTML = tareas.map(t => `
-          <div class="tarea-item">
-            <span class="tarea-item-titulo">🔧 ${t.titulo}</span>
+          <div class="tarea-item ${t.completada ? 'completada' : ''}" data-id="${t.id}">
+            <input type="checkbox" class="tarea-check" ${t.completada ? 'checked' : ''} onchange="toggleTareaMto('${t.id}')">
+            <div class="tarea-item-content">
+              <div class="tarea-item-titulo">🔧 ${t.titulo}</div>
+              <div class="tarea-item-detalle">
+                ${t.zona ? `<span>📍 ${t.zona}</span>` : ''}
+                <span>🔄 ${frecuenciaLabels[t.frecuencia] || t.frecuencia}</span>
+                ${t.descripcion ? `<span>📝 ${t.descripcion.substring(0, 40)}${t.descripcion.length > 40 ? '...' : ''}</span>` : ''}
+              </div>
+            </div>
             <span class="tarea-item-tiempo">${t.duracion}${t.unidad}</span>
           </div>
         `).join('');
@@ -3173,34 +3223,59 @@
     }
     
     // ========== RENDER LIMPIEZA ==========
+    const zonaIconsLimp = {
+      cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
+      bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
+      entrada: '🚪', general: '🏠', exterior: '🌳'
+    };
+    const tipoTareaLabels = {
+      'barrer-fregar': 'Barrer/Fregar', 'cambiar-sabanas': 'Cambiar sábanas', 
+      'desinfectar': 'Desinfectar', 'revisar-consumibles': 'Revisar consumibles',
+      'planchar': 'Planchar', 'lavar-ropa': 'Lavar ropa', 'limpiar-cristales': 'Cristales',
+      'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo', 'ordenar': 'Ordenar'
+    };
+    
     function getTareasLimp() {
       const tareas = datosModulos.limpiezaProgramada || [];
-      return tareas.map(t => ({
-        titulo: t.titulo || t.zona || 'Tarea',
+      return tareas.map((t, i) => ({
+        id: t.id || `limp-${i}`,
+        titulo: t.titulo || tipoTareaLabels[t.tipo] || t.zona || 'Tarea',
         duracion: parseInt(t.tiempo) || 30,
         unidad: 'min',
-        dia: parseInt(t.dia) || 0,
-        zona: t.zona
+        zona: t.zona || 'general',
+        dependencia: t.dependencia || '',
+        tipo: t.tipo,
+        completada: t.completadaSemana || false
       }));
     }
     
     function renderLimpSemana() {
       const todasTareas = getTareasLimp();
+      const completadas = todasTareas.filter(t => t.completada).length;
       
       document.getElementById('limp-semana-titulo').textContent = `Semana ${limpSemanaActual}`;
-      document.getElementById('limp-sem-tareas').textContent = todasTareas.length;
+      document.getElementById('limp-sem-tareas').textContent = `${completadas}/${todasTareas.length}`;
       document.getElementById('limp-sem-horas').textContent = formatearTiempo(todasTareas.reduce((sum, t) => sum + convertirAMinutos(t.duracion, t.unidad), 0));
 
       const lista = document.getElementById('limp-tareas-lista');
       if (todasTareas.length === 0) {
-        lista.innerHTML = '<div class="tareas-vacio">Sin tareas de limpieza</div>';
+        lista.innerHTML = '<div class="tareas-vacio">Sin tareas de limpieza programadas</div>';
       } else {
-        lista.innerHTML = todasTareas.map(t => `
-          <div class="tarea-item">
-            <span class="tarea-item-titulo">🧹 ${t.titulo}</span>
-            <span class="tarea-item-tiempo">${t.duracion}${t.unidad}</span>
-          </div>
-        `).join('');
+        lista.innerHTML = todasTareas.map(t => {
+          const zonaIcon = zonaIconsLimp[t.zona] || '🏠';
+          return `
+            <div class="tarea-item ${t.completada ? 'completada' : ''}" data-id="${t.id}">
+              <input type="checkbox" class="tarea-check" ${t.completada ? 'checked' : ''} onchange="toggleTareaLimp('${t.id}')">
+              <div class="tarea-item-content">
+                <div class="tarea-item-titulo">🧹 ${t.titulo}</div>
+                <div class="tarea-item-detalle">
+                  <span>${zonaIcon} ${t.zona}${t.dependencia ? ' - ' + t.dependencia : ''}</span>
+                </div>
+              </div>
+              <span class="tarea-item-tiempo">${t.duracion}${t.unidad}</span>
+            </div>
+          `;
+        }).join('');
       }
     }
     
@@ -3235,6 +3310,63 @@
       document.getElementById('limp-mes-tareas').textContent = totalTareas;
       document.getElementById('limp-mes-horas').textContent = formatearTiempo(totalMinutos);
       document.getElementById('limp-semanas-grid').innerHTML = semanasHtml.join('');
+    }
+    
+    // ========== TOGGLE TAREAS (marcar ejecución) ==========
+    async function toggleTareaMto(tareaId) {
+      const tareas = datosModulos.mtoProgramado || [];
+      const tarea = tareas.find(t => t.id === tareaId);
+      if (!tarea) return;
+      
+      tarea.completadaSemana = !tarea.completadaSemana;
+      
+      // Actualizar UI inmediatamente
+      const item = document.querySelector(`#mto-tareas-lista .tarea-item[data-id="${tareaId}"]`);
+      if (item) {
+        item.classList.toggle('completada', tarea.completadaSemana);
+      }
+      renderMtoSemana();
+      
+      // Guardar en Firebase
+      try {
+        await db.collection('bienes').doc(bienActual.bienId)
+          .collection('mtoProgramado').doc(tareaId)
+          .update({ 
+            completadaSemana: tarea.completadaSemana,
+            ultimaEjecucion: tarea.completadaSemana ? firebase.firestore.FieldValue.serverTimestamp() : null
+          });
+        console.log('Tarea mto actualizada:', tareaId);
+      } catch (e) {
+        console.log('Error guardando estado tarea mto:', e);
+      }
+    }
+    
+    async function toggleTareaLimp(tareaId) {
+      const tareas = datosModulos.limpiezaProgramada || [];
+      const tarea = tareas.find(t => t.id === tareaId);
+      if (!tarea) return;
+      
+      tarea.completadaSemana = !tarea.completadaSemana;
+      
+      // Actualizar UI inmediatamente
+      const item = document.querySelector(`#limp-tareas-lista .tarea-item[data-id="${tareaId}"]`);
+      if (item) {
+        item.classList.toggle('completada', tarea.completadaSemana);
+      }
+      renderLimpSemana();
+      
+      // Guardar en Firebase
+      try {
+        await db.collection('bienes').doc(bienActual.bienId)
+          .collection('limpiezaProgramada').doc(tareaId)
+          .update({ 
+            completadaSemana: tarea.completadaSemana,
+            ultimaEjecucion: tarea.completadaSemana ? firebase.firestore.FieldValue.serverTimestamp() : null
+          });
+        console.log('Tarea limp actualizada:', tareaId);
+      } catch (e) {
+        console.log('Error guardando estado tarea limp:', e);
+      }
     }
     
     // Función auxiliar para ver manual completo
