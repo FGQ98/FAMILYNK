@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Informes de Estancia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --mayordomo: #8B7355;
+      --mayordomo-light: #A69076;
+      --mayordomo-muted: rgba(139, 115, 85, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--mayordomo);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--mayordomo);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bien-nombre {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .main { max-width: 600px; margin: 0 auto; padding: 24px; }
+
+    .loading {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--cream-dark);
+      border-top-color: var(--mayordomo);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    .info-box {
+      background: var(--mayordomo-muted);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .info-box h3 {
+      font-family: 'Quicksand', sans-serif;
+      color: var(--mayordomo);
+      margin-bottom: 6px;
+      font-size: 1rem;
+    }
+    .info-box p {
+      font-size: 0.85rem;
+      color: var(--text-light);
+      line-height: 1.5;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .card-link {
+      display: block;
+      background: var(--white);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      box-shadow: var(--shadow-soft);
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .card-link:hover {
+      border-color: var(--mayordomo-light);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-medium);
+    }
+    .card-icon {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+    }
+    .card-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: var(--mayordomo);
+      margin-bottom: 6px;
+    }
+    .card-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    .card-stat {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--cream-dark);
+      font-size: 0.8rem;
+      color: var(--text-light);
+    }
+    .card-stat strong {
+      color: var(--mayordomo);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Volver</a>
+      <div class="header-title">
+        📋 Informes de Estancia
+        <span class="bien-nombre" id="bien-nombre">...</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <div class="info-box">
+        <h3>📋 Gestión de Informes</h3>
+        <p>Configura las plantillas de checklist y consulta el histórico de informes enviados por los caseros.</p>
+      </div>
+
+      <div class="cards-grid">
+        <a href="#" class="card-link" id="card-plantillas">
+          <div class="card-icon">📝</div>
+          <div class="card-title">Plantillas de Informe</div>
+          <div class="card-desc">Crea y configura modelos de checklist (check-in, check-out, revisión...) con apartados y líneas personalizadas.</div>
+          <div class="card-stat"><strong id="count-plantillas">0</strong> plantillas configuradas</div>
+        </a>
+
+        <a href="#" class="card-link" id="card-historico">
+          <div class="card-icon">📜</div>
+          <div class="card-title">Histórico de Informes</div>
+          <div class="card-desc">Consulta todos los informes enviados por los caseros, con fecha, tipo y detalle de cada checklist completado.</div>
+          <div class="card-stat"><strong id="count-informes">0</strong> informes registrados</div>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('id');
+    const origen = params.get('origen') || 'bien';
+
+    document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+
+    if (!bienId) {
+      alert('No se especificó el bien');
+      window.location.href = 'cgi.html';
+    }
+
+    // Configurar enlaces de las cards
+    document.getElementById('card-plantillas').href = `plantillas-informe.html?id=${bienId}&origen=informes`;
+    document.getElementById('card-historico').href = `historico-informes.html?id=${bienId}&origen=informes`;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        // Cargar bien
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) {
+          alert('Bien no encontrado');
+          window.location.href = 'cgi.html';
+          return;
+        }
+        bienData = bienDoc.data();
+        document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
+
+        // Contar plantillas
+        const plantillasSnap = await db.collection('bienes').doc(bienId).collection('plantillasInforme').get();
+        document.getElementById('count-plantillas').textContent = plantillasSnap.size;
+
+        // Contar informes
+        const informesSnap = await db.collection('bienes').doc(bienId).collection('informesEstancia').get();
+        document.getElementById('count-informes').textContent = informesSnap.size;
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al cargar: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
