@@ -184,8 +184,8 @@
     }
     .checklist-linea {
       display: flex;
-      align-items: center;
-      gap: 12px;
+      flex-direction: column;
+      gap: 8px;
       padding: 12px 16px;
       border-bottom: 1px solid var(--cream-dark);
       transition: background 0.2s;
@@ -194,6 +194,11 @@
     .checklist-linea:hover { background: var(--cream); }
     .checklist-linea.marcada {
       background: var(--sage-muted);
+    }
+    .linea-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     .linea-check {
       width: 22px;
@@ -209,6 +214,25 @@
     }
     .linea-texto.tachado {
       text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    .linea-comentario {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      resize: none;
+      background: var(--white);
+      margin-left: 34px;
+      width: calc(100% - 34px);
+    }
+    .linea-comentario:focus {
+      outline: none;
+      border-color: var(--mayordomo-light);
+    }
+    .linea-comentario::placeholder {
       color: var(--text-muted);
     }
 
@@ -413,6 +437,7 @@
     let historialData = [];
     let plantillaSeleccionada = null;
     let respuestas = {}; // { lineaId: true/false }
+    let comentarios = {}; // { lineaId: "texto comentario" }
 
     const params = new URLSearchParams(window.location.search);
     bienId = params.get('id');
@@ -538,6 +563,7 @@
       if (!plantillaSeleccionada) return;
 
       respuestas = {};
+      comentarios = {};
       renderChecklist();
 
       document.getElementById('vista-seleccion').classList.add('hidden');
@@ -557,8 +583,15 @@
           totalLineas++;
           return `
             <div class="checklist-linea" id="linea-${lineaId}">
-              <input type="checkbox" class="linea-check" id="check-${lineaId}" onchange="toggleLinea('${lineaId}')">
-              <label class="linea-texto" for="check-${lineaId}">${linea}</label>
+              <div class="linea-row">
+                <input type="checkbox" class="linea-check" id="check-${lineaId}" onchange="toggleLinea('${lineaId}')">
+                <label class="linea-texto" for="check-${lineaId}">${linea}</label>
+              </div>
+              <textarea class="linea-comentario" id="comentario-${lineaId}" 
+                placeholder="Comentario o nota (opcional)..." 
+                maxlength="200" 
+                rows="1"
+                oninput="guardarComentario('${lineaId}')"></textarea>
             </div>
           `;
         }).join('');
@@ -573,6 +606,16 @@
 
       document.getElementById('progreso-total').textContent = totalLineas;
       actualizarProgreso();
+    }
+
+    function guardarComentario(lineaId) {
+      const textarea = document.getElementById(`comentario-${lineaId}`);
+      const texto = textarea.value.trim();
+      if (texto) {
+        comentarios[lineaId] = texto;
+      } else {
+        delete comentarios[lineaId];
+      }
     }
 
     function toggleLinea(lineaId) {
@@ -605,6 +648,7 @@
     function volverASeleccion() {
       plantillaSeleccionada = null;
       respuestas = {};
+      comentarios = {};
       document.getElementById('vista-checklist').classList.add('hidden');
       document.getElementById('vista-confirmacion').classList.add('hidden');
       document.getElementById('vista-seleccion').classList.remove('hidden');
@@ -624,8 +668,10 @@
         plantillaId: plantillaSeleccionada.id,
         plantillaNombre: plantillaSeleccionada.nombre,
         respuestas: respuestas,
+        comentarios: comentarios,
         totalMarcadas: marcadas,
         totalLineas: total,
+        totalComentarios: Object.keys(comentarios).length,
         enviadoPor: currentUser.uid,
         enviadoPorEmail: currentUser.email,
         fechaEnvio: firebase.firestore.FieldValue.serverTimestamp()

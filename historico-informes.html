@@ -210,6 +210,15 @@
     }
     .detalle-linea.marcada { color: var(--sage-dark); }
     .detalle-linea.no-marcada { color: var(--text-muted); }
+    .detalle-comentario {
+      padding: 6px 12px 10px 28px;
+      font-size: 0.8rem;
+      color: var(--text-light);
+      font-style: italic;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+    }
     .check-icon { font-size: 1rem; }
 
     .empty-state {
@@ -467,24 +476,42 @@
 
         // Buscar plantilla para obtener detalle
         const plantilla = plantillasData.find(p => p.id === inf.plantillaId);
+        const comentariosInf = inf.comentarios || {};
 
-        // Generar detalle de respuestas
+        // Generar detalle: solo líneas con comentario
         let detalleHtml = '';
-        if (plantilla && plantilla.apartados) {
+        if (plantilla && plantilla.apartados && Object.keys(comentariosInf).length > 0) {
           plantilla.apartados.forEach((apt, ai) => {
-            detalleHtml += `<div class="detalle-apartado">
-              <div class="detalle-apartado-titulo">${apt.zonaNombre || apt.zona}</div>`;
-            (apt.lineas || []).forEach((linea, li) => {
+            // Filtrar solo líneas con comentario en este apartado
+            const lineasConComentario = (apt.lineas || []).map((linea, li) => {
               const lineaId = `${ai}-${li}`;
-              const marcada = inf.respuestas && inf.respuestas[lineaId];
-              detalleHtml += `
-                <div class="detalle-linea ${marcada ? 'marcada' : 'no-marcada'}">
-                  <span class="check-icon">${marcada ? '✅' : '⬜'}</span>
-                  <span>${linea}</span>
-                </div>`;
-            });
-            detalleHtml += '</div>';
+              const comentario = comentariosInf[lineaId];
+              if (comentario) {
+                const marcada = inf.respuestas && inf.respuestas[lineaId];
+                return { linea, comentario, marcada };
+              }
+              return null;
+            }).filter(Boolean);
+
+            if (lineasConComentario.length > 0) {
+              detalleHtml += `<div class="detalle-apartado">
+                <div class="detalle-apartado-titulo">${apt.zonaNombre || apt.zona}</div>`;
+              lineasConComentario.forEach(item => {
+                detalleHtml += `
+                  <div class="detalle-linea ${item.marcada ? 'marcada' : 'no-marcada'}">
+                    <span class="check-icon">${item.marcada ? '✅' : '⬜'}</span>
+                    <span>${item.linea}</span>
+                  </div>
+                  <div class="detalle-comentario">💬 ${item.comentario}</div>`;
+              });
+              detalleHtml += '</div>';
+            }
           });
+        }
+
+        // Si no hay comentarios, mostrar mensaje
+        if (!detalleHtml) {
+          detalleHtml = '<p style="color:var(--text-muted);padding:12px 0;font-size:0.85rem;">Sin comentarios registrados</p>';
         }
 
         return `
@@ -503,7 +530,7 @@
               </div>
             </div>
             <div class="informe-body">
-              ${detalleHtml || '<p style="color:var(--text-muted);padding:12px 0;">Sin detalle disponible</p>'}
+              ${detalleHtml}
             </div>
           </div>
         `;
