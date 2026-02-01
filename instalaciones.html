@@ -135,80 +135,78 @@
     .filtro-select:focus { outline: none; border-color: var(--mayordomo); }
 
     /* Cards de instalaciones */
-    .instalaciones-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 16px;
-    }
-
-    .instalacion-card {
+    /* Tabla de instalaciones */
+    .instalaciones-tabla {
+      width: 100%;
       background: var(--white);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-soft);
       overflow: hidden;
-      cursor: pointer;
-      transition: all 0.2s;
-      border: 2px solid transparent;
+      border-collapse: collapse;
     }
-    .instalacion-card:hover {
-      border-color: var(--mayordomo-light);
-      box-shadow: var(--shadow-medium);
-    }
-
-    .instalacion-header {
+    .instalaciones-tabla th {
       background: linear-gradient(135deg, var(--mayordomo) 0%, #6B5A45 100%);
       color: var(--white);
-      padding: 16px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .instalacion-icon {
-      width: 44px;
-      height: 44px;
-      background: rgba(255,255,255,0.2);
-      border-radius: var(--radius-sm);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-    }
-    .instalacion-info { flex: 1; }
-    .instalacion-elemento {
-      font-weight: 700;
-      font-size: 1rem;
-    }
-    .instalacion-tipo {
-      font-size: 0.8rem;
-      opacity: 0.85;
-    }
-
-    .instalacion-body { padding: 16px; }
-    .instalacion-row {
-      display: flex;
-      margin-bottom: 10px;
-    }
-    .instalacion-row:last-child { margin-bottom: 0; }
-    .instalacion-label {
+      padding: 14px 16px;
+      text-align: left;
       font-weight: 600;
+      font-size: 0.85rem;
+    }
+    .instalaciones-tabla td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      font-size: 0.9rem;
+      vertical-align: middle;
+    }
+    .instalaciones-tabla tr:last-child td {
+      border-bottom: none;
+    }
+    .instalaciones-tabla tbody tr {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .instalaciones-tabla tbody tr:hover {
+      background: var(--cream);
+    }
+    .tabla-icono {
+      font-size: 1.3rem;
+      text-align: center;
+    }
+    .tabla-elemento {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .tabla-tipo {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--mayordomo-muted);
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: var(--mayordomo);
+    }
+    .tabla-notas {
       font-size: 0.8rem;
       color: var(--text-muted);
-      width: 100px;
-      flex-shrink: 0;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .instalacion-value {
-      font-size: 0.9rem;
-      color: var(--text);
-      flex: 1;
-    }
-    .instalacion-notas {
-      background: var(--cream);
-      padding: 10px 12px;
-      border-radius: var(--radius-sm);
-      font-size: 0.85rem;
-      color: var(--text-light);
-      margin-top: 12px;
-      font-style: italic;
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .instalaciones-tabla {
+        display: block;
+        overflow-x: auto;
+      }
+      .instalaciones-tabla th,
+      .instalaciones-tabla td {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+      }
+      .tabla-notas { max-width: 120px; }
     }
 
     /* Empty state */
@@ -380,7 +378,6 @@
       .main { padding: 16px; }
       .stats-row { gap: 10px; }
       .stat-card { padding: 12px 16px; }
-      .instalaciones-grid { grid-template-columns: 1fr; }
       .filtros-bar { flex-direction: column; align-items: stretch; }
     }
   </style>
@@ -426,8 +423,25 @@
         </div>
       </div>
 
-      <!-- Grid de instalaciones -->
-      <div class="instalaciones-grid" id="grid-instalaciones"></div>
+      <!-- Tabla de instalaciones -->
+      <table class="instalaciones-tabla" id="tabla-instalaciones">
+        <thead>
+          <tr>
+            <th style="width:50px;"></th>
+            <th>Elemento</th>
+            <th>Tipo</th>
+            <th>Ubicación</th>
+            <th>Notas</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-instalaciones"></tbody>
+      </table>
+      
+      <div id="empty-state" class="empty-state hidden">
+        <div class="empty-icon">⚙️</div>
+        <div class="empty-titulo">Sin instalaciones registradas</div>
+        <p class="empty-texto">Documenta los sistemas e instalaciones del bien</p>
+      </div>
     </div>
   </main>
 
@@ -612,7 +626,9 @@
     }
 
     function renderInstalaciones() {
-      const grid = document.getElementById('grid-instalaciones');
+      const tbody = document.getElementById('tbody-instalaciones');
+      const tabla = document.getElementById('tabla-instalaciones');
+      const emptyState = document.getElementById('empty-state');
       const filtroTipo = document.getElementById('filtro-tipo').value;
 
       let instFiltradas = instalacionesData;
@@ -622,45 +638,28 @@
       }
 
       if (instFiltradas.length === 0) {
-        grid.innerHTML = `
-          <div class="empty-state" style="grid-column: 1/-1;">
-            <div class="empty-icon">⚙️</div>
-            <div class="empty-titulo">Sin instalaciones registradas</div>
-            <p class="empty-texto">Documenta los sistemas e instalaciones del bien</p>
-          </div>
-        `;
+        tabla.classList.add('hidden');
+        emptyState.classList.remove('hidden');
         return;
       }
 
-      grid.innerHTML = instFiltradas.map(inst => {
+      tabla.classList.remove('hidden');
+      emptyState.classList.add('hidden');
+
+      tbody.innerHTML = instFiltradas.map(inst => {
         const icon = tipoIcons[inst.tipo] || '📦';
         const tipoNombre = tipoNombres[inst.tipo] || inst.tipo || 'Sin tipo';
+        const notas = inst.notas || inst.caracteristicas || '';
+        const notasCortas = notas.length > 50 ? notas.substring(0, 50) + '...' : notas;
         
         return `
-          <div class="instalacion-card" onclick="editarInstalacion('${inst.id}')">
-            <div class="instalacion-header">
-              <div class="instalacion-icon">${icon}</div>
-              <div class="instalacion-info">
-                <div class="instalacion-elemento">${inst.elemento || 'Sin nombre'}</div>
-                <div class="instalacion-tipo">${tipoNombre}</div>
-              </div>
-            </div>
-            <div class="instalacion-body">
-              <div class="instalacion-row">
-                <span class="instalacion-label">📍 Ubicación</span>
-                <span class="instalacion-value">${inst.ubicacion || '-'}</span>
-              </div>
-              ${inst.caracteristicas ? `
-                <div class="instalacion-row">
-                  <span class="instalacion-label">📋 Caract.</span>
-                  <span class="instalacion-value">${inst.caracteristicas.substring(0, 80)}${inst.caracteristicas.length > 80 ? '...' : ''}</span>
-                </div>
-              ` : ''}
-              ${inst.notas ? `
-                <div class="instalacion-notas">💬 ${inst.notas.substring(0, 100)}${inst.notas.length > 100 ? '...' : ''}</div>
-              ` : ''}
-            </div>
-          </div>
+          <tr onclick="editarInstalacion('${inst.id}')">
+            <td class="tabla-icono">${icon}</td>
+            <td class="tabla-elemento">${inst.elemento || 'Sin nombre'}</td>
+            <td><span class="tabla-tipo">${icon} ${tipoNombre}</span></td>
+            <td>${inst.ubicacion || '-'}</td>
+            <td class="tabla-notas" title="${notas}">${notasCortas || '-'}</td>
+          </tr>
         `;
       }).join('');
     }
