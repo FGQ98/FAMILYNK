@@ -5783,15 +5783,15 @@
     const formCasero = document.getElementById('form-casero');
 
     function abrirModalCasero(casero = null) {
-      // Verificar permisos de edición
-      if (!puedeEditar) {
-        alert('Solo el creador del bien o un administrador puede editar esta información.');
+      // Si no es edición y no puede editar, bloquear creación
+      if (!casero && !puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede añadir caseros.');
         return;
       }
       
       editingCaseroId = casero?.id || null;
       formCasero.reset();
-      document.getElementById('btn-eliminar-casero').classList.toggle('hidden', !casero);
+      document.getElementById('btn-eliminar-casero').classList.toggle('hidden', !casero || !puedeEditar);
       
       // Renderizar matriz de permisos
       const permisosActuales = casero?.permisos || {};
@@ -5807,7 +5807,7 @@
       document.getElementById('casero-vacaciones-notas').value = '';
       
       if (casero) {
-        document.getElementById('modal-casero-title').textContent = '✏️ Editar casero';
+        document.getElementById('modal-casero-title').textContent = puedeEditar ? '✏️ Editar casero' : '👁️ Ver casero';
         document.getElementById('casero-nombre').value = casero.nombre || '';
         document.getElementById('casero-email').value = casero.email || '';
         document.getElementById('casero-email').disabled = true;
@@ -5832,6 +5832,29 @@
         document.getElementById('modal-casero-title').textContent = '👤 Nuevo casero';
         document.getElementById('casero-email').disabled = false;
       }
+      
+      // Deshabilitar campos si no puede editar (solo ver)
+      const camposEditables = [
+        'casero-nombre', 'casero-telefono', 
+        'casero-libranza-dias', 'casero-libranza-notas',
+        'casero-vacaciones-dias', 'casero-vacaciones-bloques', 'casero-vacaciones-notas'
+      ];
+      camposEditables.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !puedeEditar;
+      });
+      // Deshabilitar checkboxes de días
+      ['L','M','X','J','V','S','D'].forEach(d => {
+        const el = document.getElementById(`casero-lib-${d}`);
+        if (el) el.disabled = !puedeEditar;
+      });
+      // Deshabilitar checkboxes de permisos CVEB
+      document.querySelectorAll('#permisos-rows-casero input[type="checkbox"]').forEach(cb => {
+        cb.disabled = !puedeEditar;
+      });
+      // Mostrar/ocultar botón guardar
+      document.getElementById('modal-casero-guardar').style.display = puedeEditar ? '' : 'none';
+      
       modalCasero.classList.add('active');
     }
 
@@ -5993,9 +6016,15 @@
     const formHoster = document.getElementById('form-hoster');
 
     function abrirModalHoster(hoster = null) {
+      // Si no es edición y no puede editar, bloquear creación
+      if (!hoster && !puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede añadir hosters.');
+        return;
+      }
+      
       editingHosterId = hoster?.id || null;
       formHoster.reset();
-      document.getElementById('btn-eliminar-hoster').classList.toggle('hidden', !hoster);
+      document.getElementById('btn-eliminar-hoster').classList.toggle('hidden', !hoster || !puedeEditar);
       
       // Renderizar matriz de permisos CVEB para Gerente
       const permisosActuales = hoster?.permisos || {};
@@ -6011,7 +6040,7 @@
       document.getElementById('hoster-vacaciones-notas').value = '';
       
       if (hoster) {
-        document.getElementById('modal-hoster-title').textContent = '✏️ Editar hoster';
+        document.getElementById('modal-hoster-title').textContent = puedeEditar ? '✏️ Editar hoster' : '👁️ Ver hoster';
         document.getElementById('hoster-nombre').value = hoster.nombre || '';
         document.getElementById('hoster-email').value = hoster.email || '';
         document.getElementById('hoster-email').disabled = true;
@@ -6037,6 +6066,29 @@
         document.getElementById('modal-hoster-title').textContent = '🏨 Nuevo hoster';
         document.getElementById('hoster-email').disabled = false;
       }
+      
+      // Deshabilitar campos si no puede editar (solo ver)
+      const camposEditables = [
+        'hoster-nombre', 'hoster-telefono', 'hoster-rol',
+        'hoster-libranza-dias', 'hoster-libranza-notas',
+        'hoster-vacaciones-dias', 'hoster-vacaciones-bloques', 'hoster-vacaciones-notas'
+      ];
+      camposEditables.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !puedeEditar;
+      });
+      // Deshabilitar checkboxes de días
+      ['L','M','X','J','V','S','D'].forEach(d => {
+        const el = document.getElementById(`hoster-lib-${d}`);
+        if (el) el.disabled = !puedeEditar;
+      });
+      // Deshabilitar checkboxes de permisos CVEB
+      document.querySelectorAll('#permisos-rows-hoster input[type="checkbox"]').forEach(cb => {
+        cb.disabled = !puedeEditar;
+      });
+      // Mostrar/ocultar botón guardar
+      document.getElementById('modal-hoster-guardar').style.display = puedeEditar ? '' : 'none';
+      
       modalHoster.classList.add('active');
     }
 
@@ -6191,9 +6243,15 @@
     const formGuarda = document.getElementById('form-guarda');
 
     function abrirModalGuarda(guarda = null) {
+      // Si no es edición y no puede editar, bloquear creación
+      if (!guarda && !puedeEditar) {
+        alert('Solo el creador del bien o un administrador puede añadir guardas.');
+        return;
+      }
+      
       editingGuardaId = guarda?.id || null;
       formGuarda.reset();
-      document.getElementById('btn-eliminar-guarda').classList.toggle('hidden', !guarda);
+      document.getElementById('btn-eliminar-guarda').classList.toggle('hidden', !guarda || !puedeEditar);
       
       // Renderizar matriz de permisos CVEB para Capataz
       const permisosActuales = guarda?.permisos || {};
@@ -6209,7 +6267,7 @@
       document.getElementById('guarda-vacaciones-notas').value = '';
       
       if (guarda) {
-        document.getElementById('modal-guarda-title').textContent = '✏️ Editar guarda';
+        document.getElementById('modal-guarda-title').textContent = puedeEditar ? '✏️ Editar guarda' : '👁️ Ver guarda';
         document.getElementById('guarda-nombre').value = guarda.nombre || '';
         document.getElementById('guarda-email').value = guarda.email || '';
         document.getElementById('guarda-email').disabled = true;
@@ -6235,6 +6293,29 @@
         document.getElementById('modal-guarda-title').textContent = '🌾 Nuevo guarda';
         document.getElementById('guarda-email').disabled = false;
       }
+      
+      // Deshabilitar campos si no puede editar (solo ver)
+      const camposEditables = [
+        'guarda-nombre', 'guarda-telefono', 'guarda-rol',
+        'guarda-libranza-dias', 'guarda-libranza-notas',
+        'guarda-vacaciones-dias', 'guarda-vacaciones-bloques', 'guarda-vacaciones-notas'
+      ];
+      camposEditables.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = !puedeEditar;
+      });
+      // Deshabilitar checkboxes de días
+      ['L','M','X','J','V','S','D'].forEach(d => {
+        const el = document.getElementById(`guarda-lib-${d}`);
+        if (el) el.disabled = !puedeEditar;
+      });
+      // Deshabilitar checkboxes de permisos CVEB
+      document.querySelectorAll('#permisos-rows-guarda input[type="checkbox"]').forEach(cb => {
+        cb.disabled = !puedeEditar;
+      });
+      // Mostrar/ocultar botón guardar
+      document.getElementById('modal-guarda-guardar').style.display = puedeEditar ? '' : 'none';
+      
       modalGuarda.classList.add('active');
     }
 
