@@ -134,65 +134,94 @@
     }
     .filtro-select:focus { outline: none; border-color: var(--mayordomo); }
 
-    /* Tabla de instalaciones */
-    .tabla-container {
+    /* Cards de instalaciones */
+    .instalaciones-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .instalacion-card {
       background: var(--white);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-soft);
       overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 2px solid transparent;
+    }
+    .instalacion-card:hover {
+      border-color: var(--mayordomo-light);
+      box-shadow: var(--shadow-medium);
     }
 
-    .tabla-instalaciones {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .tabla-instalaciones th {
+    .instalacion-header {
       background: linear-gradient(135deg, var(--mayordomo) 0%, #6B5A45 100%);
       color: var(--white);
-      font-weight: 600;
-      font-size: 0.85rem;
-      text-align: left;
-      padding: 14px 16px;
-    }
-    .tabla-instalaciones td {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--cream-dark);
-      font-size: 0.9rem;
-    }
-    .tabla-instalaciones tbody tr {
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .tabla-instalaciones tbody tr:hover {
-      background: var(--mayordomo-muted);
-    }
-    .tabla-instalaciones tbody tr:last-child td {
-      border-bottom: none;
-    }
-
-    .td-elemento { font-weight: 600; color: var(--text); }
-    .td-tipo { }
-    .tipo-badge {
-      display: inline-flex;
+      padding: 16px;
+      display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 20px;
+      gap: 12px;
+    }
+    .instalacion-icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(255,255,255,0.2);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .instalacion-info { flex: 1; }
+    .instalacion-elemento {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .instalacion-tipo {
       font-size: 0.8rem;
-      font-weight: 600;
-      background: var(--mayordomo-muted);
-      color: var(--mayordomo);
+      opacity: 0.85;
     }
-    .td-ubicacion { color: var(--text-light); }
-    .td-detalles { font-size: 0.85rem; }
 
-    .tabla-empty {
-      text-align: center;
-      padding: 48px 24px;
+    .instalacion-body { padding: 16px; }
+    .instalacion-row {
+      display: flex;
+      margin-bottom: 10px;
     }
-    .tabla-empty-icon { font-size: 3rem; margin-bottom: 16px; }
-    .tabla-empty-titulo { font-weight: 700; margin-bottom: 8px; color: var(--text); }
-    .tabla-empty p { color: var(--text-muted); font-size: 0.9rem; }
+    .instalacion-row:last-child { margin-bottom: 0; }
+    .instalacion-label {
+      font-weight: 600;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      width: 100px;
+      flex-shrink: 0;
+    }
+    .instalacion-value {
+      font-size: 0.9rem;
+      color: var(--text);
+      flex: 1;
+    }
+    .instalacion-notas {
+      background: var(--cream);
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-top: 12px;
+      font-style: italic;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+    .empty-titulo { font-weight: 700; font-size: 1.2rem; color: var(--text-light); margin-bottom: 8px; }
+    .empty-texto { color: var(--text-muted); }
 
     /* Botón flotante */
     .btn-add {
@@ -351,8 +380,8 @@
       .main { padding: 16px; }
       .stats-row { gap: 10px; }
       .stat-card { padding: 12px 16px; }
+      .instalaciones-grid { grid-template-columns: 1fr; }
       .filtros-bar { flex-direction: column; align-items: stretch; }
-      .tabla-instalaciones th, .tabla-instalaciones td { padding: 10px 12px; font-size: 0.85rem; }
     }
   </style>
 </head>
@@ -395,29 +424,10 @@
             <option value="">Todos</option>
           </select>
         </div>
-        <div class="filtro-grupo">
-          <span class="filtro-label">Ubicación:</span>
-          <select class="filtro-select" id="filtro-ubicacion" onchange="aplicarFiltros()">
-            <option value="">Todas</option>
-          </select>
-        </div>
       </div>
 
-      <!-- Tabla de instalaciones -->
-      <div class="tabla-container">
-        <table class="tabla-instalaciones" id="tabla-instalaciones">
-          <thead>
-            <tr>
-              <th>Elemento</th>
-              <th>Tipo</th>
-              <th>Ubicación</th>
-              <th>Detalles</th>
-            </tr>
-          </thead>
-          <tbody id="tabla-body">
-          </tbody>
-        </table>
-      </div>
+      <!-- Grid de instalaciones -->
+      <div class="instalaciones-grid" id="grid-instalaciones"></div>
     </div>
   </main>
 
@@ -594,15 +604,6 @@
         optionsTipo += `<option value="${tipo}">${icon} ${nombre}</option>`;
       });
       selectTipo.innerHTML = optionsTipo;
-
-      // Filtro de ubicaciones
-      const selectUbic = document.getElementById('filtro-ubicacion');
-      const ubicaciones = [...new Set(instalacionesData.map(i => i.ubicacion))].filter(Boolean).sort();
-      let optionsUbic = '<option value="">Todas</option>';
-      ubicaciones.forEach(ubic => {
-        optionsUbic += `<option value="${ubic}">${ubic}</option>`;
-      });
-      selectUbic.innerHTML = optionsUbic;
     }
 
     function aplicarFiltros() {
@@ -610,52 +611,55 @@
     }
 
     function renderInstalaciones() {
-      const tbody = document.getElementById('tabla-body');
+      const grid = document.getElementById('grid-instalaciones');
       const filtroTipo = document.getElementById('filtro-tipo').value;
-      const filtroUbic = document.getElementById('filtro-ubicacion').value;
 
       let instFiltradas = instalacionesData;
       
       if (filtroTipo) {
         instFiltradas = instFiltradas.filter(i => i.tipo === filtroTipo);
       }
-      if (filtroUbic) {
-        instFiltradas = instFiltradas.filter(i => i.ubicacion === filtroUbic);
-      }
 
       if (instFiltradas.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="4">
-              <div class="tabla-empty">
-                <div class="tabla-empty-icon">⚙️</div>
-                <div class="tabla-empty-titulo">Sin instalaciones registradas</div>
-                <p>Documenta los sistemas e instalaciones del bien</p>
-              </div>
-            </td>
-          </tr>
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column: 1/-1;">
+            <div class="empty-icon">⚙️</div>
+            <div class="empty-titulo">Sin instalaciones registradas</div>
+            <p class="empty-texto">Documenta los sistemas e instalaciones del bien</p>
+          </div>
         `;
         return;
       }
 
-      tbody.innerHTML = instFiltradas.map(inst => {
+      grid.innerHTML = instFiltradas.map(inst => {
         const icon = tipoIcons[inst.tipo] || '📦';
         const tipoNombre = tipoNombres[inst.tipo] || inst.tipo || 'Sin tipo';
         
-        // Indicadores de detalles
-        const tieneCaract = inst.caracteristicas ? '📋' : '';
-        const tieneNotas = inst.notas ? '💬' : '';
-        const detalles = [tieneCaract, tieneNotas].filter(Boolean).join(' ') || '-';
-
         return `
-          <tr onclick="editarInstalacion('${inst.id}')">
-            <td class="td-elemento">${inst.elemento || 'Sin nombre'}</td>
-            <td class="td-tipo">
-              <span class="tipo-badge">${icon} ${tipoNombre}</span>
-            </td>
-            <td class="td-ubicacion">${inst.ubicacion || '-'}</td>
-            <td class="td-detalles">${detalles}</td>
-          </tr>
+          <div class="instalacion-card" onclick="editarInstalacion('${inst.id}')">
+            <div class="instalacion-header">
+              <div class="instalacion-icon">${icon}</div>
+              <div class="instalacion-info">
+                <div class="instalacion-elemento">${inst.elemento || 'Sin nombre'}</div>
+                <div class="instalacion-tipo">${tipoNombre}</div>
+              </div>
+            </div>
+            <div class="instalacion-body">
+              <div class="instalacion-row">
+                <span class="instalacion-label">📍 Ubicación</span>
+                <span class="instalacion-value">${inst.ubicacion || '-'}</span>
+              </div>
+              ${inst.caracteristicas ? `
+                <div class="instalacion-row">
+                  <span class="instalacion-label">📋 Caract.</span>
+                  <span class="instalacion-value">${inst.caracteristicas.substring(0, 80)}${inst.caracteristicas.length > 80 ? '...' : ''}</span>
+                </div>
+              ` : ''}
+              ${inst.notas ? `
+                <div class="instalacion-notas">💬 ${inst.notas.substring(0, 100)}${inst.notas.length > 100 ? '...' : ''}</div>
+              ` : ''}
+            </div>
+          </div>
         `;
       }).join('');
     }
