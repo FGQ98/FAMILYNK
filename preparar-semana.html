@@ -226,6 +226,54 @@
 
     .empty-state { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
 
+    /* Subsecciones */
+    .subseccion {
+      padding: 12px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+    }
+    .subseccion-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .subseccion-count {
+      background: var(--mayordomo);
+      color: var(--white);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      margin-left: auto;
+    }
+
+    /* Borradores */
+    .borradores-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--cream);
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .borradores-btn:hover { border-color: var(--mayordomo); background: var(--mayordomo-muted); }
+    .borradores-badge {
+      background: var(--terracotta);
+      color: var(--white);
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
     /* Footer acciones */
     .footer-actions {
       position: fixed;
@@ -538,6 +586,13 @@
         <button class="semana-nav-btn" id="btn-semana-siguiente" onclick="cambiarSemana(1)">▶</button>
       </div>
 
+      <!-- Botón borradores -->
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+        <button class="borradores-btn" onclick="abrirModalBorradores()">
+          📁 Borradores <span class="borradores-badge" id="count-borradores">0</span>
+        </button>
+      </div>
+
       <!-- 1. Zonas a preparar -->
       <div class="seccion">
         <div class="seccion-header" onclick="toggleSeccion('zonas')">
@@ -739,19 +794,35 @@
         </div>
       </div>
 
-      <!-- 6. Producto disponible -->
+      <!-- 6. Producto -->
       <div class="seccion">
         <div class="seccion-header" onclick="toggleSeccion('producto')">
           <div class="seccion-titulo">
-            <span>📦</span> Producto disponible
+            <span>📦</span> Producto
             <span class="seccion-count" id="count-producto">0</span>
           </div>
           <span class="seccion-toggle">▼</span>
         </div>
         <div class="seccion-body" id="body-producto">
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;">Aportado por la casa</p>
-          <div id="lista-producto"></div>
-          <button class="add-btn" onclick="abrirModalProducto()">+ Añadir producto</button>
+          <!-- Producto Aportado -->
+          <div class="subseccion">
+            <div class="subseccion-header">
+              <span>🏠</span> Aportado por la casa
+              <span class="subseccion-count" id="count-aportado">0</span>
+            </div>
+            <div id="lista-producto-aportado"></div>
+            <button class="add-btn" onclick="abrirModalProducto('aportado')">+ Añadir producto aportado</button>
+          </div>
+          
+          <!-- Producto Solicitado -->
+          <div class="subseccion" style="margin-top: 20px;">
+            <div class="subseccion-header">
+              <span>🛒</span> Solicitado (compras/encargos)
+              <span class="subseccion-count" id="count-solicitado">0</span>
+            </div>
+            <div id="lista-producto-solicitado"></div>
+            <button class="add-btn" onclick="abrirModalProducto('solicitado')">+ Añadir producto solicitado</button>
+          </div>
         </div>
       </div>
 
@@ -895,6 +966,24 @@
     </div>
   </div>
 
+  <!-- Modal Borradores -->
+  <div class="modal-overlay" id="modal-borradores">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📁 Borradores guardados</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="lista-borradores">
+          <div class="empty-state">Cargando...</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -907,7 +996,9 @@
     let zonasData = [];        // Zonas agrupadas (ubicaciones)
     let dependenciasData = []; // Todas las dependencias (habitaciones)
     let ajuarData = [];        // Catálogo de ajuar
+    let borradoresData = [];   // Lista de borradores
     let semanaActual = null;
+    let productoTipo = 'aportado'; // 'aportado' o 'solicitado'
     let preparacionData = {
       zonas: [],               // IDs de zonas seleccionadas
       zonasDesglose: {},       // {zonaId: [depId, depId...]} desglose por zona
@@ -923,7 +1014,8 @@
       menajeEspecial: false,
       menajeAjuar: [],         // IDs del ajuar seleccionado
       menaje: [],              // {articulo, cantidad, notas} adicionales
-      productos: [],           // {descripcion, cantidad, notas}
+      productosAportados: [],  // {descripcion, cantidad, notas}
+      productosSolicitados: [], // {descripcion, cantidad, notas}
       tareas: [],              // {titulo, dia, prioridad, notas}
       notas: '',
       estado: 'pendiente'
@@ -966,6 +1058,9 @@
         // Cargar ajuar
         await cargarAjuar();
         
+        // Cargar borradores
+        await cargarBorradores();
+        
         inicializarSemana();
         inicializarServicioChips();
         await cargarPreparacion();
@@ -975,6 +1070,27 @@
       } catch (e) {
         console.error(e);
         alert('Error cargando datos');
+      }
+    }
+
+    async function cargarBorradores() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('preparacionSemanal')
+          .where('estado', 'in', ['borrador', 'pendiente'])
+          .orderBy('fechaActualizacion', 'desc')
+          .limit(20)
+          .get();
+        
+        borradoresData = snap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        document.getElementById('count-borradores').textContent = borradoresData.length;
+      } catch (e) {
+        console.error('Error cargando borradores:', e);
+        borradoresData = [];
       }
     }
 
@@ -1095,7 +1211,8 @@
             menajeEspecial: data.menajeEspecial || false,
             menajeAjuar: data.menajeAjuar || [],
             menaje: data.menaje || [],
-            productos: data.productos || [],
+            productosAportados: data.productosAportados || data.productos || [],
+            productosSolicitados: data.productosSolicitados || [],
             tareas: data.tareas || [],
             notas: data.notas || '',
             estado: data.estado || 'pendiente'
@@ -1116,7 +1233,8 @@
             menajeEspecial: false,
             menajeAjuar: [],
             menaje: [],
-            productos: [],
+            productosAportados: [],
+            productosSolicitados: [],
             tareas: [],
             notas: '',
             estado: 'pendiente'
@@ -1399,28 +1517,55 @@
 
     // ========== PRODUCTOS ==========
     function renderProductos() {
-      const container = document.getElementById('lista-producto');
-      document.getElementById('count-producto').textContent = preparacionData.productos.length;
+      const aportados = preparacionData.productosAportados || [];
+      const solicitados = preparacionData.productosSolicitados || [];
+      const totalProductos = aportados.length + solicitados.length;
+      
+      document.getElementById('count-producto').textContent = totalProductos;
+      document.getElementById('count-aportado').textContent = aportados.length;
+      document.getElementById('count-solicitado').textContent = solicitados.length;
 
-      if (preparacionData.productos.length === 0) {
-        container.innerHTML = '<div class="empty-state">Sin productos aportados</div>';
-        return;
+      // Renderizar aportados
+      const containerAportado = document.getElementById('lista-producto-aportado');
+      if (aportados.length === 0) {
+        containerAportado.innerHTML = '<div class="empty-state">Sin productos aportados</div>';
+      } else {
+        containerAportado.innerHTML = aportados.map((p, idx) => `
+          <div class="item-card">
+            <span class="item-icon">🏠</span>
+            <div class="item-content">
+              <div class="item-titulo">${p.descripcion}</div>
+              ${p.cantidad ? `<div class="item-meta">Cantidad: ${p.cantidad}</div>` : ''}
+              ${p.notas ? `<div class="item-descripcion">${p.notas}</div>` : ''}
+            </div>
+            <div class="item-actions">
+              <button class="item-btn" onclick="editarProducto('aportado', ${idx})">✏️</button>
+              <button class="item-btn delete" onclick="eliminarProducto('aportado', ${idx})">🗑️</button>
+            </div>
+          </div>
+        `).join('');
       }
 
-      container.innerHTML = preparacionData.productos.map((p, idx) => `
-        <div class="item-card compra">
-          <span class="item-icon">📦</span>
-          <div class="item-content">
-            <div class="item-titulo">${p.descripcion}</div>
-            ${p.cantidad ? `<div class="item-meta">Cantidad: ${p.cantidad}</div>` : ''}
-            ${p.notas ? `<div class="item-descripcion">${p.notas}</div>` : ''}
+      // Renderizar solicitados
+      const containerSolicitado = document.getElementById('lista-producto-solicitado');
+      if (solicitados.length === 0) {
+        containerSolicitado.innerHTML = '<div class="empty-state">Sin productos solicitados</div>';
+      } else {
+        containerSolicitado.innerHTML = solicitados.map((p, idx) => `
+          <div class="item-card compra">
+            <span class="item-icon">🛒</span>
+            <div class="item-content">
+              <div class="item-titulo">${p.descripcion}</div>
+              ${p.cantidad ? `<div class="item-meta">Cantidad: ${p.cantidad}</div>` : ''}
+              ${p.notas ? `<div class="item-descripcion">${p.notas}</div>` : ''}
+            </div>
+            <div class="item-actions">
+              <button class="item-btn" onclick="editarProducto('solicitado', ${idx})">✏️</button>
+              <button class="item-btn delete" onclick="eliminarProducto('solicitado', ${idx})">🗑️</button>
+            </div>
           </div>
-          <div class="item-actions">
-            <button class="item-btn" onclick="editarProducto(${idx})">✏️</button>
-            <button class="item-btn delete" onclick="eliminarProducto(${idx})">🗑️</button>
-          </div>
-        </div>
-      `).join('');
+        `).join('');
+      }
     }
 
     function abrirModalMenaje(idx = null) {
@@ -1464,13 +1609,18 @@
       actualizarEstado();
     });
 
-    // ========== PRODUCTOS ==========
-    function abrirModalProducto(idx = null) {
+    // ========== FUNCIONES PRODUCTOS ==========
+    function abrirModalProducto(tipo, idx = null) {
+      productoTipo = tipo;
       editingIdx = idx;
       editingType = 'producto';
-      const p = idx !== null ? preparacionData.productos[idx] : null;
       
-      document.getElementById('modal-producto-titulo').textContent = p ? '✏️ Editar producto' : '📦 Añadir producto';
+      const lista = tipo === 'aportado' ? preparacionData.productosAportados : preparacionData.productosSolicitados;
+      const p = idx !== null ? lista[idx] : null;
+      const icono = tipo === 'aportado' ? '🏠' : '🛒';
+      const label = tipo === 'aportado' ? 'aportado' : 'solicitado';
+      
+      document.getElementById('modal-producto-titulo').textContent = p ? `✏️ Editar producto ${label}` : `${icono} Añadir producto ${label}`;
       document.getElementById('producto-descripcion').value = p?.descripcion || '';
       document.getElementById('producto-cantidad').value = p?.cantidad || '';
       document.getElementById('producto-notas').value = p?.notas || '';
@@ -1478,11 +1628,15 @@
       document.getElementById('modal-producto').classList.add('active');
     }
 
-    function editarProducto(idx) { abrirModalProducto(idx); }
+    function editarProducto(tipo, idx) { abrirModalProducto(tipo, idx); }
 
-    function eliminarProducto(idx) {
+    function eliminarProducto(tipo, idx) {
       if (!confirm('¿Eliminar este producto?')) return;
-      preparacionData.productos.splice(idx, 1);
+      if (tipo === 'aportado') {
+        preparacionData.productosAportados.splice(idx, 1);
+      } else {
+        preparacionData.productosSolicitados.splice(idx, 1);
+      }
       renderProductos();
       actualizarEstado();
     }
@@ -1495,16 +1649,95 @@
         notas: document.getElementById('producto-notas').value
       };
 
+      const lista = productoTipo === 'aportado' ? preparacionData.productosAportados : preparacionData.productosSolicitados;
+      
       if (editingIdx !== null) {
-        preparacionData.productos[editingIdx] = data;
+        lista[editingIdx] = data;
       } else {
-        preparacionData.productos.push(data);
+        lista.push(data);
       }
 
       cerrarModales();
       renderProductos();
       actualizarEstado();
     });
+
+    // ========== BORRADORES ==========
+    function abrirModalBorradores() {
+      renderBorradores();
+      document.getElementById('modal-borradores').classList.add('active');
+    }
+
+    function renderBorradores() {
+      const container = document.getElementById('lista-borradores');
+      
+      if (borradoresData.length === 0) {
+        container.innerHTML = '<div class="empty-state">No hay borradores guardados</div>';
+        return;
+      }
+
+      container.innerHTML = borradoresData.map(b => {
+        const fecha = b.fechaActualizacion?.toDate?.() || new Date();
+        const fechaStr = `${fecha.getDate()} ${mesesCortos[fecha.getMonth()]} ${fecha.getFullYear()}`;
+        const zonasCant = b.zonas?.length || 0;
+        const tareasCant = b.tareas?.length || 0;
+        const isCurrentWeek = b.id === getSemanaKey();
+        
+        return `
+          <div class="item-card ${isCurrentWeek ? 'selected' : ''}" style="cursor:pointer;" onclick="cargarBorrador('${b.id}')">
+            <span class="item-icon">📋</span>
+            <div class="item-content">
+              <div class="item-titulo">${b.id} ${isCurrentWeek ? '(actual)' : ''}</div>
+              <div class="item-meta">${fechaStr} · ${zonasCant} zonas · ${tareasCant} tareas</div>
+            </div>
+            <div class="item-actions">
+              <button class="item-btn delete" onclick="event.stopPropagation(); eliminarBorrador('${b.id}')">🗑️</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function cargarBorrador(semanaKey) {
+      // Parsear semanaKey para obtener fecha
+      const match = semanaKey.match(/(\d{4})-W(\d{2})/);
+      if (match) {
+        const year = parseInt(match[1]);
+        const week = parseInt(match[2]);
+        // Calcular fecha del lunes de esa semana
+        const simple = new Date(year, 0, 1 + (week - 1) * 7);
+        const dow = simple.getDay();
+        const ISOweekStart = simple;
+        if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+        else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+        semanaActual = ISOweekStart;
+        actualizarVisualizacionSemana();
+      }
+      
+      cerrarModales();
+      await cargarPreparacion();
+    }
+
+    async function eliminarBorrador(semanaKey) {
+      if (!confirm('¿Eliminar este borrador?')) return;
+      
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('preparacionSemanal').doc(semanaKey).delete();
+        
+        borradoresData = borradoresData.filter(b => b.id !== semanaKey);
+        document.getElementById('count-borradores').textContent = borradoresData.length;
+        renderBorradores();
+        
+        // Si eliminamos el actual, recargar
+        if (semanaKey === getSemanaKey()) {
+          await cargarPreparacion();
+        }
+      } catch (e) {
+        console.error(e);
+        alert('Error al eliminar');
+      }
+    }
 
     // ========== TAREAS ==========
     function renderTareas() {
@@ -1606,7 +1839,8 @@
       return preparacionData.zonas.length > 0 ||
              preparacionData.menajeEspecial ||
              preparacionData.menaje.length > 0 ||
-             preparacionData.productos.length > 0 ||
+             (preparacionData.productosAportados || []).length > 0 ||
+             (preparacionData.productosSolicitados || []).length > 0 ||
              preparacionData.tareas.length > 0 ||
              Object.keys(preparacionData.menus).length > 0 ||
              Object.keys(preparacionData.servicio).length > 0 ||
