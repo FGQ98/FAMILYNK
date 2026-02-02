@@ -409,10 +409,6 @@
           <div class="stat-value" id="stat-dependencias">0</div>
           <div class="stat-label">Dependencias</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value" id="stat-capacidad">0</div>
-          <div class="stat-label">Capacidad</div>
-        </div>
       </div>
 
       <div id="zonas-list" class="zonas-container"></div>
@@ -435,36 +431,32 @@
       </div>
       <form id="form-zona">
         <div class="modal-body">
-          <div class="form-group">
-            <label class="form-label">Tipo de zona *</label>
-            <select class="form-select" id="zona-tipo" required onchange="seleccionarTipo()">
-              <option value="">Seleccionar...</option>
-              <option value="cocina">🍳 Cocina</option>
-              <option value="salon">🛋️ Salón</option>
-              <option value="comedor">🍽️ Comedor</option>
-              <option value="dormitorio">🛏️ Dormitorio</option>
-              <option value="bano">🚿 Baño</option>
-              <option value="terraza">🌿 Terraza/Jardín</option>
-              <option value="garaje">🚗 Garaje</option>
-              <option value="lavadero">🧺 Lavadero</option>
-              <option value="entrada">🚪 Entrada</option>
-              <option value="exterior">🌳 Exterior</option>
-              <option value="piscina">🏊 Piscina</option>
-              <option value="trastero">📦 Trastero</option>
-              <option value="bodega">🍷 Bodega</option>
-              <option value="oficina">💼 Oficina/Despacho</option>
-              <option value="otro">📁 Otro</option>
-            </select>
-          </div>
-
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Nombre personalizado</label>
-              <input type="text" class="form-input" id="zona-nombre" placeholder="Ej: Cocina principal">
+              <label class="form-label">Nombre de la zona *</label>
+              <input type="text" class="form-input" id="zona-nombre" placeholder="Ej: Cocina, Dormitorio, Garaje..." required>
             </div>
             <div class="form-group">
               <label class="form-label">Icono</label>
               <input type="text" class="form-input" id="zona-icono" placeholder="🏠" maxlength="2" style="text-align:center;font-size:1.3rem;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Iconos sugeridos</label>
+            <div class="iconos-grid">
+              <div class="icono-option" onclick="seleccionarIcono('🍳')">🍳</div>
+              <div class="icono-option" onclick="seleccionarIcono('🛋️')">🛋️</div>
+              <div class="icono-option" onclick="seleccionarIcono('🛏️')">🛏️</div>
+              <div class="icono-option" onclick="seleccionarIcono('🚿')">🚿</div>
+              <div class="icono-option" onclick="seleccionarIcono('🌿')">🌿</div>
+              <div class="icono-option" onclick="seleccionarIcono('🚗')">🚗</div>
+              <div class="icono-option" onclick="seleccionarIcono('🧺')">🧺</div>
+              <div class="icono-option" onclick="seleccionarIcono('🚪')">🚪</div>
+              <div class="icono-option" onclick="seleccionarIcono('📦')">📦</div>
+              <div class="icono-option" onclick="seleccionarIcono('🏊')">🏊</div>
+              <div class="icono-option" onclick="seleccionarIcono('💼')">💼</div>
+              <div class="icono-option" onclick="seleccionarIcono('🏠')">🏠</div>
             </div>
           </div>
 
@@ -493,23 +485,12 @@
         <div class="modal-body">
           <div class="form-group">
             <label class="form-label">Nombre *</label>
-            <input type="text" class="form-input" id="dep-nombre" placeholder="Ej: Principal, Invitados, Niños..." required>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Capacidad (personas)</label>
-              <input type="number" class="form-input" id="dep-capacidad" min="0" value="0">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Superficie (m²)</label>
-              <input type="number" class="form-input" id="dep-superficie" min="0" step="0.1">
-            </div>
+            <input type="text" class="form-input" id="dep-nombre" placeholder="Ej: Principal, Servicio, Almacén..." required>
           </div>
 
           <div class="form-group">
             <label class="form-label">Notas</label>
-            <input type="text" class="form-input" id="dep-notas" placeholder="Cama doble, ventilador de techo...">
+            <input type="text" class="form-input" id="dep-notas" placeholder="Detalles adicionales...">
           </div>
         </div>
         <div class="modal-footer">
@@ -616,18 +597,13 @@
     function actualizarStats() {
       const totalZonas = zonasData.length;
       let totalDeps = 0;
-      let totalCapacidad = 0;
 
       zonasData.forEach(z => {
         totalDeps += z.dependencias.length;
-        z.dependencias.forEach(d => {
-          totalCapacidad += parseInt(d.capacidad) || 0;
-        });
       });
 
       document.getElementById('stat-zonas').textContent = totalZonas;
       document.getElementById('stat-dependencias').textContent = totalDeps;
-      document.getElementById('stat-capacidad').textContent = totalCapacidad;
     }
 
     function renderZonas() {
@@ -651,8 +627,6 @@
         const depsHtml = zona.dependencias.map(dep => `
           <div class="dependencia-item">
             <span class="dependencia-nombre">${dep.nombre}</span>
-            ${dep.capacidad ? `<span class="dependencia-capacidad">👥 ${dep.capacidad}</span>` : ''}
-            ${dep.superficie ? `<span class="dependencia-capacidad">${dep.superficie}m²</span>` : ''}
             <button class="btn-mini" onclick="event.stopPropagation(); editarDependencia('${zona.id}', '${dep.id}')">✏️</button>
             <button class="btn-mini danger" onclick="event.stopPropagation(); confirmarEliminarDep('${zona.id}', '${dep.id}')">🗑️</button>
           </div>
@@ -692,11 +666,11 @@
     }
 
     // ========== MODAL ZONA ==========
-    function seleccionarTipo() {
-      const tipo = document.getElementById('zona-tipo').value;
-      if (tipo && tipoIconos[tipo]) {
-        document.getElementById('zona-icono').value = tipoIconos[tipo];
-      }
+    function seleccionarIcono(icono) {
+      document.getElementById('zona-icono').value = icono;
+      // Marcar como seleccionado
+      document.querySelectorAll('.icono-option').forEach(el => el.classList.remove('selected'));
+      event.target.classList.add('selected');
     }
 
     function abrirModalZona() {
@@ -704,6 +678,7 @@
       document.getElementById('form-zona').reset();
       document.getElementById('modal-zona-titulo').textContent = '🏠 Nueva zona';
       document.getElementById('btn-eliminar-zona').style.display = 'none';
+      document.querySelectorAll('.icono-option').forEach(el => el.classList.remove('selected'));
       document.getElementById('modal-zona').classList.add('active');
     }
 
@@ -714,10 +689,14 @@
       document.getElementById('modal-zona-titulo').textContent = '✏️ Editar zona';
       document.getElementById('btn-eliminar-zona').style.display = 'block';
 
-      document.getElementById('zona-tipo').value = zonaEditando.tipo || '';
       document.getElementById('zona-nombre').value = zonaEditando.nombre || '';
       document.getElementById('zona-icono').value = zonaEditando.icono || '';
       document.getElementById('zona-notas').value = zonaEditando.notas || '';
+
+      // Marcar icono seleccionado
+      document.querySelectorAll('.icono-option').forEach(el => {
+        el.classList.toggle('selected', el.textContent.trim() === zonaEditando.icono);
+      });
 
       document.getElementById('modal-zona').classList.add('active');
     }
@@ -729,11 +708,10 @@
     document.getElementById('form-zona').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const tipo = document.getElementById('zona-tipo').value;
+      const nombre = document.getElementById('zona-nombre').value.trim();
       const datos = {
-        tipo: tipo,
-        nombre: document.getElementById('zona-nombre').value || tipoNombres[tipo] || 'Zona',
-        icono: document.getElementById('zona-icono').value || tipoIconos[tipo] || '📁',
+        nombre: nombre,
+        icono: document.getElementById('zona-icono').value || '🏠',
         notas: document.getElementById('zona-notas').value,
         orden: zonaEditando ? zonaEditando.orden : zonasData.length,
         fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
@@ -816,8 +794,6 @@
       document.getElementById('btn-eliminar-dep').style.display = 'block';
 
       document.getElementById('dep-nombre').value = depEditando.nombre || '';
-      document.getElementById('dep-capacidad').value = depEditando.capacidad || 0;
-      document.getElementById('dep-superficie').value = depEditando.superficie || '';
       document.getElementById('dep-notas').value = depEditando.notas || '';
 
       document.getElementById('modal-dependencia').classList.add('active');
@@ -832,8 +808,6 @@
 
       const datos = {
         nombre: document.getElementById('dep-nombre').value,
-        capacidad: parseInt(document.getElementById('dep-capacidad').value) || 0,
-        superficie: parseFloat(document.getElementById('dep-superficie').value) || null,
         notas: document.getElementById('dep-notas').value,
         fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
       };
