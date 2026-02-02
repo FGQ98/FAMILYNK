@@ -586,10 +586,13 @@
         <button class="semana-nav-btn" id="btn-semana-siguiente" onclick="cambiarSemana(1)">▶</button>
       </div>
 
-      <!-- Botón borradores -->
-      <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <!-- Botones borradores e histórico -->
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:16px;">
         <button class="borradores-btn" onclick="abrirModalBorradores()">
           📁 Borradores <span class="borradores-badge" id="count-borradores">0</span>
+        </button>
+        <button class="borradores-btn" onclick="abrirModalHistorico()" style="border-color:var(--sage);">
+          📋 Histórico <span class="borradores-badge" id="count-historico" style="background:var(--sage);">0</span>
         </button>
       </div>
 
@@ -984,6 +987,24 @@
     </div>
   </div>
 
+  <!-- Modal Histórico -->
+  <div class="modal-overlay" id="modal-historico">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Histórico (enviados/cerrados)</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="lista-historico">
+          <div class="empty-state">Cargando...</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -997,6 +1018,7 @@
     let dependenciasData = []; // Todas las dependencias (habitaciones)
     let ajuarData = [];        // Catálogo de ajuar
     let borradoresData = [];   // Lista de borradores
+    let historicoData = [];    // Lista de enviados/cerrados
     let semanaActual = null;
     let productoTipo = 'aportado'; // 'aportado' o 'solicitado'
     let preparacionData = {
@@ -1075,22 +1097,28 @@
 
     async function cargarBorradores() {
       try {
+        // Cargar todos y filtrar en cliente (evita problemas de índice)
         const snap = await db.collection('bienes').doc(bienId)
           .collection('preparacionSemanal')
-          .where('estado', 'in', ['borrador', 'pendiente'])
           .orderBy('fechaActualizacion', 'desc')
-          .limit(20)
+          .limit(50)
           .get();
         
-        borradoresData = snap.docs.map(doc => ({
+        const todos = snap.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
         
+        // Separar borradores e histórico
+        borradoresData = todos.filter(d => d.estado === 'borrador' || !d.estado);
+        historicoData = todos.filter(d => d.estado === 'enviado' || d.estado === 'cerrado');
+        
         document.getElementById('count-borradores').textContent = borradoresData.length;
+        document.getElementById('count-historico').textContent = historicoData.length;
       } catch (e) {
         console.error('Error cargando borradores:', e);
         borradoresData = [];
+        historicoData = [];
       }
     }
 
@@ -1739,6 +1767,40 @@
       }
     }
 
+    // ========== HISTÓRICO ==========
+    function abrirModalHistorico() {
+      renderHistorico();
+      document.getElementById('modal-historico').classList.add('active');
+    }
+
+    function renderHistorico() {
+      const container = document.getElementById('lista-historico');
+      
+      if (historicoData.length === 0) {
+        container.innerHTML = '<div class="empty-state">No hay preparaciones enviadas o cerradas</div>';
+        return;
+      }
+
+      container.innerHTML = historicoData.map(h => {
+        const fecha = h.fechaEnvio?.toDate?.() || h.fechaActualizacion?.toDate?.() || new Date();
+        const fechaStr = `${fecha.getDate()} ${mesesCortos[fecha.getMonth()]} ${fecha.getFullYear()}`;
+        const zonasCant = h.zonas?.length || 0;
+        const tareasCant = h.tareas?.length || 0;
+        const estadoIcon = h.estado === 'enviado' ? '📤' : '✅';
+        const estadoLabel = h.estado === 'enviado' ? 'Enviado' : 'Cerrado';
+        
+        return `
+          <div class="item-card" style="cursor:pointer;border-left-color:var(--sage);" onclick="cargarBorrador('${h.id}')">
+            <span class="item-icon">${estadoIcon}</span>
+            <div class="item-content">
+              <div class="item-titulo">${h.id}</div>
+              <div class="item-meta">${fechaStr} · ${estadoLabel} · ${zonasCant} zonas · ${tareasCant} tareas</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
     // ========== TAREAS ==========
     function renderTareas() {
       const container = document.getElementById('lista-tareas');
@@ -1896,6 +1958,9 @@
             actualizadoPor: currentUser.uid,
             fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
+        
+        // Recargar lista de borradores
+        await cargarBorradores();
         
         if (!silencioso) {
           alert('✅ Borrador guardado');
