@@ -257,6 +257,22 @@
       border-color: var(--theme);
       color: white;
     }
+    .btn-pdf {
+      margin-left: auto;
+      padding: 8px 16px;
+      border: 2px solid var(--theme);
+      border-radius: var(--radius-full);
+      background: var(--white);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: var(--theme);
+    }
+    .btn-pdf:hover {
+      background: var(--theme);
+      color: white;
+    }
 
     @media (max-width: 768px) {
       .tabla-header { display: none; }
@@ -487,7 +503,11 @@
     <div id="content" style="display: none;">
       <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-value" id="stat-total">0</div>
+          <div class="stat-value" id="stat-dependencias">0</div>
+          <div class="stat-label">Dependencias</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-zonas">0</div>
           <div class="stat-label">Zonas</div>
         </div>
         <div class="stat-card">
@@ -511,6 +531,7 @@
       <div class="orden-toggle">
         <button class="orden-btn active" onclick="ordenarPor('numero')">Ordenar por Nº</button>
         <button class="orden-btn" onclick="ordenarPor('zona')">Ordenar por Zona</button>
+        <button class="btn-pdf" onclick="generarPDF()">📄 Descargar PDF</button>
       </div>
 
       <div id="habitaciones-tabla" class="habitaciones-tabla">
@@ -567,7 +588,10 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Zona / Planta</label>
-            <input type="text" class="form-input" id="hab-zona" placeholder="Ej: 1ª planta, Ala norte...">
+            <select class="form-select" id="hab-zona" onchange="cambiarZona()">
+              <option value="">Seleccionar o escribir...</option>
+              <option value="__nueva__">+ Añadir nueva zona...</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Tamaño (m²)</label>
@@ -585,7 +609,7 @@
           <div class="form-row-3">
             <div class="form-group">
               <label class="form-label">🛏️ Camas</label>
-              <input type="number" class="form-input-mini" id="hab-camas" value="1" min="0" max="6">
+              <input type="number" class="form-input-mini" id="hab-camas" value="0" min="0" max="6">
             </div>
             <div class="form-group">
               <label class="form-label">🛋️ Sofás cama</label>
@@ -773,17 +797,56 @@
     }
 
     function actualizarStats() {
-      const total = habitaciones.length;
+      const dependencias = habitaciones.length;
+      // Zonas únicas (valores únicos del campo zona/ubicación)
+      const zonasUnicas = [...new Set(habitaciones.map(h => h.zona).filter(z => z && z.trim()))];
       const dormitorios = habitaciones.filter(h => h.tipo === 'dormitorio');
       const aseos = habitaciones.filter(h => h.tipo === 'aseo').length;
-      const plazas = dormitorios.reduce((sum, h) => sum + (h.plazas || 0), 0);
-      const camas = dormitorios.reduce((sum, h) => sum + (h.camas || 0), 0);
+      const plazas = dormitorios.reduce((sum, h) => sum + (parseInt(h.plazas) || 0), 0);
+      const camas = dormitorios.reduce((sum, h) => sum + (parseInt(h.camas) || 0) + (parseInt(h.sofas) || 0) + (parseInt(h.plegables) || 0), 0);
 
-      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-dependencias').textContent = dependencias;
+      document.getElementById('stat-zonas').textContent = zonasUnicas.length;
       document.getElementById('stat-dormitorios').textContent = dormitorios.length;
       document.getElementById('stat-plazas').textContent = plazas;
       document.getElementById('stat-camas').textContent = camas;
       document.getElementById('stat-aseos').textContent = aseos;
+      
+      // Actualizar select de zonas en modal
+      actualizarSelectZonas(zonasUnicas);
+    }
+    
+    function actualizarSelectZonas(zonasUnicas) {
+      const select = document.getElementById('hab-zona');
+      const valorActual = select.value;
+      
+      select.innerHTML = '<option value="">Seleccionar o escribir...</option>';
+      zonasUnicas.sort().forEach(zona => {
+        select.innerHTML += `<option value="${zona}">${zona}</option>`;
+      });
+      select.innerHTML += '<option value="__nueva__">+ Añadir nueva zona...</option>';
+      
+      // Restaurar valor si existía
+      if (valorActual && valorActual !== '__nueva__') {
+        select.value = valorActual;
+      }
+    }
+    
+    function cambiarZona() {
+      const select = document.getElementById('hab-zona');
+      if (select.value === '__nueva__') {
+        const nueva = prompt('Nombre de la nueva zona:');
+        if (nueva && nueva.trim()) {
+          // Añadir opción y seleccionarla
+          const option = document.createElement('option');
+          option.value = nueva.trim();
+          option.textContent = nueva.trim();
+          select.insertBefore(option, select.lastElementChild);
+          select.value = nueva.trim();
+        } else {
+          select.value = '';
+        }
+      }
     }
 
     function abrirModal() {
@@ -797,7 +860,7 @@
       document.getElementById('hab-zona').value = '';
       document.getElementById('hab-tamano').value = '';
       document.getElementById('hab-plazas').value = '2';
-      document.getElementById('hab-camas').value = '1';
+      document.getElementById('hab-camas').value = '0';
       document.getElementById('hab-sofas').value = '0';
       document.getElementById('hab-plegables').value = '0';
       document.querySelector('input[name="hab-aseo"][value="propio"]').checked = true;
@@ -817,10 +880,21 @@
       document.getElementById('hab-numero').value = h.numero || '';
       document.getElementById('hab-tipo').value = h.tipo || 'dormitorio';
       document.getElementById('hab-nombre').value = h.nombre || '';
-      document.getElementById('hab-zona').value = h.zona || '';
+      
+      // Manejar zona: si no está en el select, añadirla
+      const selectZona = document.getElementById('hab-zona');
+      const zonaValue = h.zona || '';
+      if (zonaValue && !Array.from(selectZona.options).some(opt => opt.value === zonaValue)) {
+        const option = document.createElement('option');
+        option.value = zonaValue;
+        option.textContent = zonaValue;
+        selectZona.insertBefore(option, selectZona.lastElementChild);
+      }
+      selectZona.value = zonaValue;
+      
       document.getElementById('hab-tamano').value = h.tamano || '';
       document.getElementById('hab-plazas').value = h.plazas || 2;
-      document.getElementById('hab-camas').value = h.camas || 1;
+      document.getElementById('hab-camas').value = h.camas || 0;
       document.getElementById('hab-sofas').value = h.sofas || 0;
       document.getElementById('hab-plegables').value = h.plegables || 0;
       
@@ -946,6 +1020,128 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') cerrarModal();
     });
+
+    // Generar PDF
+    function generarPDF() {
+      const tipoLabels = {
+        dormitorio: 'Dormitorio',
+        aseo: 'Aseo',
+        salas: 'Salas y salones',
+        funcional: 'Funcional',
+        otros: 'Otros'
+      };
+      
+      // Calcular stats
+      const dependencias = habitaciones.length;
+      const zonasUnicas = [...new Set(habitaciones.map(h => h.zona).filter(z => z && z.trim()))];
+      const dormitorios = habitaciones.filter(h => h.tipo === 'dormitorio');
+      const aseos = habitaciones.filter(h => h.tipo === 'aseo').length;
+      const plazas = dormitorios.reduce((sum, h) => sum + (parseInt(h.plazas) || 0), 0);
+      const camas = dormitorios.reduce((sum, h) => sum + (parseInt(h.camas) || 0) + (parseInt(h.sofas) || 0) + (parseInt(h.plegables) || 0), 0);
+      
+      // Agrupar por zona
+      const porZona = {};
+      habitaciones.forEach(h => {
+        const zona = h.zona || 'Sin asignar';
+        if (!porZona[zona]) porZona[zona] = [];
+        porZona[zona].push(h);
+      });
+      
+      // Generar HTML del PDF
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Zonas - ${bienData?.nombre || 'Bien'}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+            h1 { color: #8B7355; font-size: 24px; margin-bottom: 5px; }
+            h2 { color: #6B5A45; font-size: 18px; margin: 20px 0 10px; border-bottom: 2px solid #8B7355; padding-bottom: 5px; }
+            .subtitle { color: #666; font-size: 14px; margin-bottom: 20px; }
+            .stats { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+            .stat { background: #f5f5f5; padding: 10px 15px; border-radius: 8px; text-align: center; min-width: 80px; }
+            .stat-value { font-size: 24px; font-weight: bold; color: #8B7355; }
+            .stat-label { font-size: 12px; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #8B7355; color: white; padding: 10px; text-align: left; font-size: 12px; }
+            td { padding: 8px 10px; border-bottom: 1px solid #ddd; font-size: 12px; }
+            tr:nth-child(even) { background: #f9f9f9; }
+            .footer { margin-top: 30px; text-align: center; color: #999; font-size: 10px; }
+            @media print {
+              body { padding: 0; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>🏠 Zonas</h1>
+          <div class="subtitle">${bienData?.nombre || 'Bien'} - Generado el ${new Date().toLocaleDateString('es-ES')}</div>
+          
+          <div class="stats">
+            <div class="stat"><div class="stat-value">${dependencias}</div><div class="stat-label">Dependencias</div></div>
+            <div class="stat"><div class="stat-value">${zonasUnicas.length}</div><div class="stat-label">Zonas</div></div>
+            <div class="stat"><div class="stat-value">${dormitorios.length}</div><div class="stat-label">Dormitorios</div></div>
+            <div class="stat"><div class="stat-value">${plazas}</div><div class="stat-label">Plazas</div></div>
+            <div class="stat"><div class="stat-value">${camas}</div><div class="stat-label">Camas</div></div>
+            <div class="stat"><div class="stat-value">${aseos}</div><div class="stat-label">Aseos</div></div>
+          </div>
+      `;
+      
+      // Listar por zona
+      Object.keys(porZona).sort().forEach(zona => {
+        const items = porZona[zona];
+        html += `
+          <h2>${zona}</h2>
+          <table>
+            <tr>
+              <th>Nº</th>
+              <th>Nombre</th>
+              <th>Tipo</th>
+              <th>Tamaño</th>
+              <th>Info</th>
+            </tr>
+        `;
+        
+        items.sort((a, b) => (a.numero || '').localeCompare(b.numero || '', undefined, { numeric: true })).forEach(h => {
+          let info = '';
+          if (h.tipo === 'dormitorio') {
+            const detalles = [];
+            if (h.plazas) detalles.push(`${h.plazas} plazas`);
+            if (h.camas) detalles.push(`${h.camas} camas`);
+            if (h.sofas) detalles.push(`${h.sofas} sofás`);
+            if (h.plegables) detalles.push(`${h.plegables} plegables`);
+            info = detalles.join(', ');
+          } else if (h.tipo === 'aseo') {
+            info = h.aseo === 'compartido' ? 'Compartido' : 'Propio';
+          }
+          
+          html += `
+            <tr>
+              <td>${h.numero || '—'}</td>
+              <td>${h.nombre || '—'}</td>
+              <td>${tipoLabels[h.tipo] || h.tipo || '—'}</td>
+              <td>${h.tamano ? h.tamano + ' m²' : '—'}</td>
+              <td>${info || '—'}</td>
+            </tr>
+          `;
+        });
+        
+        html += '</table>';
+      });
+      
+      html += `
+          <div class="footer">FAMILYNK - Gestión familiar</div>
+          <script>window.onload = function() { window.print(); }</script>
+        </body>
+        </html>
+      `;
+      
+      // Abrir en nueva ventana para imprimir/guardar como PDF
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+    }
   </script>
 </body>
 </html>
