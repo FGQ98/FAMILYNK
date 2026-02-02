@@ -544,6 +544,16 @@
             <label class="form-label">Nº / Código *</label>
             <input type="text" class="form-input" id="hab-numero" placeholder="Ej: 1, A1, Suite...">
           </div>
+          <div class="form-group">
+            <label class="form-label">Tipo *</label>
+            <select class="form-select" id="hab-tipo" onchange="cambiarTipo()">
+              <option value="dormitorio">🛏️ Dormitorio</option>
+              <option value="aseo">🚿 Aseo</option>
+              <option value="salas">🛋️ Salas y salones</option>
+              <option value="funcional">🔧 Funcional</option>
+              <option value="otros">📦 Otros</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-group">
@@ -562,39 +572,46 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Plazas totales *</label>
-          <input type="number" class="form-input" id="hab-plazas" value="2" min="1" max="10">
+        <!-- Campos DORMITORIO -->
+        <div id="campos-dormitorio">
+          <div class="form-group">
+            <label class="form-label">Plazas totales *</label>
+            <input type="number" class="form-input" id="hab-plazas" value="2" min="1" max="10">
+          </div>
+
+          <div class="form-row-3">
+            <div class="form-group">
+              <label class="form-label">🛏️ Camas</label>
+              <input type="number" class="form-input-mini" id="hab-camas" value="1" min="0" max="6">
+            </div>
+            <div class="form-group">
+              <label class="form-label">🛋️ Sofás cama</label>
+              <input type="number" class="form-input-mini" id="hab-sofas" value="0" min="0" max="4">
+            </div>
+            <div class="form-group">
+              <label class="form-label">🛏️ Plegables</label>
+              <input type="number" class="form-input-mini" id="hab-plegables" value="0" min="0" max="4">
+            </div>
+          </div>
         </div>
 
-        <div class="form-row-3">
+        <!-- Campos ASEO -->
+        <div id="campos-aseo" style="display: none;">
           <div class="form-group">
-            <label class="form-label">🛏️ Camas</label>
-            <input type="number" class="form-input-mini" id="hab-camas" value="1" min="0" max="6">
-          </div>
-          <div class="form-group">
-            <label class="form-label">🛋️ Sofás cama</label>
-            <input type="number" class="form-input-mini" id="hab-sofas" value="0" min="0" max="4">
-          </div>
-          <div class="form-group">
-            <label class="form-label">🛏️ Plegables</label>
-            <input type="number" class="form-input-mini" id="hab-plegables" value="0" min="0" max="4">
+            <label class="form-label">Tipo de aseo</label>
+            <div class="aseo-options">
+              <label class="aseo-option selected" id="aseo-propio">
+                <input type="radio" name="hab-aseo" value="propio" checked>
+                🚿 Propio
+              </label>
+              <label class="aseo-option" id="aseo-compartido">
+                <input type="radio" name="hab-aseo" value="compartido">
+                🚻 Compartido
+              </label>
+            </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Aseo</label>
-          <div class="aseo-options">
-            <label class="aseo-option selected" id="aseo-propio">
-              <input type="radio" name="hab-aseo" value="propio" checked>
-              🚿 Propio
-            </label>
-            <label class="aseo-option" id="aseo-compartido">
-              <input type="radio" name="hab-aseo" value="compartido">
-              🚻 Compartido
-            </label>
-          </div>
-        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
@@ -704,22 +721,46 @@
       });
 
       body.innerHTML = ordenadas.map(h => {
-        const camas = [];
-        if (h.camas) camas.push(`🛏️${h.camas}`);
-        if (h.sofas) camas.push(`🛋️${h.sofas}`);
-        if (h.plegables) camas.push(`➕${h.plegables}`);
+        const tipoLabels = {
+          dormitorio: '🛏️ Dormitorio',
+          aseo: '🚿 Aseo',
+          salas: '🛋️ Salas',
+          funcional: '🔧 Funcional',
+          otros: '📦 Otros'
+        };
+        
+        // Info según tipo
+        let infoExtra = '';
+        if (h.tipo === 'dormitorio') {
+          const camas = [];
+          if (h.camas) camas.push(`🛏️${h.camas}`);
+          if (h.sofas) camas.push(`🛋️${h.sofas}`);
+          if (h.plegables) camas.push(`➕${h.plegables}`);
+          infoExtra = `
+            <span class="tabla-cell" data-label="Plazas">👥 ${h.plazas || 0}</span>
+            <span class="tabla-camas" data-label="Camas">${camas.map(c => `<span>${c}</span>`).join('') || '—'}</span>
+          `;
+        } else if (h.tipo === 'aseo') {
+          infoExtra = `
+            <span class="tabla-cell" data-label="Tipo">${h.aseo === 'compartido' ? '🚻 Compartido' : '🚿 Propio'}</span>
+            <span class="tabla-cell"></span>
+          `;
+        } else {
+          infoExtra = `
+            <span class="tabla-cell"></span>
+            <span class="tabla-cell"></span>
+          `;
+        }
 
         return `
           <div class="tabla-row" data-numero="${h.numero || ''}" data-nombre="${h.nombre || ''}">
             <span class="tabla-num">${h.numero || '—'}</span>
             <span class="tabla-nombre">
               ${h.nombre || 'Zona'}
-              <small>${h.tamano ? `${h.tamano}m²` : ''}</small>
+              <small>${tipoLabels[h.tipo] || h.tipo || ''} ${h.tamano ? `· ${h.tamano}m²` : ''}</small>
             </span>
-            <span class="tabla-cell" data-label="Zona">${h.zona || '—'}</span>
-            <span class="tabla-cell" data-label="Plazas">👥 ${h.plazas || 2}</span>
-            <span class="tabla-camas" data-label="Camas">${camas.map(c => `<span>${c}</span>`).join('') || '—'}</span>
-            <span class="tabla-aseo ${h.aseo || 'propio'}" data-label="Aseo">${h.aseo === 'compartido' ? '🚻' : '🚿'}</span>
+            <span class="tabla-cell" data-label="Ubicación">${h.zona || '—'}</span>
+            ${infoExtra}
             <span class="tabla-actions">
               <button class="btn-mini" onclick="editarHabitacion('${h.id}')">✏️</button>
               <button class="btn-mini" onclick="eliminarHabitacion('${h.id}')">🗑️</button>
@@ -739,9 +780,10 @@
 
     function actualizarStats() {
       const total = habitaciones.length;
-      const plazas = habitaciones.reduce((sum, h) => sum + (h.plazas || 2), 0);
-      const camas = habitaciones.reduce((sum, h) => sum + (h.camas || 1), 0);
-      const extra = habitaciones.reduce((sum, h) => sum + (h.sofas || 0) + (h.plegables || 0), 0);
+      const dormitorios = habitaciones.filter(h => h.tipo === 'dormitorio');
+      const plazas = dormitorios.reduce((sum, h) => sum + (h.plazas || 0), 0);
+      const camas = dormitorios.reduce((sum, h) => sum + (h.camas || 0), 0);
+      const extra = dormitorios.reduce((sum, h) => sum + (h.sofas || 0) + (h.plegables || 0), 0);
 
       document.getElementById('stat-total').textContent = total;
       document.getElementById('stat-plazas').textContent = plazas;
@@ -755,6 +797,7 @@
       
       // Reset campos
       document.getElementById('hab-numero').value = '';
+      document.getElementById('hab-tipo').value = 'dormitorio';
       document.getElementById('hab-nombre').value = '';
       document.getElementById('hab-zona').value = '';
       document.getElementById('hab-tamano').value = '';
@@ -764,6 +807,7 @@
       document.getElementById('hab-plegables').value = '0';
       document.querySelector('input[name="hab-aseo"][value="propio"]').checked = true;
       actualizarAseoUI();
+      cambiarTipo();
 
       document.getElementById('modal-habitacion').classList.add('active');
     }
@@ -776,6 +820,7 @@
       document.getElementById('modal-titulo').textContent = 'Editar Zona';
       
       document.getElementById('hab-numero').value = h.numero || '';
+      document.getElementById('hab-tipo').value = h.tipo || 'dormitorio';
       document.getElementById('hab-nombre').value = h.nombre || '';
       document.getElementById('hab-zona').value = h.zona || '';
       document.getElementById('hab-tamano').value = h.tamano || '';
@@ -787,8 +832,26 @@
       const aseoValue = h.aseo || 'propio';
       document.querySelector(`input[name="hab-aseo"][value="${aseoValue}"]`).checked = true;
       actualizarAseoUI();
+      cambiarTipo();
 
       document.getElementById('modal-habitacion').classList.add('active');
+    }
+
+    function cambiarTipo() {
+      const tipo = document.getElementById('hab-tipo').value;
+      const camposDormitorio = document.getElementById('campos-dormitorio');
+      const camposAseo = document.getElementById('campos-aseo');
+      
+      // Ocultar todos
+      camposDormitorio.style.display = 'none';
+      camposAseo.style.display = 'none';
+      
+      // Mostrar según tipo
+      if (tipo === 'dormitorio') {
+        camposDormitorio.style.display = 'block';
+      } else if (tipo === 'aseo') {
+        camposAseo.style.display = 'block';
+      }
     }
 
     function cerrarModal() {
@@ -803,18 +866,26 @@
         return;
       }
 
+      const tipo = document.getElementById('hab-tipo').value;
+      
       const data = {
         numero: numero,
+        tipo: tipo,
         nombre: document.getElementById('hab-nombre').value.trim(),
         zona: document.getElementById('hab-zona').value.trim(),
         tamano: parseInt(document.getElementById('hab-tamano').value) || null,
-        plazas: parseInt(document.getElementById('hab-plazas').value) || 2,
-        camas: parseInt(document.getElementById('hab-camas').value) || 1,
-        sofas: parseInt(document.getElementById('hab-sofas').value) || 0,
-        plegables: parseInt(document.getElementById('hab-plegables').value) || 0,
-        aseo: document.querySelector('input[name="hab-aseo"]:checked').value,
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
       };
+
+      // Campos según tipo
+      if (tipo === 'dormitorio') {
+        data.plazas = parseInt(document.getElementById('hab-plazas').value) || 2;
+        data.camas = parseInt(document.getElementById('hab-camas').value) || 1;
+        data.sofas = parseInt(document.getElementById('hab-sofas').value) || 0;
+        data.plegables = parseInt(document.getElementById('hab-plegables').value) || 0;
+      } else if (tipo === 'aseo') {
+        data.aseo = document.querySelector('input[name="hab-aseo"]:checked').value;
+      }
 
       try {
         if (editandoId) {
@@ -830,7 +901,7 @@
         await cargarDatos();
       } catch (error) {
         console.error('Error guardando:', error);
-        alert('Error al guardar la habitación');
+        alert('Error al guardar la zona');
       }
     }
 
