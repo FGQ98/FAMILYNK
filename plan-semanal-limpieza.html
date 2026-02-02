@@ -765,16 +765,25 @@
         bienData = bienDoc.data();
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
-        // Cargar zonas desde zonasLimpieza
+        // Cargar zonas desde colección 'zonas' (con dependencias)
         const zonasSnap = await db.collection('bienes').doc(bienId)
-          .collection('zonasLimpieza')
+          .collection('zonas')
           .orderBy('orden')
           .get();
         
-        if (!zonasSnap.empty) {
-          zonasData = zonasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        } else {
-          zonasData = [];
+        zonasData = [];
+        for (const doc of zonasSnap.docs) {
+          const zona = { id: doc.id, ...doc.data(), dependencias: [] };
+          
+          // Cargar dependencias de cada zona
+          const depsSnap = await db.collection('bienes').doc(bienId)
+            .collection('zonas').doc(doc.id)
+            .collection('dependencias')
+            .orderBy('nombre', 'asc')
+            .get();
+          
+          zona.dependencias = depsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          zonasData.push(zona);
         }
         poblarSelectZonas();
 
@@ -783,7 +792,6 @@
           .collection('limpiezaProgramada')
           .get();
         tareasDisponibles = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        poblarSelectTareas();
 
         // Cargar instrucciones del plan
         const instSnap = await db.collection('bienes').doc(bienId)
@@ -827,54 +835,78 @@
       const select = document.getElementById('inst-zona');
       select.innerHTML = '<option value="">Seleccionar zona</option>';
       
-      // Primero las zonas configuradas en zonasLimpieza
+      if (zonasData.length === 0) {
+        select.innerHTML = '<option value="">⚠️ Configura zonas primero</option>';
+        return;
+      }
+
       zonasData.forEach(zona => {
         const icono = zona.icono || zonaIcons[zona.tipo] || '📁';
-        select.innerHTML += `<option value="${zona.id}">${icono} ${zona.nombre}</option>`;
+        const nombre = zona.nombre || zonaNombres[zona.tipo] || 'Zona';
+        
+        // Si tiene dependencias, mostrar cada una como opción
+        if (zona.dependencias && zona.dependencias.length > 0) {
+          zona.dependencias.forEach(dep => {
+            select.innerHTML += `<option value="${zona.id}|${dep.id}">${icono} ${nombre} - ${dep.nombre}</option>`;
+          });
+        } else {
+          // Sin dependencias, mostrar la zona sola
+          select.innerHTML += `<option value="${zona.id}">${icono} ${nombre}</option>`;
+        }
       });
-
-      // Si no hay zonas configuradas, mostrar mensaje
-      if (zonasData.length === 0) {
-        select.innerHTML = '<option value="">⚠️ Configura zonas en "Zonas y Tareas"</option>';
-      }
-    }
-
-    function poblarSelectTareas() {
-      // No hacer nada aquí, se cargan al seleccionar zona
     }
 
     function cargarTareasZona() {
-      const zonaId = document.getElementById('inst-zona').value;
+      const zonaValue = document.getElementById('inst-zona').value;
       const select = document.getElementById('inst-tarea');
       select.innerHTML = '<option value="">Seleccionar tarea</option>';
 
-      if (!zonaId) return;
+      if (!zonaValue) return;
 
-      // Buscar la zona seleccionada
+      // Extraer zonaId (puede venir como "zonaId" o "zonaId|depId")
+      const zonaId = zonaValue.split('|')[0];
       const zona = zonasData.find(z => z.id === zonaId);
       if (!zona) return;
 
-      // Filtrar tareas de limpiezaProgramada que coincidan con esta zona
-      const tareasZona = tareasDisponibles.filter(t => t.zona === zona.tipo || t.zona === zonaId);
+      // Filtrar tareas de limpiezaProgramada que coincidan con este tipo de zona
+      const tareasZona = tareasDisponibles.filter(t => {
+        return t.zona === zona.tipo || t.zonaId === zonaId;
+      });
 
       if (tareasZona.length > 0) {
         tareasZona.forEach(tarea => {
           const nombreTarea = tarea.tipo === 'otra' ? (tarea.otraTarea || 'Otra tarea') : (tareaNombres[tarea.tipo] || tarea.tipo);
-          const dep = tarea.dependencia ? ` (${tarea.dependencia})` : '';
-          select.innerHTML += `<option value="${tarea.id}">${nombreTarea}${dep}</option>`;
+          select.innerHTML += `<option value="${tarea.id}">${nombreTarea}</option>`;
         });
       } else {
-        // Si no hay tareas de limpiezaProgramada, usar las tareas de la zona
-        const tareasZonaConfig = zona.tareas || [];
-        tareasZonaConfig.forEach(tarea => {
+        // Mostrar tareas genéricas según tipo de zona
+        const tareasGenericas = getTareasGenericas(zona.tipo);
+        tareasGenericas.forEach(tarea => {
           select.innerHTML += `<option value="${tarea}">${tarea}</option>`;
         });
       }
 
-      // Si sigue vacío, mensaje
       if (select.options.length === 1) {
-        select.innerHTML = '<option value="">⚠️ Sin tareas en esta zona</option>';
+        select.innerHTML = '<option value="">⚠️ Sin tareas configuradas</option>';
       }
+    }
+
+    function getTareasGenericas(tipoZona) {
+      const tareasPorTipo = {
+        cocina: ['Fregar', 'Limpiar superficies', 'Limpiar electrodomésticos', 'Barrer', 'Fregar suelo'],
+        salon: ['Quitar polvo', 'Aspirar', 'Limpiar cristales', 'Ordenar'],
+        comedor: ['Limpiar mesa', 'Barrer', 'Quitar polvo'],
+        dormitorio: ['Cambiar sábanas', 'Aspirar', 'Quitar polvo', 'Ordenar'],
+        bano: ['Desinfectar', 'Limpiar espejos', 'Fregar suelo', 'Reponer consumibles'],
+        terraza: ['Barrer', 'Limpiar muebles', 'Regar plantas'],
+        garaje: ['Barrer', 'Ordenar'],
+        lavadero: ['Limpiar lavadora', 'Ordenar'],
+        entrada: ['Barrer', 'Quitar polvo'],
+        exterior: ['Barrer', 'Recoger hojas', 'Limpieza general'],
+        piscina: ['Revisar pH', 'Limpiar skimmers', 'Aspirar fondo'],
+        general: ['Limpieza profunda', 'Revisión general']
+      };
+      return tareasPorTipo[tipoZona] || ['Limpieza general', 'Ordenar'];
     }
 
     function cambiarTab(tab) {
@@ -903,16 +935,9 @@
       empty.classList.add('hidden');
       
       tbody.innerHTML = instruccionesData.map(inst => {
-        // Buscar zona
-        const zona = zonasData.find(z => z.id === inst.zonaId) || { nombre: inst.zona || 'Desconocida', icono: '📁' };
-        const zonaIcono = zona.icono || zonaIcons[zona.tipo] || '📁';
-        
-        // Buscar tarea
-        const tarea = tareasDisponibles.find(t => t.id === inst.tareaId);
-        let tareaNombre = inst.tarea || '-';
-        if (tarea) {
-          tareaNombre = tarea.tipo === 'otra' ? (tarea.otraTarea || 'Tarea') : (tareaNombres[tarea.tipo] || tarea.tipo);
-        }
+        const zonaIcono = inst.zonaIcono || '📁';
+        const zonaNombre = inst.zona || 'Sin zona';
+        const tareaNombre = inst.tarea || '-';
 
         const semanasStr = (inst.semanas || []).map(s => `${s}ª`).join(', ');
         const restricciones = (inst.restricciones || []).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') || '-';
@@ -922,7 +947,7 @@
           <tr onclick="editarInstruccion('${inst.id}')">
             <td>
               <div style="font-weight:600;">${zonaIcono} ${tareaNombre}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${zona.nombre}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${zonaNombre}</div>
             </td>
             <td>
               <span class="badge badge-frecuencia">${frecuenciaNombres[inst.frecuencia] || inst.frecuencia}</span>
@@ -1011,27 +1036,20 @@
           tareasHtml = '<div class="dia-empty">Sin tareas</div>';
         } else {
           // Tareas regulares
-          tareasHtml = tareasDelDia.map(t => {
-            const zona = zonasData.find(z => z.id === t.zonaId) || { nombre: t.zona || '?', icono: '📁' };
-            const zonaIcono = zona.icono || zonaIcons[zona.tipo] || '📁';
-            return `
-              <div class="dia-tarea">
-                <div class="dia-tarea-nombre">${zonaIcono} ${t.tarea}</div>
-                <div class="dia-tarea-zona">${zona.nombre} · ${t.duracion || 30}min</div>
-              </div>
-            `;
-          }).join('');
+          tareasHtml = tareasDelDia.map(t => `
+            <div class="dia-tarea">
+              <div class="dia-tarea-nombre">${t.zonaIcono || '📁'} ${t.tarea}</div>
+              <div class="dia-tarea-zona">${t.zona} · ${t.duracion || 30}min</div>
+            </div>
+          `).join('');
 
           // Tareas pre-reserva
-          tareasHtml += tareasPreDia.map(t => {
-            const zona = zonasData.find(z => z.id === t.zonaId) || { nombre: t.zona || '?', icono: '📁' };
-            return `
-              <div class="dia-tarea pre-reserva">
-                <div class="dia-tarea-nombre">🏠 ${t.tarea}</div>
-                <div class="dia-tarea-zona">${zona.nombre} · Pre-reserva</div>
-              </div>
-            `;
-          }).join('');
+          tareasHtml += tareasPreDia.map(t => `
+            <div class="dia-tarea pre-reserva">
+              <div class="dia-tarea-nombre">🏠 ${t.tarea}</div>
+              <div class="dia-tarea-zona">${t.zona} · Pre-reserva</div>
+            </div>
+          `).join('');
         }
 
         html += `
@@ -1125,7 +1143,12 @@
       document.getElementById('modal-titulo').textContent = '✏️ Editar instrucción';
       document.getElementById('btn-eliminar').style.display = 'block';
 
-      document.getElementById('inst-zona').value = instruccionEditando.zonaId || '';
+      // Reconstruir valor de zona (zonaId o zonaId|depId)
+      const zonaValue = instruccionEditando.depId 
+        ? `${instruccionEditando.zonaId}|${instruccionEditando.depId}`
+        : instruccionEditando.zonaId || '';
+      
+      document.getElementById('inst-zona').value = zonaValue;
       cargarTareasZona();
       setTimeout(() => {
         document.getElementById('inst-tarea').value = instruccionEditando.tareaId || instruccionEditando.tarea || '';
@@ -1180,10 +1203,12 @@
         if (document.getElementById(`rest-${d}`).checked) restricciones.push(d);
       });
 
-      const zonaId = document.getElementById('inst-zona').value;
+      const zonaValue = document.getElementById('inst-zona').value;
+      const [zonaId, depId] = zonaValue.split('|');
       const tareaId = document.getElementById('inst-tarea').value;
       
       const zona = zonasData.find(z => z.id === zonaId) || {};
+      const dep = depId ? zona.dependencias?.find(d => d.id === depId) : null;
       const tarea = tareasDisponibles.find(t => t.id === tareaId);
       
       // Obtener nombre de tarea
@@ -1192,10 +1217,17 @@
         tareaNombre = tarea.tipo === 'otra' ? (tarea.otraTarea || 'Tarea') : (tareaNombres[tarea.tipo] || tarea.tipo);
       }
 
+      // Nombre completo de zona (con dependencia si aplica)
+      const zonaNombreCompleto = dep 
+        ? `${zona.nombre || zonaNombres[zona.tipo] || 'Zona'} - ${dep.nombre}`
+        : zona.nombre || zonaNombres[zona.tipo] || 'Zona';
+
       const datos = {
         zonaId: zonaId,
-        zona: zona.nombre || '',
+        depId: depId || null,
+        zona: zonaNombreCompleto,
         zonaIcono: zona.icono || zonaIcons[zona.tipo] || '📁',
+        zonaTipo: zona.tipo || '',
         tareaId: tareaId,
         tarea: tareaNombre,
         duracion: parseInt(document.getElementById('inst-duracion').value) || 30,

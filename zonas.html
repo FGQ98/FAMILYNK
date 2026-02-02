@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Zonas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --mayordomo: #8B7355;
+      --mayordomo-dark: #6B5A45;
+      --mayordomo-muted: rgba(139, 115, 85, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.1);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-dark) 100%);
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-medium);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .btn-volver {
+      padding: 8px 14px;
+      background: rgba(255,255,255,0.15);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      color: white;
+      text-decoration: none;
+    }
+    .btn-volver:hover { background: rgba(255,255,255,0.25); }
+    .header-info h1 {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .header-info span { font-size: 0.85rem; opacity: 0.85; }
+    .btn-nuevo {
+      padding: 10px 18px;
+      background: rgba(255,255,255,0.2);
+      border: none;
+      border-radius: var(--radius-md);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-nuevo:hover { background: rgba(255,255,255,0.3); }
+
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .hidden { display: none !important; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 300px; color: var(--text-muted); }
+
+    /* Info banner */
+    .info-banner {
+      background: var(--mayordomo-muted);
+      border-left: 4px solid var(--mayordomo);
+      padding: 16px 20px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+      color: var(--text-light);
+    }
+    .info-banner strong { color: var(--mayordomo); }
+
+    /* Stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--white);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      text-align: center;
+      box-shadow: var(--shadow-soft);
+    }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--mayordomo); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Zonas list */
+    .zonas-container {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      overflow: hidden;
+    }
+
+    .zona-item {
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .zona-item:last-child { border-bottom: none; }
+
+    .zona-header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .zona-header:hover { background: var(--cream); }
+    .zona-header.expanded { background: var(--mayordomo-muted); }
+
+    .zona-icon {
+      font-size: 1.5rem;
+      margin-right: 12px;
+    }
+    .zona-info { flex: 1; }
+    .zona-nombre {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .zona-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .zona-count {
+      background: var(--mayordomo);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 12px;
+    }
+    .zona-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: var(--radius-sm);
+      background: var(--cream);
+      cursor: pointer;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-icon:hover { background: var(--cream-dark); }
+    .zona-expand {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+    .zona-header.expanded .zona-expand { transform: rotate(180deg); }
+
+    /* Dependencias */
+    .dependencias-body {
+      display: none;
+      padding: 0 20px 16px 56px;
+      background: var(--cream);
+    }
+    .zona-item.expanded .dependencias-body { display: block; }
+
+    .dependencias-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .dependencia-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--white);
+      border-radius: var(--radius-sm);
+      gap: 12px;
+    }
+    .dependencia-nombre {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .dependencia-capacidad {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .btn-mini {
+      padding: 6px 10px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      cursor: pointer;
+      background: var(--cream);
+      color: var(--text-light);
+    }
+    .btn-mini:hover { background: var(--mayordomo-muted); color: var(--mayordomo); }
+    .btn-mini.danger:hover { background: rgba(212,105,90,0.15); color: var(--error); }
+
+    .btn-add-dep {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 14px;
+      background: var(--white);
+      border: 2px dashed var(--cream-dark);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      width: 100%;
+      justify-content: center;
+    }
+    .btn-add-dep:hover { border-color: var(--mayordomo); color: var(--mayordomo); }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+    .empty-state-icon { font-size: 3.5rem; margin-bottom: 16px; opacity: 0.6; }
+    .empty-state-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+    .empty-state-text { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 450px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: var(--shadow-medium);
+    }
+    .modal-header {
+      background: var(--mayordomo);
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+    .modal-close {
+      background: rgba(255,255,255,0.2);
+      border: none;
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 1.2rem;
+      cursor: pointer;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.3); }
+    .modal-body { padding: 20px; }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.95rem;
+    }
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--mayordomo);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Selector de iconos */
+    .iconos-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    .icono-option {
+      padding: 10px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      text-align: center;
+      font-size: 1.3rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .icono-option:hover { border-color: var(--mayordomo); }
+    .icono-option.selected {
+      border-color: var(--mayordomo);
+      background: var(--mayordomo-muted);
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-secondary { background: var(--cream); color: var(--text-light); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-primary { background: var(--mayordomo); color: white; }
+    .btn-primary:hover { background: var(--mayordomo-dark); }
+    .btn-danger { background: var(--error); color: white; }
+
+    @media (max-width: 600px) {
+      .stats-row { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .stat-card { padding: 12px; }
+      .stat-value { font-size: 1.4rem; }
+      .zona-actions { display: none; }
+      .dependencias-body { padding-left: 20px; }
+      .form-row { grid-template-columns: 1fr; }
+      .iconos-grid { grid-template-columns: repeat(5, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a href="#" onclick="volver(); return false;" class="btn-volver">← Volver</a>
+      <div class="header-info">
+        <h1>🏠 Zonas</h1>
+        <span id="nombre-bien">Cargando...</span>
+      </div>
+    </div>
+    <button class="btn-nuevo" onclick="abrirModalZona()">+ Nueva zona</button>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading">⏳ Cargando zonas...</div>
+
+    <div id="content" class="hidden">
+      <div class="info-banner">
+        <strong>Configura las zonas del bien.</strong> Cada zona puede tener varias dependencias (ej: Dormitorio → Principal, Invitados). Se usa en Limpieza y Mantenimiento.
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-zonas">0</div>
+          <div class="stat-label">Zonas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-dependencias">0</div>
+          <div class="stat-label">Dependencias</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-capacidad">0</div>
+          <div class="stat-label">Capacidad</div>
+        </div>
+      </div>
+
+      <div id="zonas-list" class="zonas-container"></div>
+
+      <div id="empty-state" class="empty-state hidden">
+        <div class="empty-state-icon">🏠</div>
+        <h3 class="empty-state-title">Sin zonas configuradas</h3>
+        <p class="empty-state-text">Añade las zonas del bien para organizar tareas de limpieza y mantenimiento</p>
+        <button class="btn btn-primary" onclick="abrirModalZona()">+ Crear primera zona</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Zona -->
+  <div class="modal-overlay" id="modal-zona">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-zona-titulo">🏠 Nueva zona</span>
+        <button class="modal-close" onclick="cerrarModalZona()">×</button>
+      </div>
+      <form id="form-zona">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Tipo de zona *</label>
+            <select class="form-select" id="zona-tipo" required onchange="seleccionarTipo()">
+              <option value="">Seleccionar...</option>
+              <option value="cocina">🍳 Cocina</option>
+              <option value="salon">🛋️ Salón</option>
+              <option value="comedor">🍽️ Comedor</option>
+              <option value="dormitorio">🛏️ Dormitorio</option>
+              <option value="bano">🚿 Baño</option>
+              <option value="terraza">🌿 Terraza/Jardín</option>
+              <option value="garaje">🚗 Garaje</option>
+              <option value="lavadero">🧺 Lavadero</option>
+              <option value="entrada">🚪 Entrada</option>
+              <option value="exterior">🌳 Exterior</option>
+              <option value="piscina">🏊 Piscina</option>
+              <option value="trastero">📦 Trastero</option>
+              <option value="bodega">🍷 Bodega</option>
+              <option value="oficina">💼 Oficina/Despacho</option>
+              <option value="otro">📁 Otro</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Nombre personalizado</label>
+              <input type="text" class="form-input" id="zona-nombre" placeholder="Ej: Cocina principal">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Icono</label>
+              <input type="text" class="form-input" id="zona-icono" placeholder="🏠" maxlength="2" style="text-align:center;font-size:1.3rem;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <input type="text" class="form-input" id="zona-notas" placeholder="Observaciones...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" id="btn-eliminar-zona" style="display:none;margin-right:auto;" onclick="eliminarZona()">Eliminar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalZona()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Dependencia -->
+  <div class="modal-overlay" id="modal-dependencia">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-dep-titulo">📍 Nueva dependencia</span>
+        <button class="modal-close" onclick="cerrarModalDep()">×</button>
+      </div>
+      <form id="form-dependencia">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nombre *</label>
+            <input type="text" class="form-input" id="dep-nombre" placeholder="Ej: Principal, Invitados, Niños..." required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Capacidad (personas)</label>
+              <input type="number" class="form-input" id="dep-capacidad" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Superficie (m²)</label>
+              <input type="number" class="form-input" id="dep-superficie" min="0" step="0.1">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <input type="text" class="form-input" id="dep-notas" placeholder="Cama doble, ventilador de techo...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger" id="btn-eliminar-dep" style="display:none;margin-right:auto;" onclick="eliminarDependencia()">Eliminar</button>
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalDep()">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let zonasData = [];
+    let zonaEditando = null;
+    let depEditando = null;
+    let zonaParaDep = null;
+
+    const tipoNombres = {
+      cocina: 'Cocina', salon: 'Salón', comedor: 'Comedor', dormitorio: 'Dormitorio',
+      bano: 'Baño', terraza: 'Terraza/Jardín', garaje: 'Garaje', lavadero: 'Lavadero',
+      entrada: 'Entrada', exterior: 'Exterior', piscina: 'Piscina', trastero: 'Trastero',
+      bodega: 'Bodega', oficina: 'Oficina/Despacho', otro: 'Otro'
+    };
+    const tipoIconos = {
+      cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
+      bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
+      entrada: '🚪', exterior: '🌳', piscina: '🏊', trastero: '📦',
+      bodega: '🍷', oficina: '💼', otro: '📁'
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('id');
+    const origen = params.get('origen') || 'mayordomo';
+
+    if (!bienId) {
+      alert('No se especificó el bien');
+      window.location.href = 'cgi.html';
+    }
+
+    function volver() {
+      window.location.href = `${origen}.html?id=${bienId}`;
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) {
+          alert('Bien no encontrado');
+          window.location.href = 'cgi.html';
+          return;
+        }
+        bienData = bienDoc.data();
+        document.getElementById('nombre-bien').textContent = bienData.nombre || 'Sin nombre';
+
+        // Cargar zonas
+        const zonasSnap = await db.collection('bienes').doc(bienId)
+          .collection('zonas')
+          .orderBy('orden', 'asc')
+          .get();
+
+        zonasData = [];
+        for (const doc of zonasSnap.docs) {
+          const zona = { id: doc.id, ...doc.data(), dependencias: [] };
+          
+          // Cargar dependencias de cada zona
+          const depsSnap = await db.collection('bienes').doc(bienId)
+            .collection('zonas').doc(doc.id)
+            .collection('dependencias')
+            .orderBy('nombre', 'asc')
+            .get();
+          
+          zona.dependencias = depsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          zonasData.push(zona);
+        }
+
+        renderZonas();
+        actualizarStats();
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar: ' + error.message);
+      }
+    }
+
+    function actualizarStats() {
+      const totalZonas = zonasData.length;
+      let totalDeps = 0;
+      let totalCapacidad = 0;
+
+      zonasData.forEach(z => {
+        totalDeps += z.dependencias.length;
+        z.dependencias.forEach(d => {
+          totalCapacidad += parseInt(d.capacidad) || 0;
+        });
+      });
+
+      document.getElementById('stat-zonas').textContent = totalZonas;
+      document.getElementById('stat-dependencias').textContent = totalDeps;
+      document.getElementById('stat-capacidad').textContent = totalCapacidad;
+    }
+
+    function renderZonas() {
+      const container = document.getElementById('zonas-list');
+      const emptyState = document.getElementById('empty-state');
+
+      if (zonasData.length === 0) {
+        container.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.classList.remove('hidden');
+
+      container.innerHTML = zonasData.map(zona => {
+        const icono = zona.icono || tipoIconos[zona.tipo] || '📁';
+        const nombre = zona.nombre || tipoNombres[zona.tipo] || 'Zona';
+        const numDeps = zona.dependencias.length;
+
+        const depsHtml = zona.dependencias.map(dep => `
+          <div class="dependencia-item">
+            <span class="dependencia-nombre">${dep.nombre}</span>
+            ${dep.capacidad ? `<span class="dependencia-capacidad">👥 ${dep.capacidad}</span>` : ''}
+            ${dep.superficie ? `<span class="dependencia-capacidad">${dep.superficie}m²</span>` : ''}
+            <button class="btn-mini" onclick="event.stopPropagation(); editarDependencia('${zona.id}', '${dep.id}')">✏️</button>
+            <button class="btn-mini danger" onclick="event.stopPropagation(); confirmarEliminarDep('${zona.id}', '${dep.id}')">🗑️</button>
+          </div>
+        `).join('');
+
+        return `
+          <div class="zona-item" id="zona-${zona.id}">
+            <div class="zona-header" onclick="toggleZona('${zona.id}')">
+              <span class="zona-icon">${icono}</span>
+              <div class="zona-info">
+                <div class="zona-nombre">${nombre}</div>
+                <div class="zona-meta">${zona.notas || ''}</div>
+              </div>
+              <span class="zona-count">${numDeps} dep.</span>
+              <div class="zona-actions">
+                <button class="btn-icon" onclick="event.stopPropagation(); editarZona('${zona.id}')" title="Editar">✏️</button>
+              </div>
+              <span class="zona-expand">▼</span>
+            </div>
+            <div class="dependencias-body">
+              <div class="dependencias-list">
+                ${depsHtml}
+              </div>
+              <button class="btn-add-dep" onclick="abrirModalDep('${zona.id}')">+ Añadir dependencia</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleZona(zonaId) {
+      const item = document.getElementById(`zona-${zonaId}`);
+      const header = item.querySelector('.zona-header');
+      
+      item.classList.toggle('expanded');
+      header.classList.toggle('expanded');
+    }
+
+    // ========== MODAL ZONA ==========
+    function seleccionarTipo() {
+      const tipo = document.getElementById('zona-tipo').value;
+      if (tipo && tipoIconos[tipo]) {
+        document.getElementById('zona-icono').value = tipoIconos[tipo];
+      }
+    }
+
+    function abrirModalZona() {
+      zonaEditando = null;
+      document.getElementById('form-zona').reset();
+      document.getElementById('modal-zona-titulo').textContent = '🏠 Nueva zona';
+      document.getElementById('btn-eliminar-zona').style.display = 'none';
+      document.getElementById('modal-zona').classList.add('active');
+    }
+
+    function editarZona(id) {
+      zonaEditando = zonasData.find(z => z.id === id);
+      if (!zonaEditando) return;
+
+      document.getElementById('modal-zona-titulo').textContent = '✏️ Editar zona';
+      document.getElementById('btn-eliminar-zona').style.display = 'block';
+
+      document.getElementById('zona-tipo').value = zonaEditando.tipo || '';
+      document.getElementById('zona-nombre').value = zonaEditando.nombre || '';
+      document.getElementById('zona-icono').value = zonaEditando.icono || '';
+      document.getElementById('zona-notas').value = zonaEditando.notas || '';
+
+      document.getElementById('modal-zona').classList.add('active');
+    }
+
+    function cerrarModalZona() {
+      document.getElementById('modal-zona').classList.remove('active');
+    }
+
+    document.getElementById('form-zona').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const tipo = document.getElementById('zona-tipo').value;
+      const datos = {
+        tipo: tipo,
+        nombre: document.getElementById('zona-nombre').value || tipoNombres[tipo] || 'Zona',
+        icono: document.getElementById('zona-icono').value || tipoIconos[tipo] || '📁',
+        notas: document.getElementById('zona-notas').value,
+        orden: zonaEditando ? zonaEditando.orden : zonasData.length,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        if (zonaEditando) {
+          await db.collection('bienes').doc(bienId)
+            .collection('zonas').doc(zonaEditando.id)
+            .update(datos);
+        } else {
+          datos.creadoPor = currentUser.uid;
+          datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId)
+            .collection('zonas').add(datos);
+        }
+
+        cerrarModalZona();
+        await cargarDatos();
+
+      } catch (error) {
+        console.error('Error guardando zona:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    });
+
+    async function eliminarZona() {
+      if (!zonaEditando) return;
+      
+      const numDeps = zonaEditando.dependencias.length;
+      const msg = numDeps > 0 
+        ? `¿Eliminar "${zonaEditando.nombre}" y sus ${numDeps} dependencias?`
+        : `¿Eliminar la zona "${zonaEditando.nombre}"?`;
+      
+      if (!confirm(msg)) return;
+
+      try {
+        // Eliminar dependencias primero
+        for (const dep of zonaEditando.dependencias) {
+          await db.collection('bienes').doc(bienId)
+            .collection('zonas').doc(zonaEditando.id)
+            .collection('dependencias').doc(dep.id)
+            .delete();
+        }
+
+        // Eliminar zona
+        await db.collection('bienes').doc(bienId)
+          .collection('zonas').doc(zonaEditando.id)
+          .delete();
+
+        cerrarModalZona();
+        await cargarDatos();
+
+      } catch (error) {
+        console.error('Error eliminando zona:', error);
+        alert('Error al eliminar: ' + error.message);
+      }
+    }
+
+    // ========== MODAL DEPENDENCIA ==========
+    function abrirModalDep(zonaId) {
+      zonaParaDep = zonaId;
+      depEditando = null;
+      document.getElementById('form-dependencia').reset();
+      document.getElementById('modal-dep-titulo').textContent = '📍 Nueva dependencia';
+      document.getElementById('btn-eliminar-dep').style.display = 'none';
+      document.getElementById('modal-dependencia').classList.add('active');
+    }
+
+    function editarDependencia(zonaId, depId) {
+      const zona = zonasData.find(z => z.id === zonaId);
+      if (!zona) return;
+      
+      depEditando = zona.dependencias.find(d => d.id === depId);
+      if (!depEditando) return;
+
+      zonaParaDep = zonaId;
+
+      document.getElementById('modal-dep-titulo').textContent = '✏️ Editar dependencia';
+      document.getElementById('btn-eliminar-dep').style.display = 'block';
+
+      document.getElementById('dep-nombre').value = depEditando.nombre || '';
+      document.getElementById('dep-capacidad').value = depEditando.capacidad || 0;
+      document.getElementById('dep-superficie').value = depEditando.superficie || '';
+      document.getElementById('dep-notas').value = depEditando.notas || '';
+
+      document.getElementById('modal-dependencia').classList.add('active');
+    }
+
+    function cerrarModalDep() {
+      document.getElementById('modal-dependencia').classList.remove('active');
+    }
+
+    document.getElementById('form-dependencia').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const datos = {
+        nombre: document.getElementById('dep-nombre').value,
+        capacidad: parseInt(document.getElementById('dep-capacidad').value) || 0,
+        superficie: parseFloat(document.getElementById('dep-superficie').value) || null,
+        notas: document.getElementById('dep-notas').value,
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        if (depEditando) {
+          await db.collection('bienes').doc(bienId)
+            .collection('zonas').doc(zonaParaDep)
+            .collection('dependencias').doc(depEditando.id)
+            .update(datos);
+        } else {
+          datos.creadoPor = currentUser.uid;
+          datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await db.collection('bienes').doc(bienId)
+            .collection('zonas').doc(zonaParaDep)
+            .collection('dependencias').add(datos);
+        }
+
+        cerrarModalDep();
+        await cargarDatos();
+
+      } catch (error) {
+        console.error('Error guardando dependencia:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    });
+
+    async function eliminarDependencia() {
+      if (!depEditando || !zonaParaDep) return;
+      if (!confirm(`¿Eliminar la dependencia "${depEditando.nombre}"?`)) return;
+
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('zonas').doc(zonaParaDep)
+          .collection('dependencias').doc(depEditando.id)
+          .delete();
+
+        cerrarModalDep();
+        await cargarDatos();
+
+      } catch (error) {
+        console.error('Error eliminando dependencia:', error);
+        alert('Error al eliminar: ' + error.message);
+      }
+    }
+
+    function confirmarEliminarDep(zonaId, depId) {
+      const zona = zonasData.find(z => z.id === zonaId);
+      if (!zona) return;
+      const dep = zona.dependencias.find(d => d.id === depId);
+      if (!dep) return;
+
+      if (confirm(`¿Eliminar la dependencia "${dep.nombre}"?`)) {
+        db.collection('bienes').doc(bienId)
+          .collection('zonas').doc(zonaId)
+          .collection('dependencias').doc(depId)
+          .delete()
+          .then(() => cargarDatos())
+          .catch(err => alert('Error: ' + err.message));
+      }
+    }
+  </script>
+</body>
+</html>
