@@ -322,14 +322,14 @@
           </div>
         </div>
 
-        <!-- Zonas y Tareas -->
+        <!-- Tareas de Limpieza -->
         <div class="modulo-card tareas">
           <div class="modulo-card-header">
-            <div class="modulo-card-icon">🏠</div>
-            <div class="modulo-card-title">Zonas y Tareas</div>
+            <div class="modulo-card-icon">🧹</div>
+            <div class="modulo-card-title">Tareas de Limpieza</div>
           </div>
           <div class="modulo-card-body">
-            <p class="modulo-card-desc">Organiza las zonas del bien y configura tareas por tipo de dependencia.</p>
+            <p class="modulo-card-desc">Configura las tareas de limpieza por zona y día de la semana.</p>
             <div class="modulo-stats">
               <div class="modulo-stat">
                 <span class="modulo-stat-value" id="stat-zonas">0</span>
@@ -410,7 +410,7 @@
 
     // Configurar links de cards
     document.getElementById('link-lavanderia').href = `lavanderia.html?id=${bienId}&origen=limpieza`;
-    document.getElementById('link-tareas').href = `zonas-tareas.html?id=${bienId}&origen=limpieza`;
+    document.getElementById('link-tareas').href = `tareas-limpieza.html?id=${bienId}&origen=limpieza`;
     document.getElementById('link-programada').href = `limpieza-programada.html?id=${bienId}&origen=limpieza`;
     document.getElementById('card-plan-semanal').href = `plan-semanal-limpieza.html?id=${bienId}&origen=limpieza`;
 
@@ -442,7 +442,7 @@
         if (card) card.style.display = 'none';
       }
       
-      // Card Zonas y Tareas
+      // Card Tareas de Limpieza
       if (!PermisosExt.puede('limpieza_zonasTareas', 'v')) {
         const card = document.querySelector('.modulo-card.tareas');
         if (card) card.style.display = 'none';
@@ -498,21 +498,13 @@
 
     async function cargarStatsZonas() {
       try {
-        // Contar zonas
-        const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
+        // Contar zonas desde colección 'zonas'
+        const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonas').get();
         let totalZonas = zonasSnap.docs.length;
         
-        // Contar tareas activas configuradas por tipo
-        let totalTareas = 0;
-        const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').get();
-        if (configDoc.exists) {
-          const config = configDoc.data();
-          for (const tipo of Object.values(config)) {
-            if (Array.isArray(tipo)) {
-              totalTareas += tipo.filter(t => t.activo).length;
-            }
-          }
-        }
+        // Contar tareas desde limpiezaProgramada
+        const tareasSnap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
+        let totalTareas = tareasSnap.docs.length;
 
         document.getElementById('stat-zonas').textContent = totalZonas;
         document.getElementById('stat-tareas').textContent = totalTareas;
@@ -600,55 +592,26 @@
 
         planSemanalData = [];
 
-        // 1. Cargar zonas y configuración de tareas
-        const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonasLimpieza').get();
-        const configDoc = await db.collection('bienes').doc(bienId).collection('configLimpieza').doc('tareasPorTipo').get();
-        const tareasConfig = configDoc.exists ? configDoc.data() : {};
-
-        // Generar tareas basadas en zonas + config
-        zonasSnap.docs.forEach(doc => {
-          const zona = { id: doc.id, ...doc.data() };
-          const deps = zona.dependencias || {};
+        // 1. Cargar tareas de limpieza programada
+        const tareasSnap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
+        tareasSnap.docs.forEach(doc => {
+          const tarea = { id: doc.id, ...doc.data() };
+          const tareaNombre = tarea.tipo === 'otra' 
+            ? (tarea.otraTarea || 'Tarea') 
+            : (TAREAS_INFO[tarea.tipo]?.nombre || tarea.tipo);
+          const tareaIcon = TAREAS_INFO[tarea.tipo]?.icon || '🧹';
+          const zonaNombre = tarea.zonaNombre || tarea.zona || 'General';
+          const depNombre = tarea.dependencia ? ` - ${tarea.dependencia}` : '';
           
-          // Por cada tipo de dependencia en la zona
-          for (const [tipoKey, cantidad] of Object.entries(deps)) {
-            if (cantidad > 0 && tareasConfig[tipoKey]) {
-              const tareasDelTipo = tareasConfig[tipoKey].filter(t => t.activo);
-              
-              tareasDelTipo.forEach(tareaConfig => {
-                const tareaInfo = TAREAS_INFO[tareaConfig.tareaId];
-                if (!tareaInfo) return;
-                
-                // Según frecuencia, asignar días
-                if (tareaConfig.frecuencia === 'diario') {
-                  for (let d = 1; d <= 6; d++) {
-                    planSemanalData.push({
-                      id: `lim_${zona.id}_${tipoKey}_${tareaConfig.tareaId}_${d}`,
-                      tipo: 'limpieza',
-                      nombre: tareaInfo.nombre,
-                      zona: `${zona.nombre} - ${TIPOS_DEP[tipoKey]?.label || tipoKey}`,
-                      zonaIcon: tareaInfo.icon,
-                      dia: d.toString(),
-                      tiempo: 15
-                    });
-                  }
-                } else if (tareaConfig.frecuencia === 'semanal') {
-                  // Asignar un día fijo basado en hash simple
-                  const diaHash = (zona.id.charCodeAt(0) + tipoKey.charCodeAt(0) + tareaConfig.tareaId.charCodeAt(0)) % 6 + 1;
-                  planSemanalData.push({
-                    id: `lim_${zona.id}_${tipoKey}_${tareaConfig.tareaId}`,
-                    tipo: 'limpieza',
-                    nombre: tareaInfo.nombre,
-                    zona: `${zona.nombre} - ${TIPOS_DEP[tipoKey]?.label || tipoKey}`,
-                    zonaIcon: tareaInfo.icon,
-                    dia: diaHash.toString(),
-                    tiempo: 15
-                  });
-                }
-                // Mensual no se muestra en plan semanal
-              });
-            }
-          }
+          planSemanalData.push({
+            id: `lim_${tarea.id}`,
+            tipo: 'limpieza',
+            nombre: tareaNombre,
+            zona: `${zonaNombre}${depNombre}`,
+            zonaIcon: tareaIcon,
+            dia: tarea.dia,
+            tiempo: parseInt(tarea.tiempo) || 30
+          });
         });
 
         // 2. Cargar prendas de LAVANDERÍA
@@ -715,7 +678,7 @@
         container.innerHTML = `
           <div class="plan-empty">
             📅 Sin tareas programadas esta semana<br>
-            <small>Configura tareas en <a href="zonas-tareas.html?id=${bienId}">Zonas y Tareas</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
+            <small>Configura tareas en <a href="tareas-limpieza.html?id=${bienId}">Tareas de Limpieza</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
           </div>
         `;
         progresoBar.style.width = '0%';
