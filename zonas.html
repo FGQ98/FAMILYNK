@@ -482,13 +482,17 @@
   </header>
 
   <div class="container">
-    <div id="loading" class="loading">⏳ Cargando habitaciones...</div>
+    <div id="loading" class="loading">⏳ Cargando zonas...</div>
 
     <div id="content" style="display: none;">
       <div class="stats-row">
         <div class="stat-card">
           <div class="stat-value" id="stat-total">0</div>
           <div class="stat-label">Zonas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-dormitorios">0</div>
+          <div class="stat-label">Dormitorios</div>
         </div>
         <div class="stat-card">
           <div class="stat-value" id="stat-plazas">0</div>
@@ -499,8 +503,8 @@
           <div class="stat-label">Camas</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value" id="stat-extra">0</div>
-          <div class="stat-label">Extras</div>
+          <div class="stat-value" id="stat-aseos">0</div>
+          <div class="stat-label">Aseos</div>
         </div>
       </div>
 
@@ -513,20 +517,19 @@
         <div class="tabla-header">
           <span>Nº</span>
           <span>Nombre / Tipo</span>
-          <span>Zona</span>
-          <span>Plazas</span>
-          <span>Camas</span>
-          <span>Aseo</span>
+          <span>Ubicación</span>
+          <span>Info</span>
+          <span></span>
           <span></span>
         </div>
         <div id="tabla-body"></div>
       </div>
 
       <div id="empty-state" class="empty-state" style="display: none;">
-        <div class="empty-state-icon">🛏️</div>
-        <div class="empty-state-title">Sin habitaciones</div>
-        <div class="empty-state-text">Añade las habitaciones de este bien para gestionar las confirmaciones</div>
-        <button class="btn btn-primary" onclick="abrirModal()">+ Añadir primera habitación</button>
+        <div class="empty-state-icon">🏠</div>
+        <div class="empty-state-title">Sin zonas</div>
+        <div class="empty-state-text">Añade las zonas de este bien para gestionar los espacios</div>
+        <button class="btn btn-primary" onclick="abrirModal()">+ Añadir primera zona</button>
       </div>
     </div>
   </div>
@@ -736,20 +739,11 @@
           if (h.camas) camas.push(`🛏️${h.camas}`);
           if (h.sofas) camas.push(`🛋️${h.sofas}`);
           if (h.plegables) camas.push(`➕${h.plegables}`);
-          infoExtra = `
-            <span class="tabla-cell" data-label="Plazas">👥 ${h.plazas || 0}</span>
-            <span class="tabla-camas" data-label="Camas">${camas.map(c => `<span>${c}</span>`).join('') || '—'}</span>
-          `;
+          infoExtra = `👥${h.plazas || 0} · ${camas.join(' ') || '—'}`;
         } else if (h.tipo === 'aseo') {
-          infoExtra = `
-            <span class="tabla-cell" data-label="Tipo">${h.aseo === 'compartido' ? '🚻 Compartido' : '🚿 Propio'}</span>
-            <span class="tabla-cell"></span>
-          `;
+          infoExtra = h.aseo === 'compartido' ? '🚻 Compartido' : '🚿 Propio';
         } else {
-          infoExtra = `
-            <span class="tabla-cell"></span>
-            <span class="tabla-cell"></span>
-          `;
+          infoExtra = '—';
         }
 
         return `
@@ -760,7 +754,7 @@
               <small>${tipoLabels[h.tipo] || h.tipo || ''} ${h.tamano ? `· ${h.tamano}m²` : ''}</small>
             </span>
             <span class="tabla-cell" data-label="Ubicación">${h.zona || '—'}</span>
-            ${infoExtra}
+            <span class="tabla-cell" data-label="Info">${infoExtra}</span>
             <span class="tabla-actions">
               <button class="btn-mini" onclick="editarHabitacion('${h.id}')">✏️</button>
               <button class="btn-mini" onclick="eliminarHabitacion('${h.id}')">🗑️</button>
@@ -781,14 +775,15 @@
     function actualizarStats() {
       const total = habitaciones.length;
       const dormitorios = habitaciones.filter(h => h.tipo === 'dormitorio');
+      const aseos = habitaciones.filter(h => h.tipo === 'aseo').length;
       const plazas = dormitorios.reduce((sum, h) => sum + (h.plazas || 0), 0);
       const camas = dormitorios.reduce((sum, h) => sum + (h.camas || 0), 0);
-      const extra = dormitorios.reduce((sum, h) => sum + (h.sofas || 0) + (h.plegables || 0), 0);
 
       document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-dormitorios').textContent = dormitorios.length;
       document.getElementById('stat-plazas').textContent = plazas;
       document.getElementById('stat-camas').textContent = camas;
-      document.getElementById('stat-extra').textContent = extra;
+      document.getElementById('stat-aseos').textContent = aseos;
     }
 
     function abrirModal() {
