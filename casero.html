@@ -1910,6 +1910,67 @@
     </div>
   </div>
 
+  <!-- Modal Herramienta -->
+  <div class="modal-overlay" id="modal-herramienta">
+    <div class="modal" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-herramienta-titulo">🛠️ Nueva herramienta</h3>
+        <button class="modal-close" onclick="cerrarModalHerramienta()">×</button>
+      </div>
+      <form id="form-herramienta" onsubmit="guardarHerramienta(event)">
+        <div class="modal-body">
+          <input type="hidden" id="herr-id">
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+              <label style="font-weight:600;font-size:0.85rem;margin-bottom:4px;display:block;">Nombre *</label>
+              <input type="text" id="herr-nombre" required placeholder="Ej: Taladro Bosch" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div>
+                <label style="font-weight:600;font-size:0.85rem;margin-bottom:4px;display:block;">Categoría</label>
+                <select id="herr-categoria" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;">
+                  <option value="manual">🔧 Manual</option>
+                  <option value="electrica">⚡ Eléctrica</option>
+                  <option value="jardin">🌱 Jardín</option>
+                  <option value="limpieza">🧹 Limpieza</option>
+                  <option value="medicion">📏 Medición</option>
+                  <option value="seguridad">🦺 Seguridad</option>
+                  <option value="otro">🔨 Otro</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-weight:600;font-size:0.85rem;margin-bottom:4px;display:block;">Estado</label>
+                <select id="herr-estado" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;">
+                  <option value="bueno">✅ Bueno</option>
+                  <option value="revisar">⚠️ Revisar</option>
+                  <option value="roto">❌ Roto</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div>
+                <label style="font-weight:600;font-size:0.85rem;margin-bottom:4px;display:block;">Ubicación</label>
+                <input type="text" id="herr-ubicacion" placeholder="Ej: Taller, Garaje..." style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;">
+              </div>
+              <div>
+                <label style="font-weight:600;font-size:0.85rem;margin-bottom:4px;display:block;">Cantidad</label>
+                <input type="number" id="herr-cantidad" min="1" value="1" style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;">
+              </div>
+            </div>
+            <div>
+              <label style="font-weight:600;font-size:0.85rem;margin-bottom:4px;display:block;">Notas</label>
+              <textarea id="herr-notas" rows="2" placeholder="Observaciones..." style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.9rem;resize:vertical;"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModalHerramienta()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-guardar-herr">💾 Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -3712,7 +3773,7 @@
         itemsHtml = '<div class="item-list">' + items.map(h => {
           const estadoClass = h.estado === 'bueno' ? 'success' : h.estado === 'revisar' ? 'warning' : '';
           return `
-            <div class="item-row no-hover">
+            <div class="item-row ${p?.editar ? '' : 'no-hover'}" ${p?.editar ? `onclick="abrirModalHerramienta('${h.id}')" style="cursor:pointer"` : ''}>
               <span class="item-icon">${catIcons[h.categoria] || '🔨'}</span>
               <div class="item-content">
                 <div class="item-title">${h.nombre}</div>
@@ -3724,6 +3785,12 @@
         }).join('') + '</div>';
       }
 
+      let footerHtml = '';
+      const btns = [];
+      if (total > 6) btns.push(`<button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas</button>`);
+      if (p?.crear) btns.push(`<button class="btn btn-sm btn-primary" onclick="abrirModalHerramienta()">+ Nuevo registro</button>`);
+      if (btns.length > 0) footerHtml = `<div class="modulo-card-footer">${btns.join('')}</div>`;
+
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
@@ -3731,11 +3798,7 @@
             <div class="modulo-card-permisos">${renderPermisosBadges('herramientas')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
-          ${total > 6 ? `
-            <div class="modulo-card-footer">
-              <button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas</button>
-            </div>
-          ` : ''}
+          ${footerHtml}
         </div>
       `;
     }
@@ -4405,6 +4468,75 @@
       }
     });
 
+    // ========== HERRAMIENTAS CRUD ==========
+    let editingHerramientaId = null;
+
+    function abrirModalHerramienta(id = null) {
+      editingHerramientaId = id || null;
+
+      if (id) {
+        const h = datosModulos.herramientas.find(x => x.id === id);
+        if (h) {
+          document.getElementById('modal-herramienta-titulo').textContent = '🛠️ Editar herramienta';
+          document.getElementById('herr-id').value = id;
+          document.getElementById('herr-nombre').value = h.nombre || '';
+          document.getElementById('herr-categoria').value = h.categoria || 'otro';
+          document.getElementById('herr-estado').value = h.estado || 'bueno';
+          document.getElementById('herr-ubicacion').value = h.ubicacion || '';
+          document.getElementById('herr-cantidad').value = h.cantidad || 1;
+          document.getElementById('herr-notas').value = h.notas || '';
+        }
+      } else {
+        document.getElementById('modal-herramienta-titulo').textContent = '🛠️ Nuevo registro';
+        document.getElementById('form-herramienta').reset();
+        document.getElementById('herr-id').value = '';
+        document.getElementById('herr-cantidad').value = 1;
+      }
+
+      document.getElementById('modal-herramienta').classList.add('active');
+    }
+
+    function cerrarModalHerramienta() {
+      document.getElementById('modal-herramienta').classList.remove('active');
+      editingHerramientaId = null;
+    }
+
+    async function guardarHerramienta(e) {
+      e.preventDefault();
+
+      const data = {
+        nombre: document.getElementById('herr-nombre').value.trim(),
+        categoria: document.getElementById('herr-categoria').value,
+        estado: document.getElementById('herr-estado').value,
+        ubicacion: document.getElementById('herr-ubicacion').value.trim(),
+        cantidad: parseInt(document.getElementById('herr-cantidad').value) || 1,
+        notas: document.getElementById('herr-notas').value.trim(),
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (!data.nombre) { alert('El nombre es obligatorio'); return; }
+
+      try {
+        const ref = db.collection('bienes').doc(bienActual.bienId).collection('herramientas');
+
+        if (editingHerramientaId) {
+          await ref.doc(editingHerramientaId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarModalHerramienta();
+        await cargarDatosModulos();
+        renderModulos();
+
+      } catch (error) {
+        console.error('Error guardando herramienta:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    }
+
     // ========== VER TODOS ==========
     function verTodos(tipo) {
       const modal = document.getElementById('modal-ver-todos');
@@ -4598,20 +4730,23 @@
       
       try {
         // Cargar configuración de la familia
-        const familiaDoc = await db.collection('familias').doc(bienActual.bien.familiaId).get();
+        const familiaId = bienActual.bien.familiaId;
+        const familiaDoc = await db.collection('familias').doc(familiaId).get();
         if (familiaDoc.exists) {
           configFamilia = familiaDoc.data().config || {};
         }
         
         // Verificar si mostrar el botón
         if (configFamilia.mostrarNormasExternos) {
-          // Cargar normas del bien
-          const normasSnap = await db.collection('bienes').doc(bienActual.bien.id)
-            .collection('normasExternos')
-            .orderBy('orden', 'asc')
-            .get();
+          // Leer plantilla de normas para caseros desde la familia
+          const plantillaDoc = await db.collection('familias').doc(familiaId)
+            .collection('plantillasNormasExternos').doc('casero').get();
           
-          normasData = normasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          if (plantillaDoc.exists && plantillaDoc.data().elementos) {
+            normasData = plantillaDoc.data().elementos.filter(el => el.texto && el.texto.trim());
+          } else {
+            normasData = [];
+          }
           
           // Mostrar botón si hay normas
           if (normasData.length > 0) {
@@ -4633,7 +4768,7 @@
       
       // Actualizar título
       document.getElementById('modal-normas-titulo').textContent = 
-        `📋 Normas y procedimientos del ${bienActual.bien.nombre}`;
+        `📋 Normas y procedimientos — ${bienActual.bien.nombre}`;
       
       // Renderizar contenido
       renderNormasModal();
@@ -4649,7 +4784,7 @@
     function renderNormasModal() {
       const container = document.getElementById('modal-normas-body');
       
-      if (normasData.length === 0) {
+      if (!normasData || normasData.length === 0) {
         container.innerHTML = `
           <div class="normas-empty">
             <div class="normas-empty-icon">📋</div>
@@ -4659,46 +4794,65 @@
         return;
       }
       
-      container.innerHTML = normasData.map((cap, capIdx) => {
-        const preceptosDirectos = cap.preceptos || [];
-        const apartados = cap.apartados || [];
+      // Iconos por tipo
+      const tipoIconos = {
+        capitulo: '📖', apartado: '📄', linea: '✏️', sublinea: '➡️', detalle: '📌'
+      };
+      
+      // Niveles de indentación
+      const tipoNiveles = {
+        capitulo: 0, apartado: 1, linea: 2, sublinea: 3, detalle: 4
+      };
+      
+      // Contadores para numeración jerárquica
+      let contadores = [0, 0, 0, 0, 0]; // cap, apartado, linea, sublinea, detalle
+      
+      let html = '';
+      
+      normasData.forEach(el => {
+        const tipo = el.tipo || 'linea';
+        const nivel = tipoNiveles[tipo] ?? 2;
+        const icono = tipoIconos[tipo] || '✏️';
         
-        let html = `
-          <div class="norma-capitulo">
-            <div class="norma-capitulo-titulo">
-              <span class="norma-capitulo-num">${capIdx + 1}</span>
-              <span>${cap.titulo || 'Sin título'}</span>
-            </div>
-        `;
+        // Incrementar contador del nivel actual y resetear niveles inferiores
+        contadores[nivel]++;
+        for (let i = nivel + 1; i < contadores.length; i++) contadores[i] = 0;
         
-        // Preceptos directos del capítulo
-        if (preceptosDirectos.length > 0) {
-          html += preceptosDirectos.map((prec, precIdx) => `
-            <div class="norma-precepto">
-              <span class="norma-precepto-num">${capIdx + 1}.${precIdx + 1}</span>
-              <span>${typeof prec === 'string' ? prec : prec.texto}</span>
-            </div>
-          `).join('');
+        // Generar numeración
+        let numeracion = '';
+        for (let i = 0; i <= nivel; i++) {
+          if (contadores[i] > 0) {
+            numeracion += (numeracion ? '.' : '') + contadores[i];
+          }
         }
         
-        // Apartados
-        if (apartados.length > 0) {
-          html += apartados.map((ap, apIdx) => `
+        if (tipo === 'capitulo') {
+          html += `
+            <div class="norma-capitulo">
+              <div class="norma-capitulo-titulo">
+                <span class="norma-capitulo-num">${numeracion}</span>
+                <span>${el.texto}</span>
+              </div>
+            </div>
+          `;
+        } else if (tipo === 'apartado') {
+          html += `
             <div class="norma-apartado">
-              <div class="norma-apartado-titulo">${capIdx + 1}.${apIdx + 1} ${ap.titulo}</div>
-              ${(ap.preceptos || []).map((prec, precIdx) => `
-                <div class="norma-precepto">
-                  <span class="norma-precepto-num">${capIdx + 1}.${apIdx + 1}.${precIdx + 1}</span>
-                  <span>${typeof prec === 'string' ? prec : prec.texto}</span>
-                </div>
-              `).join('')}
+              <div class="norma-apartado-titulo">${numeracion} ${el.texto}</div>
             </div>
-          `).join('');
+          `;
+        } else {
+          const indent = nivel > 2 ? `padding-left: ${(nivel - 2) * 16 + 8}px;` : '';
+          html += `
+            <div class="norma-precepto" style="${indent}">
+              <span class="norma-precepto-num">${numeracion}</span>
+              <span>${el.texto}</span>
+            </div>
+          `;
         }
-        
-        html += '</div>';
-        return html;
-      }).join('');
+      });
+      
+      container.innerHTML = html;
     }
 
     // Cerrar modal al hacer clic fuera
