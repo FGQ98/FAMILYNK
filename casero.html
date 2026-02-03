@@ -817,6 +817,140 @@
       font-size: 1.1rem;
     }
 
+    /* Módulo Zonas (habitaciones) en inventario */
+    .zona-card-dep {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--cream);
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-light);
+    }
+
+    /* Preparar Semana en Planes Semanales */
+    .prep-semana-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .prep-semana-header {
+      padding: 16px 20px;
+      background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-light) 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .prep-semana-titulo {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .prep-semana-estado {
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.2);
+    }
+    .prep-semana-body { padding: 16px; }
+    .prep-seccion {
+      margin-bottom: 14px;
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .prep-seccion-header {
+      padding: 10px 14px;
+      background: var(--cream);
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .prep-seccion-header .count {
+      margin-left: auto;
+      background: var(--mayordomo);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.65rem;
+    }
+    .prep-seccion-body {
+      padding: 12px;
+      display: none;
+    }
+    .prep-seccion-body.visible { display: block; }
+    .prep-mini-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+    .prep-mini-table th {
+      background: var(--mayordomo);
+      color: white;
+      padding: 6px 8px;
+      font-weight: 600;
+      text-align: center;
+    }
+    .prep-mini-table th:first-child {
+      background: var(--cream-dark);
+      color: var(--text);
+      text-align: left;
+    }
+    .prep-mini-table td {
+      padding: 6px 8px;
+      text-align: center;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .prep-mini-table td:first-child {
+      text-align: left;
+      font-weight: 600;
+      background: var(--cream);
+    }
+    .prep-chip {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--sage-muted);
+      color: var(--sage-dark);
+      border-radius: 10px;
+      font-size: 0.65rem;
+      font-weight: 600;
+      margin: 1px;
+    }
+    .prep-chip.especial {
+      background: var(--terracotta-muted);
+      color: var(--terracotta);
+    }
+    .prep-item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      margin-bottom: 4px;
+      font-size: 0.8rem;
+    }
+    .prep-item-row .prio-urgente { color: var(--error); }
+    .prep-item-row .prio-alta { color: var(--warning); }
+    .prep-empty { 
+      text-align: center; 
+      padding: 16px; 
+      color: var(--text-muted); 
+      font-size: 0.85rem; 
+    }
+
     /* Tareas del plan semanal */
     .tarea-plan {
       flex-direction: column;
@@ -1554,7 +1688,10 @@
       </div>
 
       <div class="casero-tab-content" id="tab-planesSem">
-        <div class="tab-section-title">📋 Programas de Mantenimiento y Limpieza</div>
+        <div class="tab-section-title">📋 Planes Semanales</div>
+        
+        <!-- Preparar Semana (de solicitudes aprobadas o creada por admin) -->
+        <div id="prep-semana-container"></div>
         
         <!-- Dos columnas: Mantenimiento | Limpieza -->
         <div class="programas-grid">
@@ -1801,7 +1938,8 @@
       // Nuevos para integración con preparar-semana
       preparacionSemanal: null,
       zonasLimpieza: [],
-      planSemanal: []
+      planSemanal: [],
+      habitaciones: []   // Zonas/dependencias del bien (módulo Zonas en Inventario)
     };
 
     let pedidoActual = null;
@@ -2474,6 +2612,45 @@
           }
         }
       }
+
+      // Zonas / Habitaciones del bien (módulo Zonas en tab Inventario)
+      if (permisosActuales.zonas?.ver || permisosActuales.inventario?.ver) {
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
+          datosModulos.habitaciones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('Habitaciones/Zonas cargadas:', datosModulos.habitaciones.length);
+        } catch (e) {
+          console.log('Error cargando habitaciones:', e);
+          datosModulos.habitaciones = [];
+        }
+      }
+
+      // Preparación Semanal (semana actual) para tab Planes Semanales
+      if (permisosActuales.preparacionSemanal?.ver || permisosActuales.planesSem?.ver) {
+        try {
+          const hoy = new Date();
+          const diaHoy = hoy.getDay();
+          const lunes = new Date(hoy);
+          const diff = diaHoy === 0 ? -6 : 1 - diaHoy;
+          lunes.setDate(hoy.getDate() + diff);
+          const numSemana = getNumeroSemana(lunes);
+          const semanaKey = `${lunes.getFullYear()}-W${String(numSemana).padStart(2, '0')}`;
+          
+          const prepDoc = await db.collection('bienes').doc(bienId)
+            .collection('preparacionSemanal').doc(semanaKey).get();
+          
+          if (prepDoc.exists) {
+            datosModulos.preparacionSemanal = { id: prepDoc.id, ...prepDoc.data() };
+            console.log('Preparación semanal cargada:', semanaKey, 'estado:', datosModulos.preparacionSemanal.estado);
+          } else {
+            datosModulos.preparacionSemanal = null;
+            console.log('Sin preparación para semana:', semanaKey);
+          }
+        } catch (e) {
+          console.log('Error cargando preparación semanal:', e);
+          datosModulos.preparacionSemanal = null;
+        }
+      }
     }
 
     function renderModulos() {
@@ -2491,8 +2668,11 @@
       document.getElementById('grid-reservas').innerHTML = htmlReservas || '<div class="modulo-card-empty">Sin módulos disponibles</div>';
       console.log('grid-reservas tiene contenido:', !!htmlReservas);
 
-      // TAB INVENTARIO: tomaInventario, reparaciones, herramientas
+      // TAB INVENTARIO: tomaInventario, reparaciones, herramientas, zonas
       let htmlInventario = '';
+      if (permisosActuales.zonas?.ver || permisosActuales.inventario?.ver) {
+        htmlInventario += renderModuloZonas();
+      }
       if (permisosActuales.tomaInventario?.ver || permisosActuales.inventario?.ver) {
         htmlInventario += renderModuloInventario();
       }
@@ -2505,8 +2685,8 @@
       document.getElementById('grid-inventario').innerHTML = htmlInventario || '<div class="modulo-card-empty">Sin módulos de inventario asignados</div>';
       console.log('grid-inventario tiene contenido:', !!htmlInventario);
 
-      // TAB PLANES SEMANALES: Programas integrados con vistas Semana/Mes
-      // Inicializar los programas con datos
+      // TAB PLANES SEMANALES: Preparar Semana + Programas integrados
+      renderPrepSemana();
       inicializarProgramas();
 
       // TAB GASTOS: registro
@@ -3588,6 +3768,236 @@
           <div class="modulo-card-body">${itemsHtml}</div>
         </div>
       `;
+    }
+
+    // ========== ZONAS / HABITACIONES (tab Inventario) ==========
+    function renderModuloZonas() {
+      const habitaciones = datosModulos.habitaciones || [];
+      const total = habitaciones.length;
+      const TIPO_ICONS = {
+        dormitorio: '🛏️', aseo: '🚿', salas: '🛋️', funcional: '🔧', 
+        cocina: '🍳', salon: '🛋️', comedor: '🍽️', almacen: '📦',
+        servicio: '🚿', vestuario: '👔', camara: '❄️', taller: '🔧',
+        instalacion: '⚡', porche: '🌿', otros: '📦', otro: '🏠'
+      };
+
+      let itemsHtml = '';
+      if (total === 0) {
+        itemsHtml = '<div class="modulo-card-empty">Sin zonas/dependencias configuradas</div>';
+      } else {
+        // Agrupar por zona/ubicación
+        const zonaMap = {};
+        habitaciones.forEach(h => {
+          const zona = h.zona || 'Sin asignar';
+          if (!zonaMap[zona]) zonaMap[zona] = [];
+          zonaMap[zona].push(h);
+        });
+
+        itemsHtml = '<div class="item-list">';
+        for (const [zonaNombre, deps] of Object.entries(zonaMap)) {
+          itemsHtml += `
+            <div class="item-row no-hover" style="flex-wrap:wrap;">
+              <span class="item-icon">🏠</span>
+              <div class="item-content">
+                <div class="item-title">${zonaNombre}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+                  ${deps.map(d => `<span class="zona-card-dep">${TIPO_ICONS[d.tipo] || '📦'} ${d.nombre || d.numero || d.tipo}</span>`).join('')}
+                </div>
+              </div>
+              <span style="font-size:0.7rem;color:var(--text-muted);font-weight:600;">${deps.length}</span>
+            </div>`;
+        }
+        itemsHtml += '</div>';
+      }
+
+      return `
+        <div class="modulo-card">
+          <div class="modulo-card-header">
+            <div class="modulo-card-title">🏠 Zonas y Dependencias <span class="count-badge">${total}</span></div>
+            <div class="modulo-card-permisos">${renderPermisosBadges('zonas')}</div>
+          </div>
+          <div class="modulo-card-body">${itemsHtml}</div>
+        </div>
+      `;
+    }
+
+    // ========== PREPARAR SEMANA (tab Planes Semanales) ==========
+    const DIAS_NOMBRES_PREP = {
+      lun: 'Lun', mar: 'Mar', mie: 'Mié', jue: 'Jue',
+      vie: 'Vie', sab: 'Sáb', dom: 'Dom'
+    };
+    const DIAS_ORDEN_PREP = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
+
+    function renderPrepSemana() {
+      const container = document.getElementById('prep-semana-container');
+      if (!container) return;
+
+      const prep = datosModulos.preparacionSemanal;
+      if (!prep) {
+        container.innerHTML = `
+          <div class="prep-semana-card">
+            <div class="prep-semana-header">
+              <div class="prep-semana-titulo">📋 Preparación de la semana</div>
+            </div>
+            <div class="prep-empty">Sin preparación asignada para esta semana</div>
+          </div>`;
+        return;
+      }
+
+      const diasActivos = prep.diasIncluidos && prep.diasIncluidos.length > 0
+        ? DIAS_ORDEN_PREP.filter(d => prep.diasIncluidos.includes(d))
+        : ['vie', 'sab', 'dom'];
+      
+      const estadoLabel = prep.estado === 'enviado' ? '📤 Enviado' 
+        : prep.estado === 'borrador' ? '📝 Borrador' : prep.estado || 'Pendiente';
+
+      // --- Secciones ---
+      let seccionesHtml = '';
+
+      // 1. Zonas
+      const zonasCount = (prep.zonas || []).length;
+      if (zonasCount > 0) {
+        const zonasHtml = prep.zonas.map(z => {
+          const desglose = prep.zonasDesglose?.[z] || [];
+          return `<div class="prep-item-row">🏠 ${z} ${desglose.length > 0 ? `<span style="color:var(--text-muted);font-size:0.7rem;">(${desglose.length} deps)</span>` : ''}</div>`;
+        }).join('');
+        seccionesHtml += buildPrepSeccion('🏠', 'Zonas', zonasCount, zonasHtml);
+      }
+
+      // 2. Personas
+      if (prep.personas) {
+        const headers = diasActivos.map(d => `<th>${DIAS_NOMBRES_PREP[d]}</th>`).join('');
+        const filas = [
+          { campo: 'familiares', icon: '👨‍👩‍👧‍👦', label: 'Familiares' },
+          { campo: 'desayuno', icon: '🍳', label: 'Desayunan' },
+          { campo: 'comida', icon: '🍽️', label: 'Comen' },
+          { campo: 'cena', icon: '🌙', label: 'Cenan' },
+          { campo: 'duermen', icon: '🛏️', label: 'Duermen' }
+        ];
+        const tieneData = filas.some(f => diasActivos.some(d => (prep.personas[f.campo]?.[d] || 0) > 0));
+        if (tieneData) {
+          const tbody = filas.map(f => `
+            <tr>
+              <td>${f.icon} ${f.label}</td>
+              ${diasActivos.map(d => `<td>${prep.personas[f.campo]?.[d] || 0}</td>`).join('')}
+            </tr>
+          `).join('');
+          seccionesHtml += buildPrepSeccion('👥', 'Personas', '', `
+            <table class="prep-mini-table"><thead><tr><th></th>${headers}</tr></thead><tbody>${tbody}</tbody></table>
+          `);
+        }
+      }
+
+      // 3. Menús
+      if (prep.menus && Object.keys(prep.menus).length > 0) {
+        const headers = diasActivos.map(d => `<th>${DIAS_NOMBRES_PREP[d]}</th>`).join('');
+        const pases = ['desayuno', 'aperitivo', 'comida', 'cena'];
+        const paseIcons = { desayuno: '🍳', aperitivo: '🥂', comida: '🍽️', cena: '🌙' };
+        const tbody = pases.map(p => {
+          const celdas = diasActivos.map(d => {
+            const m = prep.menus[`${p}-${d}`];
+            if (!m) return '<td>—</td>';
+            return m.especial 
+              ? `<td><span class="prep-chip especial">${m.descripcion || 'Especial'}</span></td>`
+              : '<td><span class="prep-chip">Previsto</span></td>';
+          }).join('');
+          return `<tr><td>${paseIcons[p]} ${p.charAt(0).toUpperCase() + p.slice(1)}</td>${celdas}</tr>`;
+        }).join('');
+        seccionesHtml += buildPrepSeccion('🍽️', 'Menús', '', `
+          <table class="prep-mini-table"><thead><tr><th></th>${headers}</tr></thead><tbody>${tbody}</tbody></table>
+        `);
+      }
+
+      // 4. Servicio
+      if (prep.servicio && Object.keys(prep.servicio).length > 0) {
+        const headers = diasActivos.map(d => `<th>${DIAS_NOMBRES_PREP[d]}</th>`).join('');
+        const pases = ['desayuno', 'aperitivo', 'comida', 'cena'];
+        const paseIcons = { desayuno: '🍳', aperitivo: '🥂', comida: '🍽️', cena: '🌙' };
+        const tbody = pases.map(p => {
+          const celdas = diasActivos.map(d => {
+            const roles = prep.servicio[`${p}-${d}`] || [];
+            return roles.length > 0
+              ? `<td>${roles.map(r => `<span class="prep-chip">${r}</span>`).join('')}</td>`
+              : '<td>—</td>';
+          }).join('');
+          return `<tr><td>${paseIcons[p]} ${p.charAt(0).toUpperCase() + p.slice(1)}</td>${celdas}</tr>`;
+        }).join('');
+        seccionesHtml += buildPrepSeccion('👨‍🍳', 'Servicio', '', `
+          <table class="prep-mini-table"><thead><tr><th></th>${headers}</tr></thead><tbody>${tbody}</tbody></table>
+        `);
+      }
+
+      // 5. Menaje
+      const menajeTotal = (prep.menaje?.length || 0) + (prep.menajeAjuar?.length || 0);
+      if (menajeTotal > 0 || prep.menajeEspecial) {
+        let menajeHtml = '';
+        if (prep.menajeEspecial) {
+          menajeHtml += '<div class="prep-item-row"><span class="prep-chip especial">Menaje especial</span></div>';
+        }
+        (prep.menaje || []).forEach(m => {
+          menajeHtml += `<div class="prep-item-row">🍷 ${m.articulo} ${m.cantidad > 1 ? `<span style="color:var(--text-muted);">x${m.cantidad}</span>` : ''}</div>`;
+        });
+        seccionesHtml += buildPrepSeccion('🍷', 'Menaje', menajeTotal, menajeHtml);
+      }
+
+      // 6. Producto
+      const prodAportados = prep.productosAportados || [];
+      const prodSolicitados = prep.productosSolicitados || [];
+      const prodTotal = prodAportados.length + prodSolicitados.length;
+      if (prodTotal > 0) {
+        let prodHtml = '';
+        prodAportados.forEach(p => {
+          prodHtml += `<div class="prep-item-row">🏠 ${p.descripcion} ${p.cantidad ? `<span style="color:var(--text-muted);">${p.cantidad}</span>` : ''}</div>`;
+        });
+        prodSolicitados.forEach(p => {
+          prodHtml += `<div class="prep-item-row">🛒 ${p.descripcion} ${p.cantidad ? `<span style="color:var(--text-muted);">${p.cantidad}</span>` : ''}</div>`;
+        });
+        seccionesHtml += buildPrepSeccion('📦', 'Producto', prodTotal, prodHtml);
+      }
+
+      // 7. Tareas
+      const tareas = prep.tareas || [];
+      if (tareas.length > 0) {
+        const tareasHtml = tareas.map(t => {
+          const prioClass = t.prioridad === 'urgente' ? 'prio-urgente' : t.prioridad === 'alta' ? 'prio-alta' : '';
+          const prioIcon = t.prioridad === 'urgente' ? '🔴 ' : t.prioridad === 'alta' ? '⚠️ ' : '';
+          return `<div class="prep-item-row ${prioClass}">${prioIcon}✅ ${t.titulo}${t.notas ? ` <span style="color:var(--text-muted);font-size:0.7rem;">(${t.notas})</span>` : ''}</div>`;
+        }).join('');
+        seccionesHtml += buildPrepSeccion('✅', 'Tareas', tareas.length, tareasHtml);
+      }
+
+      // 8. Notas
+      if (prep.notas && prep.notas.trim()) {
+        seccionesHtml += buildPrepSeccion('📝', 'Notas', '', `<div style="padding:8px;font-size:0.85rem;color:var(--text-light);">${prep.notas}</div>`);
+      }
+
+      container.innerHTML = `
+        <div class="prep-semana-card">
+          <div class="prep-semana-header">
+            <div class="prep-semana-titulo">📋 Preparación de la semana</div>
+            <span class="prep-semana-estado">${estadoLabel}</span>
+          </div>
+          <div class="prep-semana-body">
+            ${seccionesHtml || '<div class="prep-empty">Preparación sin contenido detallado</div>'}
+          </div>
+        </div>`;
+    }
+
+    function buildPrepSeccion(icon, titulo, count, bodyHtml) {
+      const countHtml = count ? `<span class="count">${count}</span>` : '';
+      const secId = 'prep-sec-' + titulo.toLowerCase().replace(/\s/g, '');
+      return `
+        <div class="prep-seccion">
+          <div class="prep-seccion-header" onclick="togglePrepSeccion('${secId}')">
+            ${icon} ${titulo} ${countHtml}
+          </div>
+          <div class="prep-seccion-body" id="${secId}">${bodyHtml}</div>
+        </div>`;
+    }
+
+    function togglePrepSeccion(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('visible');
     }
 
     // ========== MODALES ==========
