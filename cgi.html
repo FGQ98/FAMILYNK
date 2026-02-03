@@ -6777,6 +6777,96 @@
             fechaCreacion: fechaActual
           };
           await db.collection('eventos').add(eventoData);
+          
+          // 5. Si la solicitud tiene datos de preparación, generar borrador(es) en preparacionSemanal
+          if (solData.preparacion && solData.bienId && solData.diasSolicitud && solData.diasSolicitud.length > 0) {
+            try {
+              const DIAS_ABREV = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+              
+              // Helper: número de semana ISO
+              function _getNumeroSemana(fecha) {
+                const inicio = new Date(fecha.getFullYear(), 0, 1);
+                const dias = Math.floor((fecha - inicio) / (24 * 60 * 60 * 1000));
+                return Math.ceil((fecha.getDay() + 1 + dias) / 7);
+              }
+              
+              // Agrupar fechas por semana ISO
+              const semanas = {};
+              solData.diasSolicitud.forEach(dateStr => {
+                const d = new Date(dateStr + 'T12:00:00');
+                const semKey = `${d.getFullYear()}-W${String(_getNumeroSemana(d)).padStart(2, '0')}`;
+                if (!semanas[semKey]) semanas[semKey] = [];
+                semanas[semKey].push({ dateStr, diaAbrev: DIAS_ABREV[d.getDay()] });
+              });
+              
+              const prep = solData.preparacion;
+              
+              for (const [semanaKey, diasEnSemana] of Object.entries(semanas)) {
+                // Construir personas con claves de día de semana
+                const personasBorrador = {};
+                const campos = ['familiares', 'desayuno', 'comida', 'cena', 'duermen'];
+                campos.forEach(campo => {
+                  personasBorrador[campo] = {};
+                  diasEnSemana.forEach(dia => {
+                    personasBorrador[campo][dia.diaAbrev] = 
+                      (prep.personas?.[dia.dateStr]?.[campo]) || 0;
+                  });
+                });
+                
+                // Construir menús con claves pase-diaAbrev
+                const menusBorrador = {};
+                ['desayuno', 'aperitivo', 'comida', 'cena'].forEach(pase => {
+                  diasEnSemana.forEach(dia => {
+                    const origKey = `${pase}-${dia.dateStr}`;
+                    const newKey = `${pase}-${dia.diaAbrev}`;
+                    if (prep.menus?.[origKey]) {
+                      menusBorrador[newKey] = prep.menus[origKey];
+                    }
+                  });
+                });
+                
+                // Construir servicio con claves pase-diaAbrev
+                const servicioBorrador = {};
+                ['desayuno', 'aperitivo', 'comida', 'cena'].forEach(pase => {
+                  diasEnSemana.forEach(dia => {
+                    const origKey = `${pase}-${dia.dateStr}`;
+                    const newKey = `${pase}-${dia.diaAbrev}`;
+                    if (prep.servicio?.[origKey]) {
+                      servicioBorrador[newKey] = prep.servicio[origKey];
+                    }
+                  });
+                });
+                
+                // Guardar borrador
+                await db.collection('bienes').doc(solData.bienId)
+                  .collection('preparacionSemanal').doc(semanaKey).set({
+                    zonas: prep.zonas || [],
+                    zonasDesglose: prep.zonasDesglose || {},
+                    personas: personasBorrador,
+                    menus: menusBorrador,
+                    servicio: servicioBorrador,
+                    menajeEspecial: prep.menajeEspecial || false,
+                    menajeAjuar: prep.menajeAjuar || [],
+                    menaje: prep.menaje || [],
+                    productosAportados: prep.productosAportados || [],
+                    productosSolicitados: prep.productosSolicitados || [],
+                    tareas: prep.tareas || [],
+                    notas: prep.notas || '',
+                    estado: 'borrador',
+                    diasIncluidos: diasEnSemana.map(d => d.diaAbrev),
+                    fechasOriginales: diasEnSemana.map(d => d.dateStr),
+                    origenSolicitud: solicitudId,
+                    creadoPor: currentUser.uid,
+                    fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+                  }, { merge: true });
+                
+                console.log('📋 Borrador generado:', semanaKey, 'días:', diasEnSemana.map(d => d.diaAbrev).join(','));
+              }
+            } catch (borradorError) {
+              console.warn('⚠️ Error generando borradores de preparación:', borradorError);
+              // No interrumpir el flujo principal — la aprobación ya se hizo
+            }
+          }
         }
         
         cerrarModalRespuesta();
@@ -8073,12 +8163,8 @@
       // Cerrar modal de selección
       document.getElementById('modal-solicitar').classList.remove('active');
       
-      // Abrir modal correspondiente
-      if (tipo === 'evento') {
-        abrirModalSolicitarEvento();
-      } else if (tipo === 'reserva') {
-        abrirModalSolicitarReserva();
-      }
+      // Redirigir a formulario completo de solicitud con preparación
+      window.location.href = `solicitud-preparacion.html?tipo=${tipo}`;
     }
 
     // ============ MODAL CONFIRMACIÓN FINDE ============
