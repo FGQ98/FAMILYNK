@@ -581,27 +581,39 @@
             </div>
             <div class="form-group">
               <label class="form-label">Tarea *</label>
-              <select class="form-select" id="inst-tarea" required>
+              <select class="form-select" id="inst-tarea" required onchange="actualizarUnidadObra()">
                 <option value="">Seleccionar tarea</option>
               </select>
             </div>
           </div>
 
-          <!-- Duración, Frecuencia, Mes -->
-          <div class="form-row-3">
-            <div class="form-group">
-              <label class="form-label">Duración</label>
-              <select class="form-select" id="inst-duracion">
-                <option value="15">15 min</option>
-                <option value="30" selected>30 min</option>
-                <option value="45">45 min</option>
-                <option value="60">1 hora</option>
-                <option value="90">1h 30min</option>
-                <option value="120">2 horas</option>
-                <option value="180">3 horas</option>
-                <option value="240">4 horas</option>
-              </select>
+          <!-- Calculadora de duración por unidad de obra -->
+          <div class="calc-box" id="calc-container" style="display:none; background:var(--mto-muted); border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:16px;">
+            <div style="font-size:0.8rem;font-weight:600;color:var(--mto);margin-bottom:8px;">⏱️ Cálculo de duración</div>
+            <div class="form-row-3">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.75rem">Unidad</label>
+                <input type="text" class="form-select" id="inst-unidad" readonly style="background:#fff;font-weight:600;font-size:0.85rem">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.75rem">Cantidad</label>
+                <input type="text" class="form-select" id="inst-cantidad" readonly style="background:#fff;font-weight:600;text-align:center;font-size:0.85rem">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.75rem">Coeficiente (min/ud)</label>
+                <input type="number" class="form-select" id="inst-coeficiente" placeholder="2" step="0.5" min="0.5" style="font-weight:600;font-size:0.85rem" oninput="calcularDuracion()">
+              </div>
             </div>
+            <div id="calc-resultado" style="text-align:right;font-size:0.95rem;color:var(--mto);font-weight:700;margin-top:6px;">
+              = <span id="inst-duracion-display">—</span> min
+            </div>
+            <input type="hidden" id="inst-duracion" value="">
+            <input type="hidden" id="inst-unidad-valor" value="">
+            <input type="hidden" id="inst-cantidad-valor" value="">
+          </div>
+
+          <!-- Frecuencia y Mes -->
+          <div class="form-row">
             <div class="form-group">
               <label class="form-label">Frecuencia *</label>
               <select class="form-select" id="inst-frecuencia" required>
@@ -738,6 +750,22 @@
       { id: 'madera',       nombre: 'Tratar madera (puertas/muebles)', icon: '🪵' },
       { id: 'ventilacion',  nombre: 'Comprobar ventilación',        icon: '💨' }
     ];
+
+    // Unidad de obra fija por tarea de mantenimiento
+    const UNIDAD_POR_TAREA = {
+      enchufes: 'unidad', bisagras: 'unidad', filtros: 'unidad',
+      electrica: 'unidad', climatizacion: 'unidad', madera: 'unidad', ventilacion: 'unidad',
+      grifos: 'sanitarios', descalcificar: 'sanitarios', fontaneria: 'sanitarios',
+      humedades: 'm2', pintura: 'm2',
+      persianas: 'ventanas', sellados: 'ventanas'
+    };
+    const UNIDAD_LABELS = {
+      m2: { nombre: 'M²', icon: '📐' },
+      plazas: { nombre: 'Plazas', icon: '👥' },
+      sanitarios: { nombre: 'Sanitarios', icon: '🚿' },
+      ventanas: { nombre: 'Ventanas', icon: '🪟' },
+      unidad: { nombre: 'Unidad', icon: '🔢' }
+    };
 
     const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const diasSemanaFull = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -912,6 +940,53 @@
     }
 
     // =============================================
+    // CALCULADORA DE UNIDAD DE OBRA
+    // =============================================
+    function actualizarUnidadObra() {
+      const tareaId = document.getElementById('inst-tarea').value;
+      const habId = document.getElementById('inst-zona').value;
+      const container = document.getElementById('calc-container');
+
+      if (!tareaId || !habId) {
+        container.style.display = 'none';
+        return;
+      }
+
+      const hab = habitacionesData.find(h => h.id === habId);
+      if (!hab) { container.style.display = 'none'; return; }
+
+      const unidad = UNIDAD_POR_TAREA[tareaId] || 'unidad';
+      const label = UNIDAD_LABELS[unidad] || UNIDAD_LABELS.unidad;
+
+      let cantidad = 1;
+      switch (unidad) {
+        case 'm2':         cantidad = parseFloat(hab.tamano) || 0; break;
+        case 'plazas':     cantidad = parseInt(hab.plazas) || 0; break;
+        case 'sanitarios': cantidad = parseInt(hab.sanitarios) || ((parseInt(hab.lavabos)||0) + (parseInt(hab.inodoros)||0) + (parseInt(hab.duchas)||0)); break;
+        case 'ventanas':   cantidad = parseFloat(hab.ventanas) ?? 1.5; break;
+        case 'unidad':     cantidad = 1; break;
+      }
+      if (unidad === 'ventanas' && (hab.ventanas == null)) cantidad = 1.5;
+
+      document.getElementById('inst-unidad').value = `${label.icon} ${label.nombre}`;
+      document.getElementById('inst-cantidad').value = cantidad;
+      document.getElementById('inst-unidad-valor').value = unidad;
+      document.getElementById('inst-cantidad-valor').value = cantidad;
+
+      container.style.display = 'block';
+      calcularDuracion();
+    }
+
+    function calcularDuracion() {
+      const cantidad = parseFloat(document.getElementById('inst-cantidad-valor').value) || 0;
+      const coef = parseFloat(document.getElementById('inst-coeficiente').value) || 0;
+      const duracion = Math.round(cantidad * coef);
+
+      document.getElementById('inst-duracion-display').textContent = duracion > 0 ? duracion : '—';
+      document.getElementById('inst-duracion').value = duracion > 0 ? duracion : '';
+    }
+
+    // =============================================
     // TABS
     // =============================================
     function cambiarTab(tab) {
@@ -962,7 +1037,10 @@
               <span class="badge badge-frecuencia">${frecuenciaNombres[inst.frecuencia] || inst.frecuencia}</span>
               ${cuandoUse}
             </td>
-            <td>${inst.duracion || 30} min</td>
+            <td>
+              <div style="font-weight:600;">${inst.duracion || '—'} min</div>
+              ${inst.unidadObra ? `<div style="font-size:0.7rem;color:var(--text-muted);">${(UNIDAD_LABELS[inst.unidadObra]||{}).icon||''} ${inst.cantidad||''}×${inst.coeficiente||''}</div>` : ''}
+            </td>
             <td>${mesesNombre[inst.mesInicio] || '-'}</td>
             <td><span class="badge badge-semana">${semanasStr || '-'}</span></td>
             <td style="font-size:0.8rem;color:var(--text-muted);">${restricciones}</td>
@@ -1136,6 +1214,12 @@
       document.getElementById('btn-eliminar').style.display = 'none';
       document.getElementById('inst-tarea').innerHTML = '<option value="">Seleccionar tarea</option>';
 
+      // Reset calculadora
+      document.getElementById('calc-container').style.display = 'none';
+      document.getElementById('inst-coeficiente').value = '';
+      document.getElementById('inst-duracion').value = '';
+      document.getElementById('inst-duracion-display').textContent = '—';
+
       semanasSeleccionadas = [];
       document.querySelectorAll('.semana-option').forEach(el => el.classList.remove('selected'));
 
@@ -1163,6 +1247,20 @@
       document.getElementById('inst-frecuencia').value = instruccionEditando.frecuencia || 'mensual';
       document.getElementById('inst-mes').value = instruccionEditando.mesInicio || 1;
       document.getElementById('inst-nota').value = instruccionEditando.nota || '';
+
+      // Cargar datos de unidad de obra
+      setTimeout(() => {
+        actualizarUnidadObra();
+        if (instruccionEditando.coeficiente) {
+          document.getElementById('inst-coeficiente').value = instruccionEditando.coeficiente;
+          calcularDuracion();
+        } else if (instruccionEditando.duracion) {
+          const cantidad = parseFloat(document.getElementById('inst-cantidad-valor').value) || 1;
+          const coef = cantidad > 0 ? Math.round((instruccionEditando.duracion / cantidad) * 10) / 10 : instruccionEditando.duracion;
+          document.getElementById('inst-coeficiente').value = coef;
+          calcularDuracion();
+        }
+      }, 100);
       document.getElementById('inst-cuando-use').checked = instruccionEditando.cuandoSeUse || false;
 
       semanasSeleccionadas = [...(instruccionEditando.semanas || [])];
@@ -1230,7 +1328,10 @@
         tareaId: tareaId,
         tareaNombre: tarea.nombre,
         tareaIcon: tarea.icon,
-        duracion: parseInt(document.getElementById('inst-duracion').value) || 30,
+        unidadObra: document.getElementById('inst-unidad-valor').value || 'unidad',
+        cantidad: parseFloat(document.getElementById('inst-cantidad-valor').value) || 1,
+        coeficiente: parseFloat(document.getElementById('inst-coeficiente').value) || 0,
+        duracion: parseInt(document.getElementById('inst-duracion').value) || 0,
         frecuencia: document.getElementById('inst-frecuencia').value,
         mesInicio: parseInt(document.getElementById('inst-mes').value) || 1,
         semanas: semanasSeleccionadas.sort((a, b) => a - b),

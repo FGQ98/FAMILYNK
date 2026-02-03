@@ -511,6 +511,10 @@
           <div class="stat-label">Zonas</div>
         </div>
         <div class="stat-card">
+          <div class="stat-value" id="stat-m2">—</div>
+          <div class="stat-label">M² total</div>
+        </div>
+        <div class="stat-card">
           <div class="stat-value" id="stat-dormitorios">0</div>
           <div class="stat-label">Dormitorios</div>
         </div>
@@ -525,6 +529,14 @@
         <div class="stat-card">
           <div class="stat-value" id="stat-aseos">0</div>
           <div class="stat-label">Aseos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-sanitarios">0</div>
+          <div class="stat-label">Sanitarios</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-ventanas">0</div>
+          <div class="stat-label">Ventanas</div>
         </div>
       </div>
 
@@ -585,17 +597,21 @@
           <input type="text" class="form-input" id="hab-nombre" placeholder="Ej: Dormitorio principal, Cocina...">
         </div>
 
-        <div class="form-row">
+        <div class="form-row-3">
           <div class="form-group">
             <label class="form-label">Zona / Planta</label>
             <select class="form-select" id="hab-zona" onchange="cambiarZona()">
-              <option value="">Seleccionar o escribir...</option>
+              <option value="">Seleccionar...</option>
               <option value="__nueva__">+ Añadir nueva zona...</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Tamaño (m²)</label>
+            <label class="form-label">📐 Tamaño (m²)</label>
             <input type="number" class="form-input" id="hab-tamano" placeholder="25">
+          </div>
+          <div class="form-group">
+            <label class="form-label">🪟 Ventanas</label>
+            <input type="number" class="form-input" id="hab-ventanas" placeholder="1.5" step="0.5" min="0">
           </div>
         </div>
 
@@ -636,6 +652,25 @@
                 🚻 Compartido
               </label>
             </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Piezas sanitarias</label>
+            <div class="form-row-3">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.8rem;font-weight:400">🚰 Lavabos</label>
+                <input type="number" class="form-input-mini" id="hab-lavabos" value="1" min="0" max="6">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.8rem;font-weight:400">🚽 Inodoros</label>
+                <input type="number" class="form-input-mini" id="hab-inodoros" value="1" min="0" max="4">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label" style="font-size:0.8rem;font-weight:400">🛁 Duchas/Bañ</label>
+                <input type="number" class="form-input-mini" id="hab-duchas" value="1" min="0" max="4">
+              </div>
+            </div>
+            <div id="total-sanitarios" style="text-align:right;font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Total: 3 piezas</div>
           </div>
         </div>
 
@@ -765,17 +800,20 @@
           if (h.plegables) camas.push(`➕${h.plegables}`);
           infoExtra = `👥${h.plazas || 0} · ${camas.join(' ') || '—'}`;
         } else if (h.tipo === 'aseo') {
-          infoExtra = h.aseo === 'compartido' ? '🚻 Compartido' : '🚿 Propio';
+          const sanitarios = h.sanitarios || ((h.lavabos||0)+(h.inodoros||0)+(h.duchas||0));
+          infoExtra = `${h.aseo === 'compartido' ? '🚻 Comp.' : '🚿 Propio'} · 🧩${sanitarios} pzas`;
         } else {
           infoExtra = '—';
         }
+        // Ventanas (mostrar si tiene valor, si no default)
+        const ventanasStr = h.ventanas != null ? `🪟${h.ventanas}` : '<span style="opacity:0.4">🪟1.5</span>';
 
         return `
           <div class="tabla-row" data-numero="${h.numero || ''}" data-nombre="${h.nombre || ''}">
             <span class="tabla-num">${h.numero || '—'}</span>
             <span class="tabla-nombre">
               ${h.nombre || 'Zona'}
-              <small>${tipoLabels[h.tipo] || h.tipo || ''} ${h.tamano ? `· ${h.tamano}m²` : ''}</small>
+              <small>${tipoLabels[h.tipo] || h.tipo || ''} ${h.tamano ? `· ${h.tamano}m²` : ''} · ${ventanasStr}</small>
             </span>
             <span class="tabla-cell" data-label="Ubicación">${h.zona || '—'}</span>
             <span class="tabla-cell" data-label="Info">${infoExtra}</span>
@@ -804,6 +842,9 @@
       const aseos = habitaciones.filter(h => h.tipo === 'aseo').length;
       const plazas = dormitorios.reduce((sum, h) => sum + (parseInt(h.plazas) || 0), 0);
       const camas = dormitorios.reduce((sum, h) => sum + (parseInt(h.camas) || 0) + (parseInt(h.sofas) || 0) + (parseInt(h.plegables) || 0), 0);
+      const m2Total = habitaciones.reduce((sum, h) => sum + (parseFloat(h.tamano) || 0), 0);
+      const sanitariosTotal = habitaciones.reduce((sum, h) => sum + (parseInt(h.sanitarios) || 0), 0);
+      const ventanasTotal = habitaciones.reduce((sum, h) => sum + (parseFloat(h.ventanas) || 1.5), 0);
 
       document.getElementById('stat-dependencias').textContent = dependencias;
       document.getElementById('stat-zonas').textContent = zonasUnicas.length;
@@ -811,6 +852,9 @@
       document.getElementById('stat-plazas').textContent = plazas;
       document.getElementById('stat-camas').textContent = camas;
       document.getElementById('stat-aseos').textContent = aseos;
+      document.getElementById('stat-m2').textContent = m2Total || '—';
+      document.getElementById('stat-sanitarios').textContent = sanitariosTotal;
+      document.getElementById('stat-ventanas').textContent = ventanasTotal % 1 === 0 ? ventanasTotal : ventanasTotal.toFixed(1);
       
       // Actualizar select de zonas en modal
       actualizarSelectZonas(zonasUnicas);
@@ -859,10 +903,15 @@
       document.getElementById('hab-nombre').value = '';
       document.getElementById('hab-zona').value = '';
       document.getElementById('hab-tamano').value = '';
+      document.getElementById('hab-ventanas').value = '';
       document.getElementById('hab-plazas').value = '2';
       document.getElementById('hab-camas').value = '0';
       document.getElementById('hab-sofas').value = '0';
       document.getElementById('hab-plegables').value = '0';
+      document.getElementById('hab-lavabos').value = '1';
+      document.getElementById('hab-inodoros').value = '1';
+      document.getElementById('hab-duchas').value = '1';
+      actualizarTotalSanitarios();
       document.querySelector('input[name="hab-aseo"][value="propio"]').checked = true;
       actualizarAseoUI();
       cambiarTipo();
@@ -893,10 +942,15 @@
       selectZona.value = zonaValue;
       
       document.getElementById('hab-tamano').value = h.tamano || '';
+      document.getElementById('hab-ventanas').value = h.ventanas ?? '';
       document.getElementById('hab-plazas').value = h.plazas || 2;
       document.getElementById('hab-camas').value = h.camas || 0;
       document.getElementById('hab-sofas').value = h.sofas || 0;
       document.getElementById('hab-plegables').value = h.plegables || 0;
+      document.getElementById('hab-lavabos').value = h.lavabos ?? 1;
+      document.getElementById('hab-inodoros').value = h.inodoros ?? 1;
+      document.getElementById('hab-duchas').value = h.duchas ?? 1;
+      actualizarTotalSanitarios();
       
       const aseoValue = h.aseo || 'propio';
       document.querySelector(`input[name="hab-aseo"][value="${aseoValue}"]`).checked = true;
@@ -936,6 +990,7 @@
       }
 
       const tipo = document.getElementById('hab-tipo').value;
+      const ventanasVal = parseFloat(document.getElementById('hab-ventanas').value);
       
       const data = {
         numero: numero,
@@ -943,6 +998,7 @@
         nombre: document.getElementById('hab-nombre').value.trim(),
         zona: document.getElementById('hab-zona').value,
         tamano: parseInt(document.getElementById('hab-tamano').value) || null,
+        ventanas: isNaN(ventanasVal) ? null : ventanasVal,
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
       };
 
@@ -959,6 +1015,10 @@
         data.plegables = isNaN(plegablesVal) ? 0 : plegablesVal;
       } else if (tipo === 'aseo') {
         data.aseo = document.querySelector('input[name="hab-aseo"]:checked').value;
+        data.lavabos = parseInt(document.getElementById('hab-lavabos').value) || 0;
+        data.inodoros = parseInt(document.getElementById('hab-inodoros').value) || 0;
+        data.duchas = parseInt(document.getElementById('hab-duchas').value) || 0;
+        data.sanitarios = data.lavabos + data.inodoros + data.duchas;
       }
 
       try {
@@ -1002,6 +1062,17 @@
       }
     }
 
+    // Contador de sanitarios en tiempo real
+    function actualizarTotalSanitarios() {
+      const l = parseInt(document.getElementById('hab-lavabos').value) || 0;
+      const i = parseInt(document.getElementById('hab-inodoros').value) || 0;
+      const d = parseInt(document.getElementById('hab-duchas').value) || 0;
+      document.getElementById('total-sanitarios').textContent = `Total: ${l + i + d} piezas`;
+    }
+    ['hab-lavabos', 'hab-inodoros', 'hab-duchas'].forEach(id => {
+      document.getElementById(id).addEventListener('input', actualizarTotalSanitarios);
+    });
+
     // UI para opciones de aseo
     function actualizarAseoUI() {
       const propio = document.getElementById('aseo-propio');
@@ -1043,6 +1114,9 @@
       const aseos = habitaciones.filter(h => h.tipo === 'aseo').length;
       const plazas = dormitorios.reduce((sum, h) => sum + (parseInt(h.plazas) || 0), 0);
       const camas = dormitorios.reduce((sum, h) => sum + (parseInt(h.camas) || 0) + (parseInt(h.sofas) || 0) + (parseInt(h.plegables) || 0), 0);
+      const m2Total = habitaciones.reduce((sum, h) => sum + (parseFloat(h.tamano) || 0), 0);
+      const sanitariosTotal = habitaciones.reduce((sum, h) => sum + (parseInt(h.sanitarios) || 0), 0);
+      const ventanasTotal = habitaciones.reduce((sum, h) => sum + (parseFloat(h.ventanas) || 1.5), 0);
       
       // Agrupar por zona
       const porZona = {};
@@ -1086,10 +1160,13 @@
           <div class="stats">
             <div class="stat"><div class="stat-value">${dependencias}</div><div class="stat-label">Dependencias</div></div>
             <div class="stat"><div class="stat-value">${zonasUnicas.length}</div><div class="stat-label">Zonas</div></div>
+            <div class="stat"><div class="stat-value">${m2Total || '—'}</div><div class="stat-label">M² total</div></div>
             <div class="stat"><div class="stat-value">${dormitorios.length}</div><div class="stat-label">Dormitorios</div></div>
             <div class="stat"><div class="stat-value">${plazas}</div><div class="stat-label">Plazas</div></div>
             <div class="stat"><div class="stat-value">${camas}</div><div class="stat-label">Camas</div></div>
             <div class="stat"><div class="stat-value">${aseos}</div><div class="stat-label">Aseos</div></div>
+            <div class="stat"><div class="stat-value">${sanitariosTotal}</div><div class="stat-label">Sanitarios</div></div>
+            <div class="stat"><div class="stat-value">${ventanasTotal % 1 === 0 ? ventanasTotal : ventanasTotal.toFixed(1)}</div><div class="stat-label">Ventanas</div></div>
           </div>
       `;
       
@@ -1103,7 +1180,8 @@
               <th>Nº</th>
               <th>Nombre</th>
               <th>Tipo</th>
-              <th>Tamaño</th>
+              <th>M²</th>
+              <th>🪟</th>
               <th>Info</th>
             </tr>
         `;
@@ -1118,15 +1196,18 @@
             if (h.plegables) detalles.push(`${h.plegables} plegables`);
             info = detalles.join(', ');
           } else if (h.tipo === 'aseo') {
-            info = h.aseo === 'compartido' ? 'Compartido' : 'Propio';
+            const sanitarios = h.sanitarios || ((h.lavabos||0)+(h.inodoros||0)+(h.duchas||0));
+            info = `${h.aseo === 'compartido' ? 'Compartido' : 'Propio'} · ${sanitarios} pzas`;
           }
+          const ventanas = h.ventanas != null ? h.ventanas : '(1.5)';
           
           html += `
             <tr>
               <td>${h.numero || '—'}</td>
               <td>${h.nombre || '—'}</td>
               <td>${tipoLabels[h.tipo] || h.tipo || '—'}</td>
-              <td>${h.tamano ? h.tamano + ' m²' : '—'}</td>
+              <td>${h.tamano ? h.tamano : '—'}</td>
+              <td>${ventanas}</td>
               <td>${info || '—'}</td>
             </tr>
           `;
