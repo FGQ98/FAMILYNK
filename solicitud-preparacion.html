@@ -132,6 +132,27 @@
     .visibilidad-icon { font-size: 1.5rem; }
     .visibilidad-label { font-size: 0.75rem; font-weight: 600; }
 
+    /* ========== TIPO SELECTOR ========== */
+    .tipo-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .tipo-option {
+      display: flex; align-items: center; gap: 14px;
+      padding: 16px 18px; border: 2px solid var(--cream-dark); border-radius: var(--radius-lg);
+      cursor: pointer; transition: all 0.25s; background: var(--white);
+    }
+    .tipo-option:hover { border-color: var(--text-muted); transform: translateY(-1px); }
+    .tipo-option.active { border-color: var(--solicitud); background: var(--solicitud-muted); box-shadow: 0 2px 8px rgba(126,87,194,0.15); }
+    .tipo-option input { display: none; }
+    .tipo-option-icon { font-size: 1.8rem; flex-shrink: 0; }
+    .tipo-option-text { display: flex; flex-direction: column; }
+    .tipo-option-label { font-weight: 700; font-size: 0.95rem; }
+    .tipo-option-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .tipo-option.active .tipo-option-desc { color: var(--solicitud); }
+    .tipo-required-msg {
+      text-align: center; padding: 10px; color: var(--text-muted); font-size: 0.85rem;
+      background: var(--cream); border-radius: var(--radius-sm); margin-bottom: 16px; display: none;
+    }
+    @media (max-width: 500px) { .tipo-selector { grid-template-columns: 1fr; } }
+
     /* ========== MATRICES ========== */
     .matriz { width: 100%; margin-top: 12px; overflow-x: auto; }
     .matriz table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
@@ -329,10 +350,10 @@
   <header class="header">
     <div class="header-left">
       <a href="cgi.html" class="back-btn">← CGI</a>
-      <h1 class="page-title" id="page-title">📋 Solicitud</h1>
+      <h1 class="page-title" id="page-title">📋 Solicitar Reserva y/o Evento</h1>
     </div>
     <div class="header-right">
-      <span class="header-badge" id="tipo-badge">Cargando...</span>
+      <span class="header-badge" id="tipo-badge">Solicitud</span>
     </div>
   </header>
 
@@ -343,7 +364,28 @@
 
       <!-- ===== INFO BÁSICA ===== -->
       <div class="info-card">
-        <div class="info-card-title" id="info-card-title">📝 Información de la solicitud</div>
+        <div class="info-card-title" id="info-card-title">📋 ¿Qué necesitas?</div>
+
+        <!-- Selector de tipo -->
+        <div class="tipo-selector">
+          <label class="tipo-option" id="tipo-opt-reserva" onclick="toggleTipoSol('reserva')">
+            <input type="checkbox" id="check-reserva">
+            <span class="tipo-option-icon">📅</span>
+            <div class="tipo-option-text">
+              <span class="tipo-option-label">Reserva</span>
+              <span class="tipo-option-desc">Estancia, fin de semana, vacaciones...</span>
+            </div>
+          </label>
+          <label class="tipo-option" id="tipo-opt-evento" onclick="toggleTipoSol('evento')">
+            <input type="checkbox" id="check-evento">
+            <span class="tipo-option-icon">🎉</span>
+            <div class="tipo-option-text">
+              <span class="tipo-option-label">Evento</span>
+              <span class="tipo-option-desc">Cumpleaños, barbacoa, reunión...</span>
+            </div>
+          </label>
+        </div>
+        <div class="tipo-required-msg" id="tipo-required-msg">👆 Selecciona al menos una opción para continuar</div>
 
         <!-- Campos Evento -->
         <div id="campos-evento" class="hidden">
@@ -352,6 +394,9 @@
             <input type="text" class="form-input" id="sol-nombre" placeholder="Ej: Cumpleaños de Juan, Barbacoa..." required>
           </div>
         </div>
+
+        <!-- Campos comunes (visibles cuando hay al menos un tipo seleccionado) -->
+        <div id="campos-comunes" class="hidden">
 
         <!-- Campo común: Bien -->
         <div class="form-group">
@@ -439,10 +484,11 @@
             </label>
           </div>
         </div>
+        </div><!-- /campos-comunes -->
       </div>
 
       <!-- ===== DIVISOR: DETALLE PREPARACIÓN ===== -->
-      <div id="preparacion-wrapper" class="hidden">
+      <div id="preparacion-wrapper">
         <div class="divider">
           <div class="divider-line"></div>
           <span class="divider-title">📋 Detalle de preparación</span>
@@ -607,11 +653,11 @@
         <!-- 8. Notas -->
         <div class="seccion">
           <div class="seccion-header" onclick="toggleSeccion('notas')">
-            <div class="seccion-titulo"><span>📝</span> Notas</div>
+            <div class="seccion-titulo"><span>📝</span> Notas del Evento y/o la Reserva</div>
             <span class="seccion-toggle">▼</span>
           </div>
           <div class="seccion-body" id="body-notas">
-            <textarea class="notas-textarea" id="notas-general" placeholder="Cualquier otra información relevante para esta solicitud..."></textarea>
+            <textarea class="notas-textarea" id="notas-general" placeholder="Notas del Evento y/o la Reserva: cualquier información relevante para esta solicitud..."></textarea>
           </div>
         </div>
       </div><!-- /preparacion-wrapper -->
@@ -742,7 +788,8 @@
     let userData = null;
     let currentFamilia = null;
     let miNidoPrincipal = null;
-    let solicitudTipo = 'reserva'; // 'evento' | 'reserva'
+    let esReserva = false;
+    let esEvento = false;
     let bienesDisponibles = [];
     let bienSeleccionado = null;
     let zonasData = [];
@@ -777,25 +824,68 @@
     const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
     // ========================================
-    // INIT
+    // INIT — Formulario unificado
     // ========================================
+    // Si llega con ?tipo= desde enlace antiguo, pre-seleccionar
     const urlParams = new URLSearchParams(window.location.search);
-    solicitudTipo = urlParams.get('tipo') || 'reserva';
-
-    // Configurar UI según tipo
-    if (solicitudTipo === 'evento') {
-      document.getElementById('page-title').textContent = '🎉 Solicitar evento';
-      document.getElementById('tipo-badge').textContent = 'Evento';
-      document.getElementById('info-card-title').innerHTML = '🎉 Información del evento';
-      document.getElementById('campos-evento').classList.remove('hidden');
-      document.getElementById('campos-fecha-evento').classList.remove('hidden');
-      document.getElementById('sol-tipo-label').textContent = 'Tipo de evento *';
+    const tipoInicial = urlParams.get('tipo');
+    if (tipoInicial === 'evento') {
+      toggleTipoSol('evento');
+    } else if (tipoInicial === 'reserva') {
+      toggleTipoSol('reserva');
     } else {
-      document.getElementById('page-title').textContent = '📅 Solicitar reserva';
-      document.getElementById('tipo-badge').textContent = 'Reserva';
-      document.getElementById('info-card-title').innerHTML = '📅 Información de la reserva';
-      document.getElementById('campos-fecha-reserva').classList.remove('hidden');
-      document.getElementById('sol-tipo-label').textContent = 'Tipo de reserva *';
+      // Sin preselección: mostrar mensaje
+      document.getElementById('tipo-required-msg').style.display = 'block';
+    }
+
+    // ========================================
+    // TOGGLE TIPO SOLICITUD
+    // ========================================
+    function toggleTipoSol(tipo) {
+      if (tipo === 'reserva') {
+        esReserva = !esReserva;
+        document.getElementById('tipo-opt-reserva').classList.toggle('active', esReserva);
+        document.getElementById('check-reserva').checked = esReserva;
+      } else {
+        esEvento = !esEvento;
+        document.getElementById('tipo-opt-evento').classList.toggle('active', esEvento);
+        document.getElementById('check-evento').checked = esEvento;
+      }
+
+      const hayTipo = esReserva || esEvento;
+      document.getElementById('tipo-required-msg').style.display = hayTipo ? 'none' : 'block';
+      document.getElementById('campos-comunes').classList.toggle('hidden', !hayTipo);
+
+      // Evento fields
+      document.getElementById('campos-evento').classList.toggle('hidden', !esEvento);
+
+      // Dates: reserva → range, solo evento → single date
+      document.getElementById('campos-fecha-reserva').classList.toggle('hidden', !esReserva);
+      document.getElementById('campos-fecha-evento').classList.toggle('hidden', esReserva || !esEvento);
+
+      // Update badge
+      if (esReserva && esEvento) {
+        document.getElementById('tipo-badge').textContent = 'Reserva + Evento';
+      } else if (esReserva) {
+        document.getElementById('tipo-badge').textContent = 'Reserva';
+      } else if (esEvento) {
+        document.getElementById('tipo-badge').textContent = 'Evento';
+      } else {
+        document.getElementById('tipo-badge').textContent = 'Solicitud';
+      }
+
+      // Tipo label
+      if (esReserva) {
+        document.getElementById('sol-tipo-label').textContent = 'Tipo de reserva *';
+      } else if (esEvento) {
+        document.getElementById('sol-tipo-label').textContent = 'Tipo de evento *';
+      }
+
+      // Refresh tipo selector if bien already selected
+      if (bienSeleccionado) actualizarTipos();
+
+      // Recalcular días
+      onFechasChange();
     }
 
     // Auth
@@ -844,14 +934,7 @@
     async function cargarBienes() {
       try {
         const snap = await db.collection('bienes').where('familiaId', '==', currentFamilia.id).get();
-        const todosBienes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        if (solicitudTipo === 'reserva') {
-          // Solo bienes con gestión activa
-          bienesDisponibles = todosBienes.filter(b => b.mayordomoActivo || b.gerenteActivo || b.capatazActivo);
-        } else {
-          bienesDisponibles = todosBienes;
-        }
+        bienesDisponibles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const select = document.getElementById('sol-bien');
         select.innerHTML = '<option value="">Selecciona un lugar...</option>' +
@@ -860,8 +943,8 @@
             return `<option value="${b.id}">${ico} ${b.nombre}</option>`;
           }).join('');
 
-        if (bienesDisponibles.length === 0 && solicitudTipo === 'reserva') {
-          select.innerHTML = '<option value="">No hay bienes con gestión activa</option>';
+        if (bienesDisponibles.length === 0) {
+          select.innerHTML = '<option value="">No hay bienes disponibles</option>';
         }
       } catch (e) {
         console.error('Error cargando bienes:', e);
@@ -937,17 +1020,14 @@
       // Al cambiar bien
       document.getElementById('sol-bien').addEventListener('change', onBienChange);
 
-      // Al cambiar fechas
-      if (solicitudTipo === 'evento') {
-        document.getElementById('sol-fecha').addEventListener('change', onFechasChange);
-        document.getElementById('sol-fecha').min = new Date().toISOString().split('T')[0];
-      } else {
-        document.getElementById('sol-fecha-inicio').addEventListener('change', onFechasChange);
-        document.getElementById('sol-fecha-fin').addEventListener('change', onFechasChange);
-        const hoy = new Date().toISOString().split('T')[0];
-        document.getElementById('sol-fecha-inicio').min = hoy;
-        document.getElementById('sol-fecha-fin').min = hoy;
-      }
+      // Al cambiar fechas — escuchar ambos siempre
+      document.getElementById('sol-fecha').addEventListener('change', onFechasChange);
+      document.getElementById('sol-fecha-inicio').addEventListener('change', onFechasChange);
+      document.getElementById('sol-fecha-fin').addEventListener('change', onFechasChange);
+      const hoy = new Date().toISOString().split('T')[0];
+      document.getElementById('sol-fecha').min = hoy;
+      document.getElementById('sol-fecha-inicio').min = hoy;
+      document.getElementById('sol-fecha-fin').min = hoy;
 
       // Al cambiar tipo (para mostrar selector quién reserva)
       document.getElementById('sol-tipo').addEventListener('change', onTipoChange);
@@ -955,14 +1035,12 @@
 
     async function onBienChange() {
       const bienId = document.getElementById('sol-bien').value;
-      const tipoContainer = document.getElementById('sol-tipo-container');
       const quienContainer = document.getElementById('sol-quien-container');
       quienContainer.classList.add('hidden');
 
       if (!bienId) {
-        tipoContainer.classList.add('hidden');
+        document.getElementById('sol-tipo-container').classList.add('hidden');
         bienSeleccionado = null;
-        document.getElementById('preparacion-wrapper').classList.add('hidden');
         return;
       }
 
@@ -971,25 +1049,37 @@
       // Cargar dependencias para zonas y ajuar
       await cargarZonasBien(bienId);
       await cargarAjuarBien(bienId);
+      if (!configCalendarioData) await cargarConfigCalendario();
+      if (nidosData.length === 0) await cargarNidosRama();
 
-      // Cargar tipos
-      if (solicitudTipo === 'reserva') {
-        if (!configCalendarioData) await cargarConfigCalendario();
-        if (nidosData.length === 0) await cargarNidosRama();
+      // Cargar tipos según selección actual
+      await actualizarTipos();
 
+      // Mostrar preparación y renderizar zonas
+      mostrarPreparacionSiBienYFechas();
+      renderZonas();
+      renderAjuar();
+    }
+
+    async function actualizarTipos() {
+      const tipoContainer = document.getElementById('sol-tipo-container');
+      if (!bienSeleccionado) { tipoContainer.classList.add('hidden'); return; }
+
+      tiposActuales = [];
+
+      if (esReserva) {
+        // Tipos de reserva (del addon)
         let addon = null;
         if (bienSeleccionado.mayordomoActivo) addon = 'mayordomo';
         else if (bienSeleccionado.gerenteActivo) addon = 'gerente';
         else if (bienSeleccionado.capatazActivo) addon = 'capataz';
 
-        tiposActuales = [];
         if (addon && configCalendarioData?.tiposAddon?.[addon]) {
           tiposActuales = configCalendarioData.tiposAddon[addon].map(t => ({
             id: t.id, nombre: t.nombre, icono: t.emoji || '', esFamiliar: t.esFamiliar || false
           }));
         }
         if (tiposActuales.length === 0 && addon) {
-          // Defaults por addon
           const defaults = {
             mayordomo: [{ id: 'estancia-familiar', nombre: 'Estancias familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false }],
             gerente: [{ id: 'reserva-familiar', nombre: 'Reservas familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'reserva-huespedes', nombre: 'Reservas de huéspedes', icono: '👥', esFamiliar: false }],
@@ -997,7 +1087,7 @@
           };
           tiposActuales = defaults[addon] || [];
         }
-      } else {
+      } else if (esEvento) {
         // Tipos de evento
         try {
           const tiposSnap = await db.collection('familias').doc(currentFamilia.id).collection('tiposEvento').get();
@@ -1022,11 +1112,6 @@
       } else {
         tipoContainer.classList.add('hidden');
       }
-
-      // Mostrar preparación y renderizar zonas
-      mostrarPreparacionSiBienYFechas();
-      renderZonas();
-      renderAjuar();
     }
 
     function onTipoChange() {
@@ -1066,12 +1151,14 @@
 
     function calcularDias() {
       diasSolicitud = [];
-      if (solicitudTipo === 'evento') {
+      if (!esReserva && esEvento) {
+        // Solo evento → fecha única
         const f = document.getElementById('sol-fecha').value;
         if (!f) return;
         const d = new Date(f + 'T12:00:00');
         diasSolicitud = [{ key: f, label: DIAS_SEMANA[d.getDay()] + ' ' + d.getDate(), date: d }];
-      } else {
+      } else if (esReserva) {
+        // Reserva (con o sin evento) → rango de fechas
         const inicio = document.getElementById('sol-fecha-inicio').value;
         const fin = document.getElementById('sol-fecha-fin').value;
         if (!inicio || !fin || fin < inicio) return;
@@ -1099,16 +1186,10 @@
     }
 
     function mostrarPreparacionSiBienYFechas() {
-      const tieneBien = !!document.getElementById('sol-bien').value;
-      const tieneFechas = diasSolicitud.length > 0;
-      const wrapper = document.getElementById('preparacion-wrapper');
-      if (tieneBien && tieneFechas) {
-        wrapper.classList.remove('hidden');
-      } else if (tieneBien) {
-        // Mostrar solo zonas (que no dependen de fechas)
-        wrapper.classList.remove('hidden');
-      } else {
-        wrapper.classList.add('hidden');
+      // Preparación siempre visible — las secciones se auto-gestionan con empty states
+      // Solo actualizar matrices si hay fechas
+      if (diasSolicitud.length > 0) {
+        renderMatrices();
       }
     }
 
@@ -1531,18 +1612,24 @@
     // ENVIAR SOLICITUD
     // ========================================
     async function enviarSolicitud() {
+      // Validar tipo seleccionado
+      if (!esReserva && !esEvento) { alert('Selecciona al menos Reserva o Evento'); return; }
+
       // Validar campos obligatorios
       const bienId = document.getElementById('sol-bien').value;
       if (!bienId) { alert('Selecciona un bien'); return; }
 
-      if (solicitudTipo === 'evento') {
+      if (esEvento) {
         if (!document.getElementById('sol-nombre').value.trim()) { alert('Escribe el nombre del evento'); return; }
-        if (!document.getElementById('sol-fecha').value) { alert('Selecciona la fecha'); return; }
-      } else {
+      }
+
+      if (esReserva) {
         const inicio = document.getElementById('sol-fecha-inicio').value;
         const fin = document.getElementById('sol-fecha-fin').value;
         if (!inicio || !fin) { alert('Selecciona las fechas de inicio y fin'); return; }
         if (fin < inicio) { alert('La fecha de fin debe ser posterior a la de inicio'); return; }
+      } else if (esEvento) {
+        if (!document.getElementById('sol-fecha').value) { alert('Selecciona la fecha del evento'); return; }
       }
 
       if (!confirm('¿Enviar esta solicitud? Será revisada por los administradores.')) return;
@@ -1584,27 +1671,45 @@
         else if (bien?.gerenteActivo) addonActivo = 'gerente';
         else if (bien?.capatazActivo) addonActivo = 'capataz';
 
+        // Determinar tipo principal y categoría (backward compat con CGI)
+        const tipoPrincipal = esReserva ? 'reserva' : 'evento';
+        const categoriaStr = esReserva && esEvento ? 'reserva-evento' : tipoPrincipal;
+
+        // Fechas
+        let fechaVal = null, fechaInicioVal = null, fechaFinVal = null;
+        if (esReserva) {
+          fechaInicioVal = document.getElementById('sol-fecha-inicio').value;
+          fechaFinVal = document.getElementById('sol-fecha-fin').value;
+        } else {
+          fechaVal = document.getElementById('sol-fecha').value;
+          fechaInicioVal = fechaVal;
+          fechaFinVal = fechaVal;
+        }
+
         // Construir solicitud
         const solicitudData = {
-          tipo: solicitudTipo,
+          tipo: tipoPrincipal,
+          categoria: categoriaStr,
+          esReserva: esReserva,
+          esEvento: esEvento,
           // Info básica
-          nombre: solicitudTipo === 'evento' ? document.getElementById('sol-nombre').value : '',
+          nombre: esEvento ? document.getElementById('sol-nombre').value : '',
           bienId: bienId,
           bienNombre: bien?.nombre || '',
           addonActivo: addonActivo,
-          tipoEvento: solicitudTipo === 'evento' ? tipoId : null,
-          tipoReserva: solicitudTipo === 'reserva' ? tipoId : null,
-          tipoReservaNombre: solicitudTipo === 'reserva' ? (tipoInfo.nombre || tipoId) : null,
+          tipoEvento: esEvento && !esReserva ? tipoId : null,
+          tipoReserva: esReserva ? tipoId : null,
+          tipoReservaNombre: esReserva ? (tipoInfo.nombre || tipoId) : null,
           esFamiliar: tipoInfo.esFamiliar || false,
           nidoReservaId, nidoReservaNombre,
           otroGrupoId, otroGrupoNombre,
-          fecha: solicitudTipo === 'evento' ? document.getElementById('sol-fecha').value : null,
-          fechaInicio: solicitudTipo === 'reserva' ? document.getElementById('sol-fecha-inicio').value : (document.getElementById('sol-fecha').value || null),
-          fechaFin: solicitudTipo === 'reserva' ? document.getElementById('sol-fecha-fin').value : (document.getElementById('sol-fecha').value || null),
+          fecha: fechaVal,
+          fechaInicio: fechaInicioVal,
+          fechaFin: fechaFinVal,
           numFamiliares, numInvitados,
           totalAsistentes: numFamiliares + numInvitados,
-          descripcion: solicitudTipo === 'evento' ? document.getElementById('sol-motivo').value : null,
-          motivo: solicitudTipo === 'reserva' ? document.getElementById('sol-motivo').value : null,
+          descripcion: document.getElementById('sol-motivo').value || '',
+          motivo: document.getElementById('sol-motivo').value || '',
           visibilidad,
           nidoId: miNidoPrincipal?.id || null,
           // Preparación completa
@@ -1631,13 +1736,18 @@
         const destinatariosFinales = destinatarios.length > 0 ? destinatarios : admins.map(a => a.uid);
 
         if (destinatariosFinales.length > 0) {
-          const tituloNotif = solicitudTipo === 'evento'
-            ? `🎉 Solicitud de evento: ${solicitudData.nombre || 'Sin nombre'}`
-            : `📅 Solicitud de reserva: ${bien?.nombre || 'Bien'}`;
+          let tituloNotif = '';
+          if (esReserva && esEvento) {
+            tituloNotif = `📋 Reserva + Evento: ${bien?.nombre || 'Bien'} — ${solicitudData.nombre}`;
+          } else if (esReserva) {
+            tituloNotif = `📅 Solicitud de reserva: ${bien?.nombre || 'Bien'}`;
+          } else {
+            tituloNotif = `🎉 Solicitud de evento: ${solicitudData.nombre || 'Sin nombre'}`;
+          }
 
           await db.collection('notificaciones').add({
             tipo: 'accion',
-            categoria: solicitudTipo,
+            categoria: tipoPrincipal,
             titulo: tituloNotif,
             mensaje: `${userData?.nombre || 'Usuario'} ha enviado una solicitud con detalle de preparación`,
             familiaId: currentFamilia.id,
@@ -1647,7 +1757,7 @@
             fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
             fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             enlace: `solicitudes.html?id=${solicitudRef.id}`,
-            origen: { tipo: 'solicitud', subtipo: solicitudTipo, id: solicitudRef.id },
+            origen: { tipo: 'solicitud', subtipo: categoriaStr, id: solicitudRef.id },
             estado: 'activa'
           });
         }
