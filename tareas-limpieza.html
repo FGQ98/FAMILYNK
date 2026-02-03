@@ -762,6 +762,10 @@
         const habSnap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
         habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+        // Normalizar tipos legacy → nuevos
+        const TIPO_LEGACY = { salas: 'salon', funcional: 'otro', otros: 'otro', servicio: 'aseo', vestuario: 'dormitorio', comedor: 'salon', camara: 'almacen', taller: 'almacen' };
+        habitacionesData.forEach(h => { if (h.tipo && TIPO_LEGACY[h.tipo]) h.tipo = TIPO_LEGACY[h.tipo]; });
+
         // 3. Extraer tipos de dependencia que existen en el bien
         const tiposSet = new Set();
         habitacionesData.forEach(h => {
@@ -776,6 +780,16 @@
         const configDoc = await db.collection('bienes').doc(bienId)
           .collection('configLimpieza').doc('tareasPorTipo').get();
         tareasTipoData = configDoc.exists ? configDoc.data() : {};
+
+        // Normalizar keys legacy en tareasTipoData
+        Object.keys(tareasTipoData).forEach(k => {
+          if (TIPO_LEGACY[k]) {
+            const nuevoKey = TIPO_LEGACY[k];
+            // Fusionar con el nuevo si ya existe
+            tareasTipoData[nuevoKey] = (tareasTipoData[nuevoKey] || []).concat(tareasTipoData[k]);
+            delete tareasTipoData[k];
+          }
+        });
 
         // 5. Render
         document.getElementById('loading').classList.add('hidden');
@@ -801,12 +815,12 @@
       let tiposConTareas = 0;
       let totalTareas = 0;
 
-      // Renderizar: tipos que existen en el bien + tipos con tareas ya configuradas
-      const tiposARenderizar = [...tiposEnBien];
-      Object.keys(tareasTipoData).forEach(tipo => {
-        if (!tiposARenderizar.includes(tipo)) {
-          tiposARenderizar.push(tipo);
-        }
+      // Solo renderizar los 9 tipos oficiales que tengan dependencias o tareas configuradas
+      const tiposOficiales = Object.keys(TIPOS_DEPENDENCIA);
+      const tiposARenderizar = tiposOficiales.filter(tipo => {
+        const tieneDeps = tiposEnBien.includes(tipo);
+        const tieneTareas = tareasTipoData[tipo] && tareasTipoData[tipo].some(t => t.activo);
+        return tieneDeps || tieneTareas;
       });
 
       container.innerHTML = tiposARenderizar.map(tipo => {
