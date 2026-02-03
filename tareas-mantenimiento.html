@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#5B8BA0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Tareas de Mantenimiento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --cream-medium: #FAF5EF;
+      --terracotta: #C17757;
+      --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-full: 50px;
+      --mayordomo: #8B7355;
+      --mayordomo-dark: #6B5A45;
+      --mayordomo-light: #A69076;
+      --mayordomo-muted: rgba(139, 115, 85, 0.15);
+      --mto: #5B8BA0;
+      --mto-light: #7BA3B5;
+      --mto-dark: #4A7285;
+      --mto-muted: rgba(91, 139, 160, 0.12);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* ===== HEADER ===== */
+    .header {
+      background: var(--white);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: var(--shadow-soft);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--mto);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .header-title {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--mto);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .bien-nombre {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      margin-left: 4px;
+    }
+
+    /* ===== MAIN ===== */
+    .main { max-width: 900px; margin: 0 auto; padding: 24px; }
+    .hidden { display: none !important; }
+    .loading { display: flex; justify-content: center; align-items: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--cream-dark); border-top-color: var(--mto); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== INFO BANNER ===== */
+    .info-banner {
+      background: var(--mto-muted);
+      border-left: 4px solid var(--mto);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+      color: var(--text-light);
+      line-height: 1.5;
+    }
+    .info-banner strong { color: var(--mto-dark); }
+
+    /* ===== STATS ===== */
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--white);
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-soft);
+      font-size: 0.85rem;
+    }
+    .stat-pill-value {
+      font-weight: 700;
+      color: var(--mto);
+      font-size: 1.1rem;
+    }
+    .stat-pill-label { color: var(--text-muted); }
+
+    /* ===== TIPO CARDS ===== */
+    .tipo-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: box-shadow 0.2s;
+    }
+    .tipo-card:hover { box-shadow: var(--shadow-medium); }
+
+    .tipo-card-header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
+    }
+    .tipo-card-header:hover { background: var(--cream-medium); }
+
+    .tipo-card-icon {
+      width: 44px;
+      height: 44px;
+      background: var(--mto-muted);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+    .tipo-card-info {
+      flex: 1;
+      margin-left: 14px;
+    }
+    .tipo-card-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+    }
+    .tipo-card-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .tipo-card-badge {
+      background: var(--mto);
+      color: var(--white);
+      padding: 4px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .tipo-card-badge.empty {
+      background: var(--cream-dark);
+      color: var(--text-muted);
+    }
+    .tipo-card-toggle {
+      margin-left: 12px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      transition: transform 0.3s;
+      flex-shrink: 0;
+    }
+    .tipo-card.expanded .tipo-card-toggle { transform: rotate(180deg); }
+
+    .tipo-card-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+    }
+    .tipo-card.expanded .tipo-card-body {
+      max-height: 1000px;
+    }
+
+    .tipo-card-content {
+      padding: 0 20px 20px;
+      border-top: 1px solid var(--cream-dark);
+    }
+
+    /* Dependencias del bien que usan este tipo */
+    .deps-en-bien {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--cream-dark);
+      margin-bottom: 14px;
+    }
+    .dep-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: var(--cream);
+      border-radius: var(--radius-full);
+      font-size: 0.78rem;
+      color: var(--text-light);
+    }
+    .dep-chip-zona {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    /* Lista de tareas activas */
+    .tareas-lista {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tarea-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+    }
+    .tarea-row-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .tarea-row-nombre {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .tarea-row-custom {
+      font-size: 0.7rem;
+      color: var(--mto);
+      background: var(--mto-muted);
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .tareas-empty {
+      text-align: center;
+      padding: 16px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+
+    /* Botón configurar */
+    .btn-configurar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      margin-top: 14px;
+      border: 2px dashed var(--mto-muted);
+      background: transparent;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--mto);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-configurar:hover {
+      border-color: var(--mto);
+      background: var(--mto-muted);
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+    }
+    .empty-state-icon { font-size: 3.5rem; margin-bottom: 16px; opacity: 0.6; }
+    .empty-state-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+    .empty-state-text {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .empty-state a {
+      color: var(--mto);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      width: 92%;
+      max-width: 520px;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: translateY(20px);
+      transition: transform 0.3s;
+      box-shadow: var(--shadow-medium);
+    }
+    .modal-overlay.active .modal { transform: translateY(0); }
+
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--cream-dark);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--mto-dark);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 4px;
+    }
+    .modal-body { padding: 20px; }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--cream-dark);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* Tareas checklist en modal */
+    .modal-section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      margin-top: 4px;
+    }
+    .modal-section-title:not(:first-child) { margin-top: 20px; }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .check-row:hover { background: var(--cream); }
+
+    .check-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--mto);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .check-row-icon { font-size: 1.1rem; }
+    .check-row-label { font-weight: 600; font-size: 0.9rem; flex: 1; }
+
+    /* Custom task input */
+    .custom-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--cream-dark);
+    }
+    .custom-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .custom-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    .custom-input:focus { outline: none; border-color: var(--mto); }
+    .custom-input::placeholder { color: var(--text-muted); }
+
+    .btn-add-custom {
+      padding: 10px 16px;
+      background: var(--mto);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-add-custom:hover { background: var(--mto-dark); }
+
+    .custom-list { margin-top: 10px; }
+    .custom-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--mto-muted);
+      border-radius: var(--radius-sm);
+      margin-bottom: 6px;
+    }
+    .custom-item-nombre {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--mto-dark);
+    }
+    .custom-item-remove {
+      background: none;
+      border: none;
+      color: var(--error);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 2px;
+    }
+
+    /* Botones modal */
+    .btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--mto); color: var(--white); }
+    .btn-primary:hover { background: var(--mto-dark); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text);
+      color: var(--white);
+      padding: 12px 24px;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: bottom 0.3s;
+      z-index: 2000;
+      box-shadow: var(--shadow-medium);
+    }
+    .toast.show { bottom: 24px; }
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--error); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .main { padding: 16px; }
+      .header { padding: 12px 16px; }
+      .stats-row { flex-wrap: wrap; }
+      .tipo-card-header { padding: 14px 16px; }
+      .tipo-card-content { padding: 0 16px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="#" class="back-btn" id="btn-volver">← Volver</a>
+    <h1 class="header-title">🔧 Tareas de Mantenimiento</h1>
+    <span class="bien-nombre" id="bien-nombre"></span>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+      <div class="info-banner">
+        <strong>Define qué tareas de mantenimiento corresponden a cada tipo de dependencia.</strong>
+        Este catálogo alimenta la configuración del Plan Semanal de Mantenimiento.
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-pill">
+          <span class="stat-pill-value" id="stat-tipos">0</span>
+          <span class="stat-pill-label">tipos con tareas</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-pill-value" id="stat-total">0</span>
+          <span class="stat-pill-label">tareas definidas</span>
+        </div>
+      </div>
+
+      <div id="tipos-container"></div>
+    </div>
+
+    <!-- Empty: sin dependencias definidas -->
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-state-icon">🏠</div>
+      <div class="empty-state-title">Sin dependencias configuradas</div>
+      <div class="empty-state-text">
+        Primero define las zonas y dependencias del bien.<br>
+        <a href="#" id="link-zonas">Ir a Zonas →</a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Configurar tareas para un tipo -->
+  <div class="modal-overlay" id="modal-tareas">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-titulo">🔧 Tareas</span>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section-title">Tareas predefinidas</div>
+        <div id="checklist-predefinidas"></div>
+
+        <div class="custom-section">
+          <div class="modal-section-title">Tareas personalizadas</div>
+          <div class="custom-row">
+            <input type="text" class="custom-input" id="input-custom" placeholder="Nombre de la tarea..." maxlength="60">
+            <button class="btn-add-custom" onclick="agregarCustom()">+ Añadir</button>
+          </div>
+          <div class="custom-list" id="custom-list"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarTareas()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="permisos-externos.js"></script>
+
+  <script>
+    // =============================================
+    // CONSTANTES
+    // =============================================
+    const TIPOS_DEPENDENCIA = {
+      dormitorio:   { icon: '🛏️', label: 'Dormitorio' },
+      servicio:     { icon: '🚿', label: 'Servicio/Baño' },
+      aseo:         { icon: '🚽', label: 'Aseo' },
+      vestuario:    { icon: '👔', label: 'Vestuario' },
+      cocina:       { icon: '🍳', label: 'Cocina' },
+      salon:        { icon: '🛋️', label: 'Salón' },
+      comedor:      { icon: '🍽️', label: 'Comedor' },
+      almacen:      { icon: '📦', label: 'Almacén' },
+      camara:       { icon: '❄️', label: 'Cámara' },
+      taller:       { icon: '🔧', label: 'Taller' },
+      instalacion:  { icon: '⚡', label: 'Cuarto Instalación' },
+      porche:       { icon: '🌿', label: 'Porche/Terraza' },
+      otro:         { icon: '🏠', label: 'Otro' }
+    };
+
+    const TAREAS_PREDEFINIDAS = [
+      { id: 'enchufes',       nombre: 'Revisar enchufes y tomas',     icon: '🔌' },
+      { id: 'grifos',         nombre: 'Comprobar grifos y desagües',  icon: '🚿' },
+      { id: 'humedades',      nombre: 'Inspeccionar humedades',       icon: '💧' },
+      { id: 'bisagras',       nombre: 'Engrasar bisagras/cerraduras', icon: '🔩' },
+      { id: 'persianas',      nombre: 'Revisar persianas/estores',    icon: '🪟' },
+      { id: 'sellados',       nombre: 'Comprobar sellados (silicona)',icon: '🧴' },
+      { id: 'pintura',        nombre: 'Revisar pintura/paredes',      icon: '🖌️' },
+      { id: 'filtros',        nombre: 'Limpiar filtros (AA/campana)', icon: '🌀' },
+      { id: 'descalcificar',  nombre: 'Descalcificar grifería',      icon: '🧪' },
+      { id: 'electrica',      nombre: 'Revisar instalación eléctrica',icon: '⚡' },
+      { id: 'fontaneria',     nombre: 'Comprobar fontanería',         icon: '🔧' },
+      { id: 'calefaccion',    nombre: 'Revisar calefacción/AA',       icon: '🌡️' },
+      { id: 'madera',         nombre: 'Tratar madera (puertas/muebles)',icon: '🪵' },
+      { id: 'ventilacion',    nombre: 'Comprobar ventilación',        icon: '💨' }
+    ];
+
+    // =============================================
+    // ESTADO
+    // =============================================
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let habitacionesData = [];   // Dependencias del bien (col. habitaciones)
+    let tareasTipoData = {};     // Config: { tipo: [ { tareaId, activo, nombre?, icon?, custom? } ] }
+    let tiposEnBien = [];        // Tipos de dependencia que existen en este bien
+    let editandoTipo = null;     // Tipo actualmente editándose en el modal
+    let customTemporal = [];     // Tareas custom temporales en el modal
+
+    // =============================================
+    // INIT
+    // =============================================
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('id');
+    const origen = params.get('origen') || 'mantenimiento';
+
+    document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+    document.getElementById('link-zonas').href = `habitaciones.html?id=${bienId}`;
+
+    if (!bienId) {
+      alert('No se especificó el bien');
+      window.location.href = 'cgi.html';
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+
+      await PermisosExt.init(db, user, bienId);
+      await cargarDatos();
+
+      if (PermisosExt.esExterno) {
+        PermisosExt.aplicarUI('mantenimiento_tareas');
+      }
+    });
+
+    // =============================================
+    // CARGA DE DATOS
+    // =============================================
+    async function cargarDatos() {
+      try {
+        // 1. Cargar bien
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+        document.getElementById('bien-nombre').textContent = `· ${bienData.nombre || 'Sin nombre'}`;
+
+        // 2. Cargar dependencias desde colección habitaciones (fuente única)
+        const habSnap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
+        habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // 3. Extraer tipos de dependencia que existen en el bien
+        const tiposSet = new Set();
+        habitacionesData.forEach(h => {
+          if (h.tipo) tiposSet.add(h.tipo);
+        });
+        tiposEnBien = Array.from(tiposSet).sort((a, b) => {
+          const keys = Object.keys(TIPOS_DEPENDENCIA);
+          return keys.indexOf(a) - keys.indexOf(b);
+        });
+
+        // 4. Cargar catálogo de tareas por tipo (colección configMto)
+        const configDoc = await db.collection('bienes').doc(bienId)
+          .collection('configMto').doc('tareasPorTipo').get();
+        tareasTipoData = configDoc.exists ? configDoc.data() : {};
+
+        // 5. Render
+        document.getElementById('loading').classList.add('hidden');
+
+        if (habitacionesData.length === 0) {
+          document.getElementById('empty-state').classList.remove('hidden');
+        } else {
+          document.getElementById('content').classList.remove('hidden');
+          renderTipos();
+        }
+
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar: ' + error.message);
+      }
+    }
+
+    // =============================================
+    // RENDER PRINCIPAL
+    // =============================================
+    function renderTipos() {
+      const container = document.getElementById('tipos-container');
+      let tiposConTareas = 0;
+      let totalTareas = 0;
+
+      // Renderizar: tipos que existen en el bien + tipos con tareas ya configuradas
+      const tiposARenderizar = [...tiposEnBien];
+      Object.keys(tareasTipoData).forEach(tipo => {
+        if (!tiposARenderizar.includes(tipo)) {
+          tiposARenderizar.push(tipo);
+        }
+      });
+
+      container.innerHTML = tiposARenderizar.map(tipo => {
+        const tipoInfo = TIPOS_DEPENDENCIA[tipo] || { icon: '🏠', label: tipo };
+        const tareas = (tareasTipoData[tipo] || []).filter(t => t.activo);
+        const depsDeEsteTipo = habitacionesData.filter(h => h.tipo === tipo);
+        const existeEnBien = tiposEnBien.includes(tipo);
+
+        if (tareas.length > 0) tiposConTareas++;
+        totalTareas += tareas.length;
+
+        return `
+          <div class="tipo-card" id="tipo-${tipo}">
+            <div class="tipo-card-header" onclick="toggleCard('${tipo}')">
+              <div class="tipo-card-icon">${tipoInfo.icon}</div>
+              <div class="tipo-card-info">
+                <div class="tipo-card-title">${tipoInfo.label}</div>
+                <div class="tipo-card-meta">
+                  ${depsDeEsteTipo.length} dependencia${depsDeEsteTipo.length !== 1 ? 's' : ''} en el bien
+                  ${!existeEnBien ? ' · <em style="color:var(--warning)">sin dependencias</em>' : ''}
+                </div>
+              </div>
+              <div class="tipo-card-badge ${tareas.length === 0 ? 'empty' : ''}">
+                ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}
+              </div>
+              <span class="tipo-card-toggle">▼</span>
+            </div>
+            <div class="tipo-card-body">
+              <div class="tipo-card-content">
+                ${depsDeEsteTipo.length > 0 ? `
+                  <div class="deps-en-bien">
+                    ${depsDeEsteTipo.map(d => `
+                      <span class="dep-chip">
+                        ${d.nombre || 'Sin nombre'}
+                        ${d.zona ? `<span class="dep-chip-zona">· ${d.zona}</span>` : ''}
+                      </span>
+                    `).join('')}
+                  </div>
+                ` : ''}
+                ${tareas.length > 0 ? `
+                  <div class="tareas-lista">
+                    ${tareas.map(t => {
+                      const predef = TAREAS_PREDEFINIDAS.find(p => p.id === t.tareaId);
+                      const nombre = t.custom ? t.nombre : (predef?.nombre || t.tareaId);
+                      const icon = t.custom ? '📌' : (predef?.icon || '🔧');
+                      return `
+                        <div class="tarea-row">
+                          <span class="tarea-row-icon">${icon}</span>
+                          <span class="tarea-row-nombre">${nombre}</span>
+                          ${t.custom ? '<span class="tarea-row-custom">personalizada</span>' : ''}
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                ` : `
+                  <div class="tareas-empty">Sin tareas de mantenimiento configuradas</div>
+                `}
+                <button class="btn-configurar" onclick="abrirModal('${tipo}')">
+                  ⚙️ Configurar tareas de mantenimiento
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Stats
+      document.getElementById('stat-tipos').textContent = tiposConTareas;
+      document.getElementById('stat-total').textContent = totalTareas;
+    }
+
+    function toggleCard(tipo) {
+      const card = document.getElementById(`tipo-${tipo}`);
+      card.classList.toggle('expanded');
+    }
+
+    // =============================================
+    // MODAL
+    // =============================================
+    function abrirModal(tipo) {
+      editandoTipo = tipo;
+      const tipoInfo = TIPOS_DEPENDENCIA[tipo] || { icon: '🏠', label: tipo };
+      document.getElementById('modal-titulo').textContent = `${tipoInfo.icon} Tareas para ${tipoInfo.label}`;
+
+      const tareasConfig = tareasTipoData[tipo] || [];
+
+      // Render predefinidas con checkboxes
+      const checkContainer = document.getElementById('checklist-predefinidas');
+      checkContainer.innerHTML = TAREAS_PREDEFINIDAS.map(tarea => {
+        const config = tareasConfig.find(t => t.tareaId === tarea.id);
+        const activo = config?.activo || false;
+
+        return `
+          <label class="check-row">
+            <input type="checkbox" id="check-${tarea.id}" ${activo ? 'checked' : ''}>
+            <span class="check-row-icon">${tarea.icon}</span>
+            <span class="check-row-label">${tarea.nombre}</span>
+          </label>
+        `;
+      }).join('');
+
+      // Cargar custom existentes
+      customTemporal = tareasConfig
+        .filter(t => t.custom && t.activo)
+        .map(t => ({ id: t.tareaId, nombre: t.nombre }));
+      renderCustomList();
+
+      // Limpiar input
+      document.getElementById('input-custom').value = '';
+
+      document.getElementById('modal-tareas').classList.add('active');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-tareas').classList.remove('active');
+      editandoTipo = null;
+      customTemporal = [];
+    }
+
+    // Click fuera del modal cierra
+    document.getElementById('modal-tareas').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) cerrarModal();
+    });
+
+    // =============================================
+    // TAREAS PERSONALIZADAS (en modal)
+    // =============================================
+    function agregarCustom() {
+      const input = document.getElementById('input-custom');
+      const nombre = input.value.trim();
+      if (!nombre) return;
+
+      // Evitar duplicados
+      if (customTemporal.some(c => c.nombre.toLowerCase() === nombre.toLowerCase())) {
+        showToast('⚠️ Esa tarea ya existe', 'error');
+        return;
+      }
+
+      const id = 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      customTemporal.push({ id, nombre });
+      input.value = '';
+      input.focus();
+      renderCustomList();
+    }
+
+    // Enter para añadir custom
+    document.getElementById('input-custom').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        agregarCustom();
+      }
+    });
+
+    function eliminarCustom(id) {
+      customTemporal = customTemporal.filter(c => c.id !== id);
+      renderCustomList();
+    }
+
+    function renderCustomList() {
+      const container = document.getElementById('custom-list');
+      if (customTemporal.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = customTemporal.map(c => `
+        <div class="custom-item">
+          <span>📌</span>
+          <span class="custom-item-nombre">${c.nombre}</span>
+          <button class="custom-item-remove" onclick="eliminarCustom('${c.id}')" title="Eliminar">✕</button>
+        </div>
+      `).join('');
+    }
+
+    // =============================================
+    // GUARDAR
+    // =============================================
+    async function guardarTareas() {
+      if (!editandoTipo) return;
+
+      try {
+        // Recoger predefinidas
+        const tareas = TAREAS_PREDEFINIDAS.map(tarea => ({
+          tareaId: tarea.id,
+          activo: document.getElementById(`check-${tarea.id}`).checked
+        }));
+
+        // Añadir custom
+        customTemporal.forEach(c => {
+          tareas.push({
+            tareaId: c.id,
+            nombre: c.nombre,
+            icon: '📌',
+            activo: true,
+            custom: true
+          });
+        });
+
+        // Actualizar estado local
+        tareasTipoData[editandoTipo] = tareas;
+
+        // Guardar en Firebase (colección configMto)
+        await db.collection('bienes').doc(bienId)
+          .collection('configMto').doc('tareasPorTipo')
+          .set(tareasTipoData);
+
+        cerrarModal();
+        renderTipos();
+        showToast('✅ Tareas guardadas', 'success');
+
+      } catch (error) {
+        console.error('Error guardando:', error);
+        showToast('❌ Error al guardar', 'error');
+      }
+    }
+
+    // =============================================
+    // UTILIDADES
+    // =============================================
+    function showToast(message, type = '') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>
