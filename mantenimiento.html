@@ -40,6 +40,9 @@
       --success: #7DB59A;
       --warning: #E8B44D;
       --error: #D4695A;
+      --mto: #5B8BA0;
+      --mto-dark: #4A7285;
+      --mto-muted: rgba(91, 139, 160, 0.12);
       --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
       --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
       --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
@@ -246,10 +249,10 @@
     .modulo-card.reparaciones .modulo-stat-value,
     .modulo-card.reparaciones .modulo-card-action { color: #A0522D; }
 
-    .modulo-card.programado .modulo-card-header { background: linear-gradient(135deg, #5B8BA0 0%, #4A7285 100%); }
-    .modulo-card.programado:hover { border-color: #5B8BA0; }
-    .modulo-card.programado .modulo-stat-value,
-    .modulo-card.programado .modulo-card-action { color: #4A7285; }
+    .modulo-card.tareas-mto .modulo-card-header { background: linear-gradient(135deg, var(--mto) 0%, var(--mto-dark) 100%); }
+    .modulo-card.tareas-mto:hover { border-color: var(--mto); }
+    .modulo-card.tareas-mto .modulo-stat-value,
+    .modulo-card.tareas-mto .modulo-card-action { color: var(--mto-dark); }
 
     .modulo-card.manual .modulo-card-header { background: linear-gradient(135deg, #8B7355 0%, #6B5A45 100%); }
     .modulo-card.manual:hover { border-color: #8B7355; }
@@ -257,9 +260,9 @@
     .modulo-card.manual .modulo-card-action { color: #6B5A45; }
 
     /* Card Plan Semanal */
-    .modulo-card.plan-semanal .modulo-card-header { background: linear-gradient(135deg, #5B8BA0 0%, #4A7285 100%); }
-    .modulo-card.plan-semanal:hover { border-color: #5B8BA0; }
-    .modulo-card.plan-semanal .modulo-stat-value { color: #4A7285; }
+    .modulo-card.plan-semanal .modulo-card-header { background: linear-gradient(135deg, var(--mto) 0%, var(--mto-dark) 100%); }
+    .modulo-card.plan-semanal:hover { border-color: var(--mto); }
+    .modulo-card.plan-semanal .modulo-stat-value { color: var(--mto-dark); }
 
     /* Cards interactivas con tareas */
     .plan-card-content { padding: 12px 16px; max-height: 280px; overflow-y: auto; }
@@ -279,13 +282,13 @@
     .plan-tarea.completada { opacity: 0.6; background: #f0f0f0; border-left-color: var(--success); }
     .plan-tarea.completada .plan-tarea-titulo { text-decoration: line-through; color: var(--text-muted); }
     .plan-tarea.reparacion { border-left-color: var(--error); }
-    .plan-tarea-check { width: 20px; height: 20px; cursor: pointer; accent-color: var(--sage); }
+    .plan-tarea-check { width: 20px; height: 20px; cursor: pointer; accent-color: var(--mto); }
     .plan-tarea-info { flex: 1; }
     .plan-tarea-titulo { font-weight: 600; font-size: 0.85rem; }
     .plan-tarea-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 10px; margin-top: 2px; flex-wrap: wrap; }
     .plan-tarea-dia { 
-      background: var(--sage-muted); 
-      color: var(--sage-dark); 
+      background: var(--mto-muted); 
+      color: var(--mto-dark); 
       padding: 2px 6px; 
       border-radius: 4px; 
       font-size: 0.7rem; 
@@ -319,7 +322,7 @@
     }
     .plan-progreso-bar {
       height: 100%;
-      background: linear-gradient(90deg, var(--sage) 0%, var(--success) 100%);
+      background: linear-gradient(90deg, var(--mto) 0%, var(--success) 100%);
       border-radius: 3px;
       transition: width 0.3s ease;
     }
@@ -345,6 +348,8 @@
 
     .hidden { display: none !important; }
   </style>
+  <!-- Sistema de permisos CVEB para externos -->
+  <script src="permisos-externos.js"></script>
 </head>
 <body>
   <header class="header">
@@ -418,27 +423,27 @@
           </div>
         </a>
 
-        <!-- Mantenimiento Programado -->
-        <a href="#" class="modulo-card programado" id="card-programado">
+        <!-- Tareas de Mantenimiento -->
+        <a href="#" class="modulo-card tareas-mto" id="card-tareas-mto">
           <div class="modulo-card-header">
-            <div class="modulo-card-icon">📅</div>
-            <div class="modulo-card-title">Mant. Programado</div>
+            <div class="modulo-card-icon">🔧</div>
+            <div class="modulo-card-title">Tareas de Mant.</div>
           </div>
           <div class="modulo-card-body">
-            <p class="modulo-card-desc">Tareas de mantenimiento preventivo con calendario y recordatorios.</p>
+            <p class="modulo-card-desc">Catálogo de tareas de mantenimiento preventivo por tipo de habitación.</p>
             <div class="modulo-card-stats">
               <div class="modulo-stat">
-                <span class="modulo-stat-value" id="count-tareas-mto">0</span>
-                <span>tareas</span>
+                <span class="modulo-stat-value" id="count-tipos-mto">0</span>
+                <span>tipos con tareas</span>
               </div>
               <div class="modulo-stat">
-                <span class="modulo-stat-value" id="count-zonas-mto">0</span>
-                <span>zonas</span>
+                <span class="modulo-stat-value" id="count-tareas-mto">0</span>
+                <span>tareas definidas</span>
               </div>
             </div>
           </div>
           <div class="modulo-card-footer">
-            <span class="modulo-card-action">Ver tareas →</span>
+            <span class="modulo-card-action">Gestionar →</span>
           </div>
         </a>
 
@@ -488,8 +493,42 @@
         return;
       }
       currentUser = user;
+      
+      // Verificar si es externo y cargar permisos
+      await PermisosExt.init(db, user, bienId);
+      
       await cargarDatos();
+      
+      // Aplicar permisos CVEB si es externo
+      if (PermisosExt.esExterno) {
+        aplicarPermisosCards();
+      }
     });
+
+    // Aplicar permisos a cards según acceso
+    function aplicarPermisosCards() {
+      if (!PermisosExt.puede('mantenimiento_taller', 'v')) {
+        const card = document.getElementById('card-taller');
+        if (card) card.style.display = 'none';
+      }
+      if (!PermisosExt.puede('mantenimiento_reparaciones', 'v')) {
+        const card = document.getElementById('card-reparaciones');
+        if (card) card.style.display = 'none';
+      }
+      if (!PermisosExt.puede('mantenimiento_tareas', 'v')) {
+        const card = document.getElementById('card-tareas-mto');
+        if (card) card.style.display = 'none';
+      }
+      if (!PermisosExt.puede('mantenimiento_planSemanal', 'v')) {
+        const card = document.getElementById('card-plan-semanal');
+        if (card) card.style.display = 'none';
+      } else if (!PermisosExt.puede('mantenimiento_planSemanal', 'e')) {
+        document.querySelectorAll('#tareas-semanales input[type="checkbox"]').forEach(cb => {
+          cb.disabled = true;
+          cb.style.cursor = 'not-allowed';
+        });
+      }
+    }
 
     async function cargarDatos() {
       try {
@@ -518,8 +557,8 @@
         const baseParams = `id=${bienId}&origen=mantenimiento`;
         document.getElementById('card-taller').href = `taller.html?${baseParams}`;
         document.getElementById('card-reparaciones').href = `reparaciones.html?${baseParams}`;
-        document.getElementById('card-programado').href = `mant-programado.html?${baseParams}`;
-        document.getElementById('card-plan-semanal').href = `plan-semanal-mantenimiento.html?${baseParams}`;
+        document.getElementById('card-tareas-mto').href = `tareas-mantenimiento.html?${baseParams}`;
+        document.getElementById('card-plan-semanal').href = `plan-semanal-mto.html?${baseParams}`;
 
         // Mostrar contenido primero, luego cargar estadísticas en background
         document.getElementById('loading').classList.add('hidden');
@@ -563,18 +602,24 @@
         document.getElementById('count-completadas').textContent = completadas;
       } catch (e) { console.log('Sin datos de reparaciones'); }
 
-      // Mantenimiento programado
+      // Tareas de Mantenimiento - desde configMto/tareasPorTipo
       try {
-        const mantSnap = await db.collection('bienes').doc(bienId).collection('mtoProgramado').get();
-        const totalTareas = mantSnap.size;
-        const zonasSet = new Set();
-        mantSnap.docs.forEach(doc => {
-          const zona = doc.data().zona;
-          if (zona) zonasSet.add(zona);
-        });
+        const configDoc = await db.collection('bienes').doc(bienId)
+          .collection('configMto').doc('tareasPorTipo').get();
+        const tareasPorTipo = configDoc.exists ? configDoc.data() : {};
+
+        let tiposConTareas = 0;
+        let totalTareas = 0;
+        for (const [tipo, tareas] of Object.entries(tareasPorTipo)) {
+          const activas = (tareas || []).filter(t => t.activo);
+          if (activas.length > 0) {
+            tiposConTareas++;
+            totalTareas += activas.length;
+          }
+        }
+        document.getElementById('count-tipos-mto').textContent = tiposConTareas;
         document.getElementById('count-tareas-mto').textContent = totalTareas;
-        document.getElementById('count-zonas-mto').textContent = zonasSet.size;
-      } catch (e) { console.log('Sin datos de mant programado'); }
+      } catch (e) { console.log('Sin datos de tareas mto'); }
 
       // Plan Semanal de Mantenimiento
       await cargarPlanSemanal();
@@ -583,7 +628,63 @@
     // ========== PLAN SEMANAL DE MANTENIMIENTO ==========
     let tareasSemanalesData = [];
     let semanaKeyActual = '';
-    const MAX_MINUTOS_DIA = 420; // 7 horas máximo por día
+
+    const TAREAS_MTO = {
+      enchufes:     { nombre: 'Revisar enchufes y tomas',     icon: '🔌' },
+      grifos:       { nombre: 'Comprobar grifos y desagües',  icon: '🚿' },
+      humedades:    { nombre: 'Inspeccionar humedades',       icon: '💧' },
+      bisagras:     { nombre: 'Engrasar bisagras/cerraduras', icon: '🔩' },
+      persianas:    { nombre: 'Revisar persianas/estores',    icon: '🪟' },
+      sellados:     { nombre: 'Comprobar sellados (silicona)',icon: '🧴' },
+      pintura:      { nombre: 'Revisar pintura/paredes',      icon: '🖌️' },
+      filtros:      { nombre: 'Limpiar filtros (AA/campana)', icon: '🌀' },
+      descalcificar:{ nombre: 'Descalcificar grifería',       icon: '🧪' },
+      electrica:    { nombre: 'Revisar instalación eléctrica',icon: '⚡' },
+      fontaneria:   { nombre: 'Comprobar fontanería',         icon: '🔧' },
+      climatizacion:{ nombre: 'Revisar calefacción/AA',       icon: '🌡️' },
+      madera:       { nombre: 'Tratar madera (puertas/muebles)',icon: '🪵' },
+      ventilacion:  { nombre: 'Comprobar ventilación',        icon: '💨' }
+    };
+
+    const TIPOS_DEP = {
+      dormitorio:   { icon: '🛏️', label: 'Dormitorio' },
+      servicio:     { icon: '🚿', label: 'Servicio' },
+      aseo:         { icon: '🚽', label: 'Aseo' },
+      vestuario:    { icon: '👔', label: 'Vestuario' },
+      cocina:       { icon: '🍳', label: 'Cocina' },
+      salon:        { icon: '🛋️', label: 'Salón' },
+      comedor:      { icon: '🍽️', label: 'Comedor' },
+      lavadero:     { icon: '🧺', label: 'Lavadero' },
+      almacen:      { icon: '📦', label: 'Almacén' },
+      camara:       { icon: '❄️', label: 'Cámara' },
+      taller:       { icon: '🔧', label: 'Taller' },
+      instalacion:  { icon: '⚡', label: 'Cuarto Instalación' },
+      porche:       { icon: '🌿', label: 'Porche' },
+      otro:         { icon: '🏠', label: 'Otro' }
+    };
+
+    function calcularSemanaDelMes(fecha = new Date()) {
+      const primerDia = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+      const diaSemana = primerDia.getDay();
+      return Math.ceil((fecha.getDate() + diaSemana) / 7);
+    }
+
+    function cumpleFrecuencia(inst, mesActual) {
+      const mesInicio = inst.mesInicio || 1;
+      const frecuencia = inst.frecuencia || 'mensual';
+      let diff = mesActual - mesInicio;
+      if (diff < 0) diff += 12;
+      switch (frecuencia) {
+        case 'semanal': return true;
+        case 'quincenal': return true;
+        case 'mensual': return true;
+        case 'bimestral': return diff % 2 === 0;
+        case 'trimestral': return diff % 3 === 0;
+        case 'semestral': return diff % 6 === 0;
+        case 'anual': return mesActual === mesInicio;
+        default: return true;
+      }
+    }
 
     async function cargarPlanSemanal() {
       const container = document.getElementById('tareas-semanales');
@@ -591,140 +692,80 @@
       
       try {
         const hoy = new Date();
-        const diaHoy = hoy.getDay();
+        const semanaDelMes = calcularSemanaDelMes(hoy);
+        const mesActual = hoy.getMonth() + 1;
+
         const inicioSemana = new Date(hoy);
-        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1); // Lunes
+        inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
         inicioSemana.setHours(0, 0, 0, 0);
-        const finSemana = new Date(inicioSemana);
-        finSemana.setDate(inicioSemana.getDate() + 6);
-        
         semanaKeyActual = inicioSemana.toISOString().split('T')[0];
 
-        // 1. Cargar tareas del Mantenimiento Programado que tocan esta semana
-        const mantProgSnap = await db.collection('bienes').doc(bienId)
-          .collection('mtoProgramado').get();
+        tareasSemanalesData = [];
+
+        // 1. Cargar instrucciones del plan desde planMtoConfig
+        const instSnap = await db.collection('bienes').doc(bienId)
+          .collection('planMtoConfig').get();
         
-        let tareasProgramadas = [];
-        const diasSemanaFechas = [];
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(inicioSemana);
-          d.setDate(inicioSemana.getDate() + i);
-          diasSemanaFechas.push(d);
-        }
-
-        mantProgSnap.docs.forEach(doc => {
-          const mant = { id: doc.id, ...doc.data() };
-          const frecuencia = mant.frecuencia || 'mensual';
-          const proximaFecha = mant.proximaFecha?.toDate ? mant.proximaFecha.toDate() : 
-                              mant.proximaFecha ? new Date(mant.proximaFecha) : null;
+        instSnap.docs.forEach(doc => {
+          const inst = { id: doc.id, ...doc.data() };
           
-          if (!proximaFecha) return;
-          
-          // Verificar si toca esta semana según frecuencia
-          diasSemanaFechas.forEach((diaFecha, idx) => {
-            let tocaEsteDia = false;
-            
-            if (frecuencia === 'diario') {
-              tocaEsteDia = true;
-            } else if (frecuencia === 'semanal' && proximaFecha.getDay() === diaFecha.getDay()) {
-              tocaEsteDia = true;
-            } else if (frecuencia === 'quincenal') {
-              const diffDays = Math.floor((diaFecha - proximaFecha) / (1000 * 60 * 60 * 24));
-              tocaEsteDia = diffDays % 14 === 0 && diffDays >= 0;
-            } else if (frecuencia === 'mensual' && proximaFecha.getDate() === diaFecha.getDate()) {
-              tocaEsteDia = true;
-            } else if (diaFecha.toISOString().split('T')[0] === proximaFecha.toISOString().split('T')[0]) {
-              tocaEsteDia = true;
-            }
+          // Filtrar: ¿toca esta semana del mes + cumple frecuencia?
+          if (!inst.semanas || !inst.semanas.includes(semanaDelMes)) return;
+          if (!cumpleFrecuencia(inst, mesActual)) return;
 
-            if (tocaEsteDia) {
-              tareasProgramadas.push({
-                id: `prog_${doc.id}_${idx}`,
-                titulo: mant.nombre || mant.titulo,
-                tipo: 'programado',
-                fechaProgramada: diaFecha.toISOString().split('T')[0],
-                tiempoEstimado: mant.tiempoEstimado || 60,
-                prioridad: 'normal',
-                completada: false,
-                origen: doc.id
-              });
-            }
+          const tareaInfo = TAREAS_MTO[inst.tareaId] || { nombre: inst.tareaNombre || inst.tareaId, icon: '🔧' };
+          const habIcon = TIPOS_DEP[inst.habitacionTipo]?.icon || '🏠';
+
+          tareasSemanalesData.push({
+            id: `mto_${inst.id}`,
+            titulo: tareaInfo.nombre,
+            zona: `${habIcon} ${inst.habitacionNombre || 'Habitación'}`,
+            zonaIcon: tareaInfo.icon,
+            tiempo: inst.duracion || 30,
+            frecuencia: inst.frecuencia || 'mensual',
+            completada: false
           });
         });
 
-        // 2. Cargar reparaciones pendientes ordenadas por prioridad y antigüedad
-        const repsSnap = await db.collection('bienes').doc(bienId)
-          .collection('mantenimiento')
-          .where('estado', '==', 'pendiente')
-          .get();
-        
-        let reparaciones = repsSnap.docs.map(doc => {
-          const rep = { id: doc.id, ...doc.data() };
-          // Calcular score de prioridad (mayor = más urgente)
-          let score = 0;
-          if (rep.urgencia === 'alta') score += 1000;
-          else if (rep.urgencia === 'media') score += 500;
-          // Añadir antigüedad (días desde reporte)
-          const fechaReporte = rep.fecha?.toDate ? rep.fecha.toDate() : new Date();
-          const diasDesdeReporte = Math.floor((hoy - fechaReporte) / (1000 * 60 * 60 * 24));
-          score += diasDesdeReporte;
+        // 2. Cargar reparaciones pendientes (siguen alimentando el plan)
+        try {
+          const repsSnap = await db.collection('bienes').doc(bienId)
+            .collection('reparaciones')
+            .where('estado', '==', 'pendiente')
+            .get();
           
-          return {
-            id: `rep_${doc.id}`,
-            titulo: `🔧 ${rep.titulo}`,
-            tipo: 'reparacion',
-            tiempoEstimado: rep.tiempoEstimado || 60,
-            urgencia: rep.urgencia,
-            prioridad: rep.urgencia,
-            score: score,
-            completada: false,
-            origen: doc.id
-          };
-        }).sort((a, b) => b.score - a.score);
+          repsSnap.docs.forEach(doc => {
+            const rep = { id: doc.id, ...doc.data() };
+            let urgenciaIcon = '🟢';
+            if (rep.urgencia === 'alta') urgenciaIcon = '🔴';
+            else if (rep.urgencia === 'media') urgenciaIcon = '🟡';
 
-        // 3. Distribuir reparaciones en días con tiempo disponible
-        const tiempoPorDia = [0, 0, 0, 0, 0, 0, 0]; // Lun-Dom
-        
-        // Primero contar tiempo de tareas programadas
-        tareasProgramadas.forEach(t => {
-          const fecha = new Date(t.fechaProgramada);
-          const diaIdx = (fecha.getDay() + 6) % 7; // Convertir: Dom=6, Lun=0, etc.
-          tiempoPorDia[diaIdx] += t.tiempoEstimado || 60;
-        });
+            tareasSemanalesData.push({
+              id: `rep_${doc.id}`,
+              titulo: `${urgenciaIcon} ${rep.titulo || 'Reparación'}`,
+              zona: rep.zona || 'General',
+              zonaIcon: '🔧',
+              tiempo: rep.tiempoEstimado || 60,
+              frecuencia: '',
+              esReparacion: true,
+              urgencia: rep.urgencia,
+              completada: false
+            });
+          });
+        } catch (e) { console.log('Sin reparaciones pendientes'); }
 
-        // Asignar reparaciones a días con tiempo disponible
-        reparaciones.forEach(rep => {
-          // Buscar día con tiempo disponible
-          for (let i = 0; i < 7; i++) {
-            if (tiempoPorDia[i] + (rep.tiempoEstimado || 60) <= MAX_MINUTOS_DIA) {
-              const diaFecha = new Date(inicioSemana);
-              diaFecha.setDate(inicioSemana.getDate() + i);
-              rep.fechaProgramada = diaFecha.toISOString().split('T')[0];
-              tiempoPorDia[i] += rep.tiempoEstimado || 60;
-              tareasProgramadas.push(rep);
-              break;
-            }
-          }
-        });
-
-        // 4. Cargar estado de completado de esta semana
+        // 3. Cargar estado de completados de esta semana
         try {
           const completadosDoc = await db.collection('bienes').doc(bienId)
             .collection('planSemanalCompletados').doc(semanaKeyActual).get();
           if (completadosDoc.exists) {
             const completados = completadosDoc.data().tareas || {};
-            tareasProgramadas.forEach(t => {
-              if (completados[t.id]) {
-                t.completada = true;
-              }
+            tareasSemanalesData.forEach(t => {
+              if (completados[t.id]) t.completada = true;
             });
           }
         } catch (e) {}
 
-        // Ordenar por fecha
-        tareasProgramadas.sort((a, b) => new Date(a.fechaProgramada) - new Date(b.fechaProgramada));
-        
-        tareasSemanalesData = tareasProgramadas;
         renderPlanSemanal();
         
       } catch (error) {
@@ -736,11 +777,18 @@
     function renderPlanSemanal() {
       const container = document.getElementById('tareas-semanales');
       const progresoBar = document.getElementById('progreso-semanal');
-      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-      const hoyNum = new Date().getDay();
+      const frecLabels = {
+        semanal: 'Sem', quincenal: 'Quin', mensual: 'Mens',
+        bimestral: 'Bim', trimestral: 'Trim', semestral: 'Semes', anual: 'Anual'
+      };
 
       if (tareasSemanalesData.length === 0) {
-        container.innerHTML = '<div class="plan-empty">📋 Sin tareas programadas esta semana<br><small>Las tareas se generan desde Mant. Programado y Reparaciones</small></div>';
+        container.innerHTML = `
+          <div class="plan-empty">
+            📋 Sin tareas programadas esta semana<br>
+            <small>Configura en <a href="plan-semanal-mto.html?id=${bienId}" style="color: var(--mto);">Plan Semanal</a></small>
+          </div>
+        `;
         progresoBar.style.width = '0%';
         return;
       }
@@ -751,54 +799,43 @@
       progresoBar.style.width = progreso + '%';
 
       // Calcular tiempo total
-      const tiempoTotal = tareasSemanalesData.reduce((sum, t) => sum + (t.tiempoEstimado || 60), 0);
+      const tiempoTotal = tareasSemanalesData.reduce((sum, t) => sum + (t.tiempo || 30), 0);
       const horasTotal = Math.floor(tiempoTotal / 60);
       const minsTotal = tiempoTotal % 60;
 
-      let html = tareasSemanalesData.map(t => {
-        const fecha = new Date(t.fechaProgramada);
-        const diaNum = fecha.getDay();
-        const diaStr = diasSemana[diaNum];
-        const esHoy = diaNum === hoyNum;
-        const completada = t.completada ? 'completada' : '';
-        const esReparacion = t.tipo === 'reparacion';
-        const tiempo = t.tiempoEstimado || 60;
-        const tiempoStr = tiempo >= 60 ? `${Math.floor(tiempo/60)}h${tiempo%60 ? tiempo%60+'m' : ''}` : `${tiempo}m`;
-        
-        // Icono de urgencia para reparaciones
-        let urgenciaIcon = '';
-        if (esReparacion) {
-          if (t.urgencia === 'alta') urgenciaIcon = '🔴';
-          else if (t.urgencia === 'media') urgenciaIcon = '🟡';
-          else urgenciaIcon = '🟢';
-        }
+      let html = `<div class="plan-tiempo-total">⏱️ ${horasTotal}h ${minsTotal ? minsTotal + 'm' : ''} esta semana</div>`;
+
+      html += tareasSemanalesData.map(t => {
+        const completadaClass = t.completada ? 'completada' : '';
+        const esReparacion = t.esReparacion;
+        const frecTag = frecLabels[t.frecuencia] || '';
+        const tiempoStr = t.tiempo >= 60 
+          ? `${Math.floor(t.tiempo/60)}h${t.tiempo%60 ? t.tiempo%60+'m' : ''}` 
+          : `${t.tiempo}m`;
 
         return `
-          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''} ${esReparacion ? 'reparacion' : ''}">
+          <div class="plan-tarea ${completadaClass} ${esReparacion ? 'reparacion' : ''}">
             <input type="checkbox" class="plan-tarea-check" 
               ${t.completada ? 'checked' : ''} 
               onchange="toggleTareaSemanal('${t.id}', this.checked)">
             <div class="plan-tarea-info">
-              <div class="plan-tarea-titulo">${urgenciaIcon} ${t.titulo || 'Tarea'}</div>
+              <div class="plan-tarea-titulo">${t.zonaIcon} ${t.titulo}</div>
               <div class="plan-tarea-meta">
-                <span class="plan-tarea-dia">${diaStr} ${fecha.getDate()}</span>
-                <span>⏱️ ${tiempoStr}</span>
+                ${frecTag ? `<span class="plan-tarea-dia">${frecTag}</span>` : ''}
                 ${esReparacion ? '<span class="badge-rep">Reparación</span>' : ''}
+                <span>${t.zona}</span>
+                <span>⏱️ ${tiempoStr}</span>
               </div>
             </div>
           </div>
         `;
       }).join('');
 
-      // Añadir resumen de tiempo
-      html = `<div class="plan-tiempo-total">⏱️ ${horasTotal}h ${minsTotal ? minsTotal + 'm' : ''} esta semana</div>` + html;
-
       container.innerHTML = html;
     }
 
     async function toggleTareaSemanal(tareaId, completada) {
       try {
-        // Guardar estado de completado en colección separada por semana
         const docRef = db.collection('bienes').doc(bienId)
           .collection('planSemanalCompletados').doc(semanaKeyActual);
         
@@ -816,7 +853,6 @@
           }, { merge: true });
         }
         
-        // Actualizar UI
         const tarea = tareasSemanalesData.find(t => t.id === tareaId);
         if (tarea) tarea.completada = completada;
         renderPlanSemanal();
