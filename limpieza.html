@@ -223,11 +223,6 @@
     .modulo-card.plan-semanal:hover { border-color: #8B7355; }
     .modulo-card.plan-semanal .modulo-stat-value { color: #6B5A45; }
 
-    /* Card Limpieza Programada */
-    .modulo-card.programada .modulo-card-header { background: linear-gradient(135deg, #9B7EB8 0%, #7A5F96 100%); }
-    .modulo-card.programada:hover { border-color: #9B7EB8; }
-    .modulo-card.programada .modulo-stat-value { color: #7A5F96; }
-
     /* Cards interactivas con tareas */
     .plan-card-content { padding: 12px 16px; max-height: 280px; overflow-y: auto; }
     .plan-tarea {
@@ -329,15 +324,15 @@
             <div class="modulo-card-title">Tareas de Limpieza</div>
           </div>
           <div class="modulo-card-body">
-            <p class="modulo-card-desc">Configura las tareas de limpieza por zona y día de la semana.</p>
+            <p class="modulo-card-desc">Catálogo de tareas de limpieza por tipo de habitación.</p>
             <div class="modulo-stats">
               <div class="modulo-stat">
-                <span class="modulo-stat-value" id="stat-zonas">0</span>
-                <span class="modulo-stat-label">zonas</span>
+                <span class="modulo-stat-value" id="stat-tipos">0</span>
+                <span class="modulo-stat-label">tipos con tareas</span>
               </div>
               <div class="modulo-stat">
                 <span class="modulo-stat-value" id="stat-tareas">0</span>
-                <span class="modulo-stat-label">tareas</span>
+                <span class="modulo-stat-label">tareas definidas</span>
               </div>
             </div>
             <a href="#" class="modulo-card-action" id="link-tareas">Gestionar →</a>
@@ -361,27 +356,6 @@
           </div>
         </a>
 
-        <!-- Limpieza Programada -->
-        <div class="modulo-card programada" id="card-programada">
-          <div class="modulo-card-header">
-            <div class="modulo-card-icon">📋</div>
-            <div class="modulo-card-title">Limpieza Programada</div>
-          </div>
-          <div class="modulo-card-body">
-            <p class="modulo-card-desc">Tareas recurrentes de limpieza profunda y mantenimiento periódico.</p>
-            <div class="modulo-stats">
-              <div class="modulo-stat">
-                <span class="modulo-stat-value" id="stat-programadas">0</span>
-                <span class="modulo-stat-label">tareas</span>
-              </div>
-              <div class="modulo-stat">
-                <span class="modulo-stat-value" id="stat-frecuencias">0</span>
-                <span class="modulo-stat-label">frecuencias</span>
-              </div>
-            </div>
-            <a href="#" class="modulo-card-action" id="link-programada">Gestionar →</a>
-          </div>
-        </div>
       </div>
     </div>
   </main>
@@ -411,7 +385,6 @@
     // Configurar links de cards
     document.getElementById('link-lavanderia').href = `lavanderia.html?id=${bienId}&origen=limpieza`;
     document.getElementById('link-tareas').href = `tareas-limpieza.html?id=${bienId}&origen=limpieza`;
-    document.getElementById('link-programada').href = `limpieza-programada.html?id=${bienId}&origen=limpieza`;
     document.getElementById('card-plan-semanal').href = `plan-semanal-limpieza.html?id=${bienId}&origen=limpieza`;
 
     if (!bienId) window.location.href = 'lo-comun.html';
@@ -459,12 +432,6 @@
           cb.style.cursor = 'not-allowed';
         });
       }
-      
-      // Card Limpieza Programada (si existe)
-      if (!PermisosExt.puede('limpieza_programada', 'v')) {
-        const card = document.querySelector('.modulo-card.programada');
-        if (card) card.style.display = 'none';
-      }
     }
 
     async function cargarDatos() {
@@ -479,14 +446,11 @@
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('nombre-bien').textContent = `· ${bienData.nombre || 'Sin nombre'}`;
 
-        // Cargar stats de zonas/tareas
-        await cargarStatsZonas();
+        // Cargar stats de tareas por tipo
+        await cargarStatsTareas();
 
         // Cargar stats lavandería
         await cargarStatsLavanderia();
-
-        // Cargar stats limpieza programada
-        await cargarStatsProgramadas();
 
         // Cargar plan semanal
         await cargarPlanSemanal();
@@ -496,20 +460,29 @@
       }
     }
 
-    async function cargarStatsZonas() {
+    async function cargarStatsTareas() {
       try {
-        // Contar zonas desde colección 'zonas'
-        const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonas').get();
-        let totalZonas = zonasSnap.docs.length;
-        
-        // Contar tareas desde limpiezaProgramada
-        const tareasSnap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
-        let totalTareas = tareasSnap.docs.length;
+        // Leer catálogo de tareas desde configLimpieza/tareasPorTipo
+        const configDoc = await db.collection('bienes').doc(bienId)
+          .collection('configLimpieza').doc('tareasPorTipo').get();
+        const tareasPorTipo = configDoc.exists ? configDoc.data() : {};
 
-        document.getElementById('stat-zonas').textContent = totalZonas;
+        // Contar tipos con tareas activas y total de tareas
+        let tiposConTareas = 0;
+        let totalTareas = 0;
+
+        for (const [tipo, tareas] of Object.entries(tareasPorTipo)) {
+          const activas = (tareas || []).filter(t => t.activo);
+          if (activas.length > 0) {
+            tiposConTareas++;
+            totalTareas += activas.length;
+          }
+        }
+
+        document.getElementById('stat-tipos').textContent = tiposConTareas;
         document.getElementById('stat-tareas').textContent = totalTareas;
       } catch (error) {
-        console.log('Error cargando stats zonas:', error);
+        console.log('Error cargando stats tareas:', error);
       }
     }
 
@@ -527,23 +500,6 @@
       }
     }
 
-    async function cargarStatsProgramadas() {
-      try {
-        const snap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
-        const tareas = snap.docs.map(d => d.data());
-        
-        // Contar tareas
-        document.getElementById('stat-programadas').textContent = tareas.length;
-        
-        // Contar frecuencias únicas
-        const frecuencias = new Set(tareas.map(t => t.frecuencia || t.dia));
-        document.getElementById('stat-frecuencias').textContent = frecuencias.size;
-      } catch (error) {
-        document.getElementById('stat-programadas').textContent = '0';
-        document.getElementById('stat-frecuencias').textContent = '0';
-      }
-    }
-
     // ========== PLAN SEMANAL COMBINADO (LIMPIEZA + LAVANDERÍA) ==========
     let planSemanalData = [];
     let completadosData = {};
@@ -551,15 +507,19 @@
 
     const TAREAS_INFO = {
       barrer: { nombre: 'Barrer', icon: '🧹' },
-      fregar: { nombre: 'Fregar', icon: '🪣' },
+      fregar: { nombre: 'Fregar suelo', icon: '🪣' },
+      aspirar: { nombre: 'Aspirar', icon: '🔌' },
       desinfectar: { nombre: 'Desinfectar', icon: '🧴' },
       limpiar: { nombre: 'Limpiar superficies', icon: '🧽' },
+      polvo: { nombre: 'Quitar polvo', icon: '✨' },
+      cristales: { nombre: 'Limpiar cristales', icon: '🪟' },
       sabanas: { nombre: 'Cambiar sábanas', icon: '🛏️' },
       ropa: { nombre: 'Recoger ropa', icon: '👕' },
       consumibles: { nombre: 'Reponer consumibles', icon: '🧻' },
       encendidos: { nombre: 'Revisar encendidos', icon: '💡' },
-      grifos: { nombre: 'Revisar grifos', icon: '🚿' },
-      cristales: { nombre: 'Hacer cristales', icon: '🪟' }
+      grifos: { nombre: 'Revisar grifos/desagües', icon: '🚿' },
+      electro: { nombre: 'Limpiar electrodomésticos', icon: '🔧' },
+      ordenar: { nombre: 'Ordenar', icon: '📂' }
     };
 
     const TIPOS_DEP = {
@@ -578,13 +538,38 @@
       otro: { icon: '🏠', label: 'Otro' }
     };
 
+    function calcularSemanaDelMes(fecha = new Date()) {
+      const primerDia = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
+      const diaSemana = primerDia.getDay();
+      return Math.ceil((fecha.getDate() + diaSemana) / 7);
+    }
+
+    function cumpleFrecuencia(inst, mesActual) {
+      const mesInicio = inst.mesInicio || 1;
+      const frecuencia = inst.frecuencia || 'mensual';
+      let diff = mesActual - mesInicio;
+      if (diff < 0) diff += 12;
+      switch (frecuencia) {
+        case 'semanal': return true;
+        case 'quincenal': return true;
+        case 'mensual': return true;
+        case 'bimestral': return diff % 2 === 0;
+        case 'trimestral': return diff % 3 === 0;
+        case 'semestral': return diff % 6 === 0;
+        case 'anual': return mesActual === mesInicio;
+        default: return true;
+      }
+    }
+
     async function cargarPlanSemanal() {
       const container = document.getElementById('tareas-semanales');
       const progresoBar = document.getElementById('progreso-semanal');
       
       try {
         const hoy = new Date();
-        const hoyNum = hoy.getDay();
+        const semanaDelMes = calcularSemanaDelMes(hoy);
+        const mesActual = hoy.getMonth() + 1;
+
         const inicioSemana = new Date(hoy);
         inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
         inicioSemana.setHours(0, 0, 0, 0);
@@ -592,25 +577,29 @@
 
         planSemanalData = [];
 
-        // 1. Cargar tareas de limpieza programada
-        const tareasSnap = await db.collection('bienes').doc(bienId).collection('limpiezaProgramada').get();
-        tareasSnap.docs.forEach(doc => {
-          const tarea = { id: doc.id, ...doc.data() };
-          const tareaNombre = tarea.tipo === 'otra' 
-            ? (tarea.otraTarea || 'Tarea') 
-            : (TAREAS_INFO[tarea.tipo]?.nombre || tarea.tipo);
-          const tareaIcon = TAREAS_INFO[tarea.tipo]?.icon || '🧹';
-          const zonaNombre = tarea.zonaNombre || tarea.zona || 'General';
-          const depNombre = tarea.dependencia ? ` - ${tarea.dependencia}` : '';
+        // 1. Cargar instrucciones del plan desde planLimpConfig
+        const instSnap = await db.collection('bienes').doc(bienId)
+          .collection('planLimpConfig').get();
+        
+        instSnap.docs.forEach(doc => {
+          const inst = { id: doc.id, ...doc.data() };
           
+          // Filtrar: ¿toca esta semana del mes + cumple frecuencia?
+          if (!inst.semanas || !inst.semanas.includes(semanaDelMes)) return;
+          if (!cumpleFrecuencia(inst, mesActual)) return;
+
+          const tareaInfo = TAREAS_INFO[inst.tareaId] || { nombre: inst.tareaNombre || inst.tareaId, icon: '🧹' };
+          const habIcon = TIPOS_DEP[inst.habitacionTipo]?.icon || '🏠';
+
           planSemanalData.push({
-            id: `lim_${tarea.id}`,
+            id: `lim_${inst.id}`,
             tipo: 'limpieza',
-            nombre: tareaNombre,
-            zona: `${zonaNombre}${depNombre}`,
-            zonaIcon: tareaIcon,
-            dia: tarea.dia,
-            tiempo: parseInt(tarea.tiempo) || 30
+            nombre: tareaInfo.nombre,
+            zona: `${habIcon} ${inst.habitacionNombre || 'Habitación'}`,
+            zonaIcon: tareaInfo.icon,
+            restricciones: inst.restricciones || [],
+            tiempo: inst.duracion || 30,
+            frecuencia: inst.frecuencia || 'mensual'
           });
         });
 
@@ -618,7 +607,6 @@
         const lavanderiaSnap = await db.collection('bienes').doc(bienId).collection('lavanderia').get();
         lavanderiaSnap.docs.forEach(doc => {
           const prenda = { id: doc.id, ...doc.data() };
-          // Solo incluir prendas con día asignado (semanal/quincenal)
           if (prenda.dia && (prenda.frecuencia === 'semanal' || prenda.frecuencia === 'quincenal')) {
             planSemanalData.push({
               id: `lav_${prenda.id}`,
@@ -626,9 +614,9 @@
               nombre: prenda.nombre,
               zona: prenda.lugar === 'tintoreria' ? 'Tintorería' : 'En casa',
               zonaIcon: prenda.lugar === 'tintoreria' ? '🧺' : '👕',
-              dia: prenda.dia,
-              tiempo: 30, // Tiempo estimado para lavandería
-              notas: prenda.notas,
+              restricciones: [],
+              tiempo: 30,
+              frecuencia: prenda.frecuencia,
               procesos: [
                 prenda.lavado ? '🧼' : '',
                 prenda.secado ? '☀️' : '',
@@ -653,13 +641,6 @@
           completada: !!completadosData[tarea.id]
         }));
 
-        // 5. Ordenar por día
-        planSemanalData.sort((a, b) => {
-          const diaA = parseInt(a.dia);
-          const diaB = parseInt(b.dia);
-          return (diaA === 0 ? 7 : diaA) - (diaB === 0 ? 7 : diaB);
-        });
-
         renderPlanSemanal();
         
       } catch (error) {
@@ -671,14 +652,16 @@
     function renderPlanSemanal() {
       const container = document.getElementById('tareas-semanales');
       const progresoBar = document.getElementById('progreso-semanal');
-      const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-      const hoyNum = new Date().getDay();
+      const frecLabels = {
+        semanal: 'Sem', quincenal: 'Quin', mensual: 'Mens',
+        bimestral: 'Bim', trimestral: 'Trim', semestral: 'Semes', anual: 'Anual'
+      };
 
       if (planSemanalData.length === 0) {
         container.innerHTML = `
           <div class="plan-empty">
             📅 Sin tareas programadas esta semana<br>
-            <small>Configura tareas en <a href="tareas-limpieza.html?id=${bienId}">Tareas de Limpieza</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
+            <small>Configura en <a href="plan-semanal-limpieza.html?id=${bienId}">Plan Semanal</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
           </div>
         `;
         progresoBar.style.width = '0%';
@@ -691,23 +674,21 @@
       progresoBar.style.width = progreso + '%';
 
       let html = planSemanalData.map(t => {
-        const diaNum = parseInt(t.dia);
-        const diaStr = diasSemana[diaNum];
-        const esHoy = diaNum === hoyNum;
         const completada = t.completada ? 'completada' : '';
         const tipoClass = t.tipo === 'lavanderia' ? 'lavanderia' : 'limpieza';
         const tipoIcon = t.tipo === 'lavanderia' ? '👕' : '🧹';
+        const frecTag = frecLabels[t.frecuencia] || '';
 
         return `
-          <div class="plan-tarea ${completada} ${esHoy ? 'hoy' : ''} ${tipoClass}">
+          <div class="plan-tarea ${completada} ${tipoClass}">
             <input type="checkbox" class="plan-tarea-check" 
               ${t.completada ? 'checked' : ''} 
               onchange="toggleTarea('${t.id}', this.checked)">
             <div class="plan-tarea-info">
               <div class="plan-tarea-titulo">${tipoIcon} ${t.nombre}</div>
               <div class="plan-tarea-meta">
-                <span class="plan-tarea-dia">${diaStr}</span>
-                <span>${t.zonaIcon} ${t.zona}</span>
+                ${frecTag ? `<span class="plan-tarea-dia">${frecTag}</span>` : ''}
+                <span>${t.zona}</span>
                 ${t.procesos ? `<span>${t.procesos}</span>` : ''}
                 <span>⏱️ ${t.tiempo}m</span>
               </div>
