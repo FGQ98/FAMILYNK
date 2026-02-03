@@ -574,9 +574,9 @@
           <!-- Zona y Tarea -->
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Zona *</label>
+              <label class="form-label">Habitación *</label>
               <select class="form-select" id="inst-zona" required onchange="cargarTareasZona()">
-                <option value="">Seleccionar zona</option>
+                <option value="">Seleccionar habitación</option>
               </select>
             </div>
             <div class="form-group">
@@ -698,16 +698,44 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="permisos-externos.js"></script>
   <script>
-    let currentUser = null;
-    let bienId = null;
-    let bienData = null;
-    let instruccionesData = [];
-    let zonasData = [];
-    let tareasDisponibles = [];
-    let reservasData = [];
-    let instruccionEditando = null;
-    let semanasSeleccionadas = [];
+    // =============================================
+    // CONSTANTES
+    // =============================================
+    const TIPOS_DEPENDENCIA = {
+      dormitorio:   { icon: '🛏️', label: 'Dormitorio' },
+      servicio:     { icon: '🚿', label: 'Servicio/Baño' },
+      aseo:         { icon: '🚽', label: 'Aseo' },
+      vestuario:    { icon: '👔', label: 'Vestuario' },
+      cocina:       { icon: '🍳', label: 'Cocina' },
+      salon:        { icon: '🛋️', label: 'Salón' },
+      comedor:      { icon: '🍽️', label: 'Comedor' },
+      almacen:      { icon: '📦', label: 'Almacén' },
+      camara:       { icon: '❄️', label: 'Cámara' },
+      taller:       { icon: '🔧', label: 'Taller' },
+      instalacion:  { icon: '⚡', label: 'Cuarto Instalación' },
+      porche:       { icon: '🌿', label: 'Porche/Terraza' },
+      otro:         { icon: '🏠', label: 'Otro' }
+    };
+
+    // Tareas predefinidas (mismas que tareas-limpieza.html para resolver nombres)
+    const TAREAS_PREDEFINIDAS = [
+      { id: 'barrer',       nombre: 'Barrer',                    icon: '🧹' },
+      { id: 'fregar',       nombre: 'Fregar suelo',              icon: '🪣' },
+      { id: 'aspirar',      nombre: 'Aspirar',                   icon: '🔌' },
+      { id: 'desinfectar',  nombre: 'Desinfectar',               icon: '🧴' },
+      { id: 'limpiar',      nombre: 'Limpiar superficies',       icon: '🧽' },
+      { id: 'polvo',        nombre: 'Quitar polvo',              icon: '✨' },
+      { id: 'cristales',    nombre: 'Limpiar cristales',         icon: '🪟' },
+      { id: 'sabanas',      nombre: 'Cambiar sábanas',           icon: '🛏️' },
+      { id: 'ropa',         nombre: 'Recoger ropa',              icon: '👕' },
+      { id: 'consumibles',  nombre: 'Reponer consumibles',       icon: '🧻' },
+      { id: 'encendidos',   nombre: 'Revisar encendidos',        icon: '💡' },
+      { id: 'grifos',       nombre: 'Revisar grifos/desagües',   icon: '🚿' },
+      { id: 'electro',      nombre: 'Limpiar electrodomésticos', icon: '🔧' },
+      { id: 'ordenar',      nombre: 'Ordenar',                   icon: '📂' }
+    ];
 
     const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     const diasSemanaFull = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -716,24 +744,23 @@
       semanal: 'Semanal', quincenal: 'Quincenal', mensual: 'Mensual',
       bimestral: 'Bimestral', trimestral: 'Trimestral', semestral: 'Semestral', anual: 'Anual'
     };
-    const zonaIcons = {
-      cocina: '🍳', salon: '🛋️', comedor: '🍽️', dormitorio: '🛏️',
-      bano: '🚿', terraza: '🌿', garaje: '🚗', lavadero: '🧺',
-      entrada: '🚪', general: '🏠', exterior: '🌳', piscina: '🏊'
-    };
-    const zonaNombres = {
-      cocina: 'Cocina', salon: 'Salón', comedor: 'Comedor', dormitorio: 'Dormitorio',
-      bano: 'Baño', terraza: 'Terraza/Jardín', garaje: 'Garaje', lavadero: 'Lavadero',
-      entrada: 'Entrada', general: 'General', exterior: 'Exterior', piscina: 'Piscina'
-    };
-    const tareaNombres = {
-      'barrer-fregar': 'Barrer y fregar', 'cambiar-sabanas': 'Cambiar sábanas', 
-      'desinfectar': 'Desinfectar', 'revisar-consumibles': 'Revisar consumibles',
-      'planchar': 'Planchar', 'lavar-ropa': 'Lavar ropa', 'limpiar-cristales': 'Limpiar cristales',
-      'aspirar': 'Aspirar', 'quitar-polvo': 'Quitar polvo', 
-      'limpiar-electrodomesticos': 'Limpiar electrodomésticos', 'ordenar': 'Ordenar', 'otra': 'Otra'
-    };
 
+    // =============================================
+    // ESTADO
+    // =============================================
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let habitacionesData = [];   // col: habitaciones (fuente única de zonas)
+    let tareasPorTipo = {};      // col: configLimpieza/tareasPorTipo
+    let instruccionesData = [];  // col: planLimpConfig
+    let reservasData = [];       // col: reservas
+    let instruccionEditando = null;
+    let semanasSeleccionadas = [];
+
+    // =============================================
+    // INIT
+    // =============================================
     const params = new URLSearchParams(window.location.search);
     bienId = params.get('id');
     const origen = params.get('origen') || 'limpieza';
@@ -746,61 +773,46 @@
     }
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.location.href = 'login.html';
-        return;
-      }
+      if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
+
+      await PermisosExt.init(db, user, bienId);
       await cargarDatos();
+
+      if (PermisosExt.esExterno) {
+        PermisosExt.aplicarUI('limpieza_plan');
+      }
     });
 
+    // =============================================
+    // CARGA DE DATOS
+    // =============================================
     async function cargarDatos() {
       try {
+        // 1. Bien
         const bienDoc = await db.collection('bienes').doc(bienId).get();
-        if (!bienDoc.exists) {
-          alert('Bien no encontrado');
-          window.location.href = 'cgi.html';
-          return;
-        }
-        bienData = bienDoc.data();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); window.location.href = 'cgi.html'; return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
-        // Cargar zonas desde colección 'zonas' (con dependencias)
-        const zonasSnap = await db.collection('bienes').doc(bienId)
-          .collection('zonas')
-          .orderBy('orden')
-          .get();
-        
-        zonasData = [];
-        for (const doc of zonasSnap.docs) {
-          const zona = { id: doc.id, ...doc.data(), dependencias: [] };
-          
-          // Cargar dependencias de cada zona
-          const depsSnap = await db.collection('bienes').doc(bienId)
-            .collection('zonas').doc(doc.id)
-            .collection('dependencias')
-            .orderBy('nombre', 'asc')
-            .get();
-          
-          zona.dependencias = depsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-          zonasData.push(zona);
-        }
-        poblarSelectZonas();
+        // 2. Habitaciones (fuente única — reemplaza zonas + dependencias)
+        const habSnap = await db.collection('bienes').doc(bienId)
+          .collection('habitaciones').get();
+        habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Cargar tareas tipo desde limpiezaProgramada
-        const tareasSnap = await db.collection('bienes').doc(bienId)
-          .collection('limpiezaProgramada')
-          .get();
-        tareasDisponibles = tareasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 3. Catálogo de tareas por tipo (desde configLimpieza/tareasPorTipo)
+        const configDoc = await db.collection('bienes').doc(bienId)
+          .collection('configLimpieza').doc('tareasPorTipo').get();
+        tareasPorTipo = configDoc.exists ? configDoc.data() : {};
 
-        // Cargar instrucciones del plan
+        // 4. Instrucciones del plan (colección planLimpConfig)
         const instSnap = await db.collection('bienes').doc(bienId)
-          .collection('planSemanalLimpConfig')
-          .orderBy('zona')
+          .collection('planLimpConfig')
+          .orderBy('habitacionNombre')
           .get();
         instruccionesData = instSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-        // Cargar reservas para "cuando se use"
+        // 5. Reservas para "cuando se use"
         const hoy = new Date();
         try {
           const reservasSnap = await db.collection('bienes').doc(bienId)
@@ -814,6 +826,8 @@
           reservasData = [];
         }
 
+        // 6. Poblar selector de zonas y renderizar
+        poblarSelectZonas();
         renderTabla();
         renderSemanaActual();
         renderAnual();
@@ -827,92 +841,84 @@
       }
     }
 
-    function getZonasDefault() {
-      return [];
-    }
-
+    // =============================================
+    // SELECTORES: ZONA (habitación) y TAREA
+    // =============================================
     function poblarSelectZonas() {
       const select = document.getElementById('inst-zona');
-      select.innerHTML = '<option value="">Seleccionar zona</option>';
-      
-      if (zonasData.length === 0) {
-        select.innerHTML = '<option value="">⚠️ Configura zonas primero</option>';
+      select.innerHTML = '<option value="">Seleccionar habitación</option>';
+
+      if (habitacionesData.length === 0) {
+        select.innerHTML = '<option value="">⚠️ Configura habitaciones primero</option>';
         return;
       }
 
-      zonasData.forEach(zona => {
-        const icono = zona.icono || zonaIcons[zona.tipo] || '📁';
-        const nombre = zona.nombre || zonaNombres[zona.tipo] || 'Zona';
-        
-        // Si tiene dependencias, mostrar cada una como opción
-        if (zona.dependencias && zona.dependencias.length > 0) {
-          zona.dependencias.forEach(dep => {
-            select.innerHTML += `<option value="${zona.id}|${dep.id}">${icono} ${nombre} - ${dep.nombre}</option>`;
-          });
-        } else {
-          // Sin dependencias, mostrar la zona sola
-          select.innerHTML += `<option value="${zona.id}">${icono} ${nombre}</option>`;
-        }
+      // Agrupar habitaciones por zona (planta/área)
+      const porZona = {};
+      habitacionesData.forEach(h => {
+        const zona = h.zona || 'Sin zona';
+        if (!porZona[zona]) porZona[zona] = [];
+        porZona[zona].push(h);
       });
+
+      // Renderizar agrupadas
+      for (const [zona, habs] of Object.entries(porZona)) {
+        select.innerHTML += `<optgroup label="${zona}">`;
+        habs.forEach(h => {
+          const tipoInfo = TIPOS_DEPENDENCIA[h.tipo] || { icon: '🏠', label: h.tipo || '' };
+          const nombre = h.nombre || tipoInfo.label;
+          select.innerHTML += `<option value="${h.id}">${tipoInfo.icon} ${nombre}</option>`;
+        });
+        select.innerHTML += `</optgroup>`;
+      }
     }
 
     function cargarTareasZona() {
-      const zonaValue = document.getElementById('inst-zona').value;
+      const habId = document.getElementById('inst-zona').value;
       const select = document.getElementById('inst-tarea');
       select.innerHTML = '<option value="">Seleccionar tarea</option>';
 
-      if (!zonaValue) return;
+      if (!habId) return;
 
-      // Extraer zonaId (puede venir como "zonaId" o "zonaId|depId")
-      const zonaId = zonaValue.split('|')[0];
-      const zona = zonasData.find(z => z.id === zonaId);
-      if (!zona) return;
+      // Buscar habitación y su tipo
+      const hab = habitacionesData.find(h => h.id === habId);
+      if (!hab || !hab.tipo) return;
 
-      // Filtrar tareas de limpiezaProgramada que coincidan con este tipo de zona
-      const tareasZona = tareasDisponibles.filter(t => {
-        return t.zona === zona.tipo || t.zonaId === zonaId;
-      });
+      // Cargar tareas activas para ese tipo desde configLimpieza/tareasPorTipo
+      const tareasDelTipo = (tareasPorTipo[hab.tipo] || []).filter(t => t.activo);
 
-      if (tareasZona.length > 0) {
-        tareasZona.forEach(tarea => {
-          const nombreTarea = tarea.tipo === 'otra' ? (tarea.otraTarea || 'Otra tarea') : (tareaNombres[tarea.tipo] || tarea.tipo);
-          select.innerHTML += `<option value="${tarea.id}">${nombreTarea}</option>`;
+      if (tareasDelTipo.length > 0) {
+        tareasDelTipo.forEach(t => {
+          const predef = TAREAS_PREDEFINIDAS.find(p => p.id === t.tareaId);
+          const nombre = t.custom ? t.nombre : (predef?.nombre || t.tareaId);
+          const icon = t.custom ? '📌' : (predef?.icon || '📋');
+          select.innerHTML += `<option value="${t.tareaId}" data-icon="${icon}" data-nombre="${nombre}">${icon} ${nombre}</option>`;
         });
       } else {
-        // Mostrar tareas genéricas según tipo de zona
-        const tareasGenericas = getTareasGenericas(zona.tipo);
-        tareasGenericas.forEach(tarea => {
-          select.innerHTML += `<option value="${tarea}">${tarea}</option>`;
-        });
-      }
-
-      if (select.options.length === 1) {
-        select.innerHTML = '<option value="">⚠️ Sin tareas configuradas</option>';
+        select.innerHTML = '<option value="">⚠️ Sin tareas configuradas para este tipo</option>';
       }
     }
 
-    function getTareasGenericas(tipoZona) {
-      const tareasPorTipo = {
-        cocina: ['Fregar', 'Limpiar superficies', 'Limpiar electrodomésticos', 'Barrer', 'Fregar suelo'],
-        salon: ['Quitar polvo', 'Aspirar', 'Limpiar cristales', 'Ordenar'],
-        comedor: ['Limpiar mesa', 'Barrer', 'Quitar polvo'],
-        dormitorio: ['Cambiar sábanas', 'Aspirar', 'Quitar polvo', 'Ordenar'],
-        bano: ['Desinfectar', 'Limpiar espejos', 'Fregar suelo', 'Reponer consumibles'],
-        terraza: ['Barrer', 'Limpiar muebles', 'Regar plantas'],
-        garaje: ['Barrer', 'Ordenar'],
-        lavadero: ['Limpiar lavadora', 'Ordenar'],
-        entrada: ['Barrer', 'Quitar polvo'],
-        exterior: ['Barrer', 'Recoger hojas', 'Limpieza general'],
-        piscina: ['Revisar pH', 'Limpiar skimmers', 'Aspirar fondo'],
-        general: ['Limpieza profunda', 'Revisión general']
-      };
-      return tareasPorTipo[tipoZona] || ['Limpieza general', 'Ordenar'];
+    // Resolver nombre e icono de tarea dado su ID y tipo
+    function resolverTarea(tareaId, tipo) {
+      const predef = TAREAS_PREDEFINIDAS.find(p => p.id === tareaId);
+      if (predef) return { nombre: predef.nombre, icon: predef.icon };
+
+      // Buscar en custom del tipo
+      const tareasDelTipo = tareasPorTipo[tipo] || [];
+      const custom = tareasDelTipo.find(t => t.tareaId === tareaId);
+      if (custom) return { nombre: custom.nombre || tareaId, icon: '📌' };
+
+      return { nombre: tareaId, icon: '📋' };
     }
 
+    // =============================================
+    // TABS
+    // =============================================
     function cambiarTab(tab) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('[id^="tab-"]').forEach(t => t.classList.add('hidden'));
-      
+
       event.target.classList.add('active');
       document.getElementById(`tab-${tab}`).classList.remove('hidden');
 
@@ -920,6 +926,9 @@
       if (tab === 'anual') renderAnual();
     }
 
+    // =============================================
+    // TAB: CONFIGURACIÓN (tabla de instrucciones)
+    // =============================================
     function renderTabla() {
       const tbody = document.getElementById('tabla-instrucciones');
       const empty = document.getElementById('empty-tabla');
@@ -933,11 +942,12 @@
 
       tbody.parentElement.querySelector('thead').classList.remove('hidden');
       empty.classList.add('hidden');
-      
+
       tbody.innerHTML = instruccionesData.map(inst => {
-        const zonaIcono = inst.zonaIcono || '📁';
-        const zonaNombre = inst.zona || 'Sin zona';
-        const tareaNombre = inst.tarea || '-';
+        const tarea = resolverTarea(inst.tareaId, inst.habitacionTipo);
+        const habIcon = TIPOS_DEPENDENCIA[inst.habitacionTipo]?.icon || '🏠';
+        const habNombre = inst.habitacionNombre || 'Sin habitación';
+        const habZona = inst.habitacionZona ? ` · ${inst.habitacionZona}` : '';
 
         const semanasStr = (inst.semanas || []).map(s => `${s}ª`).join(', ');
         const restricciones = (inst.restricciones || []).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') || '-';
@@ -946,8 +956,8 @@
         return `
           <tr onclick="editarInstruccion('${inst.id}')">
             <td>
-              <div style="font-weight:600;">${zonaIcono} ${tareaNombre}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${zonaNombre}</div>
+              <div style="font-weight:600;">${tarea.icon} ${tarea.nombre}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${habIcon} ${habNombre}${habZona}</div>
             </td>
             <td>
               <span class="badge badge-frecuencia">${frecuenciaNombres[inst.frecuencia] || inst.frecuencia}</span>
@@ -962,6 +972,9 @@
       }).join('');
     }
 
+    // =============================================
+    // TAB: ESTA SEMANA
+    // =============================================
     function calcularSemanaDelMes(fecha = new Date()) {
       const primerDia = new Date(fecha.getFullYear(), fecha.getMonth(), 1);
       const diaSemana = primerDia.getDay();
@@ -969,7 +982,6 @@
     }
 
     function getSemanaPreviaReservas() {
-      // Obtener tareas con "cuando se use" que deben ejecutarse la semana previa a reservas
       const hoy = new Date();
       const tareasPreReserva = [];
 
@@ -978,7 +990,6 @@
         const semanaAntes = new Date(fechaInicio);
         semanaAntes.setDate(fechaInicio.getDate() - 7);
 
-        // Si estamos en la semana previa a la reserva
         if (hoy >= semanaAntes && hoy < fechaInicio) {
           instruccionesData.filter(i => i.cuandoSeUse).forEach(inst => {
             tareasPreReserva.push({
@@ -998,58 +1009,55 @@
       const semanaDelMes = calcularSemanaDelMes(hoy);
       const mesActual = hoy.getMonth() + 1;
 
-      document.getElementById('info-semana').textContent = 
+      document.getElementById('info-semana').textContent =
         `${semanaDelMes}ª semana de ${mesesNombre[mesActual]} ${hoy.getFullYear()}`;
 
-      // Filtrar instrucciones para esta semana según frecuencia
       const instruccionesSemana = instruccionesData.filter(inst => {
         if (!inst.semanas || !inst.semanas.includes(semanaDelMes)) return false;
         return cumpleFrecuencia(inst, mesActual);
       });
 
-      // Añadir tareas pre-reserva
       const tareasPreReserva = getSemanaPreviaReservas();
-
       const grid = document.getElementById('semana-grid');
       let html = '';
 
       for (let dia = 1; dia <= 7; dia++) {
-        const diaNum = dia % 7; // 0=Dom, 1=Lun...
+        const diaNum = dia % 7;
         const esHoy = hoy.getDay() === diaNum;
         const diasAbrev = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
 
-        // Tareas regulares para este día (excluir restricciones)
         const tareasDelDia = instruccionesSemana.filter(inst => {
-          const restricciones = inst.restricciones || [];
-          return !restricciones.includes(diasAbrev[diaNum]);
+          return !(inst.restricciones || []).includes(diasAbrev[diaNum]);
         });
 
-        // Tareas pre-reserva para este día
         const tareasPreDia = tareasPreReserva.filter(inst => {
-          const restricciones = inst.restricciones || [];
-          return !restricciones.includes(diasAbrev[diaNum]);
+          return !(inst.restricciones || []).includes(diasAbrev[diaNum]);
         });
 
         let tareasHtml = '';
-        
+
         if (tareasDelDia.length === 0 && tareasPreDia.length === 0) {
           tareasHtml = '<div class="dia-empty">Sin tareas</div>';
         } else {
-          // Tareas regulares
-          tareasHtml = tareasDelDia.map(t => `
-            <div class="dia-tarea">
-              <div class="dia-tarea-nombre">${t.zonaIcono || '📁'} ${t.tarea}</div>
-              <div class="dia-tarea-zona">${t.zona} · ${t.duracion || 30}min</div>
-            </div>
-          `).join('');
+          tareasHtml = tareasDelDia.map(t => {
+            const tarea = resolverTarea(t.tareaId, t.habitacionTipo);
+            return `
+              <div class="dia-tarea">
+                <div class="dia-tarea-nombre">${tarea.icon} ${tarea.nombre}</div>
+                <div class="dia-tarea-zona">${t.habitacionNombre || 'Habitación'} · ${t.duracion || 30}min</div>
+              </div>
+            `;
+          }).join('');
 
-          // Tareas pre-reserva
-          tareasHtml += tareasPreDia.map(t => `
-            <div class="dia-tarea pre-reserva">
-              <div class="dia-tarea-nombre">🏠 ${t.tarea}</div>
-              <div class="dia-tarea-zona">${t.zona} · Pre-reserva</div>
-            </div>
-          `).join('');
+          tareasHtml += tareasPreDia.map(t => {
+            const tarea = resolverTarea(t.tareaId, t.habitacionTipo);
+            return `
+              <div class="dia-tarea pre-reserva">
+                <div class="dia-tarea-nombre">🏠 ${tarea.nombre}</div>
+                <div class="dia-tarea-zona">${t.habitacionNombre || 'Habitación'} · Pre-reserva</div>
+              </div>
+            `;
+          }).join('');
         }
 
         html += `
@@ -1066,8 +1074,7 @@
     function cumpleFrecuencia(inst, mesActual) {
       const mesInicio = inst.mesInicio || 1;
       const frecuencia = inst.frecuencia || 'mensual';
-      
-      // Calcular diferencia en meses desde mes inicio
+
       let diff = mesActual - mesInicio;
       if (diff < 0) diff += 12;
 
@@ -1083,6 +1090,9 @@
       }
     }
 
+    // =============================================
+    // TAB: 52 SEMANAS (Anual)
+    // =============================================
     function renderAnual() {
       const container = document.getElementById('anual-container');
       const hoy = new Date();
@@ -1117,18 +1127,19 @@
       container.innerHTML = html;
     }
 
-    // ========== MODAL ==========
+    // =============================================
+    // MODAL
+    // =============================================
     function abrirModal() {
       instruccionEditando = null;
       document.getElementById('form-instruccion').reset();
       document.getElementById('modal-titulo').textContent = '📋 Nueva instrucción';
       document.getElementById('btn-eliminar').style.display = 'none';
       document.getElementById('inst-tarea').innerHTML = '<option value="">Seleccionar tarea</option>';
-      
+
       semanasSeleccionadas = [];
       document.querySelectorAll('.semana-option').forEach(el => el.classList.remove('selected'));
-      
-      // Reset restricciones
+
       ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'].forEach(d => {
         document.getElementById(`rest-${d}`).checked = false;
       });
@@ -1143,31 +1154,25 @@
       document.getElementById('modal-titulo').textContent = '✏️ Editar instrucción';
       document.getElementById('btn-eliminar').style.display = 'block';
 
-      // Reconstruir valor de zona (zonaId o zonaId|depId)
-      const zonaValue = instruccionEditando.depId 
-        ? `${instruccionEditando.zonaId}|${instruccionEditando.depId}`
-        : instruccionEditando.zonaId || '';
-      
-      document.getElementById('inst-zona').value = zonaValue;
+      // Seleccionar habitación
+      document.getElementById('inst-zona').value = instruccionEditando.habitacionId || '';
       cargarTareasZona();
       setTimeout(() => {
-        document.getElementById('inst-tarea').value = instruccionEditando.tareaId || instruccionEditando.tarea || '';
+        document.getElementById('inst-tarea').value = instruccionEditando.tareaId || '';
       }, 50);
-      
+
       document.getElementById('inst-duracion').value = instruccionEditando.duracion || 30;
       document.getElementById('inst-frecuencia').value = instruccionEditando.frecuencia || 'mensual';
       document.getElementById('inst-mes').value = instruccionEditando.mesInicio || 1;
       document.getElementById('inst-nota').value = instruccionEditando.nota || '';
       document.getElementById('inst-cuando-use').checked = instruccionEditando.cuandoSeUse || false;
 
-      // Semanas
       semanasSeleccionadas = [...(instruccionEditando.semanas || [])];
       document.querySelectorAll('.semana-option').forEach(el => {
         const sem = parseInt(el.dataset.semana);
         el.classList.toggle('selected', semanasSeleccionadas.includes(sem));
       });
 
-      // Restricciones
       const restricciones = instruccionEditando.restricciones || [];
       ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'].forEach(d => {
         document.getElementById(`rest-${d}`).checked = restricciones.includes(d);
@@ -1182,14 +1187,19 @@
 
     function toggleSemana(sem) {
       const idx = semanasSeleccionadas.indexOf(sem);
-      if (idx === -1) {
-        semanasSeleccionadas.push(sem);
-      } else {
-        semanasSeleccionadas.splice(idx, 1);
-      }
+      if (idx === -1) semanasSeleccionadas.push(sem);
+      else semanasSeleccionadas.splice(idx, 1);
       document.querySelector(`.semana-option[data-semana="${sem}"]`).classList.toggle('selected');
     }
 
+    // Click fuera cierra modal
+    document.getElementById('modal-instruccion').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) cerrarModal();
+    });
+
+    // =============================================
+    // GUARDAR / ELIMINAR
+    // =============================================
     document.getElementById('form-instruccion').addEventListener('submit', async (e) => {
       e.preventDefault();
 
@@ -1203,33 +1213,26 @@
         if (document.getElementById(`rest-${d}`).checked) restricciones.push(d);
       });
 
-      const zonaValue = document.getElementById('inst-zona').value;
-      const [zonaId, depId] = zonaValue.split('|');
-      const tareaId = document.getElementById('inst-tarea').value;
-      
-      const zona = zonasData.find(z => z.id === zonaId) || {};
-      const dep = depId ? zona.dependencias?.find(d => d.id === depId) : null;
-      const tarea = tareasDisponibles.find(t => t.id === tareaId);
-      
-      // Obtener nombre de tarea
-      let tareaNombre = tareaId;
-      if (tarea) {
-        tareaNombre = tarea.tipo === 'otra' ? (tarea.otraTarea || 'Tarea') : (tareaNombres[tarea.tipo] || tarea.tipo);
-      }
+      // Obtener habitación seleccionada
+      const habId = document.getElementById('inst-zona').value;
+      const hab = habitacionesData.find(h => h.id === habId);
+      if (!hab) { alert('Selecciona una habitación'); return; }
 
-      // Nombre completo de zona (con dependencia si aplica)
-      const zonaNombreCompleto = dep 
-        ? `${zona.nombre || zonaNombres[zona.tipo] || 'Zona'} - ${dep.nombre}`
-        : zona.nombre || zonaNombres[zona.tipo] || 'Zona';
+      const tareaId = document.getElementById('inst-tarea').value;
+      if (!tareaId) { alert('Selecciona una tarea'); return; }
+
+      const tarea = resolverTarea(tareaId, hab.tipo);
+      const tipoInfo = TIPOS_DEPENDENCIA[hab.tipo] || { icon: '🏠', label: hab.tipo || '' };
 
       const datos = {
-        zonaId: zonaId,
-        depId: depId || null,
-        zona: zonaNombreCompleto,
-        zonaIcono: zona.icono || zonaIcons[zona.tipo] || '📁',
-        zonaTipo: zona.tipo || '',
+        habitacionId: habId,
+        habitacionNombre: hab.nombre || tipoInfo.label,
+        habitacionTipo: hab.tipo || '',
+        habitacionZona: hab.zona || '',
+        habitacionIcon: tipoInfo.icon,
         tareaId: tareaId,
-        tarea: tareaNombre,
+        tareaNombre: tarea.nombre,
+        tareaIcon: tarea.icon,
         duracion: parseInt(document.getElementById('inst-duracion').value) || 30,
         frecuencia: document.getElementById('inst-frecuencia').value,
         mesInicio: parseInt(document.getElementById('inst-mes').value) || 1,
@@ -1243,13 +1246,13 @@
       try {
         if (instruccionEditando) {
           await db.collection('bienes').doc(bienId)
-            .collection('planSemanalLimpConfig').doc(instruccionEditando.id)
+            .collection('planLimpConfig').doc(instruccionEditando.id)
             .update(datos);
         } else {
           datos.creadoPor = currentUser.uid;
           datos.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           await db.collection('bienes').doc(bienId)
-            .collection('planSemanalLimpConfig').add(datos);
+            .collection('planLimpConfig').add(datos);
         }
 
         cerrarModal();
@@ -1267,7 +1270,7 @@
 
       try {
         await db.collection('bienes').doc(bienId)
-          .collection('planSemanalLimpConfig').doc(instruccionEditando.id)
+          .collection('planLimpConfig').doc(instruccionEditando.id)
           .delete();
 
         cerrarModal();
