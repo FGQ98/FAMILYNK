@@ -208,11 +208,6 @@
       gap: 10px;
     }
 
-    /* Card Lavandería */
-    .modulo-card.lavanderia .modulo-card-header { background: linear-gradient(135deg, #6B8E8E 0%, #507878 100%); }
-    .modulo-card.lavanderia:hover { border-color: #6B8E8E; }
-    .modulo-card.lavanderia .modulo-stat-value { color: #507878; }
-
     /* Card Tareas Limpieza */
     .modulo-card.tareas .modulo-card-header { background: linear-gradient(135deg, #7A9E7E 0%, #5C7D5F 100%); }
     .modulo-card.tareas:hover { border-color: #7A9E7E; }
@@ -252,8 +247,6 @@
       font-size: 0.7rem; 
       font-weight: 600; 
     }
-    .plan-tarea.lavanderia { border-left-color: #6B8E8E; }
-    .plan-tarea.lavanderia .plan-tarea-dia { background: rgba(107, 142, 142, 0.15); color: #507878; }
     .plan-tarea.limpieza { border-left-color: var(--sage); }
     .plan-tarea.limpieza .plan-tarea-dia { background: var(--sage-muted); color: var(--sage-dark); }
     .plan-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
@@ -295,28 +288,6 @@
 
     <div id="content" class="hidden">
       <div class="modulos-grid">
-        <!-- Lavandería -->
-        <div class="modulo-card lavanderia">
-          <div class="modulo-card-header">
-            <div class="modulo-card-icon">👕</div>
-            <div class="modulo-card-title">Lavandería</div>
-          </div>
-          <div class="modulo-card-body">
-            <p class="modulo-card-desc">Gestión de lavados, ropa pendiente y ciclos de lavadora/secadora.</p>
-            <div class="modulo-stats">
-              <div class="modulo-stat">
-                <span class="modulo-stat-value" id="stat-pendientes">0</span>
-                <span class="modulo-stat-label">tintorería</span>
-              </div>
-              <div class="modulo-stat">
-                <span class="modulo-stat-value" id="stat-completados">0</span>
-                <span class="modulo-stat-label">en casa</span>
-              </div>
-            </div>
-            <a href="#" class="modulo-card-action" id="link-lavanderia">Ver lavandería →</a>
-          </div>
-        </div>
-
         <!-- Tareas de Limpieza -->
         <div class="modulo-card tareas">
           <div class="modulo-card-header">
@@ -383,7 +354,6 @@
       : `bien.html?id=${bienId}`;
 
     // Configurar links de cards
-    document.getElementById('link-lavanderia').href = `lavanderia.html?id=${bienId}&origen=limpieza`;
     document.getElementById('link-tareas').href = `tareas-limpieza.html?id=${bienId}&origen=limpieza`;
     document.getElementById('card-plan-semanal').href = `plan-semanal-limpieza.html?id=${bienId}&origen=limpieza`;
 
@@ -409,12 +379,6 @@
 
     // Aplicar permisos a los enlaces de cards según acceso
     function aplicarPermisosCards() {
-      // Card Lavandería
-      if (!PermisosExt.puede('limpieza_lavanderia', 'v')) {
-        const card = document.querySelector('.modulo-card.lavanderia');
-        if (card) card.style.display = 'none';
-      }
-      
       // Card Tareas de Limpieza
       if (!PermisosExt.puede('limpieza_zonasTareas', 'v')) {
         const card = document.querySelector('.modulo-card.tareas');
@@ -448,9 +412,6 @@
 
         // Cargar stats de tareas por tipo
         await cargarStatsTareas();
-
-        // Cargar stats lavandería
-        await cargarStatsLavanderia();
 
         // Cargar plan semanal
         await cargarPlanSemanal();
@@ -486,21 +447,7 @@
       }
     }
 
-    async function cargarStatsLavanderia() {
-      try {
-        const snap = await db.collection('bienes').doc(bienId).collection('lavanderia').get();
-        const total = snap.docs.length;
-        const enTintoreria = snap.docs.filter(d => d.data().lugar === 'tintoreria').length;
-        
-        document.getElementById('stat-pendientes').textContent = enTintoreria;
-        document.getElementById('stat-completados').textContent = total - enTintoreria;
-      } catch (error) {
-        document.getElementById('stat-pendientes').textContent = '0';
-        document.getElementById('stat-completados').textContent = '0';
-      }
-    }
-
-    // ========== PLAN SEMANAL COMBINADO (LIMPIEZA + LAVANDERÍA) ==========
+    // ========== PLAN SEMANAL COMBINADO (LIMPIEZA) ==========
     let planSemanalData = [];
     let completadosData = {};
     let semanaKeyActual = '';
@@ -530,6 +477,7 @@
       cocina: { icon: '🍳', label: 'Cocina' },
       salon: { icon: '🛋️', label: 'Salón' },
       comedor: { icon: '🍽️', label: 'Comedor' },
+      lavadero: { icon: '🧺', label: 'Lavadero' },
       almacen: { icon: '📦', label: 'Almacén' },
       camara: { icon: '❄️', label: 'Cámara' },
       taller: { icon: '🔧', label: 'Taller' },
@@ -603,30 +551,7 @@
           });
         });
 
-        // 2. Cargar prendas de LAVANDERÍA
-        const lavanderiaSnap = await db.collection('bienes').doc(bienId).collection('lavanderia').get();
-        lavanderiaSnap.docs.forEach(doc => {
-          const prenda = { id: doc.id, ...doc.data() };
-          if (prenda.dia && (prenda.frecuencia === 'semanal' || prenda.frecuencia === 'quincenal')) {
-            planSemanalData.push({
-              id: `lav_${prenda.id}`,
-              tipo: 'lavanderia',
-              nombre: prenda.nombre,
-              zona: prenda.lugar === 'tintoreria' ? 'Tintorería' : 'En casa',
-              zonaIcon: prenda.lugar === 'tintoreria' ? '🧺' : '👕',
-              restricciones: [],
-              tiempo: 30,
-              frecuencia: prenda.frecuencia,
-              procesos: [
-                prenda.lavado ? '🧼' : '',
-                prenda.secado ? '☀️' : '',
-                prenda.planchado ? '👔' : ''
-              ].filter(Boolean).join(' ')
-            });
-          }
-        });
-
-        // 3. Cargar estado de completados de esta semana
+        // 2. Cargar estado de completados de esta semana
         try {
           const completadosDoc = await db.collection('bienes').doc(bienId)
             .collection('planSemanalCompletados').doc(semanaKeyActual).get();
@@ -661,7 +586,7 @@
         container.innerHTML = `
           <div class="plan-empty">
             📅 Sin tareas programadas esta semana<br>
-            <small>Configura en <a href="plan-semanal-limpieza.html?id=${bienId}">Plan Semanal</a> o <a href="lavanderia.html?id=${bienId}">Lavandería</a></small>
+            <small>Configura en <a href="plan-semanal-limpieza.html?id=${bienId}">Plan Semanal</a></small>
           </div>
         `;
         progresoBar.style.width = '0%';
@@ -675,12 +600,11 @@
 
       let html = planSemanalData.map(t => {
         const completada = t.completada ? 'completada' : '';
-        const tipoClass = t.tipo === 'lavanderia' ? 'lavanderia' : 'limpieza';
-        const tipoIcon = t.tipo === 'lavanderia' ? '👕' : '🧹';
+        const tipoIcon = '🧹';
         const frecTag = frecLabels[t.frecuencia] || '';
 
         return `
-          <div class="plan-tarea ${completada} ${tipoClass}">
+          <div class="plan-tarea ${completada} limpieza">
             <input type="checkbox" class="plan-tarea-check" 
               ${t.completada ? 'checked' : ''} 
               onchange="toggleTarea('${t.id}', this.checked)">
@@ -689,7 +613,6 @@
               <div class="plan-tarea-meta">
                 ${frecTag ? `<span class="plan-tarea-dia">${frecTag}</span>` : ''}
                 <span>${t.zona}</span>
-                ${t.procesos ? `<span>${t.procesos}</span>` : ''}
                 <span>⏱️ ${t.tiempo}m</span>
               </div>
             </div>
