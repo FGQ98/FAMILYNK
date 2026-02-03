@@ -2775,12 +2775,9 @@
         nombre: 'PLANES SEMANALES', 
         esBloque: true,
         cards: [
-          { id: 'planSemanalMto', nombre: 'Plan de Mantenimiento', acciones: ['v'], desc: 'Plan semanal de mantenimiento' },
-          { id: 'mtoProgramado', nombre: 'Mto. Programado', acciones: ['v'], desc: 'Tareas de mantenimiento programadas' },
+          { id: 'planSemanalMto', nombre: 'Plan Semanal Mantenimiento', acciones: ['v'], desc: 'Plan semanal de mantenimiento (incluye tareas programadas)' },
+          { id: 'planSemanalLimp', nombre: 'Plan Semanal Limpieza', acciones: ['v'], desc: 'Plan semanal de limpieza (incluye tareas programadas)' },
           { id: 'instalaciones', nombre: 'Instalaciones', acciones: ['v', 'c', 'e', 'b'], desc: 'Documentación técnica de instalaciones' },
-          { id: 'planSemanalLimp', nombre: 'Plan de Limpieza', acciones: ['v'], desc: 'Plan semanal de limpieza' },
-          { id: 'zonasTareas', nombre: 'Zonas y Tareas', acciones: ['v'], desc: 'Zonas y tareas de limpieza' },
-          { id: 'limpiezaProg', nombre: 'Limpieza Programada', acciones: ['v'], desc: 'Tareas profundas programadas' },
           { id: 'lavanderia', nombre: 'Lavandería', acciones: ['v', 'c', 'e'], desc: 'Gestión de lavados y ciclos' },
           { id: 'informeEstancia', nombre: 'Informe de Estancia', acciones: ['v', 'c'], desc: 'Rellenar y enviar informes checklist' }
         ]
@@ -2896,8 +2893,23 @@
         if (data.permisosExternos) {
           permisosExternosData = data.permisosExternos;
         } else {
-          // Inicializar con valores por defecto (solo V activo)
+          // Inicializar con valores por defecto según acciones definidas en estructura
           permisosExternosData = { casero: {}, hoster: {}, guarda: {} };
+          for (const [tipo, estructura] of Object.entries(estructurasPermisos)) {
+            for (const [bloqueId, bloqueInfo] of Object.entries(estructura)) {
+              if (bloqueInfo.cards && bloqueInfo.cards.length > 0) {
+                for (const card of bloqueInfo.cards) {
+                  const acc = card.acciones || [];
+                  permisosExternosData[tipo][card.id] = {
+                    c: acc.includes('c'),
+                    v: acc.includes('v'),
+                    e: acc.includes('e'),
+                    b: acc.includes('b')
+                  };
+                }
+              }
+            }
+          }
         }
         
         // Renderizar las 3 matrices
