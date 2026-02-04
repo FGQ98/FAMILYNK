@@ -726,6 +726,9 @@
       almacen:      { icon: '📦', label: 'Almacén / Trastero' },
       instalacion:  { icon: '⚡', label: 'Instalaciones' },
       porche:       { icon: '🌿', label: 'Porche / Terraza' },
+      animales:     { icon: '🐾', label: 'Animales' },
+      paisajismo:   { icon: '🌳', label: 'Paisajismo' },
+      actividades:  { icon: '⚽', label: 'Actividades' },
       otro:         { icon: '🏠', label: 'Otro' }
     };
 
@@ -825,6 +828,10 @@
         const habSnap = await db.collection('bienes').doc(bienId)
           .collection('habitaciones').get();
         habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Normalizar tipos legacy → nuevos
+        const TIPO_LEGACY = { salas: 'salon', funcional: 'otro', otros: 'otro', servicio: 'aseo', vestuario: 'dormitorio', comedor: 'salon', camara: 'almacen', taller: 'almacen' };
+        habitacionesData.forEach(h => { if (h.tipo && TIPO_LEGACY[h.tipo]) h.tipo = TIPO_LEGACY[h.tipo]; });
 
         // 3. Catálogo de tareas por tipo (desde configMto/tareasPorTipo)
         const configDoc = await db.collection('bienes').doc(bienId)

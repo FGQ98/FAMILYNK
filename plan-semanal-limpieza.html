@@ -726,6 +726,9 @@
       almacen:      { icon: '📦', label: 'Almacén / Trastero' },
       instalacion:  { icon: '⚡', label: 'Instalaciones' },
       porche:       { icon: '🌿', label: 'Porche / Terraza' },
+      animales:     { icon: '🐾', label: 'Animales' },
+      paisajismo:   { icon: '🌳', label: 'Paisajismo' },
+      actividades:  { icon: '⚽', label: 'Actividades' },
       otro:         { icon: '🏠', label: 'Otro' }
     };
 
@@ -775,7 +778,20 @@
       // Porche
       { id: 'mobiliario',    nombre: 'Limpiar mobiliario exterior', icon: '🪑' },
       { id: 'barbacoa',      nombre: 'Limpiar barbacoa',           icon: '🔥' },
-      { id: 'regar',         nombre: 'Regar plantas',              icon: '🌱' }
+      { id: 'regar',         nombre: 'Regar plantas',              icon: '🌱' },
+      // Animales
+      { id: 'comederos',     nombre: 'Limpiar comederos/bebederos', icon: '🥣' },
+      { id: 'zona_animal',   nombre: 'Limpiar zona animal',        icon: '🐾' },
+      { id: 'excrementos',   nombre: 'Recoger excrementos',        icon: '🧹' },
+      { id: 'lechos',        nombre: 'Cambiar lechos/camas',       icon: '🛏️' },
+      // Paisajismo
+      { id: 'podar',         nombre: 'Podar',                      icon: '✂️' },
+      { id: 'cesped',        nombre: 'Cortar césped',              icon: '🌿' },
+      { id: 'hojas',         nombre: 'Recoger hojas',              icon: '🍂' },
+      { id: 'abonar',        nombre: 'Abonar',                     icon: '🪴' },
+      { id: 'desbroce',      nombre: 'Desbroce',                   icon: '🌾' },
+      // Actividades
+      { id: 'equipamiento',  nombre: 'Limpiar equipamiento',       icon: '🏋️' }
     ];
 
     // Unidad de obra fija por tarea
@@ -798,7 +814,13 @@
       campana: 'unidad', vitro: 'unidad', tapiceria: 'unidad',
       muebles: 'unidad', telaranas: 'unidad', filtros: 'unidad',
       mobiliario: 'unidad', barbacoa: 'unidad', regar: 'unidad',
-      tintoreria: 'unidad'
+      tintoreria: 'unidad',
+      // Animales
+      comederos: 'unidad', zona_animal: 'm2', excrementos: 'unidad', lechos: 'unidad',
+      // Paisajismo
+      podar: 'unidad', cesped: 'm2', hojas: 'm2', abonar: 'm2', desbroce: 'm2',
+      // Actividades
+      equipamiento: 'unidad'
     };
     const UNIDAD_LABELS = {
       m2: { nombre: 'M²', icon: '📐' },
@@ -870,6 +892,10 @@
         const habSnap = await db.collection('bienes').doc(bienId)
           .collection('habitaciones').get();
         habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Normalizar tipos legacy → nuevos
+        const TIPO_LEGACY = { salas: 'salon', funcional: 'otro', otros: 'otro', servicio: 'aseo', vestuario: 'dormitorio', comedor: 'salon', camara: 'almacen', taller: 'almacen' };
+        habitacionesData.forEach(h => { if (h.tipo && TIPO_LEGACY[h.tipo]) h.tipo = TIPO_LEGACY[h.tipo]; });
 
         // 3. Catálogo de tareas por tipo (desde configLimpieza/tareasPorTipo)
         const configDoc = await db.collection('bienes').doc(bienId)
