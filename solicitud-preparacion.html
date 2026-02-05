@@ -85,7 +85,19 @@
     .seccion {
       background: var(--white); border-radius: var(--radius-lg);
       box-shadow: var(--shadow-soft); margin-bottom: 20px; overflow: hidden;
+      border: 2px solid transparent; transition: border-color 0.3s;
     }
+    .seccion.seccion-error {
+      border-color: #E53935;
+    }
+    .seccion.seccion-error .seccion-header {
+      background: #FFEBEE;
+    }
+    .seccion-error-msg {
+      display: none; font-size: 0.78rem; color: #E53935; font-weight: 600;
+      margin-left: auto; padding: 2px 8px; background: #FFEBEE; border-radius: 8px;
+    }
+    .seccion.seccion-error .seccion-error-msg { display: inline-block; }
     .seccion-header {
       padding: 16px 20px; background: var(--cream);
       display: flex; align-items: center; justify-content: space-between; cursor: pointer;
@@ -426,7 +438,7 @@
         </div>
         <div class="divider-helper">
           💡 Cuanta más información proporciones, más fácil será preparar tu estancia.<br>
-          Las secciones son opcionales — rellena solo lo que necesites.
+          Todas las secciones son obligatorias (excepto Tareas, que es opcional).
         </div>
 
         <!-- Badge multi-semana -->
@@ -436,11 +448,12 @@
         </div>
 
         <!-- 1. Zonas a preparar -->
-        <div class="seccion">
+        <div class="seccion" id="seccion-zonas">
           <div class="seccion-header" onclick="toggleSeccion('zonas')">
             <div class="seccion-titulo">
               <span>🏠</span> Zonas a preparar
               <span class="seccion-count" id="count-zonas">0</span>
+              <span class="seccion-error-msg">⚠ Obligatorio</span>
             </div>
             <span class="seccion-toggle">▼</span>
           </div>
@@ -453,9 +466,9 @@
         </div>
 
         <!-- 2. Personas -->
-        <div class="seccion">
+        <div class="seccion" id="seccion-personas">
           <div class="seccion-header" onclick="toggleSeccion('personas')">
-            <div class="seccion-titulo"><span>👥</span> Personas</div>
+            <div class="seccion-titulo"><span>👥</span> Personas <span class="seccion-error-msg">⚠ Obligatorio</span></div>
             <span class="seccion-toggle">▼</span>
           </div>
           <div class="seccion-body" id="body-personas">
@@ -469,9 +482,9 @@
         </div>
 
         <!-- 3. Menús -->
-        <div class="seccion">
+        <div class="seccion" id="seccion-menus">
           <div class="seccion-header" onclick="toggleSeccion('menus')">
-            <div class="seccion-titulo"><span>🍽️</span> Menús</div>
+            <div class="seccion-titulo"><span>🍽️</span> Menús <span class="seccion-error-msg">⚠ Obligatorio</span></div>
             <span class="seccion-toggle">▼</span>
           </div>
           <div class="seccion-body" id="body-menus">
@@ -485,9 +498,9 @@
         </div>
 
         <!-- 4. Servicio -->
-        <div class="seccion">
+        <div class="seccion" id="seccion-servicio">
           <div class="seccion-header" onclick="toggleSeccion('servicio')">
-            <div class="seccion-titulo"><span>👨‍🍳</span> Servicio</div>
+            <div class="seccion-titulo"><span>👨‍🍳</span> Servicio <span class="seccion-error-msg">⚠ Obligatorio</span></div>
             <span class="seccion-toggle">▼</span>
           </div>
           <div class="seccion-body" id="body-servicio">
@@ -501,11 +514,12 @@
         </div>
 
         <!-- 5. Menaje -->
-        <div class="seccion">
+        <div class="seccion" id="seccion-menaje">
           <div class="seccion-header" onclick="toggleSeccion('menaje')">
             <div class="seccion-titulo">
               <span>🍷</span> Menaje
               <span class="seccion-count" id="count-menaje">0</span>
+              <span class="seccion-error-msg">⚠ Obligatorio</span>
             </div>
             <span class="seccion-toggle">▼</span>
           </div>
@@ -531,11 +545,12 @@
         </div>
 
         <!-- 6. Producto -->
-        <div class="seccion">
+        <div class="seccion" id="seccion-producto">
           <div class="seccion-header" onclick="toggleSeccion('producto')">
             <div class="seccion-titulo">
               <span>📦</span> Producto
               <span class="seccion-count" id="count-producto">0</span>
+              <span class="seccion-error-msg">⚠ Obligatorio</span>
             </div>
             <span class="seccion-toggle">▼</span>
           </div>
@@ -581,9 +596,9 @@
         </div>
 
         <!-- 8. Notas -->
-        <div class="seccion">
+        <div class="seccion" id="seccion-notas">
           <div class="seccion-header" onclick="toggleSeccion('notas')">
-            <div class="seccion-titulo"><span>📝</span> Danos detalles del evento y/o reserva</div>
+            <div class="seccion-titulo"><span>📝</span> Danos detalles del evento y/o reserva <span class="seccion-error-msg">⚠ Obligatorio</span></div>
             <span class="seccion-toggle">▼</span>
           </div>
           <div class="seccion-body" id="body-notas">
@@ -1474,8 +1489,68 @@
     // ========================================
     // ENVIAR SOLICITUD
     // ========================================
+    // ========================================
+    // VALIDACIÓN SECCIONES OBLIGATORIAS
+    // ========================================
+    function validarSeccionesObligatorias() {
+      const errores = [];
+
+      // 1. ZONAS — al menos 1 zona seleccionada
+      if (!preparacionData.zonas || preparacionData.zonas.length === 0) {
+        errores.push({ seccionId: 'seccion-zonas', nombre: '🏠 Zonas' });
+      }
+
+      // 2. PERSONAS — al menos 1 día con algún valor > 0
+      const tienePersonas = Object.values(preparacionData.personas || {}).some(dia =>
+        (dia.familiares > 0 || dia.desayuno > 0 || dia.comida > 0 || dia.cena > 0 || dia.duermen > 0)
+      );
+      if (!tienePersonas) {
+        errores.push({ seccionId: 'seccion-personas', nombre: '👥 Personas' });
+      }
+
+      // 3. MENÚS — al menos 1 menú con especial=true o con descripción
+      const tieneMenus = Object.values(preparacionData.menus || {}).some(m =>
+        m.especial || (m.descripcion && m.descripcion.trim())
+      );
+      if (!tieneMenus) {
+        errores.push({ seccionId: 'seccion-menus', nombre: '🍽️ Menús' });
+      }
+
+      // 4. SERVICIO — al menos 1 pase con roles asignados
+      const tieneServicio = Object.values(preparacionData.servicio || {}).some(roles =>
+        Array.isArray(roles) ? roles.length > 0 : !!roles
+      );
+      if (!tieneServicio) {
+        errores.push({ seccionId: 'seccion-servicio', nombre: '👨‍🍳 Servicio' });
+      }
+
+      // 5. MENAJE — algo indicado: toggle especial, items del ajuar, o menaje adicional
+      const tieneMenaje = preparacionData.menajeEspecial ||
+        (preparacionData.menajeAjuar && preparacionData.menajeAjuar.length > 0) ||
+        (preparacionData.menaje && preparacionData.menaje.length > 0);
+      if (!tieneMenaje) {
+        errores.push({ seccionId: 'seccion-menaje', nombre: '🍷 Menaje' });
+      }
+
+      // 6. PRODUCTO — al menos 1 producto (aportado o solicitado)
+      const tieneProducto = (preparacionData.productosAportados && preparacionData.productosAportados.length > 0) ||
+        (preparacionData.productosSolicitados && preparacionData.productosSolicitados.length > 0);
+      if (!tieneProducto) {
+        errores.push({ seccionId: 'seccion-producto', nombre: '📦 Producto' });
+      }
+
+      // 7. TAREAS — NO obligatorio (skip)
+
+      // 8. NOTAS — texto no vacío
+      if (!preparacionData.notas || !preparacionData.notas.trim()) {
+        errores.push({ seccionId: 'seccion-notas', nombre: '📝 Notas' });
+      }
+
+      return errores;
+    }
+
     async function enviarSolicitud() {
-      // Validar campos obligatorios
+      // Validar campos obligatorios básicos
       const bienId = document.getElementById('sol-bien').value;
       if (!bienId) { alert('Selecciona un bien'); return; }
 
@@ -1484,6 +1559,30 @@
       if (!inicio || !fin) { alert('Selecciona las fechas de inicio y fin'); return; }
       if (fin < inicio) { alert('La fecha de fin debe ser posterior a la de inicio'); return; }
 
+      // Recoger notas antes de validar
+      preparacionData.notas = document.getElementById('notas-general')?.value || '';
+
+      // === VALIDACIÓN DE SECCIONES OBLIGATORIAS ===
+      const errores = validarSeccionesObligatorias();
+      if (errores.length > 0) {
+        // Limpiar errores previos
+        document.querySelectorAll('.seccion.seccion-error').forEach(s => s.classList.remove('seccion-error'));
+        // Marcar secciones con error
+        errores.forEach(e => {
+          const el = document.getElementById(e.seccionId);
+          if (el) el.classList.add('seccion-error');
+        });
+        // Scroll a la primera con error
+        const primera = document.getElementById(errores[0].seccionId);
+        if (primera) primera.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Mensaje
+        const nombres = errores.map(e => e.nombre).join(', ');
+        alert('Faltan secciones obligatorias por completar:\n\n' + nombres + '\n\nRevisa las secciones marcadas en rojo.');
+        return;
+      }
+      // Limpiar marcas de error si todo OK
+      document.querySelectorAll('.seccion.seccion-error').forEach(s => s.classList.remove('seccion-error'));
+
       if (!confirm('¿Enviar esta solicitud? Será revisada por los administradores.')) return;
 
       const btn = document.getElementById('btn-enviar');
@@ -1491,9 +1590,6 @@
       btn.textContent = '⏳ Enviando...';
 
       try {
-        // Recoger notas
-        preparacionData.notas = document.getElementById('notas-general').value;
-
         const bien = bienesDisponibles.find(b => b.id === bienId);
         const tipoId = document.getElementById('sol-tipo').value || '';
         const tipoInfo = tiposActuales.find(t => t.id === tipoId) || {};
