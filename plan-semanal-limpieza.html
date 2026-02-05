@@ -206,59 +206,93 @@
     }
     .empty-tabla-icon { font-size: 3rem; margin-bottom: 12px; }
 
-    /* Vista semanal */
-    .semana-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 12px;
-    }
-    .dia-card {
+    /* Vista semanal por zonas */
+    .zona-bloque {
       background: var(--white);
       border-radius: var(--radius-md);
-      overflow: hidden;
       box-shadow: var(--shadow-soft);
-      min-height: 150px;
+      margin-bottom: 16px;
+      overflow: hidden;
     }
-    .dia-header {
-      background: var(--limpieza);
+    .zona-bloque-header {
+      background: linear-gradient(135deg, var(--limpieza) 0%, #4A7BC0 100%);
       color: white;
-      padding: 10px 12px;
+      padding: 12px 16px;
+      font-family: 'Quicksand', sans-serif;
       font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .zona-bloque-header .zona-count {
+      background: rgba(255,255,255,0.25);
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-family: 'Nunito', sans-serif;
+    }
+    .zona-tarea-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--cream-dark);
+      gap: 12px;
       font-size: 0.85rem;
-      text-align: center;
     }
-    .dia-header.hoy {
-      background: var(--sage);
+    .zona-tarea-row:last-child { border-bottom: none; }
+    .zona-tarea-row:hover { background: var(--limpieza-muted); }
+    .zona-tarea-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .zona-tarea-info { flex: 1; }
+    .zona-tarea-nombre { font-weight: 600; color: var(--text); }
+    .zona-tarea-habs { font-size: 0.75rem; color: var(--text-muted); }
+    .zona-tarea-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
     }
-    .dia-body {
-      padding: 10px;
-    }
-    .dia-tarea {
-      padding: 8px;
-      background: var(--cream);
-      border-radius: var(--radius-sm);
-      margin-bottom: 6px;
+    .zona-tarea-duracion {
+      font-weight: 700;
       font-size: 0.8rem;
+      color: var(--limpieza);
     }
-    .dia-tarea:last-child { margin-bottom: 0; }
-    .dia-tarea-nombre {
-      font-weight: 600;
-      color: var(--text);
+    .zona-tarea-row.pre-reserva {
+      background: linear-gradient(135deg, rgba(125,181,154,0.15), rgba(125,181,154,0.05));
     }
-    .dia-tarea-zona {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-    }
-    .dia-tarea.pre-reserva {
-      background: var(--success);
-      color: white;
-    }
-    .dia-tarea.pre-reserva .dia-tarea-zona { color: rgba(255,255,255,0.8); }
-    .dia-empty {
-      color: var(--text-muted);
-      font-size: 0.8rem;
+    .zona-tarea-row.pre-reserva .zona-tarea-nombre { color: var(--success); }
+    .semana-empty {
       text-align: center;
-      padding: 20px 8px;
+      padding: 48px;
+      color: var(--text-muted);
+      background: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-soft);
+    }
+    .semana-empty-icon { font-size: 3rem; margin-bottom: 8px; }
+    .semana-resumen {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-soft);
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .resumen-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .resumen-valor {
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: var(--limpieza);
+    }
+    .resumen-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
 
     /* Vista 52 semanas */
@@ -576,12 +610,10 @@
     .btn-danger { background: var(--error); color: white; }
 
     @media (max-width: 900px) {
-      .semana-grid { grid-template-columns: repeat(2, 1fr); }
       .semanas-mes { grid-template-columns: repeat(2, 1fr); }
       .form-row, .form-row-3 { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
-      .semana-grid { grid-template-columns: 1fr; }
       .tabs { flex-direction: column; }
     }
   </style>
@@ -645,7 +677,7 @@
         <div class="info-banner">
           <strong>Semana actual:</strong> <span id="info-semana">-</span>
         </div>
-        <div class="semana-grid" id="semana-grid"></div>
+        <div id="semana-zonas-container"></div>
       </div>
 
       <!-- Tab: 52 Semanas -->
@@ -1248,7 +1280,7 @@
     function cargarTareasZona() { cargarTareasHabsSeleccionadas(); }
 
     // Resolver nombre e icono de tarea dado su ID y tipo
-    function resolverTarea(tareaId, tipo) {
+    function resolverTarea(tareaId, tipo, instData) {
       const predef = TAREAS_PREDEFINIDAS.find(p => p.id === tareaId);
       if (predef) return { nombre: predef.nombre, icon: predef.icon };
 
@@ -1256,6 +1288,15 @@
       const tareasDelTipo = tareasPorTipo[tipo] || [];
       const custom = tareasDelTipo.find(t => t.tareaId === tareaId);
       if (custom) return { nombre: custom.nombre || tareaId, icon: '📌' };
+
+      // Buscar en TODOS los tipos (por si el tipo no coincide)
+      for (const [t, tareas] of Object.entries(tareasPorTipo)) {
+        const found = tareas.find(ta => ta.tareaId === tareaId);
+        if (found) return { nombre: found.nombre || tareaId, icon: '📌' };
+      }
+
+      // Fallback: usar nombre guardado en la instrucción
+      if (instData?.tareaNombre) return { nombre: instData.tareaNombre, icon: instData.tareaIcon || '📌' };
 
       return { nombre: tareaId, icon: '📋' };
     }
@@ -1345,7 +1386,7 @@
       empty.classList.add('hidden');
 
       tbody.innerHTML = instruccionesData.map(inst => {
-        const tarea = resolverTarea(inst.tareaId, inst.habitacionTipo);
+        const tarea = resolverTarea(inst.tareaId, inst.habitacionTipo, inst);
         const habIcon = TIPOS_DEPENDENCIA[inst.habitacionTipo]?.icon || '🏠';
 
         // Mostrar nombres de habitaciones
@@ -1432,63 +1473,92 @@
       document.getElementById('info-semana').textContent =
         `${semanaDelMes}ª semana de ${mesesNombre[mesActual]} ${hoy.getFullYear()}`;
 
+      // Filtrar instrucciones de esta semana
       const instruccionesSemana = instruccionesData.filter(inst => {
         if (!inst.semanas || !inst.semanas.includes(semanaDelMes)) return false;
         return cumpleFrecuencia(inst, mesActual);
       });
 
+      // Tareas pre-reserva
       const tareasPreReserva = getSemanaPreviaReservas();
-      const grid = document.getElementById('semana-grid');
-      let html = '';
+      const todasTareas = [...instruccionesSemana, ...tareasPreReserva];
 
-      for (let dia = 1; dia <= 7; dia++) {
-        const diaNum = dia % 7;
-        const esHoy = hoy.getDay() === diaNum;
-        const diasAbrev = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+      const container = document.getElementById('semana-zonas-container');
 
-        const tareasDelDia = instruccionesSemana.filter(inst => {
-          return !(inst.restricciones || []).includes(diasAbrev[diaNum]);
-        });
-
-        const tareasPreDia = tareasPreReserva.filter(inst => {
-          return !(inst.restricciones || []).includes(diasAbrev[diaNum]);
-        });
-
-        let tareasHtml = '';
-
-        if (tareasDelDia.length === 0 && tareasPreDia.length === 0) {
-          tareasHtml = '<div class="dia-empty">Sin tareas</div>';
-        } else {
-          tareasHtml = tareasDelDia.map(t => {
-            const tarea = resolverTarea(t.tareaId, t.habitacionTipo);
-            return `
-              <div class="dia-tarea">
-                <div class="dia-tarea-nombre">${tarea.icon} ${tarea.nombre}</div>
-                <div class="dia-tarea-zona">${t.habitacionNombre || 'Habitación'} · ${t.duracion || 30}min</div>
-              </div>
-            `;
-          }).join('');
-
-          tareasHtml += tareasPreDia.map(t => {
-            const tarea = resolverTarea(t.tareaId, t.habitacionTipo);
-            return `
-              <div class="dia-tarea pre-reserva">
-                <div class="dia-tarea-nombre">🏠 ${tarea.nombre}</div>
-                <div class="dia-tarea-zona">${t.habitacionNombre || 'Habitación'} · Pre-reserva</div>
-              </div>
-            `;
-          }).join('');
-        }
-
-        html += `
-          <div class="dia-card">
-            <div class="dia-header ${esHoy ? 'hoy' : ''}">${diasSemanaFull[diaNum]}</div>
-            <div class="dia-body">${tareasHtml}</div>
-          </div>
-        `;
+      if (todasTareas.length === 0) {
+        container.innerHTML = `
+          <div class="semana-empty">
+            <div class="semana-empty-icon">✨</div>
+            <p>Sin tareas programadas esta semana</p>
+          </div>`;
+        return;
       }
 
-      grid.innerHTML = html;
+      // Resumen
+      const totalTareas = todasTareas.length;
+      const totalMinutos = todasTareas.reduce((sum, t) => sum + (t.duracion || 0), 0);
+      const horas = Math.floor(totalMinutos / 60);
+      const mins = totalMinutos % 60;
+
+      let html = `
+        <div class="semana-resumen">
+          <div class="resumen-item">
+            <div class="resumen-valor">${totalTareas}</div>
+            <div class="resumen-label">tarea${totalTareas !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="resumen-item">
+            <div class="resumen-valor">${horas > 0 ? horas + 'h ' : ''}${mins}min</div>
+            <div class="resumen-label">estimado</div>
+          </div>
+        </div>
+      `;
+
+      // Agrupar por zona
+      const porZona = {};
+      todasTareas.forEach(inst => {
+        const zona = inst.zona || inst.habitacionZona || 'Sin zona';
+        if (!porZona[zona]) porZona[zona] = [];
+        porZona[zona].push(inst);
+      });
+
+      // Renderizar cada zona
+      for (const [zona, tareas] of Object.entries(porZona)) {
+        const durZona = tareas.reduce((s, t) => s + (t.duracion || 0), 0);
+        
+        html += `
+          <div class="zona-bloque">
+            <div class="zona-bloque-header">
+              <span>${zona}</span>
+              <span class="zona-count">${tareas.length} tarea${tareas.length !== 1 ? 's' : ''} · ${durZona}min</span>
+            </div>
+        `;
+
+        tareas.forEach(t => {
+          const tarea = resolverTarea(t.tareaId, t.habitacionTipo, t);
+          const esPreReserva = t.esPreReserva || false;
+          const habDisplay = t.habitacionNombres
+            ? (t.todasLaZona ? 'Todas' : t.habitacionNombres.join(', '))
+            : (t.habitacionNombre || 'Habitación');
+
+          html += `
+            <div class="zona-tarea-row${esPreReserva ? ' pre-reserva' : ''}">
+              <div class="zona-tarea-icon">${esPreReserva ? '🏠' : tarea.icon}</div>
+              <div class="zona-tarea-info">
+                <div class="zona-tarea-nombre">${tarea.nombre}${esPreReserva ? ' (pre-reserva)' : ''}</div>
+                <div class="zona-tarea-habs">${habDisplay}</div>
+              </div>
+              <div class="zona-tarea-meta">
+                ${t.duracion ? `<span class="zona-tarea-duracion">${t.duracion}min</span>` : ''}
+                <span class="badge badge-frecuencia" style="font-size:0.65rem">${frecuenciaNombres[t.frecuencia] || t.frecuencia}</span>
+              </div>
+            </div>
+          `;
+        });
+
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
     }
 
     function cumpleFrecuencia(inst, mesActual) {
