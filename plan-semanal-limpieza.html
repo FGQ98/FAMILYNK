@@ -465,6 +465,102 @@
     }
     .restriccion-item input { display: none; }
 
+    /* Multi-select habitaciones */
+    .hab-selector-container { margin-top: 8px; }
+    .hab-todas-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--limpieza-muted);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--limpieza);
+    }
+    .hab-todas-check input { accent-color: var(--limpieza); width: 16px; height: 16px; }
+    .hab-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .hab-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: 20px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--white);
+    }
+    .hab-chip:hover { border-color: var(--limpieza-light); }
+    .hab-chip.selected {
+      border-color: var(--limpieza);
+      background: var(--limpieza-muted);
+      color: var(--limpieza);
+      font-weight: 600;
+    }
+    .hab-chip input { display: none; }
+
+    /* Inputs adicionales (colapsable) */
+    .inputs-adicionales-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--cream);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      transition: all 0.2s;
+      border: 1px solid transparent;
+    }
+    .inputs-adicionales-toggle:hover { border-color: var(--limpieza-light); }
+    .inputs-adicionales-toggle .chevron {
+      transition: transform 0.3s;
+      font-size: 0.8rem;
+    }
+    .inputs-adicionales-toggle.open .chevron { transform: rotate(180deg); }
+    .inputs-adicionales-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .inputs-adicionales-body.open { max-height: 300px; }
+    .inputs-adicionales-list {
+      padding: 12px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .input-adicional-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--white);
+      border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .input-adicional-item:hover { border-color: var(--limpieza-light); }
+    .input-adicional-item:has(input:checked) {
+      border-color: var(--limpieza);
+      background: var(--limpieza-muted);
+    }
+    .input-adicional-item input { accent-color: var(--limpieza); width: 16px; height: 16px; }
+    .input-adicional-texto { flex: 1; }
+    .input-adicional-titulo { font-weight: 600; font-size: 0.85rem; color: var(--text); }
+    .input-adicional-sub { font-size: 0.72rem; color: var(--text-muted); }
+
     .btn {
       padding: 10px 20px;
       border: none;
@@ -571,20 +667,32 @@
       </div>
       <form id="form-instruccion">
         <div class="modal-body">
-          <!-- Zona y Tarea -->
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Habitación *</label>
-              <select class="form-select" id="inst-zona" required onchange="cargarTareasZona()">
-                <option value="">Seleccionar habitación</option>
-              </select>
+          <!-- Zona -->
+          <div class="form-group">
+            <label class="form-label">Zona *</label>
+            <select class="form-select" id="inst-zona-select" required onchange="cargarHabitacionesZona()">
+              <option value="">Seleccionar zona</option>
+            </select>
+          </div>
+
+          <!-- Habitaciones de la zona (multi-select) -->
+          <div class="form-group hidden" id="hab-selector-wrapper">
+            <label class="form-label">Habitaciones *</label>
+            <div class="hab-selector-container">
+              <label class="hab-todas-check">
+                <input type="checkbox" id="hab-todas" onchange="toggleTodasHabitaciones()">
+                Todas las de esta zona
+              </label>
+              <div class="hab-grid" id="hab-grid"></div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Tarea *</label>
-              <select class="form-select" id="inst-tarea" required onchange="actualizarUnidadObra()">
-                <option value="">Seleccionar tarea</option>
-              </select>
-            </div>
+          </div>
+
+          <!-- Tarea -->
+          <div class="form-group">
+            <label class="form-label">Tarea *</label>
+            <select class="form-select" id="inst-tarea" required onchange="actualizarUnidadObra()">
+              <option value="">Seleccionar tarea</option>
+            </select>
           </div>
 
           <!-- Calculadora de duración por unidad de obra -->
@@ -690,6 +798,39 @@
               <label class="restriccion-item"><input type="checkbox" id="rest-vie"> Vie</label>
               <label class="restriccion-item"><input type="checkbox" id="rest-sab"> Sáb</label>
               <label class="restriccion-item"><input type="checkbox" id="rest-dom"> Dom</label>
+            </div>
+          </div>
+
+          <!-- Inputs Adicionales (colapsable) -->
+          <div class="form-group">
+            <div class="inputs-adicionales-toggle" onclick="toggleInputsAdicionales()">
+              <span>📥 Inputs Adicionales</span>
+              <span class="chevron">▼</span>
+            </div>
+            <div class="inputs-adicionales-body" id="inputs-adicionales-body">
+              <div class="inputs-adicionales-list">
+                <label class="input-adicional-item">
+                  <input type="checkbox" id="input-reservas">
+                  <div class="input-adicional-texto">
+                    <div class="input-adicional-titulo">📅 Reservas del bien</div>
+                    <div class="input-adicional-sub">Ajusta tareas según las reservas programadas</div>
+                  </div>
+                </label>
+                <label class="input-adicional-item">
+                  <input type="checkbox" id="input-preparar-semana">
+                  <div class="input-adicional-texto">
+                    <div class="input-adicional-titulo">📋 Preparar Semana</div>
+                    <div class="input-adicional-sub">Incorpora ajustes del módulo Preparar Semana</div>
+                  </div>
+                </label>
+                <label class="input-adicional-item">
+                  <input type="checkbox" id="input-vacaciones-externo">
+                  <div class="input-adicional-texto">
+                    <div class="input-adicional-titulo">🏖️ Vacaciones del externo</div>
+                    <div class="input-adicional-sub">Tiene en cuenta los periodos de ausencia del casero</div>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
 
@@ -850,6 +991,7 @@
     let reservasData = [];       // col: reservas
     let instruccionEditando = null;
     let semanasSeleccionadas = [];
+    let habsSeleccionadas = [];    // IDs de habitaciones seleccionadas en el modal
 
     // =============================================
     // INIT
@@ -939,62 +1081,170 @@
     }
 
     // =============================================
-    // SELECTORES: ZONA (habitación) y TAREA
+    // SELECTORES: ZONA → HABITACIONES → TAREA
     // =============================================
     function poblarSelectZonas() {
-      const select = document.getElementById('inst-zona');
-      select.innerHTML = '<option value="">Seleccionar habitación</option>';
+      const select = document.getElementById('inst-zona-select');
+      select.innerHTML = '<option value="">Seleccionar zona</option>';
 
       if (habitacionesData.length === 0) {
         select.innerHTML = '<option value="">⚠️ Configura habitaciones primero</option>';
         return;
       }
 
-      // Agrupar habitaciones por zona (planta/área)
-      const porZona = {};
-      habitacionesData.forEach(h => {
-        const zona = h.zona || 'Sin zona';
-        if (!porZona[zona]) porZona[zona] = [];
-        porZona[zona].push(h);
+      // Extraer zonas únicas
+      const zonas = [...new Set(habitacionesData.map(h => h.zona || 'Sin zona'))];
+      zonas.forEach(zona => {
+        const count = habitacionesData.filter(h => (h.zona || 'Sin zona') === zona).length;
+        select.innerHTML += `<option value="${zona}">${zona} (${count})</option>`;
       });
-
-      // Renderizar agrupadas
-      for (const [zona, habs] of Object.entries(porZona)) {
-        select.innerHTML += `<optgroup label="${zona}">`;
-        habs.forEach(h => {
-          const tipoInfo = TIPOS_DEPENDENCIA[h.tipo] || { icon: '🏠', label: h.tipo || '' };
-          const nombre = h.nombre || tipoInfo.label;
-          select.innerHTML += `<option value="${h.id}">${tipoInfo.icon} ${nombre}</option>`;
-        });
-        select.innerHTML += `</optgroup>`;
-      }
     }
 
-    function cargarTareasZona() {
-      const habId = document.getElementById('inst-zona').value;
+    function cargarHabitacionesZona() {
+      const zonaSeleccionada = document.getElementById('inst-zona-select').value;
+      const wrapper = document.getElementById('hab-selector-wrapper');
+      const grid = document.getElementById('hab-grid');
+      const tareaSelect = document.getElementById('inst-tarea');
+
+      // Reset
+      habsSeleccionadas = [];
+      document.getElementById('hab-todas').checked = false;
+      tareaSelect.innerHTML = '<option value="">Seleccionar tarea</option>';
+      document.getElementById('calc-container').style.display = 'none';
+
+      if (!zonaSeleccionada) {
+        wrapper.classList.add('hidden');
+        return;
+      }
+
+      // Filtrar habitaciones de esa zona
+      const habsZona = habitacionesData.filter(h => (h.zona || 'Sin zona') === zonaSeleccionada);
+
+      if (habsZona.length === 0) {
+        wrapper.classList.add('hidden');
+        return;
+      }
+
+      // Renderizar chips
+      grid.innerHTML = habsZona.map(h => {
+        const tipoInfo = TIPOS_DEPENDENCIA[h.tipo] || { icon: '🏠', label: h.tipo || '' };
+        const nombre = h.nombre || tipoInfo.label;
+        return `
+          <label class="hab-chip" data-hab-id="${h.id}" onclick="toggleHabitacion('${h.id}', event)">
+            <input type="checkbox" value="${h.id}">
+            ${tipoInfo.icon} ${nombre}
+          </label>
+        `;
+      }).join('');
+
+      wrapper.classList.remove('hidden');
+    }
+
+    function toggleHabitacion(habId, event) {
+      if (event) event.preventDefault();
+      const idx = habsSeleccionadas.indexOf(habId);
+      if (idx === -1) {
+        habsSeleccionadas.push(habId);
+      } else {
+        habsSeleccionadas.splice(idx, 1);
+      }
+
+      // Actualizar UI chips
+      document.querySelectorAll('.hab-chip').forEach(chip => {
+        const id = chip.dataset.habId;
+        const cb = chip.querySelector('input');
+        if (habsSeleccionadas.includes(id)) {
+          chip.classList.add('selected');
+          cb.checked = true;
+        } else {
+          chip.classList.remove('selected');
+          cb.checked = false;
+        }
+      });
+
+      // Actualizar "Todas"
+      const zonaSeleccionada = document.getElementById('inst-zona-select').value;
+      const habsZona = habitacionesData.filter(h => (h.zona || 'Sin zona') === zonaSeleccionada);
+      document.getElementById('hab-todas').checked = habsSeleccionadas.length === habsZona.length && habsZona.length > 0;
+
+      // Cargar tareas según tipos seleccionados
+      cargarTareasHabsSeleccionadas();
+    }
+
+    function toggleTodasHabitaciones() {
+      const zonaSeleccionada = document.getElementById('inst-zona-select').value;
+      const habsZona = habitacionesData.filter(h => (h.zona || 'Sin zona') === zonaSeleccionada);
+      const todas = document.getElementById('hab-todas').checked;
+
+      if (todas) {
+        habsSeleccionadas = habsZona.map(h => h.id);
+      } else {
+        habsSeleccionadas = [];
+      }
+
+      // Actualizar chips UI
+      document.querySelectorAll('.hab-chip').forEach(chip => {
+        const id = chip.dataset.habId;
+        const cb = chip.querySelector('input');
+        if (habsSeleccionadas.includes(id)) {
+          chip.classList.add('selected');
+          cb.checked = true;
+        } else {
+          chip.classList.remove('selected');
+          cb.checked = false;
+        }
+      });
+
+      cargarTareasHabsSeleccionadas();
+    }
+
+    function cargarTareasHabsSeleccionadas() {
       const select = document.getElementById('inst-tarea');
       select.innerHTML = '<option value="">Seleccionar tarea</option>';
+      document.getElementById('calc-container').style.display = 'none';
 
-      if (!habId) return;
+      if (habsSeleccionadas.length === 0) return;
 
-      // Buscar habitación y su tipo
-      const hab = habitacionesData.find(h => h.id === habId);
-      if (!hab || !hab.tipo) return;
+      // Obtener tipos únicos de las habitaciones seleccionadas
+      const tiposUnicos = [...new Set(
+        habsSeleccionadas.map(id => {
+          const h = habitacionesData.find(hab => hab.id === id);
+          return h?.tipo;
+        }).filter(Boolean)
+      )];
 
-      // Cargar tareas activas para ese tipo desde configLimpieza/tareasPorTipo
-      const tareasDelTipo = (tareasPorTipo[hab.tipo] || []).filter(t => t.activo);
+      // Recopilar tareas de todos los tipos (intersección si >1 tipo, unión si son iguales)
+      let tareasComunes = [];
+      if (tiposUnicos.length === 1) {
+        // Todas del mismo tipo: mostrar todas las tareas de ese tipo
+        tareasComunes = (tareasPorTipo[tiposUnicos[0]] || []).filter(t => t.activo);
+      } else {
+        // Tipos mixtos: mostrar unión de tareas (el usuario decide cuál aplica)
+        const tareasVistas = new Set();
+        tiposUnicos.forEach(tipo => {
+          (tareasPorTipo[tipo] || []).filter(t => t.activo).forEach(t => {
+            if (!tareasVistas.has(t.tareaId)) {
+              tareasVistas.add(t.tareaId);
+              tareasComunes.push(t);
+            }
+          });
+        });
+      }
 
-      if (tareasDelTipo.length > 0) {
-        tareasDelTipo.forEach(t => {
+      if (tareasComunes.length > 0) {
+        tareasComunes.forEach(t => {
           const predef = TAREAS_PREDEFINIDAS.find(p => p.id === t.tareaId);
           const nombre = t.custom ? t.nombre : (predef?.nombre || t.tareaId);
           const icon = t.custom ? '📌' : (predef?.icon || '📋');
           select.innerHTML += `<option value="${t.tareaId}" data-icon="${icon}" data-nombre="${nombre}">${icon} ${nombre}</option>`;
         });
       } else {
-        select.innerHTML = '<option value="">⚠️ Sin tareas configuradas para este tipo</option>';
+        select.innerHTML = '<option value="">⚠️ Sin tareas configuradas para estos tipos</option>';
       }
     }
+
+    // Compatibilidad: alias para cargarTareasZona (ya no se usa directamente)
+    function cargarTareasZona() { cargarTareasHabsSeleccionadas(); }
 
     // Resolver nombre e icono de tarea dado su ID y tipo
     function resolverTarea(tareaId, tipo) {
@@ -1014,34 +1264,37 @@
     // =============================================
     function actualizarUnidadObra() {
       const tareaId = document.getElementById('inst-tarea').value;
-      const habId = document.getElementById('inst-zona').value;
       const container = document.getElementById('calc-container');
 
-      if (!tareaId || !habId) {
+      if (!tareaId || habsSeleccionadas.length === 0) {
         container.style.display = 'none';
         return;
       }
 
-      const hab = habitacionesData.find(h => h.id === habId);
+      // Usar primera habitación seleccionada como referencia para el cálculo
+      const hab = habitacionesData.find(h => h.id === habsSeleccionadas[0]);
       if (!hab) { container.style.display = 'none'; return; }
 
       // Determinar unidad de obra para esta tarea
       const unidad = UNIDAD_POR_TAREA[tareaId] || 'unidad';
       const label = UNIDAD_LABELS[unidad] || UNIDAD_LABELS.unidad;
 
-      // Obtener cantidad de la habitación
-      let cantidad = 1;
-      switch (unidad) {
-        case 'm2':         cantidad = parseFloat(hab.tamano) || 0; break;
-        case 'plazas':     cantidad = parseInt(hab.plazas) || 0; break;
-        case 'sanitarios': cantidad = parseInt(hab.sanitarios) || ((parseInt(hab.lavabos)||0) + (parseInt(hab.inodoros)||0) + (parseInt(hab.duchas)||0)); break;
-        case 'ventanas':   cantidad = parseFloat(hab.ventanas) ?? 1.5; break;
-        case 'unidad':     cantidad = 1; break;
-      }
-      // Si ventanas es null/undefined, usar default 1.5
-      if (unidad === 'ventanas' && (hab.ventanas == null)) cantidad = 1.5;
+      // Sumar cantidades de TODAS las habitaciones seleccionadas
+      let cantidad = 0;
+      habsSeleccionadas.forEach(habId => {
+        const h = habitacionesData.find(x => x.id === habId);
+        if (!h) return;
+        switch (unidad) {
+          case 'm2':         cantidad += parseFloat(h.tamano) || 0; break;
+          case 'plazas':     cantidad += parseInt(h.plazas) || 0; break;
+          case 'sanitarios': cantidad += parseInt(h.sanitarios) || ((parseInt(h.lavabos)||0) + (parseInt(h.inodoros)||0) + (parseInt(h.duchas)||0)); break;
+          case 'ventanas':   cantidad += (h.ventanas != null) ? parseFloat(h.ventanas) : 1.5; break;
+          case 'unidad':     cantidad += 1; break;
+        }
+      });
 
-      document.getElementById('inst-unidad').value = `${label.icon} ${label.nombre}`;
+      const sufijo = habsSeleccionadas.length > 1 ? ` (${habsSeleccionadas.length} hab.)` : '';
+      document.getElementById('inst-unidad').value = `${label.icon} ${label.nombre}${sufijo}`;
       document.getElementById('inst-cantidad').value = cantidad;
       document.getElementById('inst-unidad-valor').value = unidad;
       document.getElementById('inst-cantidad-valor').value = cantidad;
@@ -1093,22 +1346,38 @@
       tbody.innerHTML = instruccionesData.map(inst => {
         const tarea = resolverTarea(inst.tareaId, inst.habitacionTipo);
         const habIcon = TIPOS_DEPENDENCIA[inst.habitacionTipo]?.icon || '🏠';
-        const habNombre = inst.habitacionNombre || 'Sin habitación';
-        const habZona = inst.habitacionZona ? ` · ${inst.habitacionZona}` : '';
+
+        // Mostrar nombres de habitaciones
+        let habDisplay = '';
+        if (inst.habitacionNombres && inst.habitacionNombres.length > 1) {
+          habDisplay = `${inst.habitacionNombres.length} hab.`;
+          if (inst.todasLaZona) habDisplay = `Todas (${inst.zona || '?'})`;
+        } else {
+          habDisplay = inst.habitacionNombre || 'Sin habitación';
+        }
+        const habZona = inst.zona || inst.habitacionZona || '';
 
         const semanasStr = (inst.semanas || []).map(s => `${s}ª`).join(', ');
         const restricciones = (inst.restricciones || []).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') || '-';
         const cuandoUse = inst.cuandoSeUse ? '<span class="badge badge-uso">+ Reservas</span>' : '';
 
+        // Badges de inputs adicionales
+        let inputsBadges = '';
+        if (inst.inputsAdicionales) {
+          if (inst.inputsAdicionales.reservas) inputsBadges += '<span class="badge badge-uso" style="margin-left:2px">📅</span>';
+          if (inst.inputsAdicionales.prepararSemana) inputsBadges += '<span class="badge badge-uso" style="margin-left:2px">📋</span>';
+          if (inst.inputsAdicionales.vacacionesExterno) inputsBadges += '<span class="badge badge-uso" style="margin-left:2px">🏖️</span>';
+        }
+
         return `
           <tr onclick="editarInstruccion('${inst.id}')">
             <td>
               <div style="font-weight:600;">${tarea.icon} ${tarea.nombre}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);">${habIcon} ${habNombre}${habZona}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);">${habIcon} ${habDisplay}${habZona ? ' · ' + habZona : ''}</div>
             </td>
             <td>
               <span class="badge badge-frecuencia">${frecuenciaNombres[inst.frecuencia] || inst.frecuencia}</span>
-              ${cuandoUse}
+              ${cuandoUse}${inputsBadges}
             </td>
             <td>
               <div style="font-weight:600;">${inst.duracion || '—'} min</div>
@@ -1287,11 +1556,26 @@
       document.getElementById('btn-eliminar').style.display = 'none';
       document.getElementById('inst-tarea').innerHTML = '<option value="">Seleccionar tarea</option>';
 
+      // Reset zona y habitaciones
+      document.getElementById('inst-zona-select').value = '';
+      document.getElementById('hab-selector-wrapper').classList.add('hidden');
+      document.getElementById('hab-grid').innerHTML = '';
+      document.getElementById('hab-todas').checked = false;
+      habsSeleccionadas = [];
+
       // Reset calculadora
       document.getElementById('calc-container').style.display = 'none';
       document.getElementById('inst-coeficiente').value = '';
       document.getElementById('inst-duracion').value = '';
       document.getElementById('inst-duracion-display').textContent = '—';
+
+      // Reset inputs adicionales
+      document.getElementById('input-reservas').checked = false;
+      document.getElementById('input-preparar-semana').checked = false;
+      document.getElementById('input-vacaciones-externo').checked = false;
+      const iaBody = document.getElementById('inputs-adicionales-body');
+      iaBody.classList.remove('open');
+      document.querySelector('.inputs-adicionales-toggle')?.classList.remove('open');
 
       semanasSeleccionadas = [];
       document.querySelectorAll('.semana-option').forEach(el => el.classList.remove('selected'));
@@ -1310,11 +1594,35 @@
       document.getElementById('modal-titulo').textContent = '✏️ Editar instrucción';
       document.getElementById('btn-eliminar').style.display = 'block';
 
-      // Seleccionar habitación
-      document.getElementById('inst-zona').value = instruccionEditando.habitacionId || '';
-      cargarTareasZona();
+      // Restaurar zona
+      const zonaGuardada = instruccionEditando.habitacionZona || instruccionEditando.zona || '';
+      document.getElementById('inst-zona-select').value = zonaGuardada;
+      cargarHabitacionesZona();
+
+      // Restaurar habitaciones seleccionadas
       setTimeout(() => {
-        document.getElementById('inst-tarea').value = instruccionEditando.tareaId || '';
+        const habIds = instruccionEditando.habitacionIds || (instruccionEditando.habitacionId ? [instruccionEditando.habitacionId] : []);
+        habsSeleccionadas = [...habIds];
+
+        // Marcar chips
+        document.querySelectorAll('.hab-chip').forEach(chip => {
+          const chipId = chip.dataset.habId;
+          const cb = chip.querySelector('input');
+          if (habsSeleccionadas.includes(chipId)) {
+            chip.classList.add('selected');
+            cb.checked = true;
+          }
+        });
+
+        // Check "Todas" si corresponde
+        const habsZona = habitacionesData.filter(h => (h.zona || 'Sin zona') === zonaGuardada);
+        document.getElementById('hab-todas').checked = habsSeleccionadas.length === habsZona.length && habsZona.length > 0;
+
+        // Cargar tareas y seleccionar la correcta
+        cargarTareasHabsSeleccionadas();
+        setTimeout(() => {
+          document.getElementById('inst-tarea').value = instruccionEditando.tareaId || '';
+        }, 50);
       }, 50);
 
       document.getElementById('inst-duracion').value = instruccionEditando.duracion || 30;
@@ -1323,21 +1631,31 @@
       document.getElementById('inst-nota').value = instruccionEditando.nota || '';
       document.getElementById('inst-cuando-use').checked = instruccionEditando.cuandoSeUse || false;
 
-      // Cargar datos de unidad de obra (para instrucciones legacy sin estos campos)
+      // Inputs adicionales
+      const inputs = instruccionEditando.inputsAdicionales || {};
+      document.getElementById('input-reservas').checked = inputs.reservas || false;
+      document.getElementById('input-preparar-semana').checked = inputs.prepararSemana || false;
+      document.getElementById('input-vacaciones-externo').checked = inputs.vacacionesExterno || false;
+
+      // Abrir panel inputs si alguno está marcado
+      if (inputs.reservas || inputs.prepararSemana || inputs.vacacionesExterno) {
+        document.getElementById('inputs-adicionales-body').classList.add('open');
+        document.querySelector('.inputs-adicionales-toggle')?.classList.add('open');
+      }
+
+      // Cargar datos de unidad de obra
       setTimeout(() => {
         actualizarUnidadObra();
-        // Sobrescribir coeficiente si existe en la instrucción guardada
         if (instruccionEditando.coeficiente) {
           document.getElementById('inst-coeficiente').value = instruccionEditando.coeficiente;
           calcularDuracion();
         } else if (instruccionEditando.duracion) {
-          // Legacy: calcular coeficiente inverso
           const cantidad = parseFloat(document.getElementById('inst-cantidad-valor').value) || 1;
           const coef = cantidad > 0 ? Math.round((instruccionEditando.duracion / cantidad) * 10) / 10 : instruccionEditando.duracion;
           document.getElementById('inst-coeficiente').value = coef;
           calcularDuracion();
         }
-      }, 100);
+      }, 150);
 
       semanasSeleccionadas = [...(instruccionEditando.semanas || [])];
       document.querySelectorAll('.semana-option').forEach(el => {
@@ -1364,6 +1682,13 @@
       document.querySelector(`.semana-option[data-semana="${sem}"]`).classList.toggle('selected');
     }
 
+    function toggleInputsAdicionales() {
+      const toggle = document.querySelector('.inputs-adicionales-toggle');
+      const body = document.getElementById('inputs-adicionales-body');
+      toggle.classList.toggle('open');
+      body.classList.toggle('open');
+    }
+
     // Click fuera cierra modal
     document.getElementById('modal-instruccion').addEventListener('click', (e) => {
       if (e.target.classList.contains('modal-overlay')) cerrarModal();
@@ -1380,27 +1705,55 @@
         return;
       }
 
+      if (habsSeleccionadas.length === 0) {
+        alert('Selecciona al menos una habitación');
+        return;
+      }
+
       const restricciones = [];
       ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'].forEach(d => {
         if (document.getElementById(`rest-${d}`).checked) restricciones.push(d);
       });
 
-      // Obtener habitación seleccionada
-      const habId = document.getElementById('inst-zona').value;
-      const hab = habitacionesData.find(h => h.id === habId);
-      if (!hab) { alert('Selecciona una habitación'); return; }
-
       const tareaId = document.getElementById('inst-tarea').value;
       if (!tareaId) { alert('Selecciona una tarea'); return; }
 
-      const tarea = resolverTarea(tareaId, hab.tipo);
-      const tipoInfo = TIPOS_DEPENDENCIA[hab.tipo] || { icon: '🏠', label: hab.tipo || '' };
+      // Info de la primera hab para datos de referencia (nombre, tipo, icono)
+      const habPrimera = habitacionesData.find(h => h.id === habsSeleccionadas[0]);
+      const tipoPrimera = habPrimera?.tipo || '';
+      const tarea = resolverTarea(tareaId, tipoPrimera);
+      const tipoInfo = TIPOS_DEPENDENCIA[tipoPrimera] || { icon: '🏠', label: tipoPrimera || '' };
+
+      // Construir nombres de habitaciones para display
+      const nombresHabs = habsSeleccionadas.map(id => {
+        const h = habitacionesData.find(x => x.id === id);
+        if (!h) return '?';
+        const ti = TIPOS_DEPENDENCIA[h.tipo] || { icon: '🏠', label: h.tipo || '' };
+        return h.nombre || ti.label;
+      });
+
+      const zonaSeleccionada = document.getElementById('inst-zona-select').value;
+
+      // Inputs adicionales
+      const inputsAdicionales = {
+        reservas: document.getElementById('input-reservas').checked,
+        prepararSemana: document.getElementById('input-preparar-semana').checked,
+        vacacionesExterno: document.getElementById('input-vacaciones-externo').checked
+      };
 
       const datos = {
-        habitacionId: habId,
-        habitacionNombre: hab.nombre || tipoInfo.label,
-        habitacionTipo: hab.tipo || '',
-        habitacionZona: hab.zona || '',
+        // Nuevo modelo: array de habitaciones
+        habitacionIds: habsSeleccionadas,
+        habitacionNombres: nombresHabs,
+        todasLaZona: document.getElementById('hab-todas').checked,
+        zona: zonaSeleccionada,
+        // Compatibilidad: primera hab como referencia
+        habitacionId: habsSeleccionadas[0],
+        habitacionNombre: habsSeleccionadas.length === 1
+          ? nombresHabs[0]
+          : `${nombresHabs.length} habitaciones`,
+        habitacionTipo: tipoPrimera,
+        habitacionZona: zonaSeleccionada,
         habitacionIcon: tipoInfo.icon,
         tareaId: tareaId,
         tareaNombre: tarea.nombre,
@@ -1414,6 +1767,7 @@
         semanas: semanasSeleccionadas.sort((a, b) => a - b),
         cuandoSeUse: document.getElementById('inst-cuando-use').checked,
         restricciones: restricciones,
+        inputsAdicionales: inputsAdicionales,
         nota: document.getElementById('inst-nota').value,
         fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
       };
