@@ -4204,8 +4204,8 @@
 
   <!-- Modal Responder Solicitud (Reserva/Evento) -->
   <div class="modal-overlay" id="modal-respuesta-solicitud">
-    <div class="modal">
-      <div class="modal-header" style="background: linear-gradient(135deg, var(--terracotta) 0%, #A65D3F 100%);">
+    <div class="modal" style="display:flex;flex-direction:column;max-height:90vh;">
+      <div class="modal-header" style="flex-shrink:0;background: linear-gradient(135deg, var(--terracotta) 0%, #A65D3F 100%);">
         <div class="modal-logo" id="respuesta-icono">📋</div>
         <div class="modal-header-info">
           <h2 class="modal-title" id="respuesta-titulo">Responder solicitud</h2>
@@ -4214,7 +4214,7 @@
         <button class="modal-close" onclick="cerrarModalRespuesta()">×</button>
       </div>
 
-      <div class="modal-body">
+      <div class="modal-body" style="flex:1;overflow-y:auto;min-height:0;">
         <!-- Info de la solicitud -->
         <div class="solicitud-info-card" style="background: var(--cream); padding: 16px; border-radius: var(--radius-md); margin-bottom: 20px;">
           <div id="respuesta-detalle"></div>
@@ -4255,7 +4255,7 @@
         </div>
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer" style="flex-shrink:0;">
         <button class="btn btn-secondary" onclick="cerrarModalRespuesta()">Cancelar</button>
         <button class="btn btn-primary" id="btn-enviar-respuesta" onclick="enviarRespuestaSolicitud()" disabled>
           <span>📤</span> Responder
@@ -6694,16 +6694,24 @@
     }
 
     function buildResumenServicio(prep, sol) {
-      const entries = Object.entries(prep.servicio).filter(([k,v]) => v?.length > 0);
+      const entries = Object.entries(prep.servicio).filter(([k,v]) => {
+        if (Array.isArray(v)) return v.length > 0;
+        if (typeof v === 'object' && v) return Object.keys(v).length > 0;
+        return !!v;
+      });
       if (entries.length === 0) return '<p style="margin:0;color:var(--text-muted);">Sin servicio asignado</p>';
       
+      const PASE_ICONS = { desayuno:'🍳', aperitivo:'🥂', comida:'🍽️', cena:'🌙' };
       let h = '';
       entries.forEach(([key, roles]) => {
-        const parts = key.split('-');
-        const pase = parts[0];
-        const fecha = parts.slice(1).join('-');
-        const label = capitalizar(pase) + ' ' + formatDiaKey(fecha);
-        h += '<p style="margin:0 0 4px 0;"><strong>' + label + ':</strong> ' + roles.join(', ') + '</p>';
+        // key = 'desayuno-2026-02-13' → pase='desayuno', fecha='2026-02-13'
+        const dashIdx = key.indexOf('-');
+        const pase = dashIdx > 0 ? key.substring(0, dashIdx) : key;
+        const fecha = dashIdx > 0 ? key.substring(dashIdx + 1) : '';
+        const icon = PASE_ICONS[pase] || '🍽️';
+        const label = icon + ' ' + capitalizar(pase) + (fecha ? ' ' + formatDiaKey(fecha) : '');
+        const rolesStr = Array.isArray(roles) ? roles.join(', ') : String(roles);
+        h += '<p style="margin:0 0 4px 0;"><strong>' + label + ':</strong> ' + rolesStr + '</p>';
       });
       return h;
     }
@@ -6715,7 +6723,10 @@
       if (prep.menaje?.length > 0) {
         h += '<p style="margin:0;"><strong>Adicional:</strong></p>';
         prep.menaje.forEach(m => {
-          h += '<p style="margin:0 0 2px 8px;">• ' + (m.nombre || m) + (m.cantidad ? ' ×' + m.cantidad : '') + '</p>';
+          const texto = (typeof m === 'string') ? m : (m.articulo || m.nombre || JSON.stringify(m));
+          const cant = m.cantidad ? ' ×' + m.cantidad : '';
+          const notas = m.notas ? ' <span style="color:var(--text-muted);">— ' + m.notas + '</span>' : '';
+          h += '<p style="margin:0 0 2px 8px;">• ' + texto + cant + notas + '</p>';
         });
       }
       return h || '<p style="margin:0;color:var(--text-muted);">Sin menaje especial</p>';
@@ -6726,13 +6737,19 @@
       if (prep.productosAportados?.length > 0) {
         h += '<p style="margin:0 0 4px 0;font-weight:600;">🧳 Aportan:</p>';
         prep.productosAportados.forEach(p => {
-          h += '<p style="margin:0 0 2px 8px;">• ' + (p.nombre || p) + (p.cantidad ? ' ×' + p.cantidad : '') + '</p>';
+          const texto = (typeof p === 'string') ? p : (p.descripcion || p.nombre || JSON.stringify(p));
+          const cant = p.cantidad ? ' ×' + p.cantidad : '';
+          const notas = p.notas ? ' <span style="color:var(--text-muted);">— ' + p.notas + '</span>' : '';
+          h += '<p style="margin:0 0 2px 8px;">• ' + texto + cant + notas + '</p>';
         });
       }
       if (prep.productosSolicitados?.length > 0) {
         h += '<p style="margin:4px 0 4px 0;font-weight:600;">🛒 Solicitan:</p>';
         prep.productosSolicitados.forEach(p => {
-          h += '<p style="margin:0 0 2px 8px;">• ' + (p.nombre || p) + (p.cantidad ? ' ×' + p.cantidad : '') + '</p>';
+          const texto = (typeof p === 'string') ? p : (p.descripcion || p.nombre || JSON.stringify(p));
+          const cant = p.cantidad ? ' ×' + p.cantidad : '';
+          const notas = p.notas ? ' <span style="color:var(--text-muted);">— ' + p.notas + '</span>' : '';
+          h += '<p style="margin:0 0 2px 8px;">• ' + texto + cant + notas + '</p>';
         });
       }
       return h || '<p style="margin:0;color:var(--text-muted);">Sin productos</p>';
@@ -6741,7 +6758,9 @@
     function buildResumenTareas(prep) {
       let h = '';
       prep.tareas.forEach(t => {
-        h += '<p style="margin:0 0 4px 0;">☐ ' + (t.nombre || t.descripcion || t) + '</p>';
+        const texto = (typeof t === 'string') ? t : (t.descripcion || t.nombre || JSON.stringify(t));
+        const notas = (typeof t === 'object' && t.notas) ? ' <span style="color:var(--text-muted);">— ' + t.notas + '</span>' : '';
+        h += '<p style="margin:0 0 4px 0;">☐ ' + texto + notas + '</p>';
       });
       return h;
     }
