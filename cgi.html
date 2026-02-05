@@ -6473,9 +6473,10 @@
       solicitudActual = notifData;
       
       // Configurar encabezado según categoría
-      const esReserva = notifData.categoria === 'reserva';
-      document.getElementById('respuesta-icono').textContent = esReserva ? '📅' : '🎉';
-      document.getElementById('respuesta-titulo').textContent = esReserva ? 'Solicitud de Reserva' : 'Solicitud de Evento';
+      const cat = notifData.categoria || '';
+      const esReserva = cat === 'reserva' || cat === 'reserva-evento';
+      document.getElementById('respuesta-icono').textContent = cat === 'reserva-evento' ? '📋' : (esReserva ? '📅' : '🎉');
+      document.getElementById('respuesta-titulo').textContent = cat === 'reserva-evento' ? 'Solicitud con Preparación' : (esReserva ? 'Solicitud de Reserva' : 'Solicitud de Evento');
       document.getElementById('respuesta-subtitulo').textContent = `De: ${notifData.mensaje?.split(' ha enviado')[0] || 'Miembro'}`;
       
       // Cargar datos de la solicitud original
@@ -6514,60 +6515,105 @@
         if (solicitudDoc.exists) {
           const sol = solicitudDoc.data();
           solicitudActual.solicitudData = sol;
-          solicitudActual.solicitudId = solicitudId; // Guardar ID para usar después
+          solicitudActual.solicitudId = solicitudId;
           
-          let html = '<p><strong>📍 Bien:</strong> ' + (sol.bienNombre || 'No especificado') + '</p>' +
-            '<p><strong>👤 Solicitante:</strong> ' + (sol.solicitadoPorNombre || 'Usuario') + '</p>';
+          // --- CABECERA BÁSICA ---
+          let html = '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">';
+          if (sol.nombre) html += '<p style="font-weight:700;font-size:1.05rem;margin:0;">📌 ' + sol.nombre + '</p>';
+          html += '<p style="margin:0;"><strong>📍 Bien:</strong> ' + (sol.bienNombre || 'No especificado') + '</p>';
+          html += '<p style="margin:0;"><strong>👤 Solicitante:</strong> ' + (sol.solicitadoPorNombre || 'Usuario');
+          if (sol.solicitadoPorNido) html += ' <span style="color:var(--text-muted);font-size:0.85rem;">(' + sol.solicitadoPorNido + ')</span>';
+          html += '</p>';
           
-          if (notifData.categoria === 'reserva') {
-            // Tipo de reserva con nombre
-            if (sol.tipoReservaNombre) {
-              html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoReservaNombre + '</p>';
-            } else if (sol.tipoReserva) {
-              html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoReserva + '</p>';
+          // Tipo y quién reserva
+          if (sol.tipoReservaNombre || sol.tipoReserva) {
+            html += '<p style="margin:0;"><strong>📋 Tipo:</strong> ' + (sol.tipoReservaNombre || sol.tipoReserva) + '</p>';
+          }
+          if (sol.nidoReservaNombre) {
+            html += '<p style="margin:0;"><strong>🏠 Reserva para:</strong> ' + sol.nidoReservaNombre + '</p>';
+          } else if (sol.otroGrupoNombre) {
+            html += '<p style="margin:0;"><strong>👨‍👩‍👧‍👦 Reserva para:</strong> ' + sol.otroGrupoNombre + '</p>';
+          }
+          
+          // Fechas
+          html += '<p style="margin:0;"><strong>📅 Fechas:</strong> ' + (sol.fechaInicio || '?') + ' → ' + (sol.fechaFin || '?');
+          if (sol.diasSolicitud?.length) html += ' <span style="color:var(--text-muted);font-size:0.85rem;">(' + sol.diasSolicitud.length + ' días)</span>';
+          html += '</p>';
+          
+          // Motivo / descripción
+          if (sol.motivo || sol.descripcion) {
+            html += '<p style="margin:0;"><strong>📝 Motivo:</strong> ' + (sol.motivo || sol.descripcion) + '</p>';
+          }
+          html += '</div>';
+          
+          // --- SECCIONES DE PREPARACIÓN ---
+          const prep = sol.preparacion;
+          if (prep) {
+            html += '<div style="border-top:1px solid var(--cream-dark);padding-top:12px;margin-top:4px;">';
+            html += '<p style="font-weight:700;font-size:0.95rem;margin:0 0 10px 0;color:var(--sage-dark);">📦 Detalle de preparación</p>';
+            
+            // 1. ZONAS
+            if (prep.zonas?.length > 0) {
+              html += buildSeccionResumen('🏠 Zonas', buildResumenZonas(prep, sol));
             }
             
-            // Quién reserva (nido u otro grupo)
-            if (sol.nidoReservaNombre) {
-              html += '<p><strong>🏠 Reserva:</strong> ' + sol.nidoReservaNombre + '</p>';
-            } else if (sol.otroGrupoNombre) {
-              html += '<p><strong>👨‍👩‍👧‍👦 Reserva:</strong> ' + sol.otroGrupoNombre + '</p>';
+            // 2. PERSONAS
+            if (prep.personas && Object.keys(prep.personas).length > 0) {
+              html += buildSeccionResumen('👥 Personas', buildResumenPersonas(prep, sol));
             }
             
-            html += '<p><strong>📅 Fechas:</strong> ' + (sol.fechaInicio || '?') + ' → ' + (sol.fechaFin || '?') + '</p>';
-            if (sol.numFamiliares || sol.numInvitados) {
-              html += '<p><strong>👥 Asistentes:</strong> ' + (sol.numFamiliares || 0) + ' familiares';
-              if (sol.numInvitados) html += ' + ' + sol.numInvitados + ' invitados';
-              html += '</p>';
+            // 3. MENÚS
+            if (prep.menus && Object.keys(prep.menus).length > 0) {
+              const menusConDatos = Object.entries(prep.menus).filter(([k,v]) => v.especial || v.descripcion);
+              if (menusConDatos.length > 0) {
+                html += buildSeccionResumen('🍽️ Menús', buildResumenMenus(prep, sol));
+              }
             }
-            if (sol.numDesayunos || sol.numComidas || sol.numCenas) {
-              html += '<p><strong>🍽️ Pases en casa:</strong> ';
-              let pases = [];
-              if (sol.numDesayunos) pases.push(sol.numDesayunos + ' desayunos');
-              if (sol.numComidas) pases.push(sol.numComidas + ' comidas');
-              if (sol.numCenas) pases.push(sol.numCenas + ' cenas');
-              html += pases.join(', ');
-              html += '</p>';
+            
+            // 4. SERVICIO
+            if (prep.servicio && Object.keys(prep.servicio).length > 0) {
+              const servicioConDatos = Object.entries(prep.servicio).filter(([k,v]) => v?.length > 0);
+              if (servicioConDatos.length > 0) {
+                html += buildSeccionResumen('👨‍🍳 Servicio', buildResumenServicio(prep, sol));
+              }
             }
-            if (sol.motivo) html += '<p><strong>📝 Motivo:</strong> ' + sol.motivo + '</p>';
+            
+            // 5. MENAJE
+            if (prep.menajeEspecial || prep.menajeAjuar?.length > 0 || prep.menaje?.length > 0) {
+              html += buildSeccionResumen('🍷 Menaje', buildResumenMenaje(prep));
+            }
+            
+            // 6. PRODUCTO
+            if (prep.productosAportados?.length > 0 || prep.productosSolicitados?.length > 0) {
+              html += buildSeccionResumen('📦 Producto', buildResumenProducto(prep));
+            }
+            
+            // 7. TAREAS
+            if (prep.tareas?.length > 0) {
+              html += buildSeccionResumen('✅ Tareas', buildResumenTareas(prep));
+            }
+            
+            // 8. NOTAS
+            if (prep.notas) {
+              html += buildSeccionResumen('📝 Notas', '<p style="margin:0;white-space:pre-wrap;">' + prep.notas + '</p>');
+            }
+            
+            html += '</div>';
           } else {
-            if (sol.tipoEvento) html += '<p><strong>📋 Tipo:</strong> ' + sol.tipoEvento + '</p>';
-            html += '<p><strong>📅 Fecha:</strong> ' + (sol.fecha || 'No especificada') + '</p>';
+            // Solicitud antigua sin preparación — mostrar campos legacy
             if (sol.numFamiliares || sol.numInvitados) {
               html += '<p><strong>👥 Asistentes:</strong> ' + (sol.numFamiliares || 0) + ' familiares';
               if (sol.numInvitados) html += ' + ' + sol.numInvitados + ' invitados';
               html += '</p>';
             }
             if (sol.numDesayunos || sol.numComidas || sol.numCenas) {
-              html += '<p><strong>🍽️ Pases en casa:</strong> ';
+              html += '<p><strong>🍽️ Pases:</strong> ';
               let pases = [];
               if (sol.numDesayunos) pases.push(sol.numDesayunos + ' desayunos');
               if (sol.numComidas) pases.push(sol.numComidas + ' comidas');
               if (sol.numCenas) pases.push(sol.numCenas + ' cenas');
-              html += pases.join(', ');
-              html += '</p>';
+              html += pases.join(', ') + '</p>';
             }
-            if (sol.descripcion) html += '<p><strong>📝 Descripción:</strong> ' + sol.descripcion + '</p>';
           }
           
           container.innerHTML = html;
@@ -6577,6 +6623,154 @@
       } catch (e) {
         console.error('Error cargando solicitud:', e);
         container.innerHTML = '<p>' + (notifData.titulo || 'Solicitud') + '</p>';
+      }
+    }
+
+    // === HELPERS PARA RESUMEN DE PREPARACIÓN ===
+    
+    function buildSeccionResumen(titulo, contenidoHtml) {
+      const id = 'prep-sec-' + titulo.replace(/[^a-z]/gi, '').toLowerCase();
+      return '<div style="margin-bottom:8px;border:1px solid var(--cream-dark);border-radius:8px;overflow:hidden;">' +
+        '<div onclick="togglePrepSeccion(\'' + id + '\')" style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--cream);cursor:pointer;user-select:none;">' +
+        '<span style="font-weight:600;font-size:0.88rem;">' + titulo + '</span>' +
+        '<span id="' + id + '-arrow" style="font-size:0.75rem;color:var(--text-muted);transition:transform 0.2s;">▼</span>' +
+        '</div>' +
+        '<div id="' + id + '" style="display:none;padding:10px 12px;font-size:0.85rem;">' + contenidoHtml + '</div>' +
+        '</div>';
+    }
+
+    function buildResumenZonas(prep, sol) {
+      let h = '';
+      prep.zonas.forEach(zonaId => {
+        const deps = prep.zonasDesglose?.[zonaId] || [];
+        h += '<p style="margin:0 0 4px 0;"><strong>' + zonaId + '</strong>';
+        if (deps.length > 0) h += ' — ' + deps.length + ' dependencia' + (deps.length > 1 ? 's' : '');
+        h += '</p>';
+      });
+      return h || '<p style="margin:0;color:var(--text-muted);">Sin zonas seleccionadas</p>';
+    }
+
+    function buildResumenPersonas(prep, sol) {
+      const dias = sol.diasSolicitud || Object.keys(prep.personas);
+      if (dias.length === 0) return '<p style="margin:0;color:var(--text-muted);">Sin datos</p>';
+      
+      let h = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
+      h += '<tr style="background:var(--cream);"><th style="p:4px;text-align:left;">Día</th><th style="p:4px;text-align:center;">Fam.</th><th style="p:4px;text-align:center;">Desay.</th><th style="p:4px;text-align:center;">Com.</th><th style="p:4px;text-align:center;">Cena</th><th style="p:4px;text-align:center;">Duerm.</th></tr>';
+      
+      dias.forEach(diaKey => {
+        const d = prep.personas[diaKey];
+        if (!d) return;
+        const label = formatDiaKey(diaKey);
+        h += '<tr style="border-bottom:1px solid var(--cream);">';
+        h += '<td style="padding:3px 4px;">' + label + '</td>';
+        h += '<td style="padding:3px 4px;text-align:center;">' + (d.familiares || 0) + '</td>';
+        h += '<td style="padding:3px 4px;text-align:center;">' + (d.desayuno || 0) + '</td>';
+        h += '<td style="padding:3px 4px;text-align:center;">' + (d.comida || 0) + '</td>';
+        h += '<td style="padding:3px 4px;text-align:center;">' + (d.cena || 0) + '</td>';
+        h += '<td style="padding:3px 4px;text-align:center;">' + (d.duermen || 0) + '</td>';
+        h += '</tr>';
+      });
+      h += '</table>';
+      return h;
+    }
+
+    function buildResumenMenus(prep, sol) {
+      const entries = Object.entries(prep.menus).filter(([k,v]) => v.especial || v.descripcion);
+      if (entries.length === 0) return '<p style="margin:0;color:var(--text-muted);">Sin menús especiales</p>';
+      
+      let h = '';
+      entries.forEach(([key, val]) => {
+        // key format: 'pase-dateKey' e.g. 'desayuno-2025-02-07'
+        const parts = key.split('-');
+        const pase = parts[0];
+        const fecha = parts.slice(1).join('-');
+        const label = (pase === 'desayuno' ? '☀️' : pase === 'comida' ? '☀️🍽️' : '🌙') + ' ' + capitalizar(pase) + ' ' + formatDiaKey(fecha);
+        h += '<p style="margin:0 0 4px 0;"><strong>' + label + '</strong>';
+        if (val.especial) h += ' <span style="background:#FFF3E0;padding:1px 6px;border-radius:4px;font-size:0.78rem;">⭐ Especial</span>';
+        if (val.descripcion) h += '<br><span style="color:var(--text-muted);">' + val.descripcion + '</span>';
+        h += '</p>';
+      });
+      return h;
+    }
+
+    function buildResumenServicio(prep, sol) {
+      const entries = Object.entries(prep.servicio).filter(([k,v]) => v?.length > 0);
+      if (entries.length === 0) return '<p style="margin:0;color:var(--text-muted);">Sin servicio asignado</p>';
+      
+      let h = '';
+      entries.forEach(([key, roles]) => {
+        const parts = key.split('-');
+        const pase = parts[0];
+        const fecha = parts.slice(1).join('-');
+        const label = capitalizar(pase) + ' ' + formatDiaKey(fecha);
+        h += '<p style="margin:0 0 4px 0;"><strong>' + label + ':</strong> ' + roles.join(', ') + '</p>';
+      });
+      return h;
+    }
+
+    function buildResumenMenaje(prep) {
+      let h = '';
+      if (prep.menajeEspecial) h += '<p style="margin:0 0 4px 0;">⭐ Menaje especial solicitado</p>';
+      if (prep.menajeAjuar?.length > 0) h += '<p style="margin:0 0 4px 0;"><strong>Del ajuar:</strong> ' + prep.menajeAjuar.length + ' elemento' + (prep.menajeAjuar.length > 1 ? 's' : '') + '</p>';
+      if (prep.menaje?.length > 0) {
+        h += '<p style="margin:0;"><strong>Adicional:</strong></p>';
+        prep.menaje.forEach(m => {
+          h += '<p style="margin:0 0 2px 8px;">• ' + (m.nombre || m) + (m.cantidad ? ' ×' + m.cantidad : '') + '</p>';
+        });
+      }
+      return h || '<p style="margin:0;color:var(--text-muted);">Sin menaje especial</p>';
+    }
+
+    function buildResumenProducto(prep) {
+      let h = '';
+      if (prep.productosAportados?.length > 0) {
+        h += '<p style="margin:0 0 4px 0;font-weight:600;">🧳 Aportan:</p>';
+        prep.productosAportados.forEach(p => {
+          h += '<p style="margin:0 0 2px 8px;">• ' + (p.nombre || p) + (p.cantidad ? ' ×' + p.cantidad : '') + '</p>';
+        });
+      }
+      if (prep.productosSolicitados?.length > 0) {
+        h += '<p style="margin:4px 0 4px 0;font-weight:600;">🛒 Solicitan:</p>';
+        prep.productosSolicitados.forEach(p => {
+          h += '<p style="margin:0 0 2px 8px;">• ' + (p.nombre || p) + (p.cantidad ? ' ×' + p.cantidad : '') + '</p>';
+        });
+      }
+      return h || '<p style="margin:0;color:var(--text-muted);">Sin productos</p>';
+    }
+
+    function buildResumenTareas(prep) {
+      let h = '';
+      prep.tareas.forEach(t => {
+        h += '<p style="margin:0 0 4px 0;">☐ ' + (t.nombre || t.descripcion || t) + '</p>';
+      });
+      return h;
+    }
+
+    function formatDiaKey(key) {
+      // '2025-02-07' → 'Vie 7 feb'
+      if (!key || key.length < 10) return key || '';
+      try {
+        const d = new Date(key + 'T12:00:00');
+        const dias = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+        const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        return dias[d.getDay()] + ' ' + d.getDate() + ' ' + meses[d.getMonth()];
+      } catch(e) { return key; }
+    }
+
+    function capitalizar(str) {
+      return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+    }
+
+    function togglePrepSeccion(id) {
+      const el = document.getElementById(id);
+      const arrow = document.getElementById(id + '-arrow');
+      if (!el) return;
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+      } else {
+        el.style.display = 'none';
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
       }
     }
 
