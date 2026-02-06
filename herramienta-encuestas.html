@@ -319,17 +319,17 @@
         <div class="form-group">
           <label class="form-label">¿A quién va dirigida? *</label>
           <div class="destinatarios-grid" id="destinatarios-grid">
-            <label class="destinatario-check" onclick="toggleDestinatario(this, 'rama')">
-              <input type="checkbox" value="rama"> 🌳 Toda la Rama
+            <label class="destinatario-check">
+              <input type="checkbox" value="rama" onchange="toggleDestinatario(this)"> 🌳 Toda la Rama
             </label>
-            <label class="destinatario-check" onclick="toggleDestinatario(this, 'estirpe')">
-              <input type="checkbox" value="estirpe"> 🏛️ Mi Estirpe
+            <label class="destinatario-check">
+              <input type="checkbox" value="estirpe" onchange="toggleDestinatario(this)"> 🏛️ Mi Estirpe
             </label>
-            <label class="destinatario-check" onclick="toggleDestinatario(this, 'nido')">
-              <input type="checkbox" value="nido"> 🪺 Mi Nido
+            <label class="destinatario-check">
+              <input type="checkbox" value="nido" onchange="toggleDestinatario(this)"> 🪺 Mi Nido
             </label>
-            <label class="destinatario-check" onclick="toggleDestinatario(this, 'especifico')">
-              <input type="checkbox" value="especifico"> 👤 Miembros específicos
+            <label class="destinatario-check">
+              <input type="checkbox" value="especifico" onchange="toggleDestinatario(this)"> 👤 Miembros específicos
             </label>
           </div>
           <div id="miembros-especificos" class="miembros-selector hidden">
@@ -435,7 +435,20 @@
     async function loadEncuestas() {
       try {
         const snap = await db.collection('encuestas').where('familiaId', '==', familiaId).get();
-        encuestasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        encuestasData = snap.docs.map(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          // RETROCOMPATIBILIDAD: normalizar estado para encuestas antiguas
+          if (!data.estado) {
+            if (data.cerrada === true) {
+              data.estado = 'cerrada';
+            } else {
+              // Si tiene respuestas o fue publicada, es activa; si no, es borrador
+              // Por defecto las tratamos como activas (comportamiento anterior)
+              data.estado = 'activa';
+            }
+          }
+          return data;
+        });
         encuestasData.sort((a, b) => {
           const fa = a.fechaCreacion?.toDate?.() || new Date(0);
           const fb = b.fechaCreacion?.toDate?.() || new Date(0);
@@ -828,7 +841,7 @@
         // Destinatarios
         const alcances = enc.destinatarios?.alcance || [];
         destinatariosSeleccionados = [...alcances];
-        document.querySelectorAll('.destinatario-check input').forEach(inp => {
+        document.querySelectorAll('#destinatarios-grid input[type="checkbox"]').forEach(inp => {
           if (alcances.includes(inp.value)) {
             inp.checked = true;
             inp.closest('.destinatario-check').classList.add('selected');
@@ -876,29 +889,29 @@
     function editarBorrador(id) { abrirModal(id); }
 
     // Destinatarios
-    function toggleDestinatario(label, valor) {
-      // Delay to let checkbox toggle
-      setTimeout(() => {
-        const checked = label.querySelector('input').checked;
-        label.classList.toggle('selected', checked);
+    function toggleDestinatario(input) {
+      const valor = input.value;
+      const label = input.closest('.destinatario-check');
+      const checked = input.checked;
+      
+      label.classList.toggle('selected', checked);
 
-        if (checked && !destinatariosSeleccionados.includes(valor)) {
-          destinatariosSeleccionados.push(valor);
-        } else if (!checked) {
-          destinatariosSeleccionados = destinatariosSeleccionados.filter(d => d !== valor);
-        }
+      if (checked && !destinatariosSeleccionados.includes(valor)) {
+        destinatariosSeleccionados.push(valor);
+      } else if (!checked) {
+        destinatariosSeleccionados = destinatariosSeleccionados.filter(d => d !== valor);
+      }
 
-        if (valor === 'especifico') {
-          const wrapper = document.getElementById('miembros-especificos');
-          if (checked) {
-            renderMiembrosSelector();
-            wrapper.classList.remove('hidden');
-          } else {
-            wrapper.classList.add('hidden');
-            miembrosSeleccionados = [];
-          }
+      if (valor === 'especifico') {
+        const wrapper = document.getElementById('miembros-especificos');
+        if (checked) {
+          renderMiembrosSelector();
+          wrapper.classList.remove('hidden');
+        } else {
+          wrapper.classList.add('hidden');
+          miembrosSeleccionados = [];
         }
-      }, 10);
+      }
     }
 
     function renderMiembrosSelector() {
