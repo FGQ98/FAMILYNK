@@ -350,20 +350,18 @@
               <input type="radio" name="publicacion" value="programada" onchange="togglePublicacionOpciones()">
               📅 Programar fecha de envío
             </label>
-            <label class="publicacion-opcion">
+            <label class="publicacion-opcion" id="opcion-automatico" style="display:none;">
               <input type="radio" name="publicacion" value="automatico" onchange="togglePublicacionOpciones()">
-              🔄 Automático — al finalizar reserva/evento
+              🔄 Automático — al finalizar cualquier reserva/evento
             </label>
           </div>
           <div class="fecha-programada-wrapper hidden" id="fecha-programada-wrapper">
             <input type="datetime-local" class="form-input" id="enc-fecha-programada" style="margin-top:8px">
           </div>
-          <div class="bien-automatico-wrapper hidden" id="bien-automatico-wrapper">
-            <label class="form-label" style="margin-top:12px">¿De qué bien? *</label>
-            <select class="form-select" id="enc-bien-automatico">
-              <option value="">— Selecciona un bien —</option>
-            </select>
-            <div class="form-hint" style="margin-top:6px">La encuesta se enviará automáticamente cuando finalice cualquier reserva de este bien.</div>
+          <div class="automatico-helper hidden" id="automatico-helper">
+            <div class="form-hint" style="margin-top:8px; padding: 10px; background: #E0F7FA; border-radius: 8px;">
+              💡 La encuesta se enviará automáticamente cuando finalice cualquier reserva o evento de la familia.
+            </div>
           </div>
         </div>
 
@@ -406,10 +404,11 @@
     let currentUser = null;
     let userData = null;
     let familiaId = null;
+    let familiaData = null;
     let encuestasData = [];
     let miembrosData = [];
-    let bienesData = [];
     let preguntasBuilder = [];
+    let mostrarOpcionAutomatico = false;
     let editandoId = null; // null = nueva, string = editando borrador
     let respuestasTemp = {};
     let destinatariosSeleccionados = [];
@@ -428,7 +427,8 @@
 
       // Verificar plan
       const familiaDoc = await db.collection('familias').doc(familiaId).get();
-      const plan = familiaDoc.exists ? (familiaDoc.data().plan || 'gratuito') : 'gratuito';
+      familiaData = familiaDoc.exists ? familiaDoc.data() : {};
+      const plan = familiaData.plan || 'gratuito';
 
       if (plan === 'gratuito') {
         document.getElementById('loading').classList.add('hidden');
@@ -437,7 +437,7 @@
       }
 
       await cargarMiembros();
-      await cargarBienes();
+      await verificarOpcionAutomatico(plan);
       await loadEncuestas();
     });
 
@@ -446,13 +446,34 @@
       miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
-    async function cargarBienes() {
+    // Verifica si se debe mostrar la opción "Automático" (add-on activo + plan que lo permita)
+    async function verificarOpcionAutomatico(plan) {
+      // Planes que permiten encuestas automáticas (ajustar según tu modelo)
+      const planesConAutomatico = ['plus', 'premium', 'enterprise'];
+      const planPermite = planesConAutomatico.includes(plan.toLowerCase());
+      
+      if (!planPermite) {
+        mostrarOpcionAutomatico = false;
+        return;
+      }
+      
+      // Verificar si hay al menos 1 bien con add-on activo
       try {
-        const snap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
-        bienesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
+        const hayAddonActivo = bienesSnap.docs.some(doc => {
+          const bien = doc.data();
+          return bien.mayordomoActivo || bien.gerenteActivo || bien.capatazActivo;
+        });
+        mostrarOpcionAutomatico = hayAddonActivo;
       } catch (e) {
-        console.error('Error cargando bienes:', e);
-        bienesData = [];
+        console.error('Error verificando bienes:', e);
+        mostrarOpcionAutomatico = false;
+      }
+      
+      // Actualizar UI
+      const opcionAuto = document.getElementById('opcion-automatico');
+      if (opcionAuto) {
+        opcionAuto.style.display = mostrarOpcionAutomatico ? 'flex' : 'none';
       }
     }
 
@@ -516,10 +537,9 @@
           }
         }
         
-        // Tipo AUTOMÁTICO: reserva/solicitud finalizada para el bien
-        if (pubTipo === 'automatico' && enc.publicacion?.bienId) {
-          const bienId = enc.publicacion.bienId;
-          const tieneReservaFinalizada = await verificarReservaFinalizada(bienId, enc);
+        // Tipo AUTOMÁTICO: cualquier reserva/solicitud finalizada
+        if (pubTipo === 'automatico') {
+          const tieneReservaFinalizada = await verificarReservaFinalizada(enc);
           if (tieneReservaFinalizada) {
             try {
               await db.collection('encuestas').doc(enc.id).update({
@@ -533,28 +553,25 @@
       }
     }
 
-    // Verifica si hay reservas/solicitudes finalizadas para un bien que aún no tienen encuesta enviada
-    async function verificarReservaFinalizada(bienId, encuesta) {
+    // Verifica si hay reservas/solicitudes finalizadas que aún no tienen encuesta enviada
+    async function verificarReservaFinalizada(encuesta) {
       const ahora = new Date();
       const encuestaCreacion = encuesta.fechaCreacion?.toDate?.() || new Date(0);
       
       try {
-        // Buscar en solicitudes aprobadas
+        // Buscar en solicitudes aprobadas de la familia
         const solicitudesSnap = await db.collection('solicitudes')
           .where('familiaId', '==', familiaId)
-          .where('bienId', '==', bienId)
           .where('estado', '==', 'aprobada')
           .get();
         
         for (const doc of solicitudesSnap.docs) {
           const sol = doc.data();
-          // Verificar si la fecha de fin ya pasó
           let fechaFin = sol.fechaFin || sol.fechaHasta || sol.fin;
           if (fechaFin) {
             fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
             // La reserva finalizó Y fue después de crear la encuesta
             if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
-              // Verificar que no se haya enviado ya para esta reserva específica
               const reservasEnviadas = encuesta.reservasEnviadas || [];
               if (!reservasEnviadas.includes(doc.id)) {
                 return true;
@@ -563,11 +580,10 @@
           }
         }
         
-        // Buscar en reservas del add-on (si existe la colección)
+        // Buscar en reservas del add-on (si existe)
         try {
           const reservasSnap = await db.collection('reservas')
             .where('familiaId', '==', familiaId)
-            .where('bienId', '==', bienId)
             .get();
           
           for (const doc of reservasSnap.docs) {
@@ -647,8 +663,7 @@
             : enc.publicacion.fechaProgramada.toDate?.() || new Date(0);
           publicacionBadgeHTML = `<span class="badge badge-programada">📅 Programada: ${fp.toLocaleDateString('es-ES')} ${fp.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})}</span>`;
         } else if (pubTipo === 'automatico') {
-          const bienNombre = enc.publicacion.bienNombre || 'bien';
-          publicacionBadgeHTML = `<span class="badge badge-automatico">🔄 Auto: fin de reserva en ${bienNombre}</span>`;
+          publicacionBadgeHTML = `<span class="badge badge-automatico">🔄 Auto: al finalizar reserva</span>`;
         } else {
           publicacionBadgeHTML = `<span class="badge badge-manual">📤 Publicación manual</span>`;
         }
@@ -932,6 +947,12 @@
       destinatariosSeleccionados = [];
       miembrosSeleccionados = [];
 
+      // Actualizar visibilidad de opción automático
+      const opcionAuto = document.getElementById('opcion-automatico');
+      if (opcionAuto) {
+        opcionAuto.style.display = mostrarOpcionAutomatico ? 'flex' : 'none';
+      }
+
       // Reset UI
       document.getElementById('enc-titulo').value = '';
       document.getElementById('enc-descripcion').value = '';
@@ -940,8 +961,7 @@
       document.querySelector('input[name="publicacion"][value="manual"]').checked = true;
       document.getElementById('fecha-programada-wrapper').classList.add('hidden');
       document.getElementById('enc-fecha-programada').value = '';
-      document.getElementById('bien-automatico-wrapper').classList.add('hidden');
-      document.getElementById('enc-bien-automatico').value = '';
+      document.getElementById('automatico-helper').classList.add('hidden');
 
       if (editandoId) {
         // Editar borrador
@@ -967,7 +987,11 @@
         }
 
         // Publicación
-        const pubTipo = enc.publicacion?.tipo || 'manual';
+        let pubTipo = enc.publicacion?.tipo || 'manual';
+        // Si era automático pero ya no está disponible, defaultear a manual
+        if (pubTipo === 'automatico' && !mostrarOpcionAutomatico) {
+          pubTipo = 'manual';
+        }
         document.querySelector(`input[name="publicacion"][value="${pubTipo}"]`).checked = true;
         
         if (pubTipo === 'programada') {
@@ -978,12 +1002,8 @@
               : enc.publicacion.fechaProgramada.toDate?.().toISOString().slice(0, 16) || '';
             document.getElementById('enc-fecha-programada').value = fp;
           }
-        } else if (pubTipo === 'automatico') {
-          document.getElementById('bien-automatico-wrapper').classList.remove('hidden');
-          renderSelectorBienes();
-          if (enc.publicacion.bienId) {
-            document.getElementById('enc-bien-automatico').value = enc.publicacion.bienId;
-          }
+        } else if (pubTipo === 'automatico' && mostrarOpcionAutomatico) {
+          document.getElementById('automatico-helper').classList.remove('hidden');
         }
 
         // Preguntas
@@ -1057,20 +1077,7 @@
     function togglePublicacionOpciones() {
       const tipo = document.querySelector('input[name="publicacion"]:checked').value;
       document.getElementById('fecha-programada-wrapper').classList.toggle('hidden', tipo !== 'programada');
-      document.getElementById('bien-automatico-wrapper').classList.toggle('hidden', tipo !== 'automatico');
-      
-      // Poblar selector de bienes si es automático
-      if (tipo === 'automatico') {
-        renderSelectorBienes();
-      }
-    }
-
-    function renderSelectorBienes() {
-      const select = document.getElementById('enc-bien-automatico');
-      const currentVal = select.value;
-      select.innerHTML = '<option value="">— Selecciona un bien —</option>' +
-        bienesData.map(b => `<option value="${b.id}">${b.nombre || b.id}</option>`).join('');
-      if (currentVal) select.value = currentVal;
+      document.getElementById('automatico-helper').classList.toggle('hidden', tipo !== 'automatico');
     }
 
     // ========================================
@@ -1170,19 +1177,10 @@
       const fechaProgramada = publicacionTipo === 'programada'
         ? document.getElementById('enc-fecha-programada').value || null
         : null;
-      const bienAutomaticoId = publicacionTipo === 'automatico'
-        ? document.getElementById('enc-bien-automatico').value || null
-        : null;
 
       if (publicacionTipo === 'programada' && !fechaProgramada) {
         alert('Selecciona la fecha de envío programada'); return;
       }
-      if (publicacionTipo === 'automatico' && !bienAutomaticoId) {
-        alert('Selecciona el bien para el envío automático'); return;
-      }
-
-      // Obtener nombre del bien si es automático
-      const bienAutomatico = bienAutomaticoId ? bienesData.find(b => b.id === bienAutomaticoId) : null;
 
       const data = {
         titulo,
@@ -1195,8 +1193,6 @@
         publicacion: {
           tipo: publicacionTipo,
           fechaProgramada: fechaProgramada,
-          bienId: bienAutomaticoId,
-          bienNombre: bienAutomatico?.nombre || null,
           hito: publicacionTipo === 'automatico' ? 'fin' : null
         },
         estado: 'borrador',
