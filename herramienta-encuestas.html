@@ -481,19 +481,19 @@
       console.log('Usuario logueado:', user.email);
 
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      if (!userDoc.exists) {
-        console.error('ERROR: No existe documento de usuario para uid:', user.uid);
+      if (!userDoc.exists || !userDoc.data().familiaId) {
+        console.error('ERROR: No existe documento de usuario o sin familiaId');
         return;
       }
       userData = userDoc.data();
       familiaId = userData.familiaId;
-      console.log('familiaId obtenido:', familiaId);
+      console.log('familiaId del usuario:', familiaId);
 
       // Verificar plan
       const familiaDoc = await db.collection('familias').doc(familiaId).get();
-      familiaData = familiaDoc.exists ? familiaDoc.data() : {};
+      familiaData = familiaDoc.exists ? { id: familiaDoc.id, ...familiaDoc.data() } : { id: familiaId };
       const plan = familiaData.plan || 'gratuito';
-      console.log('Plan de familia:', plan);
+      console.log('Plan de familia:', plan, 'familiaData.id:', familiaData.id);
 
       if (plan === 'gratuito') {
         document.getElementById('loading').classList.add('hidden');
@@ -507,15 +507,16 @@
     });
 
     async function cargarMiembros() {
-      console.log('Cargando miembros para familiaId:', familiaId);
-      const snap = await db.collection('usuarios').where('familiaId', '==', familiaId).get();
+      console.log('Cargando miembros para familiaData.id:', familiaData.id);
+      const snap = await db.collection('usuarios').where('familiaId', '==', familiaData.id).get();
       miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       console.log('Miembros cargados:', miembrosData.length, miembrosData.map(m => m.nombre || m.email));
     }
 
     async function cargarBienes() {
       try {
-        const snap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
+        console.log('Cargando bienes para familiaData.id:', familiaData.id);
+        const snap = await db.collection('bienes').where('familiaId', '==', familiaData.id).get();
         bienesData = snap.docs.map(doc => {
           const data = doc.data();
           return {
@@ -533,7 +534,8 @@
 
     async function loadEncuestas() {
       try {
-        const snap = await db.collection('encuestas').where('familiaId', '==', familiaId).get();
+        console.log('Cargando encuestas para familiaData.id:', familiaData.id);
+        const snap = await db.collection('encuestas').where('familiaId', '==', familiaData.id).get();
         encuestasData = snap.docs.map(doc => {
           const data = { id: doc.id, ...doc.data() };
           // RETROCOMPATIBILIDAD: normalizar estado para encuestas antiguas
