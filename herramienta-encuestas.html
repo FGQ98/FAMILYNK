@@ -68,6 +68,7 @@
     .badge-manual { background: #FFF3E0; color: #E65100; }
     .badge-automatico { background: #E0F7FA; color: #00838F; }
     .badge-vinculacion { background: #F3E5F5; color: #7B1FA2; }
+    .badge-solicitante { background: #E8F5E9; color: #2E7D32; }
     .borrador-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     /* === CARDS ACTIVAS === */
@@ -174,6 +175,10 @@
     .miembro-check { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: 0.85rem; cursor: pointer; border-radius: 4px; }
     .miembro-check:hover { background: var(--cream); }
     .miembro-check input { accent-color: var(--sage); }
+    .miembro-especial { background: #E8F5E9; border: 1px solid #81C784; width: 100%; padding: 10px 12px; }
+    .miembro-especial:hover { background: #C8E6C9; }
+    .miembro-especial.selected { background: #A5D6A7; }
+    .miembros-separador { width: 100%; text-align: center; font-size: 0.75rem; color: var(--text-muted); margin: 8px 0 4px 0; }
 
     /* Publicacion radio */
     .publicacion-opciones { display: flex; flex-direction: column; gap: 8px; }
@@ -720,6 +725,11 @@
         } else {
           publicacionBadgeHTML = `<span class="badge badge-manual">📤 Publicación manual</span>`;
         }
+        
+        // Badge destinatario solicitante
+        const solicitanteBadge = enc.destinatarios?.incluirSolicitante 
+          ? `<span class="badge badge-solicitante">📋 Al solicitante</span>` 
+          : '';
 
         return `
           <div class="borrador-card">
@@ -730,7 +740,7 @@
                 <span>📝 ${enc.preguntas?.length || 0} pregunta${(enc.preguntas?.length || 0) !== 1 ? 's' : ''}</span>
                 <span>📅 ${formatFecha(enc.fechaCreacion)}</span>
               </div>
-              <div class="borrador-badges">${badgesHTML} ${vinculacionBadgeHTML} ${publicacionBadgeHTML}</div>
+              <div class="borrador-badges">${badgesHTML} ${solicitanteBadge} ${vinculacionBadgeHTML} ${publicacionBadgeHTML}</div>
               <div class="borrador-actions">
                 <button class="btn btn-sm btn-secondary" onclick="editarBorrador('${enc.id}')">✏️ Editar</button>
                 <button class="btn btn-sm btn-publish" onclick="publicarEncuesta('${enc.id}')">📤 Publicar ahora</button>
@@ -995,7 +1005,7 @@
     // ========================================
     // MODAL: CREAR / EDITAR
     // ========================================
-    function abrirModal(id) {
+    async function abrirModal(id) {
       editandoId = id || null;
       destinatariosSeleccionados = [];
       miembrosSeleccionados = [];
@@ -1050,13 +1060,17 @@
         });
         if (alcances.includes('especifico')) {
           miembrosSeleccionados = [...(enc.destinatarios?.miembrosIds || [])];
+          // Restaurar selección de solicitante si aplica
+          if (enc.destinatarios?.incluirSolicitante) {
+            miembrosSeleccionados.push('__solicitante__');
+          }
           renderMiembrosSelector();
           document.getElementById('miembros-especificos').classList.remove('hidden');
         }
 
-        // Restaurar vinculación si existe
+        // Restaurar vinculación si existe (esto actualizará el selector de miembros)
         if (enc.vinculacion?.bienId) {
-          restaurarVinculacion(enc);
+          await restaurarVinculacion(enc);
         }
 
         // Publicación
@@ -1130,7 +1144,21 @@
 
     function renderMiembrosSelector() {
       const container = document.getElementById('miembros-especificos');
-      container.innerHTML = miembrosData
+      
+      // Opción especial si hay vinculación a módulo de reservas/eventos
+      let opcionSolicitante = '';
+      if (vinculacionModulo?.esReservaEvento) {
+        const checked = miembrosSeleccionados.includes('__solicitante__');
+        opcionSolicitante = `
+          <label class="miembro-check miembro-especial ${checked ? 'selected' : ''}">
+            <input type="checkbox" value="__solicitante__" ${checked ? 'checked' : ''} onchange="toggleMiembro('__solicitante__', this.checked)">
+            📋 Quien solicitó el evento/reserva
+          </label>
+          <div class="miembros-separador">— o miembros específicos —</div>
+        `;
+      }
+      
+      const miembrosHTML = miembrosData
         .filter(m => m.id !== currentUser.uid)
         .map(m => {
           const checked = miembrosSeleccionados.includes(m.id);
@@ -1139,11 +1167,20 @@
             ${m.nombre || m.email || m.id}
           </label>`;
         }).join('');
+      
+      container.innerHTML = opcionSolicitante + miembrosHTML;
     }
 
     function toggleMiembro(id, checked) {
       if (checked && !miembrosSeleccionados.includes(id)) miembrosSeleccionados.push(id);
       else miembrosSeleccionados = miembrosSeleccionados.filter(m => m !== id);
+    }
+    
+    // Actualiza el selector de miembros cuando cambia la vinculación
+    function actualizarSelectorMiembros() {
+      if (destinatariosSeleccionados.includes('especifico')) {
+        renderMiembrosSelector();
+      }
     }
 
     // Publicación
@@ -1236,6 +1273,9 @@
         cardsDelModulo = [];
         document.getElementById('card-selector-wrapper').classList.add('hidden');
         ocultarOpcionAutomatico();
+        // Quitar opción solicitante si estaba seleccionada
+        miembrosSeleccionados = miembrosSeleccionados.filter(m => m !== '__solicitante__');
+        actualizarSelectorMiembros();
       }
     }
 
@@ -1274,6 +1314,7 @@
       if (!moduloId) {
         vinculacionModulo = null;
         ocultarOpcionAutomatico();
+        actualizarSelectorMiembros(); // Actualizar para quitar opción solicitante
         return;
       }
       
@@ -1286,6 +1327,9 @@
       } else {
         ocultarOpcionAutomatico();
       }
+      
+      // Actualizar selector de miembros para mostrar/quitar opción solicitante
+      actualizarSelectorMiembros();
       
       // Cargar cards del módulo
       await cargarCardsDelModulo(vinculacionBien.id, moduloId);
@@ -1519,7 +1563,10 @@
         preguntas,
         destinatarios: {
           alcance: [...destinatariosSeleccionados],
-          miembrosIds: destinatariosSeleccionados.includes('especifico') ? [...miembrosSeleccionados] : []
+          incluirSolicitante: miembrosSeleccionados.includes('__solicitante__'),
+          miembrosIds: destinatariosSeleccionados.includes('especifico') 
+            ? miembrosSeleccionados.filter(m => m !== '__solicitante__') 
+            : []
         },
         vinculacion: Object.keys(vinculacion).length > 0 ? vinculacion : null,
         publicacion: {
