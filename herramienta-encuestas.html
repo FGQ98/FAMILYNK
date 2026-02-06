@@ -67,6 +67,7 @@
     .badge-programada { background: #E8EAF6; color: #3F51B5; }
     .badge-manual { background: #FFF3E0; color: #E65100; }
     .badge-automatico { background: #E0F7FA; color: #00838F; }
+    .badge-vinculacion { background: #F3E5F5; color: #7B1FA2; }
     .borrador-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     /* === CARDS ACTIVAS === */
@@ -160,6 +161,13 @@
     .destinatario-check:hover { background: var(--cream-dark); }
     .destinatario-check.selected { background: var(--sage-muted); border: 1px solid var(--sage-light); }
     .destinatario-check input { accent-color: var(--sage); }
+
+    /* Cascada vinculación */
+    .vincular-check { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--cream); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; font-size: 0.88rem; margin-bottom: 8px; }
+    .vincular-check:hover { background: var(--cream-dark); }
+    .vincular-check input { accent-color: var(--sage); }
+    .cascada-wrapper { margin-left: 24px; margin-bottom: 8px; padding-left: 12px; border-left: 2px solid var(--cream-dark); }
+    .cascada-hint { font-size: 0.8rem; color: #E65100; margin-top: 6px; padding: 6px 10px; background: #FFF3E0; border-radius: 6px; }
 
     /* Selector miembros */
     .miembros-selector { margin-top: 10px; max-height: 150px; overflow-y: auto; border: 1px solid var(--cream-dark); border-radius: var(--radius-sm); padding: 8px; }
@@ -338,6 +346,45 @@
           </div>
         </div>
 
+        <!-- Vinculación a bien/módulo -->
+        <div class="form-group">
+          <label class="form-label">Vinculación <span class="form-hint">(opcional)</span></label>
+          
+          <label class="vincular-check" id="check-vincular-bien">
+            <input type="checkbox" onchange="toggleVincularBien(this.checked)">
+            🏠 Vincular a un bien de Lo Común
+          </label>
+
+          <div id="bien-selector-wrapper" class="cascada-wrapper hidden">
+            <select class="form-select" id="enc-bien" onchange="onBienSeleccionado()">
+              <option value="">— Selecciona un bien —</option>
+            </select>
+            <div id="bien-sin-addon" class="cascada-hint hidden">
+              ⚠️ Este bien no tiene add-on activo
+            </div>
+          </div>
+
+          <div id="modulo-check-wrapper" class="cascada-wrapper hidden">
+            <label class="vincular-check">
+              <input type="checkbox" id="check-vincular-modulo" onchange="toggleVincularModulo(this.checked)">
+              📦 Vincular a un módulo del add-on
+            </label>
+          </div>
+
+          <div id="modulo-selector-wrapper" class="cascada-wrapper hidden">
+            <select class="form-select" id="enc-modulo" onchange="onModuloSeleccionado()">
+              <option value="">— Selecciona un módulo —</option>
+            </select>
+          </div>
+
+          <div id="card-selector-wrapper" class="cascada-wrapper hidden">
+            <label class="form-label" style="margin-top:8px; font-size:0.85rem;">Card específico:</label>
+            <select class="form-select" id="enc-card" onchange="onCardSeleccionado()">
+              <option value="">— Selecciona un card —</option>
+            </select>
+          </div>
+        </div>
+
         <!-- Publicación -->
         <div class="form-group">
           <label class="form-label">¿Cuándo se envía?</label>
@@ -350,9 +397,9 @@
               <input type="radio" name="publicacion" value="programada" onchange="togglePublicacionOpciones()">
               📅 Programar fecha de envío
             </label>
-            <label class="publicacion-opcion" id="opcion-automatico" style="display:none;">
+            <label class="publicacion-opcion hidden" id="opcion-automatico">
               <input type="radio" name="publicacion" value="automatico" onchange="togglePublicacionOpciones()">
-              🔄 Automático — al finalizar cualquier reserva/evento
+              🔄 Automático — al finalizar reserva/evento
             </label>
           </div>
           <div class="fecha-programada-wrapper hidden" id="fecha-programada-wrapper">
@@ -360,7 +407,7 @@
           </div>
           <div class="automatico-helper hidden" id="automatico-helper">
             <div class="form-hint" style="margin-top:8px; padding: 10px; background: #E0F7FA; border-radius: 8px;">
-              💡 La encuesta se enviará automáticamente cuando finalice cualquier reserva o evento de la familia.
+              💡 La encuesta se enviará automáticamente cuando finalice la reserva/evento.
             </div>
           </div>
         </div>
@@ -407,8 +454,16 @@
     let familiaData = null;
     let encuestasData = [];
     let miembrosData = [];
+    let bienesData = [];
     let preguntasBuilder = [];
     let mostrarOpcionAutomatico = false;
+    
+    // Vinculación
+    let vinculacionBien = null;      // { id, nombre, tieneAddon }
+    let vinculacionModulo = null;    // { id, nombre, esReservaEvento }
+    let vinculacionCard = null;      // { id, nombre }
+    let modulosDelBien = [];
+    let cardsDelModulo = [];
     let editandoId = null; // null = nueva, string = editando borrador
     let respuestasTemp = {};
     let destinatariosSeleccionados = [];
@@ -437,7 +492,7 @@
       }
 
       await cargarMiembros();
-      await verificarOpcionAutomatico(plan);
+      await cargarBienes();
       await loadEncuestas();
     });
 
@@ -446,34 +501,20 @@
       miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
-    // Verifica si se debe mostrar la opción "Automático" (add-on activo + plan que lo permita)
-    async function verificarOpcionAutomatico(plan) {
-      // Planes que permiten encuestas automáticas (ajustar según tu modelo)
-      const planesConAutomatico = ['plus', 'premium', 'enterprise'];
-      const planPermite = planesConAutomatico.includes(plan.toLowerCase());
-      
-      if (!planPermite) {
-        mostrarOpcionAutomatico = false;
-        return;
-      }
-      
-      // Verificar si hay al menos 1 bien con add-on activo
+    async function cargarBienes() {
       try {
-        const bienesSnap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
-        const hayAddonActivo = bienesSnap.docs.some(doc => {
-          const bien = doc.data();
-          return bien.mayordomoActivo || bien.gerenteActivo || bien.capatazActivo;
+        const snap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
+        bienesData = snap.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            nombre: data.nombre || 'Sin nombre',
+            tieneAddon: !!(data.mayordomoActivo || data.gerenteActivo || data.capatazActivo)
+          };
         });
-        mostrarOpcionAutomatico = hayAddonActivo;
       } catch (e) {
-        console.error('Error verificando bienes:', e);
-        mostrarOpcionAutomatico = false;
-      }
-      
-      // Actualizar UI
-      const opcionAuto = document.getElementById('opcion-automatico');
-      if (opcionAuto) {
-        opcionAuto.style.display = mostrarOpcionAutomatico ? 'flex' : 'none';
+        console.error('Error cargando bienes:', e);
+        bienesData = [];
       }
     }
 
@@ -654,6 +695,19 @@
         const alcanceLabels = { rama: '🌳 Rama', estirpe: '🏛️ Estirpe', nido: '🪺 Nido', especifico: '👤 Específicos' };
         const badgesHTML = alcances.map(a => `<span class="badge badge-alcance">${alcanceLabels[a] || a}</span>`).join('');
         
+        // Badge de vinculación
+        let vinculacionBadgeHTML = '';
+        if (enc.vinculacion?.bienNombre) {
+          let vinc = `🏠 ${enc.vinculacion.bienNombre}`;
+          if (enc.vinculacion.moduloNombre) {
+            vinc += ` › ${enc.vinculacion.moduloNombre}`;
+          }
+          if (enc.vinculacion.cardNombre) {
+            vinc += ` › ${enc.vinculacion.cardNombre}`;
+          }
+          vinculacionBadgeHTML = `<span class="badge badge-vinculacion">${vinc}</span>`;
+        }
+        
         // Badge de tipo de publicación
         let publicacionBadgeHTML = '';
         const pubTipo = enc.publicacion?.tipo;
@@ -677,7 +731,7 @@
                 <span>📝 ${enc.preguntas?.length || 0} pregunta${(enc.preguntas?.length || 0) !== 1 ? 's' : ''}</span>
                 <span>📅 ${formatFecha(enc.fechaCreacion)}</span>
               </div>
-              <div class="borrador-badges">${badgesHTML} ${publicacionBadgeHTML}</div>
+              <div class="borrador-badges">${badgesHTML} ${vinculacionBadgeHTML} ${publicacionBadgeHTML}</div>
               <div class="borrador-actions">
                 <button class="btn btn-sm btn-secondary" onclick="editarBorrador('${enc.id}')">✏️ Editar</button>
                 <button class="btn btn-sm btn-publish" onclick="publicarEncuesta('${enc.id}')">📤 Publicar ahora</button>
@@ -947,21 +1001,36 @@
       destinatariosSeleccionados = [];
       miembrosSeleccionados = [];
 
-      // Actualizar visibilidad de opción automático
-      const opcionAuto = document.getElementById('opcion-automatico');
-      if (opcionAuto) {
-        opcionAuto.style.display = mostrarOpcionAutomatico ? 'flex' : 'none';
-      }
+      // Reset cascada vinculación
+      vinculacionBien = null;
+      vinculacionModulo = null;
+      vinculacionCard = null;
+      modulosDelBien = [];
+      cardsDelModulo = [];
 
       // Reset UI
       document.getElementById('enc-titulo').value = '';
       document.getElementById('enc-descripcion').value = '';
       document.querySelectorAll('.destinatario-check').forEach(d => { d.classList.remove('selected'); d.querySelector('input').checked = false; });
       document.getElementById('miembros-especificos').classList.add('hidden');
+      
+      // Reset vinculación UI
+      const checkVincularBien = document.querySelector('#check-vincular-bien input');
+      if (checkVincularBien) checkVincularBien.checked = false;
+      document.getElementById('bien-selector-wrapper').classList.add('hidden');
+      document.getElementById('bien-sin-addon').classList.add('hidden');
+      document.getElementById('modulo-check-wrapper').classList.add('hidden');
+      document.getElementById('modulo-selector-wrapper').classList.add('hidden');
+      document.getElementById('card-selector-wrapper').classList.add('hidden');
+      const checkModulo = document.getElementById('check-vincular-modulo');
+      if (checkModulo) checkModulo.checked = false;
+      
+      // Reset publicación
       document.querySelector('input[name="publicacion"][value="manual"]').checked = true;
       document.getElementById('fecha-programada-wrapper').classList.add('hidden');
       document.getElementById('enc-fecha-programada').value = '';
       document.getElementById('automatico-helper').classList.add('hidden');
+      document.getElementById('opcion-automatico').classList.add('hidden');
 
       if (editandoId) {
         // Editar borrador
@@ -986,10 +1055,15 @@
           document.getElementById('miembros-especificos').classList.remove('hidden');
         }
 
+        // Restaurar vinculación si existe
+        if (enc.vinculacion?.bienId) {
+          restaurarVinculacion(enc);
+        }
+
         // Publicación
         let pubTipo = enc.publicacion?.tipo || 'manual';
-        // Si era automático pero ya no está disponible, defaultear a manual
-        if (pubTipo === 'automatico' && !mostrarOpcionAutomatico) {
+        // Si era automático pero ya no hay vinculación válida, defaultear a manual
+        if (pubTipo === 'automatico' && !enc.vinculacion?.moduloId) {
           pubTipo = 'manual';
         }
         document.querySelector(`input[name="publicacion"][value="${pubTipo}"]`).checked = true;
@@ -1002,7 +1076,7 @@
               : enc.publicacion.fechaProgramada.toDate?.().toISOString().slice(0, 16) || '';
             document.getElementById('enc-fecha-programada').value = fp;
           }
-        } else if (pubTipo === 'automatico' && mostrarOpcionAutomatico) {
+        } else if (pubTipo === 'automatico') {
           document.getElementById('automatico-helper').classList.remove('hidden');
         }
 
@@ -1078,6 +1152,248 @@
       const tipo = document.querySelector('input[name="publicacion"]:checked').value;
       document.getElementById('fecha-programada-wrapper').classList.toggle('hidden', tipo !== 'programada');
       document.getElementById('automatico-helper').classList.toggle('hidden', tipo !== 'automatico');
+    }
+
+    // ========================================
+    // CASCADA DE VINCULACIÓN
+    // ========================================
+    function toggleVincularBien(checked) {
+      const wrapper = document.getElementById('bien-selector-wrapper');
+      wrapper.classList.toggle('hidden', !checked);
+      
+      if (checked) {
+        // Poblar selector de bienes
+        const select = document.getElementById('enc-bien');
+        select.innerHTML = '<option value="">— Selecciona un bien —</option>' +
+          bienesData.map(b => `<option value="${b.id}" data-addon="${b.tieneAddon}">${b.nombre}</option>`).join('');
+      } else {
+        // Reset cascada
+        resetCascadaBien();
+      }
+    }
+
+    function resetCascadaBien() {
+      vinculacionBien = null;
+      vinculacionModulo = null;
+      vinculacionCard = null;
+      modulosDelBien = [];
+      cardsDelModulo = [];
+      
+      document.getElementById('enc-bien').value = '';
+      document.getElementById('bien-sin-addon').classList.add('hidden');
+      document.getElementById('modulo-check-wrapper').classList.add('hidden');
+      document.getElementById('modulo-selector-wrapper').classList.add('hidden');
+      document.getElementById('card-selector-wrapper').classList.add('hidden');
+      
+      const checkModulo = document.getElementById('check-vincular-modulo');
+      if (checkModulo) checkModulo.checked = false;
+      
+      ocultarOpcionAutomatico();
+    }
+
+    async function onBienSeleccionado() {
+      const select = document.getElementById('enc-bien');
+      const bienId = select.value;
+      
+      // Reset niveles inferiores
+      vinculacionModulo = null;
+      vinculacionCard = null;
+      modulosDelBien = [];
+      cardsDelModulo = [];
+      document.getElementById('modulo-check-wrapper').classList.add('hidden');
+      document.getElementById('modulo-selector-wrapper').classList.add('hidden');
+      document.getElementById('card-selector-wrapper').classList.add('hidden');
+      const checkModulo = document.getElementById('check-vincular-modulo');
+      if (checkModulo) checkModulo.checked = false;
+      ocultarOpcionAutomatico();
+      
+      if (!bienId) {
+        vinculacionBien = null;
+        document.getElementById('bien-sin-addon').classList.add('hidden');
+        return;
+      }
+      
+      const bien = bienesData.find(b => b.id === bienId);
+      vinculacionBien = bien;
+      
+      if (!bien.tieneAddon) {
+        document.getElementById('bien-sin-addon').classList.remove('hidden');
+        return;
+      }
+      
+      document.getElementById('bien-sin-addon').classList.add('hidden');
+      document.getElementById('modulo-check-wrapper').classList.remove('hidden');
+    }
+
+    function toggleVincularModulo(checked) {
+      const wrapper = document.getElementById('modulo-selector-wrapper');
+      wrapper.classList.toggle('hidden', !checked);
+      
+      if (checked && vinculacionBien) {
+        cargarModulosDelBien(vinculacionBien.id);
+      } else {
+        vinculacionModulo = null;
+        vinculacionCard = null;
+        cardsDelModulo = [];
+        document.getElementById('card-selector-wrapper').classList.add('hidden');
+        ocultarOpcionAutomatico();
+      }
+    }
+
+    async function cargarModulosDelBien(bienId) {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('modulos').get();
+        modulosDelBien = snap.docs.map(doc => {
+          const data = doc.data();
+          const nombre = data.nombre || '';
+          return {
+            id: doc.id,
+            nombre: nombre,
+            esReservaEvento: /reserva|evento/i.test(nombre)
+          };
+        });
+        
+        const select = document.getElementById('enc-modulo');
+        select.innerHTML = '<option value="">— Selecciona un módulo —</option>' +
+          modulosDelBien.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+        
+      } catch (e) {
+        console.error('Error cargando módulos:', e);
+        modulosDelBien = [];
+      }
+    }
+
+    async function onModuloSeleccionado() {
+      const select = document.getElementById('enc-modulo');
+      const moduloId = select.value;
+      
+      // Reset card
+      vinculacionCard = null;
+      cardsDelModulo = [];
+      document.getElementById('card-selector-wrapper').classList.add('hidden');
+      
+      if (!moduloId) {
+        vinculacionModulo = null;
+        ocultarOpcionAutomatico();
+        return;
+      }
+      
+      const modulo = modulosDelBien.find(m => m.id === moduloId);
+      vinculacionModulo = modulo;
+      
+      // Mostrar/ocultar opción Automático según tipo de módulo
+      if (modulo.esReservaEvento) {
+        mostrarOpcionAutomatico();
+      } else {
+        ocultarOpcionAutomatico();
+      }
+      
+      // Cargar cards del módulo
+      await cargarCardsDelModulo(vinculacionBien.id, moduloId);
+    }
+
+    async function cargarCardsDelModulo(bienId, moduloId) {
+      try {
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('modulos').doc(moduloId)
+          .collection('cards').get();
+        
+        cardsDelModulo = snap.docs.map(doc => ({
+          id: doc.id,
+          nombre: doc.data().nombre || doc.id
+        }));
+        
+        // Solo mostrar selector si hay más de 1 card
+        if (cardsDelModulo.length > 1) {
+          const select = document.getElementById('enc-card');
+          select.innerHTML = '<option value="">— Todos los cards —</option>' +
+            cardsDelModulo.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+          document.getElementById('card-selector-wrapper').classList.remove('hidden');
+        } else if (cardsDelModulo.length === 1) {
+          // Auto-seleccionar el único card
+          vinculacionCard = cardsDelModulo[0];
+        }
+        
+      } catch (e) {
+        console.error('Error cargando cards:', e);
+        cardsDelModulo = [];
+      }
+    }
+
+    function onCardSeleccionado() {
+      const cardId = document.getElementById('enc-card').value;
+      if (cardId) {
+        vinculacionCard = cardsDelModulo.find(c => c.id === cardId);
+      } else {
+        vinculacionCard = null;
+      }
+    }
+
+    function mostrarOpcionAutomatico() {
+      document.getElementById('opcion-automatico').classList.remove('hidden');
+    }
+
+    function ocultarOpcionAutomatico() {
+      const opcion = document.getElementById('opcion-automatico');
+      opcion.classList.add('hidden');
+      // Si estaba seleccionado, cambiar a manual
+      const input = opcion.querySelector('input');
+      if (input && input.checked) {
+        document.querySelector('input[name="publicacion"][value="manual"]').checked = true;
+        togglePublicacionOpciones();
+      }
+    }
+
+    // Restaurar vinculación al editar borrador
+    async function restaurarVinculacion(enc) {
+      const v = enc.vinculacion;
+      if (!v?.bienId) return;
+      
+      // Marcar checkbox y mostrar selector de bien
+      const checkVincularBien = document.querySelector('#check-vincular-bien input');
+      if (checkVincularBien) checkVincularBien.checked = true;
+      document.getElementById('bien-selector-wrapper').classList.remove('hidden');
+      
+      // Poblar y seleccionar bien
+      const selectBien = document.getElementById('enc-bien');
+      selectBien.innerHTML = '<option value="">— Selecciona un bien —</option>' +
+        bienesData.map(b => `<option value="${b.id}">${b.nombre}</option>`).join('');
+      selectBien.value = v.bienId;
+      
+      const bien = bienesData.find(b => b.id === v.bienId);
+      vinculacionBien = bien;
+      
+      if (!bien?.tieneAddon) {
+        document.getElementById('bien-sin-addon').classList.remove('hidden');
+        return;
+      }
+      
+      document.getElementById('modulo-check-wrapper').classList.remove('hidden');
+      
+      if (v.moduloId) {
+        // Marcar checkbox y cargar módulos
+        const checkModulo = document.getElementById('check-vincular-modulo');
+        if (checkModulo) checkModulo.checked = true;
+        document.getElementById('modulo-selector-wrapper').classList.remove('hidden');
+        
+        await cargarModulosDelBien(v.bienId);
+        document.getElementById('enc-modulo').value = v.moduloId;
+        
+        const modulo = modulosDelBien.find(m => m.id === v.moduloId);
+        vinculacionModulo = modulo;
+        
+        if (modulo?.esReservaEvento) {
+          mostrarOpcionAutomatico();
+        }
+        
+        if (v.cardId) {
+          await cargarCardsDelModulo(v.bienId, v.moduloId);
+          if (cardsDelModulo.length > 1) {
+            document.getElementById('enc-card').value = v.cardId;
+          }
+          vinculacionCard = cardsDelModulo.find(c => c.id === v.cardId);
+        }
+      }
     }
 
     // ========================================
@@ -1182,6 +1498,22 @@
         alert('Selecciona la fecha de envío programada'); return;
       }
 
+      // Construir objeto vinculación
+      const vinculacion = {};
+      if (vinculacionBien) {
+        vinculacion.bienId = vinculacionBien.id;
+        vinculacion.bienNombre = vinculacionBien.nombre;
+      }
+      if (vinculacionModulo) {
+        vinculacion.moduloId = vinculacionModulo.id;
+        vinculacion.moduloNombre = vinculacionModulo.nombre;
+        vinculacion.esReservaEvento = vinculacionModulo.esReservaEvento;
+      }
+      if (vinculacionCard) {
+        vinculacion.cardId = vinculacionCard.id;
+        vinculacion.cardNombre = vinculacionCard.nombre;
+      }
+
       const data = {
         titulo,
         descripcion: document.getElementById('enc-descripcion').value.trim(),
@@ -1190,6 +1522,7 @@
           alcance: [...destinatariosSeleccionados],
           miembrosIds: destinatariosSeleccionados.includes('especifico') ? [...miembrosSeleccionados] : []
         },
+        vinculacion: Object.keys(vinculacion).length > 0 ? vinculacion : null,
         publicacion: {
           tipo: publicacionTipo,
           fechaProgramada: fechaProgramada,
