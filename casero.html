@@ -2965,13 +2965,13 @@
             const idx = parseInt(check.dataset.idx);
             const item = itemsReposicion[idx];
             if (item && item.id) {
-              // Buscar el producto en inventario y actualizar stock
-              const invRef = db.collection('bienes').doc(bienId).collection('inventario').doc(item.id);
-              const invDoc = await invRef.get();
-              if (invDoc.exists) {
-                const invData = invDoc.data();
-                await invRef.update({
-                  stock: (invData.stock || 0) + item.cantidad
+              // Buscar el producto en inventario y actualizar stock en campo del documento
+              const invItem = datosModulos.inventario.find(i => i.id === item.id);
+              if (invItem) {
+                const nuevoStock = (invItem.stockActual || 0) + (item.cantidad || 0);
+                const path = `inventario.${invItem.lugarKey}.grupos.${invItem.grupoKey}.articulos.${invItem.id}.actual`;
+                await db.collection('bienes').doc(bienId).update({
+                  [path]: nuevoStock
                 });
               }
             }
@@ -3231,13 +3231,16 @@
       const nuevoStock = Math.max(0, item.stockActual + delta);
       
       try {
-        await db.collection('bienes').doc(bienActual.bienId).collection('inventario').doc(itemId).update({
-          stockActual: nuevoStock
+        // Actualizar campo anidado en el documento del bien (no subcolección)
+        const path = `inventario.${item.lugarKey}.grupos.${item.grupoKey}.articulos.${item.id}.actual`;
+        await db.collection('bienes').doc(bienActual.bienId).update({
+          [path]: nuevoStock
         });
         item.stockActual = nuevoStock;
         renderModulos();
       } catch (error) {
-        console.error(error);
+        console.error('Error ajustando inventario:', error);
+        alert('Error al guardar: ' + error.message);
       }
     }
 
