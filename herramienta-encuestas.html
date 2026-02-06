@@ -478,16 +478,22 @@
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
+      console.log('Usuario logueado:', user.email);
 
       const userDoc = await db.collection('usuarios').doc(user.uid).get();
-      if (!userDoc.exists) return;
+      if (!userDoc.exists) {
+        console.error('ERROR: No existe documento de usuario para uid:', user.uid);
+        return;
+      }
       userData = userDoc.data();
       familiaId = userData.familiaId;
+      console.log('familiaId obtenido:', familiaId);
 
       // Verificar plan
       const familiaDoc = await db.collection('familias').doc(familiaId).get();
       familiaData = familiaDoc.exists ? familiaDoc.data() : {};
       const plan = familiaData.plan || 'gratuito';
+      console.log('Plan de familia:', plan);
 
       if (plan === 'gratuito') {
         document.getElementById('loading').classList.add('hidden');
@@ -501,8 +507,10 @@
     });
 
     async function cargarMiembros() {
+      console.log('Cargando miembros para familiaId:', familiaId);
       const snap = await db.collection('usuarios').where('familiaId', '==', familiaId).get();
       miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log('Miembros cargados:', miembrosData.length, miembrosData.map(m => m.nombre || m.email));
     }
 
     async function cargarBienes() {
