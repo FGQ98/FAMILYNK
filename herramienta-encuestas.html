@@ -66,6 +66,7 @@
     .badge-alcance { background: var(--sage-muted); color: var(--sage-dark); }
     .badge-programada { background: #E8EAF6; color: #3F51B5; }
     .badge-manual { background: #FFF3E0; color: #E65100; }
+    .badge-automatico { background: #E0F7FA; color: #00838F; }
     .borrador-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
     /* === CARDS ACTIVAS === */
@@ -342,16 +343,27 @@
           <label class="form-label">¿Cuándo se envía?</label>
           <div class="publicacion-opciones">
             <label class="publicacion-opcion">
-              <input type="radio" name="publicacion" value="manual" checked onchange="toggleFechaProgramada()">
+              <input type="radio" name="publicacion" value="manual" checked onchange="togglePublicacionOpciones()">
               📤 Publicar manualmente desde Borradores
             </label>
             <label class="publicacion-opcion">
-              <input type="radio" name="publicacion" value="programada" onchange="toggleFechaProgramada()">
+              <input type="radio" name="publicacion" value="programada" onchange="togglePublicacionOpciones()">
               📅 Programar fecha de envío
+            </label>
+            <label class="publicacion-opcion">
+              <input type="radio" name="publicacion" value="automatico" onchange="togglePublicacionOpciones()">
+              🔄 Automático — al finalizar reserva/evento
             </label>
           </div>
           <div class="fecha-programada-wrapper hidden" id="fecha-programada-wrapper">
             <input type="datetime-local" class="form-input" id="enc-fecha-programada" style="margin-top:8px">
+          </div>
+          <div class="bien-automatico-wrapper hidden" id="bien-automatico-wrapper">
+            <label class="form-label" style="margin-top:12px">¿De qué bien? *</label>
+            <select class="form-select" id="enc-bien-automatico">
+              <option value="">— Selecciona un bien —</option>
+            </select>
+            <div class="form-hint" style="margin-top:6px">La encuesta se enviará automáticamente cuando finalice cualquier reserva de este bien.</div>
           </div>
         </div>
 
@@ -396,6 +408,7 @@
     let familiaId = null;
     let encuestasData = [];
     let miembrosData = [];
+    let bienesData = [];
     let preguntasBuilder = [];
     let editandoId = null; // null = nueva, string = editando borrador
     let respuestasTemp = {};
@@ -424,12 +437,23 @@
       }
 
       await cargarMiembros();
+      await cargarBienes();
       await loadEncuestas();
     });
 
     async function cargarMiembros() {
       const snap = await db.collection('usuarios').where('familiaId', '==', familiaId).get();
       miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    async function cargarBienes() {
+      try {
+        const snap = await db.collection('bienes').where('familiaId', '==', familiaId).get();
+        bienesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {
+        console.error('Error cargando bienes:', e);
+        bienesData = [];
+      }
     }
 
     async function loadEncuestas() {
@@ -470,8 +494,14 @@
 
     async function autoPublicarProgramadas() {
       const ahora = new Date();
+      
       for (const enc of encuestasData) {
-        if (enc.estado === 'borrador' && enc.publicacion?.tipo === 'programada' && enc.publicacion?.fechaProgramada) {
+        if (enc.estado !== 'borrador') continue;
+        
+        const pubTipo = enc.publicacion?.tipo;
+        
+        // Tipo PROGRAMADA: fecha vencida
+        if (pubTipo === 'programada' && enc.publicacion?.fechaProgramada) {
           const fechaProg = typeof enc.publicacion.fechaProgramada === 'string'
             ? new Date(enc.publicacion.fechaProgramada)
             : enc.publicacion.fechaProgramada.toDate?.() || new Date(enc.publicacion.fechaProgramada);
@@ -482,9 +512,85 @@
                 fechaPublicacion: firebase.firestore.FieldValue.serverTimestamp()
               });
               enc.estado = 'activa';
-            } catch (e) { console.error('Error auto-publicar:', e); }
+            } catch (e) { console.error('Error auto-publicar programada:', e); }
           }
         }
+        
+        // Tipo AUTOMÁTICO: reserva/solicitud finalizada para el bien
+        if (pubTipo === 'automatico' && enc.publicacion?.bienId) {
+          const bienId = enc.publicacion.bienId;
+          const tieneReservaFinalizada = await verificarReservaFinalizada(bienId, enc);
+          if (tieneReservaFinalizada) {
+            try {
+              await db.collection('encuestas').doc(enc.id).update({
+                estado: 'activa',
+                fechaPublicacion: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              enc.estado = 'activa';
+            } catch (e) { console.error('Error auto-publicar automática:', e); }
+          }
+        }
+      }
+    }
+
+    // Verifica si hay reservas/solicitudes finalizadas para un bien que aún no tienen encuesta enviada
+    async function verificarReservaFinalizada(bienId, encuesta) {
+      const ahora = new Date();
+      const encuestaCreacion = encuesta.fechaCreacion?.toDate?.() || new Date(0);
+      
+      try {
+        // Buscar en solicitudes aprobadas
+        const solicitudesSnap = await db.collection('solicitudes')
+          .where('familiaId', '==', familiaId)
+          .where('bienId', '==', bienId)
+          .where('estado', '==', 'aprobada')
+          .get();
+        
+        for (const doc of solicitudesSnap.docs) {
+          const sol = doc.data();
+          // Verificar si la fecha de fin ya pasó
+          let fechaFin = sol.fechaFin || sol.fechaHasta || sol.fin;
+          if (fechaFin) {
+            fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
+            // La reserva finalizó Y fue después de crear la encuesta
+            if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
+              // Verificar que no se haya enviado ya para esta reserva específica
+              const reservasEnviadas = encuesta.reservasEnviadas || [];
+              if (!reservasEnviadas.includes(doc.id)) {
+                return true;
+              }
+            }
+          }
+        }
+        
+        // Buscar en reservas del add-on (si existe la colección)
+        try {
+          const reservasSnap = await db.collection('reservas')
+            .where('familiaId', '==', familiaId)
+            .where('bienId', '==', bienId)
+            .get();
+          
+          for (const doc of reservasSnap.docs) {
+            const res = doc.data();
+            let fechaFin = res.fechaFin || res.fechaHasta || res.fin || res.checkout;
+            if (fechaFin) {
+              fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
+              if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
+                const reservasEnviadas = encuesta.reservasEnviadas || [];
+                if (!reservasEnviadas.includes(doc.id)) {
+                  return true;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // Colección reservas puede no existir
+        }
+        
+        return false;
+      } catch (e) {
+        console.error('Error verificando reservas finalizadas:', e);
+        return false;
       }
     }
 
@@ -531,15 +637,20 @@
         const alcances = enc.destinatarios?.alcance || [];
         const alcanceLabels = { rama: '🌳 Rama', estirpe: '🏛️ Estirpe', nido: '🪺 Nido', especifico: '👤 Específicos' };
         const badgesHTML = alcances.map(a => `<span class="badge badge-alcance">${alcanceLabels[a] || a}</span>`).join('');
-        const esProgramada = enc.publicacion?.tipo === 'programada';
-        let fechaProgHTML = '';
-        if (esProgramada && enc.publicacion.fechaProgramada) {
+        
+        // Badge de tipo de publicación
+        let publicacionBadgeHTML = '';
+        const pubTipo = enc.publicacion?.tipo;
+        if (pubTipo === 'programada' && enc.publicacion.fechaProgramada) {
           const fp = typeof enc.publicacion.fechaProgramada === 'string'
             ? new Date(enc.publicacion.fechaProgramada)
             : enc.publicacion.fechaProgramada.toDate?.() || new Date(0);
-          fechaProgHTML = `<span class="badge badge-programada">📅 Programada: ${fp.toLocaleDateString('es-ES')} ${fp.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})}</span>`;
+          publicacionBadgeHTML = `<span class="badge badge-programada">📅 Programada: ${fp.toLocaleDateString('es-ES')} ${fp.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'})}</span>`;
+        } else if (pubTipo === 'automatico') {
+          const bienNombre = enc.publicacion.bienNombre || 'bien';
+          publicacionBadgeHTML = `<span class="badge badge-automatico">🔄 Auto: fin de reserva en ${bienNombre}</span>`;
         } else {
-          fechaProgHTML = `<span class="badge badge-manual">📤 Publicación manual</span>`;
+          publicacionBadgeHTML = `<span class="badge badge-manual">📤 Publicación manual</span>`;
         }
 
         return `
@@ -551,7 +662,7 @@
                 <span>📝 ${enc.preguntas?.length || 0} pregunta${(enc.preguntas?.length || 0) !== 1 ? 's' : ''}</span>
                 <span>📅 ${formatFecha(enc.fechaCreacion)}</span>
               </div>
-              <div class="borrador-badges">${badgesHTML} ${fechaProgHTML}</div>
+              <div class="borrador-badges">${badgesHTML} ${publicacionBadgeHTML}</div>
               <div class="borrador-actions">
                 <button class="btn btn-sm btn-secondary" onclick="editarBorrador('${enc.id}')">✏️ Editar</button>
                 <button class="btn btn-sm btn-publish" onclick="publicarEncuesta('${enc.id}')">📤 Publicar ahora</button>
@@ -829,6 +940,8 @@
       document.querySelector('input[name="publicacion"][value="manual"]').checked = true;
       document.getElementById('fecha-programada-wrapper').classList.add('hidden');
       document.getElementById('enc-fecha-programada').value = '';
+      document.getElementById('bien-automatico-wrapper').classList.add('hidden');
+      document.getElementById('enc-bien-automatico').value = '';
 
       if (editandoId) {
         // Editar borrador
@@ -854,14 +967,22 @@
         }
 
         // Publicación
-        if (enc.publicacion?.tipo === 'programada') {
-          document.querySelector('input[name="publicacion"][value="programada"]').checked = true;
+        const pubTipo = enc.publicacion?.tipo || 'manual';
+        document.querySelector(`input[name="publicacion"][value="${pubTipo}"]`).checked = true;
+        
+        if (pubTipo === 'programada') {
           document.getElementById('fecha-programada-wrapper').classList.remove('hidden');
           if (enc.publicacion.fechaProgramada) {
             const fp = typeof enc.publicacion.fechaProgramada === 'string'
               ? enc.publicacion.fechaProgramada
               : enc.publicacion.fechaProgramada.toDate?.().toISOString().slice(0, 16) || '';
             document.getElementById('enc-fecha-programada').value = fp;
+          }
+        } else if (pubTipo === 'automatico') {
+          document.getElementById('bien-automatico-wrapper').classList.remove('hidden');
+          renderSelectorBienes();
+          if (enc.publicacion.bienId) {
+            document.getElementById('enc-bien-automatico').value = enc.publicacion.bienId;
           }
         }
 
@@ -933,9 +1054,23 @@
     }
 
     // Publicación
-    function toggleFechaProgramada() {
+    function togglePublicacionOpciones() {
       const tipo = document.querySelector('input[name="publicacion"]:checked').value;
       document.getElementById('fecha-programada-wrapper').classList.toggle('hidden', tipo !== 'programada');
+      document.getElementById('bien-automatico-wrapper').classList.toggle('hidden', tipo !== 'automatico');
+      
+      // Poblar selector de bienes si es automático
+      if (tipo === 'automatico') {
+        renderSelectorBienes();
+      }
+    }
+
+    function renderSelectorBienes() {
+      const select = document.getElementById('enc-bien-automatico');
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">— Selecciona un bien —</option>' +
+        bienesData.map(b => `<option value="${b.id}">${b.nombre || b.id}</option>`).join('');
+      if (currentVal) select.value = currentVal;
     }
 
     // ========================================
@@ -1035,10 +1170,19 @@
       const fechaProgramada = publicacionTipo === 'programada'
         ? document.getElementById('enc-fecha-programada').value || null
         : null;
+      const bienAutomaticoId = publicacionTipo === 'automatico'
+        ? document.getElementById('enc-bien-automatico').value || null
+        : null;
 
       if (publicacionTipo === 'programada' && !fechaProgramada) {
         alert('Selecciona la fecha de envío programada'); return;
       }
+      if (publicacionTipo === 'automatico' && !bienAutomaticoId) {
+        alert('Selecciona el bien para el envío automático'); return;
+      }
+
+      // Obtener nombre del bien si es automático
+      const bienAutomatico = bienAutomaticoId ? bienesData.find(b => b.id === bienAutomaticoId) : null;
 
       const data = {
         titulo,
@@ -1050,7 +1194,10 @@
         },
         publicacion: {
           tipo: publicacionTipo,
-          fechaProgramada: fechaProgramada
+          fechaProgramada: fechaProgramada,
+          bienId: bienAutomaticoId,
+          bienNombre: bienAutomatico?.nombre || null,
+          hito: publicacionTipo === 'automatico' ? 'fin' : null
         },
         estado: 'borrador',
         familiaId,
