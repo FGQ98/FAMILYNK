@@ -545,6 +545,23 @@ Soporte prioritario</textarea></div>
 
         <div class="divider"></div>
 
+        <!-- Cambiar Plan -->
+        <div class="form-group">
+          <label class="form-label">📋 Plan de la Rama <span class="badge badge-warning" style="font-size:0.6rem;vertical-align:middle;">Solo Admin</span></label>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--cream);border-radius:var(--radius-md);cursor:pointer;border:2px solid transparent;" class="plan-option">
+              <input type="radio" name="rama-plan" value="gratuito"> <span>🆓 Gratuito</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:rgba(66,153,225,0.1);border-radius:var(--radius-md);cursor:pointer;border:2px solid transparent;" class="plan-option">
+              <input type="radio" name="rama-plan" value="plus"> <span>⭐ Plus</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:rgba(193,119,87,0.15);border-radius:var(--radius-md);cursor:pointer;border:2px solid transparent;" class="plan-option">
+              <input type="radio" name="rama-plan" value="premium"> <span>👑 Premium</span>
+            </label>
+          </div>
+          <p class="text-muted" style="font-size:0.7rem;margin-top:6px;">⚠️ Cambiar el plan afecta las funcionalidades disponibles para toda la rama.</p>
+        </div>
+
         <!-- Descuento en Plan -->
         <div class="form-group">
           <label class="form-label">🏷️ Descuento en Plan <span class="badge badge-warning" style="font-size:0.6rem;vertical-align:middle;">Solo Admin</span></label>
@@ -1014,6 +1031,9 @@ Soporte prioritario</textarea></div>
       document.getElementById('rama-fecha').textContent=r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-';
       document.getElementById('rama-plan-actual').innerHTML=`<span class="badge badge-${r.plan==='mega'||r.plan==='premium'?'warning':r.plan==='plus'?'info':'neutral'}">${r.plan||'Free'}</span>`;
       document.getElementById('rama-notas').value=r.notasAdmin||'';
+      // Plan
+      const planActual=r.plan||'gratuito';
+      document.querySelectorAll('input[name="rama-plan"]').forEach(i=>i.checked=(i.value===planActual));
       // Descuentos
       document.querySelectorAll('input[name="descuento-plan"]').forEach(i=>i.checked=(parseInt(i.value)===(r.descuentoPlan||0)));
       document.querySelectorAll('input[name="descuento-addon"]').forEach(i=>i.checked=(parseInt(i.value)===(r.descuentoAddon||0)));
@@ -1030,11 +1050,13 @@ Soporte prioritario</textarea></div>
     async function guardarRama(){
       const id=document.getElementById('rama-id').value;
       if(!id)return;
+      const plan=document.querySelector('input[name="rama-plan"]:checked')?.value||'gratuito';
       const descuentoPlan=parseInt(document.querySelector('input[name="descuento-plan"]:checked').value)||0;
       const descuentoAddon=parseInt(document.querySelector('input[name="descuento-addon"]:checked').value)||0;
       const notasAdmin=document.getElementById('rama-notas').value.trim();
       try{
         await db.collection('familias').doc(id).update({
+          plan:plan,
           descuentoPlan:descuentoPlan,
           descuentoAddon:descuentoAddon,
           notasAdmin:notasAdmin,
