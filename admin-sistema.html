@@ -641,18 +641,20 @@ Soporte prioritario</textarea></div>
       cargarFamiliasNumeracion();
       cargarConfigEstructura();
     }
+    let bienesData = [];
     async function cargarDashboard(){
       try{
         const[rS,nS,uS,bS,iS]=await Promise.all([
           db.collection('familias').get(),
           db.collection('nidos').get(),
           db.collection('usuarios').get(),
-          db.collectionGroup('bienes').get(),
+          db.collection('bienes').get(),
           db.collection('invitaciones-email').get()
         ]);
         ramasData=rS.docs.map(d=>({id:d.id,...d.data()}));
         nidosData=nS.docs.map(d=>({id:d.id,...d.data()}));
         usuariosData=uS.docs.map(d=>({id:d.id,...d.data()}));
+        bienesData=bS.docs.map(d=>({id:d.id,...d.data()}));
         const invitacionesData=iS.docs.map(d=>({id:d.id,...d.data()}));
         
         // Stats básicos
@@ -661,9 +663,16 @@ Soporte prioritario</textarea></div>
         document.getElementById('stat-estirpes').textContent=estirpes.length;
         document.getElementById('stat-nidos').textContent=nidosData.length;
         document.getElementById('stat-usuarios').textContent=usuariosData.length;
-        document.getElementById('stat-bienes').textContent=bS.size;
-        let a=0;ramasData.forEach(r=>{if(r.addons)a+=Object.values(r.addons).filter(v=>v===true).length});
-        document.getElementById('stat-addons').textContent=a;
+        document.getElementById('stat-bienes').textContent=bienesData.length;
+        
+        // Contar add-ons activos desde bienes
+        let totalAddons = 0;
+        bienesData.forEach(b => {
+          if (b.mayordomoActivo) totalAddons++;
+          if (b.gerenteActivo) totalAddons++;
+          if (b.capatazActivo) totalAddons++;
+        });
+        document.getElementById('stat-addons').textContent=totalAddons;
         
         // Últimas ramas
         document.getElementById('ultimas-ramas').innerHTML=ramasData.slice(0,5).map(r=>`<div class="log-entry"><span class="log-icon">🌳</span><div class="log-content"><span class="log-user">${r.nombre||'-'}</span></div><span class="log-time">${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</span></div>`).join('')||'<p class="empty-state">Sin ramas</p>';
@@ -723,15 +732,17 @@ Soporte prioritario</textarea></div>
           const descuento=(r.descuentoPlan||0)/100;
           if(plan==='plus')ingresoPlanes+=(preciosPlanes.plus?.precioMensual||5.99)*(1-descuento);
           else if(plan==='premium'||plan==='mega')ingresoPlanes+=(preciosPlanes.premium?.precioMensual||9.99)*(1-descuento);
-          // Add-ons
-          if(r.addons){
-            const descuentoAddon=(r.descuentoAddon||0)/100;
-            if(r.addons.mayordomo)ingresoAddons+=(preciosAddons.mayordomo?.precio||4.99)*(1-descuentoAddon);
-            if(r.addons.gerente)ingresoAddons+=(preciosAddons.gerente?.precio||9.99)*(1-descuentoAddon);
-            if(r.addons.capataz)ingresoAddons+=(preciosAddons.capataz?.precio||9.99)*(1-descuentoAddon);
-            if(r.addons.crearRama)ingresoAddons+=(preciosAddons.crearRama?.precio||9.99)*(1-descuentoAddon);
-          }
         });
+        
+        // Ingresos por add-ons (desde bienes)
+        bienesData.forEach(b => {
+          const familia = ramasData.find(r => r.id === b.familiaId);
+          const descuentoAddon = (familia?.descuentoAddon || 0) / 100;
+          if (b.mayordomoActivo) ingresoAddons += (preciosAddons.mayordomo?.precio || 4.99) * (1 - descuentoAddon);
+          if (b.gerenteActivo) ingresoAddons += (preciosAddons.gerente?.precio || 9.99) * (1 - descuentoAddon);
+          if (b.capatazActivo) ingresoAddons += (preciosAddons.capataz?.precio || 9.99) * (1 - descuentoAddon);
+        });
+        
         const totalMRR=ingresoPlanes+ingresoAddons;
         const mediaPorCuenta=ramasData.length>0?(totalMRR/ramasData.length):0;
         
@@ -1037,14 +1048,24 @@ Soporte prioritario</textarea></div>
       // Descuentos
       document.querySelectorAll('input[name="descuento-plan"]').forEach(i=>i.checked=(parseInt(i.value)===(r.descuentoPlan||0)));
       document.querySelectorAll('input[name="descuento-addon"]').forEach(i=>i.checked=(parseInt(i.value)===(r.descuentoAddon||0)));
-      // Add-ons
-      const addons=r.addons||{};
-      const addonsList=[];
-      if(addons.crearRama)addonsList.push('<span class="badge badge-info">🌳 Crear Rama</span>');
-      if(addons.mayordomo)addonsList.push('<span class="badge badge-info">🏡 Mayordomo</span>');
-      if(addons.gerente)addonsList.push('<span class="badge badge-info">🏨 Gerente</span>');
-      if(addons.capataz)addonsList.push('<span class="badge badge-info">🌾 Capataz</span>');
-      document.getElementById('rama-addons').innerHTML=addonsList.length?addonsList.join(' '):'<span class="text-muted">Ninguno</span>';
+      // Add-ons (desde bienes de esta familia)
+      const bienesFamilia = bienesData.filter(b => b.familiaId === id);
+      const addonsList = [];
+      const addonsCount = { mayordomo: 0, gerente: 0, capataz: 0 };
+      
+      bienesFamilia.forEach(b => {
+        if (b.mayordomoActivo) addonsCount.mayordomo++;
+        if (b.gerenteActivo) addonsCount.gerente++;
+        if (b.capatazActivo) addonsCount.capataz++;
+      });
+      
+      if (addonsCount.mayordomo > 0) addonsList.push(`<span class="badge badge-info">🏡 Mayordomo (${addonsCount.mayordomo})</span>`);
+      if (addonsCount.gerente > 0) addonsList.push(`<span class="badge badge-info">🏨 Gerente (${addonsCount.gerente})</span>`);
+      if (addonsCount.capataz > 0) addonsList.push(`<span class="badge badge-info">🌾 Capataz (${addonsCount.capataz})</span>`);
+      
+      document.getElementById('rama-addons').innerHTML = addonsList.length 
+        ? addonsList.join(' ') + `<span class="text-muted" style="margin-left:8px;font-size:0.75rem;">(${bienesFamilia.length} bienes)</span>`
+        : '<span class="text-muted">Ninguno</span>';
       document.getElementById('modal-rama').classList.add('active');
     }
     async function guardarRama(){
