@@ -1277,66 +1277,109 @@
 
     // Buscar reservas/eventos aprobados para la semana actual y crear borrador si corresponde
     async function verificarReservasAprobadas() {
+      console.log('🔍 verificarReservasAprobadas() iniciado');
+      console.log('🔍 bienId:', bienId);
+      console.log('🔍 currentUser.uid:', currentUser?.uid);
+      
       try {
         const lunesSemana = new Date(semanaActual);
         const domingoSemana = new Date(semanaActual);
         domingoSemana.setDate(domingoSemana.getDate() + 6);
         domingoSemana.setHours(23, 59, 59, 999);
+        
+        console.log('🔍 Buscando en semana:', lunesSemana.toISOString(), '-', domingoSemana.toISOString());
 
         // Buscar reservas aprobadas
         let reservasSemana = [];
         try {
+          console.log('🔍 Buscando reservas con estado=aprobada...');
           const reservasSnap = await db.collection('bienes').doc(bienId)
             .collection('reservas')
             .where('estado', '==', 'aprobada')
             .get();
+          
+          console.log('🔍 Reservas encontradas:', reservasSnap.size);
 
           if (!reservasSnap.empty) {
-            reservasSemana = reservasSnap.docs.map(doc => ({
+            const todasReservas = reservasSnap.docs.map(doc => ({
               id: doc.id,
               tipo: 'reserva',
               ...doc.data()
-            })).filter(r => {
+            }));
+            console.log('🔍 Todas las reservas aprobadas:', todasReservas);
+            
+            reservasSemana = todasReservas.filter(r => {
               const inicio = r.fechaInicio?.toDate?.() || new Date(r.fechaInicio);
               const fin = r.fechaFin?.toDate?.() || new Date(r.fechaFin);
-              return inicio <= domingoSemana && fin >= lunesSemana;
+              const enSemana = inicio <= domingoSemana && fin >= lunesSemana;
+              console.log('🔍 Reserva', r.id, ':', inicio, '-', fin, 'enSemana:', enSemana);
+              return enSemana;
             });
           }
-        } catch (e) { console.log('Sin colección reservas'); }
+        } catch (e) { 
+          console.log('🔍 Error/Sin colección reservas:', e.message); 
+        }
 
         // Buscar eventos aprobados
         try {
+          console.log('🔍 Buscando eventos con estado=aprobado...');
           const eventosSnap = await db.collection('bienes').doc(bienId)
             .collection('eventos')
             .where('estado', '==', 'aprobado')
             .get();
+          
+          console.log('🔍 Eventos encontrados:', eventosSnap.size);
 
           if (!eventosSnap.empty) {
-            const eventosSemana = eventosSnap.docs.map(doc => ({
+            const todosEventos = eventosSnap.docs.map(doc => ({
               id: doc.id,
               tipo: 'evento',
               ...doc.data()
-            })).filter(e => {
+            }));
+            console.log('🔍 Todos los eventos aprobados:', todosEventos);
+            
+            const eventosSemana = todosEventos.filter(e => {
               const fecha = e.fecha?.toDate?.() || new Date(e.fecha);
-              return fecha >= lunesSemana && fecha <= domingoSemana;
+              const enSemana = fecha >= lunesSemana && fecha <= domingoSemana;
+              console.log('🔍 Evento', e.id, ':', fecha, 'enSemana:', enSemana);
+              return enSemana;
             });
             reservasSemana = reservasSemana.concat(eventosSemana);
           }
-        } catch (e) { console.log('Sin colección eventos'); }
+        } catch (e) { 
+          console.log('🔍 Error/Sin colección eventos:', e.message); 
+        }
 
-        if (reservasSemana.length === 0) return;
+        console.log('🔍 Total reservas/eventos en semana:', reservasSemana.length);
+        if (reservasSemana.length === 0) {
+          console.log('🔍 No hay reservas/eventos para esta semana');
+          return;
+        }
 
         // Buscar si el usuario actual es solicitante de alguna reserva
+        console.log('🔍 Buscando reservas del usuario actual...');
+        reservasSemana.forEach(r => {
+          console.log('🔍 Reserva', r.id, '- solicitante:', r.solicitante, 'solicitanteUid:', r.solicitanteUid, 'creadoPor:', r.creadoPor);
+        });
+        
         const miReserva = reservasSemana.find(r => 
           r.solicitante === currentUser.uid || 
           r.solicitanteUid === currentUser.uid ||
           r.creadoPor === currentUser.uid
         );
 
-        if (!miReserva) return;
+        if (!miReserva) {
+          console.log('🔍 Usuario no es solicitante de ninguna reserva');
+          return;
+        }
+        
+        console.log('🔍 Mi reserva encontrada:', miReserva);
 
         // Si ya tiene borrador con contenido, no sobrescribir
-        if (tieneContenido()) return;
+        if (tieneContenido()) {
+          console.log('🔍 Ya hay contenido, no sobrescribir');
+          return;
+        }
 
         // Calcular días de la reserva/evento que caen en esta semana
         let inicio, fin;
@@ -1739,22 +1782,34 @@
 
     document.getElementById('form-menaje').addEventListener('submit', async (e) => {
       e.preventDefault();
+      console.log('📝 Form menaje submit iniciado');
+      
       const data = {
         articulo: document.getElementById('menaje-articulo').value,
         cantidad: parseInt(document.getElementById('menaje-cantidad').value) || 1,
         notas: document.getElementById('menaje-notas').value
       };
+      console.log('📝 Datos menaje:', data);
 
       if (editingIdx !== null) {
         preparacionData.menaje[editingIdx] = data;
       } else {
         preparacionData.menaje.push(data);
       }
+      console.log('📝 preparacionData.menaje:', preparacionData.menaje);
 
       cerrarModales();
       renderMenaje();
       actualizarEstado();
-      await guardarBorrador(true); // Auto-guardar
+      
+      try {
+        console.log('📝 Llamando guardarBorrador...');
+        await guardarBorrador(true);
+        console.log('✅ Borrador guardado OK');
+      } catch (err) {
+        console.error('❌ Error guardando borrador:', err);
+        alert('Error guardando: ' + err.message);
+      }
     });
 
     // ========== FUNCIONES PRODUCTOS ==========
@@ -2042,6 +2097,10 @@
 
     // ========== GUARDAR / ENVIAR ==========
     async function guardarBorrador(silencioso = false) {
+      console.log('💾 guardarBorrador() iniciado, silencioso:', silencioso);
+      console.log('💾 bienId:', bienId);
+      console.log('💾 currentUser:', currentUser?.uid);
+      
       // Actualizar datos desde los inputs
       preparacionData.notas = document.getElementById('notas-general').value;
       
@@ -2073,7 +2132,11 @@
       });
 
       const semanaKey = getSemanaKey();
+      console.log('💾 semanaKey:', semanaKey);
+      console.log('💾 preparacionData a guardar:', JSON.stringify(preparacionData, null, 2));
+      
       try {
+        console.log('💾 Iniciando escritura en Firebase...');
         await db.collection('bienes').doc(bienId)
           .collection('preparacionSemanal').doc(semanaKey).set({
             ...preparacionData,
@@ -2083,6 +2146,8 @@
             fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
           }, { merge: true });
         
+        console.log('💾 Escritura Firebase OK');
+        
         // Recargar lista de borradores
         await cargarBorradores();
         
@@ -2090,8 +2155,9 @@
           alert('✅ Borrador guardado');
         }
         actualizarEstado();
+        console.log('💾 guardarBorrador() completado');
       } catch (e) {
-        console.error(e);
+        console.error('❌ Error en guardarBorrador:', e);
         if (!silencioso) alert('Error al guardar');
       }
     }
