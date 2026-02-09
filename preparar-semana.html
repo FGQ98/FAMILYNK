@@ -1632,11 +1632,11 @@
         
         return `
           <div class="zona-group">
-            <div class="zona-header" onclick="toggleZona('${z.id}')">
-              <input type="checkbox" ${selected ? 'checked' : ''} onclick="event.stopPropagation()">
-              <span class="zona-header-label">🏠 ${z.nombre}</span>
+            <div class="zona-header">
+              <input type="checkbox" ${selected ? 'checked' : ''} onchange="toggleZona('${z.id}')">
+              <span class="zona-header-label" onclick="toggleZona('${z.id}')">🏠 ${z.nombre}</span>
               <span class="zona-count">${z.dependencias.length} deps</span>
-              ${selected ? `<span class="zona-toggle-deps" onclick="event.stopPropagation(); toggleDesglose('${z.id}')">Desglosar</span>` : ''}
+              ${selected ? `<span class="zona-toggle-deps" onclick="toggleDesglose('${z.id}')">Desglosar</span>` : ''}
             </div>
             <div class="zona-deps ${showDeps && selected ? 'visible' : ''}" id="deps-${z.id}">
               ${z.dependencias.map(dep => {
@@ -1663,16 +1663,15 @@
         delete preparacionData.zonasDesglose[id];
       } else {
         preparacionData.zonas.push(id);
-        // Preguntar si quiere desglose
-        if (confirm('¿Quieres desglosar las dependencias de esta zona una a una?')) {
-          const zona = zonasData.find(z => z.id === id);
-          if (zona) {
-            preparacionData.zonasDesglose[id] = zona.dependencias.map(d => d.id);
-          }
+        // Auto-seleccionar todas las dependencias
+        const zona = zonasData.find(z => z.id === id);
+        if (zona) {
+          preparacionData.zonasDesglose[id] = zona.dependencias.map(d => d.id);
         }
       }
       renderZonas();
       actualizarEstado();
+      guardarBorrador(true); // Auto-guardar
     }
 
     function toggleDesglose(zonaId) {
@@ -1691,6 +1690,7 @@
       } else {
         arr.push(depId);
       }
+      guardarBorrador(true); // Auto-guardar
     }
 
     // ========== PERSONAS ==========
