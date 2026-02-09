@@ -275,6 +275,24 @@ service cloud.firestore {
     }
     
     // ============================================================
+    // COLECCIÓN: encuestas
+    // ============================================================
+    match /encuestas/{encuestaId} {
+      allow read: if isAuthenticated() && 
+                    (belongsToFamilia(resource.data.familiaId) ||
+                     isSuperAdmin() || isAdminSistema());
+      allow create: if isAuthenticated() && 
+                      belongsToFamilia(request.resource.data.familiaId);
+      allow update: if isAuthenticated() && 
+                      (belongsToFamilia(resource.data.familiaId) ||
+                       isSuperAdmin() || isAdminSistema());
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.creadoPor ||
+                       belongsToFamilia(resource.data.familiaId) ||
+                       isSuperAdmin() || isAdminSistema());
+    }
+    
+    // ============================================================
     // COLECCIONES ADICIONALES
     // ============================================================
     match /convocatorias/{convId} {
