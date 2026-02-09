@@ -104,6 +104,19 @@
     .reserva-fechas { font-size: 0.75rem; color: var(--text-light); }
     .reserva-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px 0; }
 
+    /* Solicitudes pendientes */
+    .solicitud-item { padding: 12px; background: var(--cream-medium); border-radius: var(--radius-md); margin-bottom: 10px; border-left: 3px solid var(--warning); }
+    .solicitud-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .solicitud-titulo { font-weight: 600; font-size: 0.85rem; }
+    .solicitud-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; background: #FFF3E0; color: #E65100; }
+    .solicitud-meta { font-size: 0.75rem; color: var(--text-light); margin-bottom: 8px; }
+    .solicitud-actions { display: flex; gap: 8px; }
+    .solicitud-btn { padding: 6px 12px; border: none; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+    .solicitud-btn.aprobar { background: var(--success); color: white; }
+    .solicitud-btn.rechazar { background: var(--error); color: white; }
+    .solicitud-btn.ver { background: var(--cream-dark); color: var(--text); }
+    .solicitud-count { background: var(--warning); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-left: 8px; }
+
     .btn { padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border: none; }
     .btn-addon { background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-dark) 100%); color: white; width: 100%; }
     .btn-addon:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
@@ -164,6 +177,15 @@
       </div>
       <div class="sidebar">
         <button class="btn btn-addon" id="btn-nueva-reserva" onclick="abrirModal()">+ Nueva reserva</button>
+        
+        <!-- SOLICITUDES PENDIENTES -->
+        <div class="sidebar-card" id="card-solicitudes" style="display:none;">
+          <div class="sidebar-card-header">
+            <div class="sidebar-card-title">📋 Solicitudes pendientes <span class="solicitud-count" id="solicitudes-count">0</span></div>
+          </div>
+          <div class="sidebar-card-body" id="lista-solicitudes"></div>
+        </div>
+        
         <div class="sidebar-card">
           <div class="sidebar-card-header"><div class="sidebar-card-title">Tipos de reserva</div></div>
           <div class="sidebar-card-body"><div class="leyenda" id="leyenda-tipos"></div></div>
@@ -250,6 +272,7 @@
       await cargarBien();
       await cargarReservas();
       await cargarEventos();
+      await cargarSolicitudes();
       renderTiposReserva();
       renderLeyenda();
       aplicarTemaAddon();
@@ -312,7 +335,10 @@
     async function cargarReservas() {
       try {
         const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('entrada', 'asc').get();
-        reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Filtrar: solo mostrar confirmadas, aprobadas o las que no tienen estado (legacy)
+        reservas = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(r => !r.estado || r.estado === 'confirmada' || r.estado === 'aprobada');
         renderCalendario();
         renderProximasReservas();
       } catch (e) { console.error('Error cargando reservas:', e); }
@@ -400,11 +426,28 @@
     async function guardar(e) {
       e.preventDefault();
       const id = document.getElementById('item-id').value;
-      const data = { tipo: document.getElementById('item-tipo').value, quien: document.getElementById('item-quien').value.trim(), entrada: document.getElementById('item-entrada').value, salida: document.getElementById('item-salida').value, notas: document.getElementById('item-notas').value.trim(), addon: getAddonActivo(), actualizado: firebase.firestore.FieldValue.serverTimestamp() };
+      const data = { 
+        tipo: document.getElementById('item-tipo').value, 
+        quien: document.getElementById('item-quien').value.trim(), 
+        entrada: document.getElementById('item-entrada').value, 
+        salida: document.getElementById('item-salida').value, 
+        notas: document.getElementById('item-notas').value.trim(), 
+        addon: getAddonActivo(), 
+        actualizado: firebase.firestore.FieldValue.serverTimestamp() 
+      };
       if (new Date(data.salida) < new Date(data.entrada)) { alert('La fecha de salida debe ser posterior a la entrada'); return; }
       try {
         const ref = db.collection('bienes').doc(bienId).collection('reservas');
-        if (id) await ref.doc(id).update(data); else { data.creado = firebase.firestore.FieldValue.serverTimestamp(); data.creadoPor = currentUser.uid; await ref.add(data); }
+        if (id) {
+          await ref.doc(id).update(data);
+        } else { 
+          // Nueva reserva directa del admin
+          data.origen = 'directa';
+          data.estado = 'confirmada';
+          data.creado = firebase.firestore.FieldValue.serverTimestamp(); 
+          data.creadoPor = currentUser.uid; 
+          await ref.add(data); 
+        }
         cerrarModal(); await cargarReservas();
       } catch (err) { console.error('Error guardando:', err); alert('Error al guardar'); }
     }
@@ -416,6 +459,114 @@
     }
 
     document.getElementById('modal').addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) cerrarModal(); });
+
+    // ========== SOLICITUDES PENDIENTES ==========
+    let solicitudesPendientes = [];
+
+    async function cargarSolicitudes() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('reservas')
+          .where('origen', '==', 'solicitud')
+          .where('estado', '==', 'pendiente')
+          .orderBy('fechaCreacion', 'desc')
+          .get();
+        
+        solicitudesPendientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderSolicitudes();
+      } catch (e) { 
+        console.error('Error cargando solicitudes:', e); 
+        // Si falla por índice, intentar sin orderBy
+        try {
+          const snap = await db.collection('bienes').doc(bienId).collection('reservas')
+            .where('origen', '==', 'solicitud')
+            .where('estado', '==', 'pendiente')
+            .get();
+          solicitudesPendientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderSolicitudes();
+        } catch (e2) { console.error('Error cargando solicitudes (retry):', e2); }
+      }
+    }
+
+    function renderSolicitudes() {
+      const container = document.getElementById('lista-solicitudes');
+      const card = document.getElementById('card-solicitudes');
+      const countEl = document.getElementById('solicitudes-count');
+      
+      countEl.textContent = solicitudesPendientes.length;
+      
+      if (solicitudesPendientes.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+      
+      card.style.display = 'block';
+      
+      container.innerHTML = solicitudesPendientes.map(s => {
+        const nombre = s.nombre || s.solicitadoPorNombre || 'Solicitud';
+        const fechas = s.fechaInicio && s.fechaFin 
+          ? `${formatFecha(s.fechaInicio)} → ${formatFecha(s.fechaFin)}`
+          : 'Sin fechas';
+        const solicitante = s.solicitadoPorNombre || 'Usuario';
+        
+        return `
+          <div class="solicitud-item">
+            <div class="solicitud-header">
+              <span class="solicitud-titulo">${nombre}</span>
+              <span class="solicitud-badge">Pendiente</span>
+            </div>
+            <div class="solicitud-meta">
+              📅 ${fechas}<br>
+              👤 ${solicitante}
+            </div>
+            <div class="solicitud-actions">
+              <button class="solicitud-btn aprobar" onclick="aprobarSolicitud('${s.id}')">✓ Aprobar</button>
+              <button class="solicitud-btn rechazar" onclick="rechazarSolicitud('${s.id}')">✗ Rechazar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatFecha(fecha) {
+      if (!fecha) return '—';
+      const d = typeof fecha === 'string' ? new Date(fecha) : fecha.toDate?.() || new Date(fecha);
+      return `${d.getDate()}/${d.getMonth()+1}`;
+    }
+
+    async function aprobarSolicitud(id) {
+      if (!confirm('¿Aprobar esta solicitud? Se convertirá en reserva confirmada.')) return;
+      try {
+        await db.collection('bienes').doc(bienId).collection('reservas').doc(id).update({
+          estado: 'aprobada',
+          respuesta: {
+            estado: 'aprobada',
+            por: currentUser.uid,
+            fecha: firebase.firestore.FieldValue.serverTimestamp()
+          }
+        });
+        alert('✅ Solicitud aprobada');
+        await cargarSolicitudes();
+        await cargarReservas();
+      } catch (e) { console.error('Error aprobando:', e); alert('Error al aprobar'); }
+    }
+
+    async function rechazarSolicitud(id) {
+      const motivo = prompt('Motivo del rechazo (opcional):');
+      if (motivo === null) return; // Canceló
+      try {
+        await db.collection('bienes').doc(bienId).collection('reservas').doc(id).update({
+          estado: 'rechazada',
+          respuesta: {
+            estado: 'rechazada',
+            por: currentUser.uid,
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            motivo: motivo || ''
+          }
+        });
+        alert('Solicitud rechazada');
+        await cargarSolicitudes();
+      } catch (e) { console.error('Error rechazando:', e); alert('Error al rechazar'); }
+    }
   </script>
 </body>
 </html>
