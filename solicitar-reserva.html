@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Solicitar Reserva</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-dark: #5C7D5F; --sage-muted: rgba(122, 158, 126, 0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4;
+      --terracotta: #C17757; --terracotta-muted: rgba(193, 119, 87, 0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF; --success: #7DB59A; --warning: #E8B44D; --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+      --solicitud: #7E57C2; --solicitud-muted: rgba(126, 87, 194, 0.12);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; padding-bottom: 100px; }
+
+    /* Header */
+    .header {
+      background: var(--white); padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      padding: 8px 14px; background: var(--cream); border-radius: var(--radius-md);
+      font-size: 0.85rem; color: var(--text-light); text-decoration: none;
+    }
+    .back-btn:hover { background: var(--cream-dark); }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 600; }
+    .header-badge {
+      padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+      background: var(--solicitud-muted); color: var(--solicitud);
+    }
+
+    /* Layout */
+    .main { max-width: 700px; margin: 0 auto; padding: 24px; }
+    .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px; gap: 16px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--solicitud); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* Card */
+    .card {
+      background: var(--white); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft); padding: 24px; margin-bottom: 20px;
+    }
+    .card-title {
+      font-family: 'Quicksand', sans-serif; font-size: 1rem; font-weight: 600;
+      margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+      padding-bottom: 12px; border-bottom: 2px solid var(--cream-dark);
+    }
+
+    /* Forms */
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-label-hint { font-weight: 400; color: var(--text-muted); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 12px 14px; border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.95rem;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--solicitud); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-helper { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Tipo selector visual */
+    .tipo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .tipo-option {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 14px 10px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .tipo-option:hover { border-color: var(--text-muted); }
+    .tipo-option.active { border-color: var(--solicitud); background: var(--solicitud-muted); }
+    .tipo-option input { display: none; }
+    .tipo-icon { font-size: 1.8rem; }
+    .tipo-label { font-size: 0.8rem; font-weight: 600; }
+
+    /* Sección colapsable */
+    .seccion { margin-bottom: 20px; }
+    .seccion-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; background: var(--cream); border-radius: var(--radius-md);
+      cursor: pointer; transition: background 0.2s;
+    }
+    .seccion-header:hover { background: var(--cream-dark); }
+    .seccion-titulo { font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; }
+    .seccion-badge { background: var(--sage); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; }
+    .seccion-toggle { color: var(--text-muted); transition: transform 0.2s; }
+    .seccion-body { padding: 16px 0; }
+
+    /* Items lista */
+    .item-card {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; background: var(--cream); border-radius: var(--radius-sm);
+      margin-bottom: 8px; border-left: 3px solid var(--sage);
+    }
+    .item-card.producto { border-left-color: var(--terracotta); }
+    .item-card.tarea { border-left-color: var(--solicitud); }
+    .item-icon { font-size: 1.1rem; }
+    .item-content { flex: 1; }
+    .item-titulo { font-weight: 600; font-size: 0.9rem; }
+    .item-meta { font-size: 0.75rem; color: var(--text-muted); }
+    .item-actions { display: flex; gap: 4px; }
+    .item-btn {
+      padding: 6px 10px; background: transparent; border: none;
+      border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); font-size: 0.85rem;
+    }
+    .item-btn:hover { background: var(--cream-dark); color: var(--text); }
+    .item-btn.delete:hover { color: var(--error); }
+
+    /* Botón añadir */
+    .add-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 12px; border: 2px dashed var(--cream-dark);
+      background: transparent; border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif; font-size: 0.85rem;
+      color: var(--text-muted); cursor: pointer;
+    }
+    .add-btn:hover { border-color: var(--solicitud); color: var(--solicitud); background: var(--solicitud-muted); }
+
+    .empty-state { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.85rem; }
+
+    /* Footer fijo */
+    .footer-fixed {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--white); padding: 16px 24px;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+      display: flex; justify-content: center; gap: 12px;
+    }
+    .btn {
+      padding: 14px 28px; border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.95rem;
+      cursor: pointer; border: none; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--solicitud); color: white; }
+    .btn-primary:hover { background: #6A48A8; transform: translateY(-1px); }
+    .btn-primary:disabled { background: var(--text-muted); cursor: not-allowed; transform: none; }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+      z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg);
+      width: 90%; max-width: 450px; max-height: 85vh; overflow-y: auto;
+      transform: scale(0.9); transition: transform 0.3s;
+    }
+    .modal-overlay.active .modal { transform: scale(1); }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; background: var(--solicitud); color: white;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1rem; }
+    .modal-close {
+      width: 32px; height: 32px; border: none; background: rgba(255,255,255,0.2);
+      border-radius: var(--radius-sm); color: white; font-size: 1.3rem; cursor: pointer;
+    }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .form-row { grid-template-columns: 1fr; }
+      .tipo-grid { grid-template-columns: repeat(2, 1fr); }
+      .footer-fixed { padding: 12px 16px; }
+      .btn { padding: 12px 20px; font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <a href="cgi.html" class="back-btn">← Volver</a>
+      <h1 class="page-title">📋 Solicitar Reserva</h1>
+    </div>
+    <span class="header-badge">Nueva solicitud</span>
+  </header>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <span>Cargando...</span>
+  </div>
+
+  <!-- Content -->
+  <main class="main hidden" id="content">
+    
+    <!-- 1. Seleccionar Bien -->
+    <div class="card">
+      <h2 class="card-title">🏠 ¿Dónde?</h2>
+      <div class="form-group">
+        <label class="form-label">Selecciona el bien</label>
+        <select class="form-select" id="sel-bien" onchange="onBienChange()">
+          <option value="">— Elige una opción —</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 2. Tipo de reserva (aparece al seleccionar bien) -->
+    <div class="card hidden" id="card-tipo">
+      <h2 class="card-title">📌 ¿Qué tipo?</h2>
+      <div class="tipo-grid" id="tipo-grid">
+        <!-- Se rellena dinámicamente -->
+      </div>
+    </div>
+
+    <!-- 3. Fechas y detalles (aparece al seleccionar tipo) -->
+    <div class="card hidden" id="card-detalles">
+      <h2 class="card-title">📅 ¿Cuándo y cuántos?</h2>
+      
+      <div class="form-group">
+        <label class="form-label">Nombre de la reserva <span class="form-label-hint">(opcional)</span></label>
+        <input type="text" class="form-input" id="inp-nombre" placeholder="Ej: Fin de semana cumpleaños abuela">
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Fecha inicio *</label>
+          <input type="date" class="form-input" id="inp-fecha-inicio" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha fin *</label>
+          <input type="date" class="form-input" id="inp-fecha-fin" required>
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nº personas</label>
+          <input type="number" class="form-input" id="inp-personas" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Noches</label>
+          <input type="text" class="form-input" id="inp-noches" readonly disabled>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">Motivo / Descripción</label>
+        <textarea class="form-textarea" id="inp-motivo" placeholder="Cuéntanos el motivo de la reserva..."></textarea>
+      </div>
+    </div>
+
+    <!-- 4. Preparación (opcional, colapsable) -->
+    <div class="hidden" id="card-preparacion">
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('menaje')">
+          <span class="seccion-titulo">🍷 Menaje especial <span class="seccion-badge" id="badge-menaje">0</span></span>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body hidden" id="body-menaje">
+          <div id="lista-menaje"></div>
+          <button type="button" class="add-btn" onclick="abrirModal('menaje')">+ Añadir menaje</button>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('productos')">
+          <span class="seccion-titulo">🛒 Productos necesarios <span class="seccion-badge" id="badge-productos">0</span></span>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body hidden" id="body-productos">
+          <div id="lista-productos"></div>
+          <button type="button" class="add-btn" onclick="abrirModal('producto')">+ Añadir producto</button>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('tareas')">
+          <span class="seccion-titulo">✅ Tareas especiales <span class="seccion-badge" id="badge-tareas">0</span></span>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body hidden" id="body-tareas">
+          <div id="lista-tareas"></div>
+          <button type="button" class="add-btn" onclick="abrirModal('tarea')">+ Añadir tarea</button>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('notas')">
+          <span class="seccion-titulo">📝 Notas adicionales</span>
+          <span class="seccion-toggle">▼</span>
+        </div>
+        <div class="seccion-body hidden" id="body-notas">
+          <textarea class="form-textarea" id="inp-notas-prep" placeholder="Instrucciones especiales, preferencias, etc..."></textarea>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer fijo -->
+  <div class="footer-fixed hidden" id="footer">
+    <button class="btn btn-secondary" onclick="window.location.href='cgi.html'">Cancelar</button>
+    <button class="btn btn-primary" id="btn-enviar" onclick="enviarSolicitud()">📤 Enviar solicitud</button>
+  </div>
+
+  <!-- Modal Menaje -->
+  <div class="modal-overlay" id="modal-menaje">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-menaje-titulo">🍷 Añadir menaje</h3>
+        <button class="modal-close" onclick="cerrarModal('menaje')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Artículo *</label>
+          <input type="text" class="form-input" id="menaje-articulo" placeholder="Ej: Copas de vino, Mantel especial...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cantidad</label>
+          <input type="number" class="form-input" id="menaje-cantidad" value="1" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-textarea" id="menaje-notas" placeholder="Detalles adicionales..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('menaje')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarMenaje()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Producto -->
+  <div class="modal-overlay" id="modal-producto">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-producto-titulo">🛒 Añadir producto</h3>
+        <button class="modal-close" onclick="cerrarModal('producto')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Producto *</label>
+          <input type="text" class="form-input" id="producto-nombre" placeholder="Ej: Aceite de oliva, Vino tinto...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cantidad</label>
+          <input type="text" class="form-input" id="producto-cantidad" placeholder="Ej: 2 botellas, 1 kg...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-textarea" id="producto-notas" placeholder="Marca preferida, dónde comprarlo..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('producto')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarProducto()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Tarea -->
+  <div class="modal-overlay" id="modal-tarea">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-tarea-titulo">✅ Añadir tarea</h3>
+        <button class="modal-close" onclick="cerrarModal('tarea')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Tarea *</label>
+          <input type="text" class="form-input" id="tarea-titulo" placeholder="Ej: Preparar barbacoa, Recoger llaves...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">¿Cuándo?</label>
+          <select class="form-select" id="tarea-cuando">
+            <option value="">Sin preferencia</option>
+            <option value="antes">Antes de llegada</option>
+            <option value="durante">Durante la estancia</option>
+            <option value="despues">Después de salida</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-textarea" id="tarea-notas" placeholder="Instrucciones adicionales..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModal('tarea')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarTarea()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    // ========================================
+    // ESTADO
+    // ========================================
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    
+    let currentUser = null;
+    let userData = null;
+    let currentFamilia = null;
+    let bienes = [];
+    let bienSeleccionado = null;
+    let tipoSeleccionado = null;
+    
+    // Preparación
+    let preparacion = {
+      menaje: [],
+      productos: [],
+      tareas: [],
+      notas: ''
+    };
+    
+    // Índice de edición para modales
+    let editingIndex = null;
+
+    // Tipos de reserva por addon
+    const TIPOS_RESERVA = {
+      mayordomo: [
+        { id: 'estancia', nombre: 'Estancia', icon: '🏠', color: '#9C27B0' },
+        { id: 'huespedes', nombre: 'Huéspedes', icon: '👥', color: '#FF7043' },
+        { id: 'evento', nombre: 'Evento', icon: '🎉', color: '#FF9800' },
+        { id: 'zafarrancho', nombre: 'Zafarrancho', icon: '🧹', color: '#66BB6A' }
+      ],
+      gerente: [
+        { id: 'alquiler', nombre: 'Alquiler', icon: '🔑', color: '#5B7B9A' },
+        { id: 'evento', nombre: 'Evento', icon: '🎉', color: '#FF9800' },
+        { id: 'mantenimiento', nombre: 'Mantenimiento', icon: '🔧', color: '#78909C' }
+      ],
+      capataz: [
+        { id: 'monteria', nombre: 'Montería', icon: '🦌', color: '#8D6E63' },
+        { id: 'ojeo', nombre: 'Ojeo', icon: '🐦', color: '#A1887F' },
+        { id: 'rececho', nombre: 'Rececho', icon: '🎯', color: '#6D4C41' },
+        { id: 'mantenimiento', nombre: 'Mantenimiento', icon: '🔧', color: '#78909C' }
+      ]
+    };
+
+    // ========================================
+    // INIT
+    // ========================================
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    async function cargarDatos() {
+      try {
+        // Cargar datos del usuario
+        const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+        if (!userDoc.exists) {
+          alert('Usuario no encontrado');
+          window.location.href = 'login.html';
+          return;
+        }
+        userData = userDoc.data();
+        
+        // Cargar familia
+        if (userData.familiaId) {
+          const famDoc = await db.collection('familias').doc(userData.familiaId).get();
+          if (famDoc.exists) {
+            currentFamilia = { id: famDoc.id, ...famDoc.data() };
+          }
+        }
+        
+        // Cargar bienes con gestión activa
+        await cargarBienes();
+        
+        // Configurar fechas mínimas
+        const hoy = new Date().toISOString().split('T')[0];
+        document.getElementById('inp-fecha-inicio').min = hoy;
+        document.getElementById('inp-fecha-fin').min = hoy;
+        
+        // Listeners para calcular noches
+        document.getElementById('inp-fecha-inicio').addEventListener('change', calcularNoches);
+        document.getElementById('inp-fecha-fin').addEventListener('change', calcularNoches);
+        
+        // Mostrar contenido
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+        document.getElementById('footer').classList.remove('hidden');
+        
+      } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Error al cargar los datos');
+      }
+    }
+
+    async function cargarBienes() {
+      try {
+        // Bienes donde el usuario tiene acceso y tienen gestión activa
+        const snap = await db.collection('bienes')
+          .where('familiaId', '==', userData.familiaId)
+          .get();
+        
+        bienes = snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(b => b.mayordomoActivo || b.gerenteActivo || b.capatazActivo);
+        
+        // Popular select
+        const select = document.getElementById('sel-bien');
+        if (bienes.length === 0) {
+          select.innerHTML = '<option value="">No hay bienes con gestión activa</option>';
+          return;
+        }
+        
+        select.innerHTML = '<option value="">— Elige una opción —</option>' +
+          bienes.map(b => {
+            const addon = b.mayordomoActivo ? '🏠' : b.gerenteActivo ? '🏢' : '🌳';
+            return `<option value="${b.id}">${addon} ${b.nombre}</option>`;
+          }).join('');
+          
+      } catch (error) {
+        console.error('Error cargando bienes:', error);
+      }
+    }
+
+    // ========================================
+    // SELECCIÓN DE BIEN Y TIPO
+    // ========================================
+    function onBienChange() {
+      const bienId = document.getElementById('sel-bien').value;
+      bienSeleccionado = bienes.find(b => b.id === bienId) || null;
+      tipoSeleccionado = null;
+      
+      // Ocultar/mostrar secciones
+      document.getElementById('card-tipo').classList.toggle('hidden', !bienSeleccionado);
+      document.getElementById('card-detalles').classList.add('hidden');
+      document.getElementById('card-preparacion').classList.add('hidden');
+      
+      if (!bienSeleccionado) return;
+      
+      // Determinar addon activo
+      let addon = 'mayordomo';
+      if (bienSeleccionado.gerenteActivo) addon = 'gerente';
+      if (bienSeleccionado.capatazActivo) addon = 'capataz';
+      
+      // Renderizar tipos
+      const tipos = TIPOS_RESERVA[addon] || TIPOS_RESERVA.mayordomo;
+      const grid = document.getElementById('tipo-grid');
+      
+      grid.innerHTML = tipos.map(t => `
+        <label class="tipo-option" onclick="seleccionarTipo('${t.id}')">
+          <input type="radio" name="tipo" value="${t.id}">
+          <span class="tipo-icon">${t.icon}</span>
+          <span class="tipo-label">${t.nombre}</span>
+        </label>
+      `).join('');
+    }
+
+    function seleccionarTipo(tipoId) {
+      tipoSeleccionado = tipoId;
+      
+      // Marcar activo visualmente
+      document.querySelectorAll('.tipo-option').forEach(opt => {
+        opt.classList.toggle('active', opt.querySelector('input').value === tipoId);
+      });
+      
+      // Mostrar detalles y preparación
+      document.getElementById('card-detalles').classList.remove('hidden');
+      document.getElementById('card-preparacion').classList.remove('hidden');
+    }
+
+    function calcularNoches() {
+      const inicio = document.getElementById('inp-fecha-inicio').value;
+      const fin = document.getElementById('inp-fecha-fin').value;
+      
+      if (inicio && fin) {
+        const diff = Math.ceil((new Date(fin) - new Date(inicio)) / (1000 * 60 * 60 * 24));
+        document.getElementById('inp-noches').value = diff > 0 ? `${diff} noche${diff > 1 ? 's' : ''}` : '—';
+        
+        // Actualizar min de fecha fin
+        document.getElementById('inp-fecha-fin').min = inicio;
+      }
+    }
+
+    // ========================================
+    // SECCIONES COLAPSABLES
+    // ========================================
+    function toggleSeccion(id) {
+      document.getElementById(`body-${id}`).classList.toggle('hidden');
+    }
+
+    // ========================================
+    // MODALES
+    // ========================================
+    function abrirModal(tipo, index = null) {
+      editingIndex = index;
+      
+      if (tipo === 'menaje') {
+        const item = index !== null ? preparacion.menaje[index] : null;
+        document.getElementById('modal-menaje-titulo').textContent = item ? '✏️ Editar menaje' : '🍷 Añadir menaje';
+        document.getElementById('menaje-articulo').value = item?.articulo || '';
+        document.getElementById('menaje-cantidad').value = item?.cantidad || 1;
+        document.getElementById('menaje-notas').value = item?.notas || '';
+        document.getElementById('modal-menaje').classList.add('active');
+        
+      } else if (tipo === 'producto') {
+        const item = index !== null ? preparacion.productos[index] : null;
+        document.getElementById('modal-producto-titulo').textContent = item ? '✏️ Editar producto' : '🛒 Añadir producto';
+        document.getElementById('producto-nombre').value = item?.nombre || '';
+        document.getElementById('producto-cantidad').value = item?.cantidad || '';
+        document.getElementById('producto-notas').value = item?.notas || '';
+        document.getElementById('modal-producto').classList.add('active');
+        
+      } else if (tipo === 'tarea') {
+        const item = index !== null ? preparacion.tareas[index] : null;
+        document.getElementById('modal-tarea-titulo').textContent = item ? '✏️ Editar tarea' : '✅ Añadir tarea';
+        document.getElementById('tarea-titulo').value = item?.titulo || '';
+        document.getElementById('tarea-cuando').value = item?.cuando || '';
+        document.getElementById('tarea-notas').value = item?.notas || '';
+        document.getElementById('modal-tarea').classList.add('active');
+      }
+    }
+
+    function cerrarModal(tipo) {
+      document.getElementById(`modal-${tipo}`).classList.remove('active');
+      editingIndex = null;
+    }
+
+    // Cerrar modal al hacer clic fuera
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) {
+          modal.classList.remove('active');
+          editingIndex = null;
+        }
+      });
+    });
+
+    // ========================================
+    // GUARDAR ITEMS (lee valores ANTES de cerrar)
+    // ========================================
+    function guardarMenaje() {
+      const articulo = document.getElementById('menaje-articulo').value.trim();
+      if (!articulo) {
+        alert('El artículo es obligatorio');
+        return;
+      }
+      
+      const data = {
+        articulo: articulo,
+        cantidad: parseInt(document.getElementById('menaje-cantidad').value) || 1,
+        notas: document.getElementById('menaje-notas').value.trim()
+      };
+      
+      if (editingIndex !== null) {
+        preparacion.menaje[editingIndex] = data;
+      } else {
+        preparacion.menaje.push(data);
+      }
+      
+      cerrarModal('menaje');
+      renderMenaje();
+    }
+
+    function guardarProducto() {
+      const nombre = document.getElementById('producto-nombre').value.trim();
+      if (!nombre) {
+        alert('El producto es obligatorio');
+        return;
+      }
+      
+      const data = {
+        nombre: nombre,
+        cantidad: document.getElementById('producto-cantidad').value.trim(),
+        notas: document.getElementById('producto-notas').value.trim()
+      };
+      
+      if (editingIndex !== null) {
+        preparacion.productos[editingIndex] = data;
+      } else {
+        preparacion.productos.push(data);
+      }
+      
+      cerrarModal('producto');
+      renderProductos();
+    }
+
+    function guardarTarea() {
+      const titulo = document.getElementById('tarea-titulo').value.trim();
+      if (!titulo) {
+        alert('La tarea es obligatoria');
+        return;
+      }
+      
+      const data = {
+        titulo: titulo,
+        cuando: document.getElementById('tarea-cuando').value,
+        notas: document.getElementById('tarea-notas').value.trim()
+      };
+      
+      if (editingIndex !== null) {
+        preparacion.tareas[editingIndex] = data;
+      } else {
+        preparacion.tareas.push(data);
+      }
+      
+      cerrarModal('tarea');
+      renderTareas();
+    }
+
+    // ========================================
+    // ELIMINAR ITEMS
+    // ========================================
+    function eliminarMenaje(index) {
+      if (!confirm('¿Eliminar este menaje?')) return;
+      preparacion.menaje.splice(index, 1);
+      renderMenaje();
+    }
+
+    function eliminarProducto(index) {
+      if (!confirm('¿Eliminar este producto?')) return;
+      preparacion.productos.splice(index, 1);
+      renderProductos();
+    }
+
+    function eliminarTarea(index) {
+      if (!confirm('¿Eliminar esta tarea?')) return;
+      preparacion.tareas.splice(index, 1);
+      renderTareas();
+    }
+
+    // ========================================
+    // RENDER LISTAS
+    // ========================================
+    function renderMenaje() {
+      const container = document.getElementById('lista-menaje');
+      document.getElementById('badge-menaje').textContent = preparacion.menaje.length;
+      
+      if (preparacion.menaje.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin menaje especial</div>';
+        return;
+      }
+      
+      container.innerHTML = preparacion.menaje.map((m, i) => `
+        <div class="item-card">
+          <span class="item-icon">🍷</span>
+          <div class="item-content">
+            <div class="item-titulo">${m.articulo}</div>
+            <div class="item-meta">Cantidad: ${m.cantidad}${m.notas ? ' · ' + m.notas : ''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="item-btn" onclick="abrirModal('menaje', ${i})">✏️</button>
+            <button class="item-btn delete" onclick="eliminarMenaje(${i})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderProductos() {
+      const container = document.getElementById('lista-productos');
+      document.getElementById('badge-productos').textContent = preparacion.productos.length;
+      
+      if (preparacion.productos.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin productos solicitados</div>';
+        return;
+      }
+      
+      container.innerHTML = preparacion.productos.map((p, i) => `
+        <div class="item-card producto">
+          <span class="item-icon">🛒</span>
+          <div class="item-content">
+            <div class="item-titulo">${p.nombre}</div>
+            <div class="item-meta">${p.cantidad || 'Sin especificar'}${p.notas ? ' · ' + p.notas : ''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="item-btn" onclick="abrirModal('producto', ${i})">✏️</button>
+            <button class="item-btn delete" onclick="eliminarProducto(${i})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderTareas() {
+      const container = document.getElementById('lista-tareas');
+      document.getElementById('badge-tareas').textContent = preparacion.tareas.length;
+      
+      const cuandoLabels = { antes: 'Antes', durante: 'Durante', despues: 'Después' };
+      
+      if (preparacion.tareas.length === 0) {
+        container.innerHTML = '<div class="empty-state">Sin tareas especiales</div>';
+        return;
+      }
+      
+      container.innerHTML = preparacion.tareas.map((t, i) => `
+        <div class="item-card tarea">
+          <span class="item-icon">✅</span>
+          <div class="item-content">
+            <div class="item-titulo">${t.titulo}</div>
+            <div class="item-meta">${cuandoLabels[t.cuando] || 'Sin preferencia'}${t.notas ? ' · ' + t.notas : ''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="item-btn" onclick="abrirModal('tarea', ${i})">✏️</button>
+            <button class="item-btn delete" onclick="eliminarTarea(${i})">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ========================================
+    // ENVIAR SOLICITUD
+    // ========================================
+    async function enviarSolicitud() {
+      // Validaciones
+      if (!bienSeleccionado) {
+        alert('Selecciona un bien');
+        return;
+      }
+      if (!tipoSeleccionado) {
+        alert('Selecciona el tipo de reserva');
+        return;
+      }
+      
+      const fechaInicio = document.getElementById('inp-fecha-inicio').value;
+      const fechaFin = document.getElementById('inp-fecha-fin').value;
+      
+      if (!fechaInicio || !fechaFin) {
+        alert('Las fechas son obligatorias');
+        return;
+      }
+      
+      if (new Date(fechaFin) < new Date(fechaInicio)) {
+        alert('La fecha fin debe ser posterior a la fecha inicio');
+        return;
+      }
+      
+      if (!confirm('¿Enviar esta solicitud? Será revisada por los administradores.')) return;
+      
+      const btn = document.getElementById('btn-enviar');
+      btn.disabled = true;
+      btn.textContent = '⏳ Enviando...';
+      
+      try {
+        // Determinar addon
+        let addon = 'mayordomo';
+        if (bienSeleccionado.gerenteActivo) addon = 'gerente';
+        if (bienSeleccionado.capatazActivo) addon = 'capataz';
+        
+        // Obtener info del tipo
+        const tiposAddon = TIPOS_RESERVA[addon] || TIPOS_RESERVA.mayordomo;
+        const tipoInfo = tiposAddon.find(t => t.id === tipoSeleccionado) || {};
+        
+        // Construir documento
+        const reservaData = {
+          // Origen y estado
+          origen: 'solicitud',
+          estado: 'pendiente',
+          
+          // Bien
+          bienId: bienSeleccionado.id,
+          bienNombre: bienSeleccionado.nombre,
+          addon: addon,
+          
+          // Tipo
+          tipo: tipoSeleccionado,
+          tipoNombre: tipoInfo.nombre || tipoSeleccionado,
+          tipoColor: tipoInfo.color || '#9C27B0',
+          
+          // Datos
+          nombre: document.getElementById('inp-nombre').value.trim() || null,
+          fechaInicio: fechaInicio,
+          fechaFin: fechaFin,
+          personas: parseInt(document.getElementById('inp-personas').value) || 1,
+          motivo: document.getElementById('inp-motivo').value.trim(),
+          
+          // Solicitante
+          solicitante: {
+            uid: currentUser.uid,
+            nombre: userData?.nombre || currentUser.email,
+            nidoId: userData?.nidoId || null,
+            nidoNombre: userData?.nidoNombre || ''
+          },
+          
+          // Preparación
+          preparacion: {
+            menaje: preparacion.menaje,
+            productos: preparacion.productos,
+            tareas: preparacion.tareas,
+            notas: document.getElementById('inp-notas-prep')?.value?.trim() || ''
+          },
+          
+          // Respuesta (vacía hasta que admin responda)
+          respuesta: null,
+          
+          // Meta
+          familiaId: currentFamilia?.id || userData.familiaId,
+          creadoEn: firebase.firestore.FieldValue.serverTimestamp(),
+          creadoPor: currentUser.uid
+        };
+        
+        // Guardar en colección unificada
+        const docRef = await db.collection('bienes').doc(bienSeleccionado.id)
+          .collection('reservas').add(reservaData);
+        
+        console.log('✅ Solicitud creada:', docRef.id);
+        
+        // Crear notificación para admins (opcional, se puede implementar después)
+        // await notificarAdmins(docRef.id, reservaData);
+        
+        alert('✅ Solicitud enviada correctamente.\nLos administradores la revisarán y recibirás notificación.');
+        window.location.href = 'cgi.html';
+        
+      } catch (error) {
+        console.error('Error enviando solicitud:', error);
+        alert('Error al enviar: ' + (error.message || 'Inténtalo de nuevo'));
+      }
+      
+      btn.disabled = false;
+      btn.textContent = '📤 Enviar solicitud';
+    }
+  </script>
+</body>
+</html>
