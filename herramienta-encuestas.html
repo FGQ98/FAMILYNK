@@ -1133,7 +1133,7 @@
       const label = input.closest('.destinatario-check');
       const checked = input.checked;
       
-      console.log('toggleDestinatario:', valor, checked, 'miembros disponibles:', miembrosData.length);
+      
       
       label.classList.toggle('selected', checked);
 
@@ -1146,7 +1146,7 @@
       if (valor === 'especifico') {
         const wrapper = document.getElementById('miembros-especificos');
         if (checked) {
-          console.log('Mostrando selector miembros, miembrosData:', miembrosData);
+          
           renderMiembrosSelector();
           wrapper.classList.remove('hidden');
         } else {
@@ -1158,20 +1158,17 @@
 
     function renderMiembrosSelector() {
       const container = document.getElementById('miembros-especificos');
-      console.log('renderMiembrosSelector - container:', container, 'miembrosData:', miembrosData.length, 'vinculacionModulo:', vinculacionModulo);
       
-      // Opción especial si hay vinculación a módulo de reservas/eventos
-      let opcionSolicitante = '';
-      if (vinculacionModulo?.esReservaEvento) {
-        const checked = miembrosSeleccionados.includes('__solicitante__');
-        opcionSolicitante = `
-          <label class="miembro-check miembro-especial ${checked ? 'selected' : ''}">
-            <input type="checkbox" value="__solicitante__" ${checked ? 'checked' : ''} onchange="toggleMiembro('__solicitante__', this.checked)">
-            📋 Quien solicitó el evento/reserva
-          </label>
-          <div class="miembros-separador">— o miembros específicos —</div>
-        `;
-      }
+      
+      // Opción especial "Quien solicitó" - siempre visible
+      const checkedSolicitante = miembrosSeleccionados.includes('__solicitante__');
+      const opcionSolicitante = `
+        <label class="miembro-check miembro-especial ${checkedSolicitante ? 'selected' : ''}">
+          <input type="checkbox" value="__solicitante__" ${checkedSolicitante ? 'checked' : ''} onchange="toggleMiembro('__solicitante__', this.checked)">
+          📋 Quien solicitó el evento/reserva
+        </label>
+        <div class="miembros-separador">— o miembros específicos —</div>
+      `;
       
       const miembrosHTML = miembrosData
         .filter(m => m.id !== currentUser.uid)
@@ -1184,7 +1181,7 @@
         }).join('');
       
       container.innerHTML = opcionSolicitante + miembrosHTML;
-      console.log('Selector miembros HTML generado:', container.innerHTML.length, 'chars');
+      
     }
 
     function toggleMiembro(id, checked) {
@@ -1210,16 +1207,16 @@
     // CASCADA DE VINCULACIÓN
     // ========================================
     function toggleVincularBien(checked) {
-      console.log('toggleVincularBien:', checked, 'bienes disponibles:', bienesData.length);
+      
       const wrapper = document.getElementById('bien-selector-wrapper');
       wrapper.classList.toggle('hidden', !checked);
       
       if (checked) {
-        // Poblar selector de bienes
+        // Poblar selector de bienes con opción "Ninguno"
         const select = document.getElementById('enc-bien');
-        select.innerHTML = '<option value="">— Selecciona un bien —</option>' +
+        select.innerHTML = '<option value="">— Ninguno —</option>' +
           bienesData.map(b => `<option value="${b.id}" data-addon="${b.tieneAddon}">${b.nombre}</option>`).join('');
-        console.log('Selector poblado con', bienesData.length, 'bienes');
+        
       } else {
         // Reset cascada
         resetCascadaBien();
