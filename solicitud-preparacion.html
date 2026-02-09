@@ -438,7 +438,7 @@
         </div>
         <div class="divider-helper">
           💡 Cuanta más información proporciones, más fácil será preparar tu estancia.<br>
-          Todas las secciones son obligatorias (excepto Tareas, que es opcional).
+          Completa las secciones. Menaje, Producto y Tareas son opcionales.
         </div>
 
         <!-- Badge multi-semana -->
@@ -1524,20 +1524,20 @@
         errores.push({ seccionId: 'seccion-servicio', nombre: '👨‍🍳 Servicio' });
       }
 
-      // 5. MENAJE — algo indicado: toggle especial, items del ajuar, o menaje adicional
-      const tieneMenaje = preparacionData.menajeEspecial ||
-        (preparacionData.menajeAjuar && preparacionData.menajeAjuar.length > 0) ||
-        (preparacionData.menaje && preparacionData.menaje.length > 0);
-      if (!tieneMenaje) {
-        errores.push({ seccionId: 'seccion-menaje', nombre: '🍷 Menaje' });
-      }
+      // 5. MENAJE — OPCIONAL (skip)
+      // const tieneMenaje = preparacionData.menajeEspecial ||
+      //   (preparacionData.menajeAjuar && preparacionData.menajeAjuar.length > 0) ||
+      //   (preparacionData.menaje && preparacionData.menaje.length > 0);
+      // if (!tieneMenaje) {
+      //   errores.push({ seccionId: 'seccion-menaje', nombre: '🍷 Menaje' });
+      // }
 
-      // 6. PRODUCTO — al menos 1 producto (aportado o solicitado)
-      const tieneProducto = (preparacionData.productosAportados && preparacionData.productosAportados.length > 0) ||
-        (preparacionData.productosSolicitados && preparacionData.productosSolicitados.length > 0);
-      if (!tieneProducto) {
-        errores.push({ seccionId: 'seccion-producto', nombre: '📦 Producto' });
-      }
+      // 6. PRODUCTO — OPCIONAL (skip)
+      // const tieneProducto = (preparacionData.productosAportados && preparacionData.productosAportados.length > 0) ||
+      //   (preparacionData.productosSolicitados && preparacionData.productosSolicitados.length > 0);
+      // if (!tieneProducto) {
+      //   errores.push({ seccionId: 'seccion-producto', nombre: '📦 Producto' });
+      // }
 
       // 7. TAREAS — NO obligatorio (skip)
 
@@ -1620,8 +1620,6 @@
 
         // Construir solicitud
         const solicitudData = {
-          // NUEVO: origen para distinguir de reservas directas
-          origen: 'solicitud',
           tipo: 'solicitud',
           categoria: 'reserva-evento',
           esReserva: true,
@@ -1655,7 +1653,8 @@
           respuesta: null, respondidoPor: null, fechaRespuesta: null
         };
 
-        // 1. Guardar en colección unificada bienes/{bienId}/reservas
+        // 1. Guardar en colección unificada
+        solicitudData.origen = 'solicitud';
         const solicitudRef = await db.collection('bienes').doc(bienId).collection('reservas').add(solicitudData);
         console.log('✅ Solicitud creada:', solicitudRef.id);
 
@@ -1680,7 +1679,7 @@
             leidoPor: [], completadoPor: [],
             fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
             fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            enlace: `reservas.html?bienId=${bienId}&id=${solicitudRef.id}`,
+            enlace: `reservas.html?id=${bienId}`,
             origen: { tipo: 'solicitud', bienId: bienId, id: solicitudRef.id },
             estado: 'activa'
           });
