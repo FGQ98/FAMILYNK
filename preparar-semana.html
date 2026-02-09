@@ -446,6 +446,58 @@
       gap: 4px;
       justify-content: center;
     }
+
+    /* Solicitudes disponibles */
+    .solicitudes-section {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft);
+      margin-bottom: 20px;
+      border-left: 4px solid var(--terracotta);
+    }
+    .solicitudes-header {
+      padding: 16px 20px;
+      background: var(--terracotta-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .solicitudes-title {
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .solicitudes-count {
+      background: var(--terracotta);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+    }
+    .solicitudes-body { padding: 16px 20px; }
+    .solicitud-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      background: var(--cream);
+      border-radius: var(--radius-md);
+      margin-bottom: 10px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .solicitud-card:hover { border-color: var(--terracotta); }
+    .solicitud-card.active { border-color: var(--sage); background: var(--sage-muted); }
+    .solicitud-info { flex: 1; }
+    .solicitud-nombre { font-weight: 600; font-size: 0.9rem; }
+    .solicitud-meta { font-size: 0.8rem; color: var(--text-muted); }
+    .solicitud-estado { padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 600; }
+    .solicitud-estado.pendiente { background: #FFF3E0; color: #E65100; }
+    .solicitud-estado.aprobada { background: var(--sage-muted); color: var(--sage-dark); }
+    .solicitudes-empty { text-align: center; padding: 20px; color: var(--text-muted); }
     .role-chip {
       padding: 4px 8px;
       background: var(--cream);
@@ -575,6 +627,16 @@
     <div id="loading" class="loading"><div class="spinner"></div></div>
 
     <div id="content" class="hidden">
+      <!-- Solicitudes disponibles -->
+      <div class="solicitudes-section" id="solicitudes-section">
+        <div class="solicitudes-header">
+          <div class="solicitudes-title">📋 Solicitudes disponibles <span class="solicitudes-count" id="solicitudes-count">0</span></div>
+        </div>
+        <div class="solicitudes-body" id="solicitudes-body">
+          <div class="solicitudes-empty">Cargando...</div>
+        </div>
+      </div>
+
       <!-- Navegador de semanas -->
       <div class="semana-nav">
         <button class="semana-nav-btn" id="btn-semana-anterior" onclick="cambiarSemana(-1)">◀</button>
@@ -1063,6 +1125,9 @@
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
 
+        // Cargar solicitudes disponibles
+        await cargarSolicitudes();
+
         // Cargar dependencias (zonas) del bien
         await cargarZonas();
         
@@ -1082,6 +1147,103 @@
         console.error(e);
         alert('Error cargando datos');
       }
+    }
+
+    // ========== SOLICITUDES DISPONIBLES ==========
+    let solicitudesData = [];
+    let solicitudActiva = null;
+
+    async function cargarSolicitudes() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('reservas')
+          .where('origen', '==', 'solicitud')
+          .get();
+        
+        solicitudesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        solicitudesData.sort((a, b) => {
+          const fa = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fb = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fb - fa;
+        });
+        renderSolicitudes();
+      } catch (e) {
+        console.error('Error cargando solicitudes:', e);
+        solicitudesData = [];
+        renderSolicitudes();
+      }
+    }
+
+    function renderSolicitudes() {
+      const container = document.getElementById('solicitudes-body');
+      document.getElementById('solicitudes-count').textContent = solicitudesData.length;
+      
+      if (solicitudesData.length === 0) {
+        container.innerHTML = '<div class="solicitudes-empty">No hay solicitudes disponibles</div>';
+        return;
+      }
+      
+      container.innerHTML = solicitudesData.map(s => {
+        const nombre = s.nombre || s.tipoReservaNombre || 'Solicitud';
+        const fechas = s.fechaInicio && s.fechaFin ? `${fmtFecha(s.fechaInicio)} → ${fmtFecha(s.fechaFin)}` : 'Sin fechas';
+        const solicitante = s.solicitadoPorNombre || 'Usuario';
+        const estadoClass = s.estado === 'aprobada' ? 'aprobada' : 'pendiente';
+        const estadoLabel = s.estado === 'aprobada' ? 'Aprobada' : s.estado === 'rechazada' ? 'Rechazada' : 'Pendiente';
+        const isActive = solicitudActiva?.id === s.id;
+        
+        return `<div class="solicitud-card ${isActive ? 'active' : ''}" onclick="seleccionarSolicitud('${s.id}')">
+          <div class="solicitud-info">
+            <div class="solicitud-nombre">📋 ${nombre}</div>
+            <div class="solicitud-meta">📅 ${fechas} · 👤 ${solicitante}</div>
+          </div>
+          <span class="solicitud-estado ${estadoClass}">${estadoLabel}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function fmtFecha(f) {
+      if (!f) return '—';
+      const d = typeof f === 'string' ? new Date(f) : f.toDate?.() || new Date(f);
+      return `${d.getDate()}/${d.getMonth()+1}`;
+    }
+
+    async function seleccionarSolicitud(id) {
+      solicitudActiva = solicitudesData.find(s => s.id === id);
+      if (!solicitudActiva) return;
+      renderSolicitudes();
+      
+      // Cargar preparación de la solicitud si existe
+      if (solicitudActiva.preparacion) {
+        const p = solicitudActiva.preparacion;
+        preparacionData.menaje = p.menaje || [];
+        preparacionData.productosAportados = p.productosAportados || p.productos || [];
+        preparacionData.productosSolicitados = p.productosSolicitados || [];
+        preparacionData.tareas = p.tareas || [];
+        preparacionData.notas = p.notas || '';
+      }
+      
+      // Si tiene fechas, calcular días
+      if (solicitudActiva.fechaInicio && solicitudActiva.fechaFin) {
+        const inicio = typeof solicitudActiva.fechaInicio === 'string' ? new Date(solicitudActiva.fechaInicio) : solicitudActiva.fechaInicio.toDate?.() || new Date(solicitudActiva.fechaInicio);
+        const fin = typeof solicitudActiva.fechaFin === 'string' ? new Date(solicitudActiva.fechaFin) : solicitudActiva.fechaFin.toDate?.() || new Date(solicitudActiva.fechaFin);
+        const diasNombres = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+        const diasReserva = [];
+        for (let d = new Date(inicio); d <= fin; d.setDate(d.getDate() + 1)) {
+          diasReserva.push(diasNombres[d.getDay()]);
+        }
+        if (diasReserva.length > 0) {
+          diasActivos = DIAS_ORDEN.filter(d => diasReserva.includes(d));
+          if (diasActivos.length === 0) diasActivos = DIAS_ORDEN.slice();
+          renderMatricesHTML();
+        }
+      }
+      
+      if (!preparacionData.notas && solicitudActiva.motivo) {
+        preparacionData.notas = `📋 ${solicitudActiva.nombre || 'Solicitud'}: ${solicitudActiva.motivo}`;
+      }
+      
+      renderAll();
+      document.querySelector('.seccion').scrollIntoView({ behavior: 'smooth' });
     }
 
     async function cargarBorradores() {
