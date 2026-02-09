@@ -1261,6 +1261,8 @@
       if (!bienId) {
         vinculacionBien = null;
         document.getElementById('bien-sin-addon').classList.add('hidden');
+        document.getElementById('modulo-check-wrapper').classList.add('hidden');
+        ocultarOpcionAutomatico();
         return;
       }
       
@@ -1269,32 +1271,18 @@
       
       if (!bien.tieneAddon) {
         document.getElementById('bien-sin-addon').classList.remove('hidden');
+        document.getElementById('modulo-check-wrapper').classList.add('hidden');
+        ocultarOpcionAutomatico();
         return;
       }
       
       document.getElementById('bien-sin-addon').classList.add('hidden');
-      document.getElementById('modulo-check-wrapper').classList.remove('hidden');
-    }
-
-    function toggleVincularModulo(checked) {
-      const wrapper = document.getElementById('modulo-selector-wrapper');
-      wrapper.classList.toggle('hidden', !checked);
       
-      if (checked && vinculacionBien) {
-        cargarModulosDelBien(vinculacionBien.id);
-      } else {
-        vinculacionModulo = null;
-        vinculacionCard = null;
-        cardsDelModulo = [];
-        document.getElementById('card-selector-wrapper').classList.add('hidden');
-        ocultarOpcionAutomatico();
-        // Quitar opción solicitante si estaba seleccionada
-        miembrosSeleccionados = miembrosSeleccionados.filter(m => m !== '__solicitante__');
-        actualizarSelectorMiembros();
-      }
+      // Cargar módulos automáticamente y verificar si hay de tipo Reserva/Evento
+      await cargarModulosYVerificarAutomatico(bienId);
     }
-
-    async function cargarModulosDelBien(bienId) {
+    
+    async function cargarModulosYVerificarAutomatico(bienId) {
       try {
         const snap = await db.collection('bienes').doc(bienId).collection('modulos').get();
         modulosDelBien = snap.docs.map(doc => {
@@ -1307,13 +1295,49 @@
           };
         });
         
-        const select = document.getElementById('enc-modulo');
-        select.innerHTML = '<option value="">— Selecciona un módulo —</option>' +
-          modulosDelBien.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+        // ¿Hay algún módulo de Reservas/Eventos?
+        const moduloReservaEvento = modulosDelBien.find(m => m.esReservaEvento);
+        
+        if (moduloReservaEvento) {
+          // Vinculación automática al módulo de reservas/eventos
+          vinculacionModulo = moduloReservaEvento;
+          mostrarOpcionAutomatico();
+          // Mostrar selector de módulo solo si hay más de uno de tipo reserva/evento
+          const modulosRE = modulosDelBien.filter(m => m.esReservaEvento);
+          if (modulosRE.length > 1) {
+            document.getElementById('modulo-check-wrapper').classList.remove('hidden');
+            document.getElementById('vincular-modulo-check').checked = true;
+            document.getElementById('modulo-selector-wrapper').classList.remove('hidden');
+            const select = document.getElementById('enc-modulo');
+            select.innerHTML = modulosRE.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+          } else {
+            document.getElementById('modulo-check-wrapper').classList.add('hidden');
+          }
+        } else {
+          // No hay módulos de reserva/evento, ocultar opción automático
+          vinculacionModulo = null;
+          ocultarOpcionAutomatico();
+          document.getElementById('modulo-check-wrapper').classList.add('hidden');
+        }
         
       } catch (e) {
         console.error('Error cargando módulos:', e);
         modulosDelBien = [];
+        ocultarOpcionAutomatico();
+      }
+    }
+
+    function toggleVincularModulo(checked) {
+      // Para selección manual de módulo diferente (si hay varios)
+      const wrapper = document.getElementById('modulo-selector-wrapper');
+      wrapper.classList.toggle('hidden', !checked);
+      
+      if (!checked) {
+        // Si desmarca, resetear a módulo detectado automáticamente
+        const moduloReservaEvento = modulosDelBien.find(m => m.esReservaEvento);
+        if (moduloReservaEvento) {
+          vinculacionModulo = moduloReservaEvento;
+        }
       }
     }
 
