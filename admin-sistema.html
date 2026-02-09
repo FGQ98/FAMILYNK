@@ -175,7 +175,7 @@
       <section class="section" id="section-ramas">
         <div class="section-header"><div><h1 class="section-title">🌳 Ramas</h1><p class="section-description">Cuentas / Dinastías</p></div></div>
         <div class="toolbar"><div class="search-box"><span>🔍</span><input type="text" class="search-input" placeholder="Buscar..."></div></div>
-        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Rama</th><th>Admin</th><th>Nidos</th><th>Miembros</th><th>Plan</th><th>Creada</th><th></th></tr></thead><tbody id="tabla-ramas"><tr><td colspan="7"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
+        <div class="card"><div class="table-container"><table class="table"><thead><tr><th>Rama</th><th>Admin</th><th>Actividad</th><th>Recursos</th><th>Tráfico</th><th>Plan</th><th>MRR</th><th>🔘</th><th></th></tr></thead><tbody id="tabla-ramas"><tr><td colspan="9"><div class="loading"><div class="spinner"></div></div></td></tr></tbody></table></div></div>
       </section>
 
       <!-- ESTIRPES -->
@@ -866,7 +866,97 @@ Soporte prioritario</textarea></div>
     }
     async function cargarLogs(){const s=await db.collection('logs').orderBy('fecha','desc').limit(100).get();logsData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('logs-lista').innerHTML=logsData.map(l=>`<div class="log-entry"><span class="log-time">${l.fecha?.toDate?.().toLocaleString('es')||'-'}</span><span class="log-icon">📋</span><div class="log-content"><span class="log-user">${l.usuario||'Sistema'}</span> <span class="log-action">${l.accion||''}</span></div></div>`).join('')||'<p class="empty-state">Sin logs</p>'}
     function exportarLogs(){const c='Fecha,Usuario,Acción\n'+logsData.map(l=>`"${l.fecha?.toDate?.().toISOString()||''}","${l.usuario||''}","${l.accion||''}"`).join('\n');descargar(c,'logs.csv','text/csv')}
-    async function cargarRamas(){const s=await db.collection('familias').get();ramasData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-ramas').innerHTML=ramasData.map(r=>`<tr><td><strong>${r.nombre||'-'}</strong></td><td>${r.adminNombre||'-'}</td><td>${r.totalNidos||0}</td><td>${r.totalMiembros||0}</td><td><span class="badge badge-${r.plan==='mega'||r.plan==='premium'?'warning':r.plan==='plus'?'info':'neutral'}">${r.plan||'Free'}</span>${r.descuentoPlan?` <span class="badge badge-success">-${r.descuentoPlan}%</span>`:''}</td><td>${r.fechaCreacion?.toDate?.().toLocaleDateString('es')||'-'}</td><td><button class="btn btn-sm btn-secondary" onclick="verRama('${r.id}')">👁️</button></td></tr>`).join('')||'<tr><td colspan="7" class="text-center">Sin datos</td></tr>'}
+    async function cargarRamas(){
+      // Cargar todas las colecciones necesarias
+      const [familiasSnap, usuariosSnap, nidosSnap, bienesSnap, invitacionesSnap] = await Promise.all([
+        db.collection('familias').get(),
+        db.collection('usuarios').get(),
+        db.collection('nidos').get(),
+        db.collection('bienes').get(),
+        db.collection('invitaciones-email').get()
+      ]);
+      
+      ramasData = familiasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const todosUsuarios = usuariosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const todosNidos = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const todosBienes = bienesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const todasInvitaciones = invitacionesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      // Cargar config de precios
+      const planesDoc = await db.collection('config').doc('planes').get();
+      const addonsDoc = await db.collection('config').doc('addons').get();
+      const preciosPlanes = planesDoc.exists ? planesDoc.data() : { gratuito: { precioMensual: 0 }, plus: { precioMensual: 5.99 }, premium: { precioMensual: 9.99 } };
+      const preciosAddons = addonsDoc.exists ? addonsDoc.data() : { mayordomo: { precio: 4.99 }, gerente: { precio: 9.99 }, capataz: { precio: 9.99 } };
+      
+      const filas = ramasData.map(r => {
+        // Calcular métricas para esta familia
+        const usuarios = todosUsuarios.filter(u => u.familiaId === r.id);
+        const usuariosActivos = usuarios.filter(u => u.estado === 'activo' || u.emailVerified || u.ultimoAcceso);
+        const nidos = todosNidos.filter(n => n.familiaId === r.id);
+        const bienes = todosBienes.filter(b => b.familiaId === r.id);
+        const invitaciones = todasInvitaciones.filter(i => i.familiaId === r.id);
+        
+        // Add-ons activos
+        let addonsActivos = 0;
+        bienes.forEach(b => {
+          if (b.mayordomoActivo) addonsActivos++;
+          if (b.gerenteActivo) addonsActivos++;
+          if (b.capatazActivo) addonsActivos++;
+        });
+        
+        // Emails enviados (invitaciones este mes)
+        const inicioMes = new Date();
+        inicioMes.setDate(1);
+        inicioMes.setHours(0, 0, 0, 0);
+        const emailsMes = invitaciones.filter(i => {
+          const fecha = i.fechaEnvio?.toDate?.() || i.createdAt?.toDate?.();
+          return fecha && fecha >= inicioMes;
+        }).length;
+        
+        // Almacenamiento estimado (simplificado: contar fotos * 500KB aprox)
+        const almacenamientoMB = Math.round((r.totalFotos || 0) * 0.5 + (r.totalDocumentos || 0) * 0.2);
+        
+        // MRR (Monthly Recurring Revenue)
+        const plan = (r.plan || 'gratuito').toLowerCase();
+        const descuentoPlan = (r.descuentoPlan || 0) / 100;
+        const descuentoAddon = (r.descuentoAddon || 0) / 100;
+        let mrr = 0;
+        if (plan === 'plus') mrr = (preciosPlanes.plus?.precioMensual || 5.99) * (1 - descuentoPlan);
+        else if (plan === 'premium' || plan === 'mega') mrr = (preciosPlanes.premium?.precioMensual || 9.99) * (1 - descuentoPlan);
+        
+        bienes.forEach(b => {
+          if (b.mayordomoActivo) mrr += (preciosAddons.mayordomo?.precio || 4.99) * (1 - descuentoAddon);
+          if (b.gerenteActivo) mrr += (preciosAddons.gerente?.precio || 9.99) * (1 - descuentoAddon);
+          if (b.capatazActivo) mrr += (preciosAddons.capataz?.precio || 9.99) * (1 - descuentoAddon);
+        });
+        
+        // Semáforo de actividad
+        const ahora = new Date();
+        const ultimaActividad = r.ultimaActividad?.toDate?.() || r.fechaCreacion?.toDate?.() || new Date(0);
+        const diasInactivo = Math.floor((ahora - ultimaActividad) / (1000 * 60 * 60 * 24));
+        let semaforo = '🟢'; // Activa
+        if (diasInactivo > 90) semaforo = '🔴'; // Inactiva
+        else if (diasInactivo > 30) semaforo = '🟡'; // Dormida
+        
+        // Admin nombre
+        const admin = usuarios.find(u => u.rol === 'admin-rama' || u.rol === 'AdminRama' || u.credencial === 'admin-rama');
+        const adminNombre = admin?.nombre || admin?.email?.split('@')[0] || r.adminNombre || '-';
+        
+        return `<tr>
+          <td><strong>${r.nombre || '-'}</strong></td>
+          <td>${adminNombre}</td>
+          <td><span title="Usuarios activos / Nidos">${usuariosActivos.length}👤 ${nidos.length}🪺</span></td>
+          <td><span title="Bienes / Add-ons activos">${bienes.length}🏠 ${addonsActivos}⚡</span></td>
+          <td><span title="Emails mes / Almacenamiento">📧${emailsMes} 💾${almacenamientoMB}MB</span></td>
+          <td><span class="badge badge-${plan === 'mega' || plan === 'premium' ? 'warning' : plan === 'plus' ? 'info' : 'neutral'}">${r.plan || 'Free'}</span>${r.descuentoPlan ? ` <span class="badge badge-success">-${r.descuentoPlan}%</span>` : ''}</td>
+          <td><strong>${mrr.toFixed(2)}€</strong></td>
+          <td title="${diasInactivo} días sin actividad">${semaforo}</td>
+          <td><button class="btn btn-sm btn-secondary" onclick="verRama('${r.id}')">👁️</button></td>
+        </tr>`;
+      }).join('');
+      
+      document.getElementById('tabla-ramas').innerHTML = filas || '<tr><td colspan="9" class="text-center">Sin datos</td></tr>';
+    }
     async function cargarEstirpes(){const s=await db.collection('nidos').get();nidosData=s.docs.map(x=>({id:x.id,...x.data()}));const estirpes=calcularEstirpes(nidosData);document.getElementById('tabla-estirpes').innerHTML=estirpes.map(e=>{const nidosHijos=nidosData.filter(n=>n.nidoOrigen===e.id).length;return`<tr><td><strong>${e.nombre||'-'}</strong></td><td>${e.ramaNombre||'-'}</td><td>${nidosHijos}</td><td>${e.generacion||'-'}</td><td>${e.miembros?.length||e.miembrosData?.length||0}</td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`}).join('')||'<tr><td colspan="6" class="text-center">Sin estirpes</td></tr>'}
     async function cargarNidos(){const s=await db.collection('nidos').get();nidosData=s.docs.map(d=>({id:d.id,...d.data()}));document.getElementById('tabla-nidos').innerHTML=nidosData.map(n=>`<tr><td><strong>${n.nombre||'-'}</strong></td><td>${n.ramaNombre||'-'}</td><td>${n.miembros?.length||0}</td><td>${n.adminNombre||'-'}</td><td>${n.generacion||1}</td><td><button class="btn btn-sm btn-secondary">👁️</button></td></tr>`).join('')||'<tr><td colspan="6" class="text-center">Sin datos</td></tr>'}
     async function cargarUsuarios(){
