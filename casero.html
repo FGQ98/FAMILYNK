@@ -2386,7 +2386,7 @@
                   grupoKey,
                   grupoNombre: grupo.nombre || grupoKey,
                   nombre: articulo.nombre || 'Sin nombre',
-                  stockActual: articulo.stock ?? articulo.stockActual ?? 0,
+                  stockActual: articulo.actual ?? articulo.stock ?? articulo.stockActual ?? 0,
                   stockMinimo: articulo.minimo ?? articulo.stockMinimo ?? 0,
                   categoria: articulo.categoria || 'otro',
                   unidad: articulo.unidad || ''
@@ -2965,14 +2965,18 @@
             const idx = parseInt(check.dataset.idx);
             const item = itemsReposicion[idx];
             if (item && item.id) {
-              // Buscar el producto en inventario y actualizar stock en campo del documento
               const invItem = datosModulos.inventario.find(i => i.id === item.id);
               if (invItem) {
-                const nuevoStock = (invItem.stockActual || 0) + (item.cantidad || 0);
-                const path = `inventario.${invItem.lugarKey}.grupos.${invItem.grupoKey}.articulos.${invItem.id}.actual`;
-                await db.collection('bienes').doc(bienId).update({
-                  [path]: nuevoStock
-                });
+                const docBien = await db.collection('bienes').doc(bienId).get();
+                const inv = docBien.data()?.inventario;
+                if (inv) {
+                  const artIdx = parseInt(invItem.id);
+                  if (inv[invItem.lugarKey]?.grupos?.[invItem.grupoKey]?.articulos?.[artIdx]) {
+                    const actual = inv[invItem.lugarKey].grupos[invItem.grupoKey].articulos[artIdx].actual || 0;
+                    inv[invItem.lugarKey].grupos[invItem.grupoKey].articulos[artIdx].actual = actual + (item.cantidad || 0);
+                    await db.collection('bienes').doc(bienId).update({ inventario: inv });
+                  }
+                }
               }
             }
           }
@@ -3231,13 +3235,18 @@
       const nuevoStock = Math.max(0, item.stockActual + delta);
       
       try {
-        // Actualizar campo anidado en el documento del bien (no subcolección)
-        const path = `inventario.${item.lugarKey}.grupos.${item.grupoKey}.articulos.${item.id}.actual`;
-        await db.collection('bienes').doc(bienActual.bienId).update({
-          [path]: nuevoStock
-        });
-        item.stockActual = nuevoStock;
-        renderModulos();
+        // Leer inventario completo, modificar en memoria, escribir de vuelta
+        const doc = await db.collection('bienes').doc(bienActual.bienId).get();
+        const inv = doc.data()?.inventario;
+        if (inv && inv[item.lugarKey]?.grupos?.[item.grupoKey]?.articulos) {
+          const idx = parseInt(item.id);
+          if (inv[item.lugarKey].grupos[item.grupoKey].articulos[idx]) {
+            inv[item.lugarKey].grupos[item.grupoKey].articulos[idx].actual = nuevoStock;
+            await db.collection('bienes').doc(bienActual.bienId).update({ inventario: inv });
+            item.stockActual = nuevoStock;
+            renderModulos();
+          }
+        }
       } catch (error) {
         console.error('Error ajustando inventario:', error);
         alert('Error al guardar: ' + error.message);
@@ -4613,7 +4622,11 @@
       btn.textContent = '⏳ Guardando...';
       
       try {
-        const batch = db.batch();
+        // Leer inventario completo del documento del bien
+        const doc = await db.collection('bienes').doc(bienActual.bienId).get();
+        const inv = doc.data()?.inventario;
+        if (!inv) throw new Error('No se encontró inventario en este bien');
+        
         let cambios = 0;
         
         inputs.forEach(input => {
@@ -4622,25 +4635,21 @@
           const item = datosModulos.inventario.find(i => i.id === itemId);
           
           if (item && item.stockActual !== nuevoValor) {
-            const ref = db.collection('bienes').doc(bienActual.bienId).collection('inventario').doc(itemId);
-            batch.update(ref, { 
-              stockActual: nuevoValor,
-              ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
-              tomadoPor: currentUser.uid
-            });
-            item.stockActual = nuevoValor;
-            cambios++;
+            const idx = parseInt(item.id);
+            if (inv[item.lugarKey]?.grupos?.[item.grupoKey]?.articulos?.[idx]) {
+              inv[item.lugarKey].grupos[item.grupoKey].articulos[idx].actual = nuevoValor;
+              item.stockActual = nuevoValor;
+              cambios++;
+            }
           }
         });
         
         if (cambios > 0) {
-          await batch.commit();
-          
-          // Registrar la toma
-          await db.collection('bienes').doc(bienActual.bienId).collection('tomasInventario').add({
-            fecha: firebase.firestore.FieldValue.serverTimestamp(),
-            realizadoPor: currentUser.uid,
-            itemsActualizados: cambios
+          // Una sola escritura con todo el inventario modificado
+          await db.collection('bienes').doc(bienActual.bienId).update({
+            inventario: inv,
+            ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
+            tomaPor: currentUser.uid
           });
         }
         
