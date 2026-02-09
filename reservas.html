@@ -465,25 +465,22 @@
 
     async function cargarSolicitudes() {
       try {
+        // Query simple sin orderBy para evitar índice compuesto
         const snap = await db.collection('bienes').doc(bienId).collection('reservas')
           .where('origen', '==', 'solicitud')
           .where('estado', '==', 'pendiente')
-          .orderBy('fechaCreacion', 'desc')
           .get();
         
         solicitudesPendientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Ordenar en cliente
+        solicitudesPendientes.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
         renderSolicitudes();
       } catch (e) { 
-        console.error('Error cargando solicitudes:', e); 
-        // Si falla por índice, intentar sin orderBy
-        try {
-          const snap = await db.collection('bienes').doc(bienId).collection('reservas')
-            .where('origen', '==', 'solicitud')
-            .where('estado', '==', 'pendiente')
-            .get();
-          solicitudesPendientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          renderSolicitudes();
-        } catch (e2) { console.error('Error cargando solicitudes (retry):', e2); }
+        console.error('Error cargando solicitudes:', e);
       }
     }
 
