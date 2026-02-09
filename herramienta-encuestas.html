@@ -1242,7 +1242,7 @@
       ocultarOpcionAutomatico();
     }
 
-    async function onBienSeleccionado() {
+    function onBienSeleccionado() {
       const select = document.getElementById('enc-bien');
       const bienId = select.value;
       
@@ -1277,68 +1277,16 @@
       }
       
       document.getElementById('bien-sin-addon').classList.add('hidden');
+      document.getElementById('modulo-check-wrapper').classList.add('hidden');
       
-      // Cargar módulos automáticamente y verificar si hay de tipo Reserva/Evento
-      await cargarModulosYVerificarAutomatico(bienId);
+      // Si tiene add-on activo, reservas/eventos siempre están disponibles
+      // Mostrar opción Automático directamente
+      vinculacionModulo = { id: 'reservas-eventos', nombre: 'Reservas/Eventos', esReservaEvento: true };
+      mostrarOpcionAutomatico();
     }
     
-    async function cargarModulosYVerificarAutomatico(bienId) {
-      try {
-        const snap = await db.collection('bienes').doc(bienId).collection('modulos').get();
-        modulosDelBien = snap.docs.map(doc => {
-          const data = doc.data();
-          const nombre = data.nombre || '';
-          return {
-            id: doc.id,
-            nombre: nombre,
-            esReservaEvento: /reserva|evento/i.test(nombre)
-          };
-        });
-        
-        // ¿Hay algún módulo de Reservas/Eventos?
-        const moduloReservaEvento = modulosDelBien.find(m => m.esReservaEvento);
-        
-        if (moduloReservaEvento) {
-          // Vinculación automática al módulo de reservas/eventos
-          vinculacionModulo = moduloReservaEvento;
-          mostrarOpcionAutomatico();
-          // Mostrar selector de módulo solo si hay más de uno de tipo reserva/evento
-          const modulosRE = modulosDelBien.filter(m => m.esReservaEvento);
-          if (modulosRE.length > 1) {
-            document.getElementById('modulo-check-wrapper').classList.remove('hidden');
-            document.getElementById('vincular-modulo-check').checked = true;
-            document.getElementById('modulo-selector-wrapper').classList.remove('hidden');
-            const select = document.getElementById('enc-modulo');
-            select.innerHTML = modulosRE.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
-          } else {
-            document.getElementById('modulo-check-wrapper').classList.add('hidden');
-          }
-        } else {
-          // No hay módulos de reserva/evento, ocultar opción automático
-          vinculacionModulo = null;
-          ocultarOpcionAutomatico();
-          document.getElementById('modulo-check-wrapper').classList.add('hidden');
-        }
-        
-      } catch (e) {
-        console.error('Error cargando módulos:', e);
-        modulosDelBien = [];
-        ocultarOpcionAutomatico();
-      }
-    }
-
     function toggleVincularModulo(checked) {
-      // Para selección manual de módulo diferente (si hay varios)
-      const wrapper = document.getElementById('modulo-selector-wrapper');
-      wrapper.classList.toggle('hidden', !checked);
-      
-      if (!checked) {
-        // Si desmarca, resetear a módulo detectado automáticamente
-        const moduloReservaEvento = modulosDelBien.find(m => m.esReservaEvento);
-        if (moduloReservaEvento) {
-          vinculacionModulo = moduloReservaEvento;
-        }
-      }
+      // Mantenemos por compatibilidad pero ya no se usa
     }
 
     async function onModuloSeleccionado() {
