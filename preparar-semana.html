@@ -1269,7 +1269,128 @@
         console.error('Error cargando preparación:', e);
       }
 
+      // Buscar reservas aprobadas para esta semana (crear borrador si no existe)
+      await verificarReservasAprobadas();
+
       renderAll();
+    }
+
+    // Buscar reservas/eventos aprobados para la semana actual y crear borrador si corresponde
+    async function verificarReservasAprobadas() {
+      try {
+        const lunesSemana = new Date(semanaActual);
+        const domingoSemana = new Date(semanaActual);
+        domingoSemana.setDate(domingoSemana.getDate() + 6);
+        domingoSemana.setHours(23, 59, 59, 999);
+
+        // Buscar reservas aprobadas
+        let reservasSemana = [];
+        try {
+          const reservasSnap = await db.collection('bienes').doc(bienId)
+            .collection('reservas')
+            .where('estado', '==', 'aprobada')
+            .get();
+
+          if (!reservasSnap.empty) {
+            reservasSemana = reservasSnap.docs.map(doc => ({
+              id: doc.id,
+              tipo: 'reserva',
+              ...doc.data()
+            })).filter(r => {
+              const inicio = r.fechaInicio?.toDate?.() || new Date(r.fechaInicio);
+              const fin = r.fechaFin?.toDate?.() || new Date(r.fechaFin);
+              return inicio <= domingoSemana && fin >= lunesSemana;
+            });
+          }
+        } catch (e) { console.log('Sin colección reservas'); }
+
+        // Buscar eventos aprobados
+        try {
+          const eventosSnap = await db.collection('bienes').doc(bienId)
+            .collection('eventos')
+            .where('estado', '==', 'aprobado')
+            .get();
+
+          if (!eventosSnap.empty) {
+            const eventosSemana = eventosSnap.docs.map(doc => ({
+              id: doc.id,
+              tipo: 'evento',
+              ...doc.data()
+            })).filter(e => {
+              const fecha = e.fecha?.toDate?.() || new Date(e.fecha);
+              return fecha >= lunesSemana && fecha <= domingoSemana;
+            });
+            reservasSemana = reservasSemana.concat(eventosSemana);
+          }
+        } catch (e) { console.log('Sin colección eventos'); }
+
+        if (reservasSemana.length === 0) return;
+
+        // Buscar si el usuario actual es solicitante de alguna reserva
+        const miReserva = reservasSemana.find(r => 
+          r.solicitante === currentUser.uid || 
+          r.solicitanteUid === currentUser.uid ||
+          r.creadoPor === currentUser.uid
+        );
+
+        if (!miReserva) return;
+
+        // Si ya tiene borrador con contenido, no sobrescribir
+        if (tieneContenido()) return;
+
+        // Calcular días de la reserva/evento que caen en esta semana
+        let inicio, fin;
+        if (miReserva.tipo === 'evento') {
+          // Evento: un solo día
+          const fecha = miReserva.fecha?.toDate?.() || new Date(miReserva.fecha);
+          inicio = fecha;
+          fin = fecha;
+        } else {
+          // Reserva: rango de fechas
+          inicio = miReserva.fechaInicio?.toDate?.() || new Date(miReserva.fechaInicio);
+          fin = miReserva.fechaFin?.toDate?.() || new Date(miReserva.fechaFin);
+        }
+        
+        const diasReserva = [];
+        const diasNombres = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+        
+        for (let d = new Date(Math.max(inicio.getTime(), lunesSemana.getTime())); 
+             d <= Math.min(fin.getTime(), domingoSemana.getTime()); 
+             d.setDate(d.getDate() + 1)) {
+          diasReserva.push(diasNombres[d.getDay()]);
+        }
+
+        // Actualizar días activos con los de la reserva
+        if (diasReserva.length > 0) {
+          diasActivos = DIAS_ORDEN.filter(d => diasReserva.includes(d));
+          renderMatricesHTML();
+        }
+
+        // Pre-poblar datos de personas si la reserva tiene info
+        if (miReserva.numPersonas || miReserva.personas) {
+          const numPersonas = miReserva.numPersonas || miReserva.personas || 0;
+          diasActivos.forEach(dia => {
+            preparacionData.personas.familiares[dia] = numPersonas;
+            preparacionData.personas.duermen[dia] = numPersonas;
+          });
+        }
+
+        // Añadir nota con info de la reserva/evento
+        const tipoLabel = miReserva.tipo === 'evento' ? '🎉 Evento' : '📅 Reserva';
+        if (miReserva.motivo || miReserva.notas || miReserva.titulo || miReserva.nombre) {
+          preparacionData.notas = `${tipoLabel}: ${miReserva.titulo || miReserva.nombre || miReserva.motivo || miReserva.notas || ''}`;
+        }
+
+        // Marcar como borrador desde reserva
+        preparacionData.reservaOrigen = miReserva.id;
+
+        // Guardar el borrador inicial automáticamente
+        await guardarBorrador(true);
+        
+        console.log('Borrador creado desde reserva aprobada:', miReserva.id);
+      } catch (e) {
+        console.error('Error verificando reservas:', e);
+      }
     }
 
     function renderAll() {
@@ -1457,7 +1578,7 @@
       });
     }
 
-    function toggleRol(pase, dia, rol) {
+    async function toggleRol(pase, dia, rol) {
       const key = `${pase}-${dia}`;
       if (!preparacionData.servicio[key]) {
         preparacionData.servicio[key] = [];
@@ -1470,6 +1591,7 @@
         arr.push(rol);
       }
       renderServicio();
+      await guardarBorrador(true);
     }
 
     // ========== MENAJE ==========
@@ -1522,12 +1644,13 @@
       `).join('');
     }
 
-    function toggleMenajeEspecial() {
+    async function toggleMenajeEspecial() {
       preparacionData.menajeEspecial = document.getElementById('menaje-especial').checked;
       renderMenaje();
+      await guardarBorrador(true);
     }
 
-    function toggleAjuar(id) {
+    async function toggleAjuar(id) {
       const idx = preparacionData.menajeAjuar.indexOf(id);
       if (idx >= 0) {
         preparacionData.menajeAjuar.splice(idx, 1);
@@ -1535,6 +1658,7 @@
         preparacionData.menajeAjuar.push(id);
       }
       renderMenaje();
+      await guardarBorrador(true);
     }
 
     // ========== PRODUCTOS ==========
@@ -1605,14 +1729,15 @@
 
     function editarMenaje(idx) { abrirModalMenaje(idx); }
 
-    function eliminarMenaje(idx) {
+    async function eliminarMenaje(idx) {
       if (!confirm('¿Eliminar este menaje?')) return;
       preparacionData.menaje.splice(idx, 1);
       renderMenaje();
       actualizarEstado();
+      await guardarBorrador(true);
     }
 
-    document.getElementById('form-menaje').addEventListener('submit', (e) => {
+    document.getElementById('form-menaje').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = {
         articulo: document.getElementById('menaje-articulo').value,
@@ -1629,6 +1754,7 @@
       cerrarModales();
       renderMenaje();
       actualizarEstado();
+      await guardarBorrador(true); // Auto-guardar
     });
 
     // ========== FUNCIONES PRODUCTOS ==========
@@ -1652,7 +1778,7 @@
 
     function editarProducto(tipo, idx) { abrirModalProducto(tipo, idx); }
 
-    function eliminarProducto(tipo, idx) {
+    async function eliminarProducto(tipo, idx) {
       if (!confirm('¿Eliminar este producto?')) return;
       if (tipo === 'aportado') {
         preparacionData.productosAportados.splice(idx, 1);
@@ -1661,9 +1787,10 @@
       }
       renderProductos();
       actualizarEstado();
+      await guardarBorrador(true);
     }
 
-    document.getElementById('form-producto').addEventListener('submit', (e) => {
+    document.getElementById('form-producto').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = {
         descripcion: document.getElementById('producto-descripcion').value,
@@ -1682,6 +1809,7 @@
       cerrarModales();
       renderProductos();
       actualizarEstado();
+      await guardarBorrador(true); // Auto-guardar
     });
 
     // ========== BORRADORES ==========
@@ -1842,14 +1970,15 @@
 
     function editarTarea(idx) { abrirModalTarea(idx); }
 
-    function eliminarTarea(idx) {
+    async function eliminarTarea(idx) {
       if (!confirm('¿Eliminar esta tarea?')) return;
       preparacionData.tareas.splice(idx, 1);
       renderTareas();
       actualizarEstado();
+      await guardarBorrador(true);
     }
 
-    document.getElementById('form-tarea').addEventListener('submit', (e) => {
+    document.getElementById('form-tarea').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = {
         titulo: document.getElementById('tarea-titulo').value,
@@ -1867,6 +1996,7 @@
       cerrarModales();
       renderTareas();
       actualizarEstado();
+      await guardarBorrador(true); // Auto-guardar
     });
 
     // ========== NOTAS ==========
