@@ -541,8 +541,18 @@
       const container = document.getElementById('toma-scroll');
       
       try {
-        const doc = await db.collection('bienes').doc(bienId).get();
-        inventarioToma = doc.data()?.inventario || null;
+        // 1. Primero intentar leer de la subcolección (última toma guardada)
+        const tomaDoc = await db.collection('bienes').doc(bienId)
+          .collection('tomasInventario').doc('current').get();
+        
+        if (tomaDoc.exists && tomaDoc.data()?.inventario) {
+          // Usar la última toma (tiene los valores actualizados)
+          inventarioToma = tomaDoc.data().inventario;
+        } else {
+          // 2. Si no existe toma previa, leer estructura del documento principal
+          const doc = await db.collection('bienes').doc(bienId).get();
+          inventarioToma = doc.data()?.inventario || null;
+        }
         
         loading.classList.add('hidden');
         
@@ -726,11 +736,13 @@
           inventarioToma[lugarKey].grupos[grupoKey].articulos[parseInt(idx)].actual = valor;
         }
         
-        await db.collection('bienes').doc(bienId).update({
-          inventario: inventarioToma,
-          ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
-          tomaPor: currentUser.uid
-        });
+        // Guardar en subcolección (todos los usuarios autenticados tienen permiso aquí)
+        await db.collection('bienes').doc(bienId)
+          .collection('tomasInventario').doc('current').set({
+            inventario: inventarioToma,
+            ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
+            tomaPor: currentUser.uid
+          });
         
         cambiosPendientes = false;
         mostrarToast('✓ Toma guardada correctamente', 'success');

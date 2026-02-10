@@ -897,13 +897,37 @@
 
     async function cargarInventario() {
       try {
+        // 1. Leer estructura base del documento principal
         const doc = await db.collection('bienes').doc(bienId).get();
         inventario = doc.data()?.inventario || {};
+        
+        // 2. Leer valores actualizados de la subcolección (si existe)
+        const tomaDoc = await db.collection('bienes').doc(bienId)
+          .collection('tomasInventario').doc('current').get();
+        
+        if (tomaDoc.exists && tomaDoc.data()?.inventario) {
+          // Usar el inventario de la última toma (tiene valores actualizados)
+          inventario = tomaDoc.data().inventario;
+        }
         
         renderLugaresTabs();
         actualizarContadores();
       } catch (error) {
         console.error('Error cargando inventario:', error);
+      }
+    }
+    
+    // Función auxiliar para sincronizar inventario a la subcolección
+    async function sincronizarInventarioSubcol() {
+      try {
+        await db.collection('bienes').doc(bienId)
+          .collection('tomasInventario').doc('current').set({
+            inventario: inventario,
+            ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
+            tomaPor: currentUser?.uid || 'admin'
+          });
+      } catch (error) {
+        console.error('Error sincronizando a subcolección:', error);
       }
     }
 
@@ -1061,6 +1085,7 @@
       
       try {
         await db.collection('bienes').doc(bienId).update({ inventario });
+        await sincronizarInventarioSubcol(); // Sincronizar a subcolección
         renderArticulos();
         actualizarContadores();
       } catch (error) {
@@ -1175,6 +1200,7 @@
       
       try {
         await db.collection('bienes').doc(bienId).update({ inventario });
+        await sincronizarInventarioSubcol(); // Sincronizar a subcolección
         cerrarModales();
         renderLugaresTabs();
         actualizarContadores();
@@ -1195,6 +1221,7 @@
       
       try {
         await db.collection('bienes').doc(bienId).update({ inventario });
+        await sincronizarInventarioSubcol(); // Sincronizar a subcolección
         cerrarModales();
         renderLugaresTabs();
         actualizarContadores();
@@ -1259,6 +1286,7 @@
       
       try {
         await db.collection('bienes').doc(bienId).update({ inventario });
+        await sincronizarInventarioSubcol(); // Sincronizar a subcolección
         cerrarModales();
         renderLugaresTabs();
         actualizarContadores();
@@ -1496,6 +1524,9 @@
         
         // Actualizar inventario local
         inventario = inventarioEdit;
+        
+        // Sincronizar a subcolección
+        await sincronizarInventarioSubcol();
         
         cerrarModales();
         renderLugaresTabs();
