@@ -730,19 +730,34 @@
       btn.innerHTML = '⏳ Guardando...';
       
       try {
+        // Contar artículos actualizados (para estadísticas)
+        const articulosActualizados = Object.keys(tomaData).length;
+        
         // Actualizar valores en inventarioToma
         for (const [key, valor] of Object.entries(tomaData)) {
           const [lugarKey, grupoKey, idx] = key.split('.');
           inventarioToma[lugarKey].grupos[grupoKey].articulos[parseInt(idx)].actual = valor;
         }
         
-        // Guardar en subcolección (todos los usuarios autenticados tienen permiso aquí)
-        await db.collection('bienes').doc(bienId)
-          .collection('tomasInventario').doc('current').set({
-            inventario: inventarioToma,
-            ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
-            tomaPor: currentUser.uid
-          });
+        const ahora = firebase.firestore.FieldValue.serverTimestamp();
+        const tomasRef = db.collection('bienes').doc(bienId).collection('tomasInventario');
+        
+        // 1. Guardar current (para lectura rápida)
+        await tomasRef.doc('current').set({
+          inventario: inventarioToma,
+          ultimaToma: ahora,
+          tomaPor: currentUser.uid
+        });
+        
+        // 2. Guardar histórico (para estadísticas mensuales)
+        await tomasRef.add({
+          fecha: ahora,
+          tomaPor: currentUser.uid,
+          articulosActualizados: articulosActualizados,
+          // Resumen rápido de estado
+          totalArticulos: contarTotalArticulos(),
+          articulosBajoStock: contarBajoStock()
+        });
         
         cambiosPendientes = false;
         mostrarToast('✓ Toma guardada correctamente', 'success');
@@ -759,6 +774,29 @@
         btn.disabled = false;
         btn.innerHTML = '💾 Guardar Toma';
       }
+    }
+    
+    // Funciones auxiliares para estadísticas
+    function contarTotalArticulos() {
+      let total = 0;
+      for (const lugar of Object.values(inventarioToma || {})) {
+        for (const grupo of Object.values(lugar.grupos || {})) {
+          total += (grupo.articulos || []).length;
+        }
+      }
+      return total;
+    }
+    
+    function contarBajoStock() {
+      let bajo = 0;
+      for (const lugar of Object.values(inventarioToma || {})) {
+        for (const grupo of Object.values(lugar.grupos || {})) {
+          for (const art of (grupo.articulos || [])) {
+            if ((art.actual || 0) < (art.minimo || 1)) bajo++;
+          }
+        }
+      }
+      return bajo;
     }
 
     function cancelarToma() {

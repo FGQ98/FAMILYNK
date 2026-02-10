@@ -1419,6 +1419,68 @@
           <button class="btn btn-primary" onclick="guardarPermisosExternos()" id="btn-guardar-permisos-ext">💾 Guardar permisos</button>
         </div>
       </div>
+
+      <!-- ESTADÍSTICAS MENSUALES DE EXTERNOS -->
+      <div class="card">
+        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <span>📈 Estadísticas Mensuales</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn btn-sm btn-secondary" onclick="cambiarMesEstadisticas(-1)">◀</button>
+            <span id="stats-mes-label" style="min-width: 120px; text-align: center; font-weight: 600;">Febrero 2026</span>
+            <button class="btn btn-sm btn-secondary" onclick="cambiarMesEstadisticas(1)">▶</button>
+            <button class="btn btn-sm btn-secondary" onclick="cargarEstadisticasExternos()" title="Actualizar">🔄</button>
+          </div>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Actividad registrada por los colaboradores externos en el mes seleccionado
+        </p>
+        
+        <div id="stats-externos-loading" style="text-align: center; padding: 40px; display: none;">
+          <div class="spinner" style="margin: 0 auto;"></div>
+          <p style="margin-top: 12px; color: var(--text-muted);">Calculando estadísticas...</p>
+        </div>
+        
+        <div id="stats-externos-content">
+          <!-- Grid de métricas -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;">
+            <!-- Inventario -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #E3F2FD, #BBDEFB); padding: 16px; border-radius: 12px;">
+              <div style="font-size: 0.8rem; color: #1565C0; font-weight: 600; margin-bottom: 8px;">📦 INVENTARIO</div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 0.85rem; color: #1976D2;">Tomas realizadas</span>
+                <span style="font-weight: 700; color: #0D47A1;" id="stat-tomas">0</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="font-size: 0.85rem; color: #1976D2;">Artículos actualizados</span>
+                <span style="font-weight: 700; color: #0D47A1;" id="stat-articulos">0</span>
+              </div>
+            </div>
+            
+            <!-- Mantenimiento -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #FFF3E0, #FFE0B2); padding: 16px; border-radius: 12px;">
+              <div style="font-size: 0.8rem; color: #E65100; font-weight: 600; margin-bottom: 8px;">🔧 MANTENIMIENTO</div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 0.85rem; color: #F57C00;">Averías reportadas</span>
+                <span style="font-weight: 700; color: #E65100;" id="stat-averias">0</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 0.85rem; color: #F57C00;">Reparaciones completadas</span>
+                <span style="font-weight: 700; color: #E65100;" id="stat-reparaciones">0</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="font-size: 0.85rem; color: #F57C00;">Tiempo medio resolución</span>
+                <span style="font-weight: 700; color: #E65100;" id="stat-tiempo-medio">— días</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Mensaje si no hay datos -->
+          <div id="stats-empty" style="text-align: center; padding: 20px; color: var(--text-muted); display: none;">
+            <span style="font-size: 2rem; opacity: 0.5;">📊</span>
+            <p style="margin-top: 8px;">No hay actividad registrada en este mes</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- SECCIÓN PLANTILLAS DE NORMAS -->
@@ -2659,6 +2721,10 @@
       
       renderExternos();
       cargarConfigExternos();
+      
+      // Cargar estadísticas mensuales
+      actualizarLabelMes();
+      cargarEstadisticasExternos();
     }
 
     function renderExternos() {
@@ -2739,6 +2805,126 @@
       
       html += '</tbody></table>';
       container.innerHTML = html;
+    }
+
+    // ============ ESTADÍSTICAS MENSUALES DE EXTERNOS ============
+    let statsExternosMes = new Date(); // Mes actual por defecto
+    
+    function cambiarMesEstadisticas(delta) {
+      statsExternosMes.setMonth(statsExternosMes.getMonth() + delta);
+      actualizarLabelMes();
+      cargarEstadisticasExternos();
+    }
+    
+    function actualizarLabelMes() {
+      const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const label = document.getElementById('stats-mes-label');
+      if (label) {
+        label.textContent = `${meses[statsExternosMes.getMonth()]} ${statsExternosMes.getFullYear()}`;
+      }
+    }
+    
+    async function cargarEstadisticasExternos() {
+      const loading = document.getElementById('stats-externos-loading');
+      const content = document.getElementById('stats-externos-content');
+      const empty = document.getElementById('stats-empty');
+      
+      if (!loading || !content) return;
+      
+      loading.style.display = 'block';
+      content.style.opacity = '0.5';
+      
+      // Calcular rango del mes
+      const inicioMes = new Date(statsExternosMes.getFullYear(), statsExternosMes.getMonth(), 1);
+      const finMes = new Date(statsExternosMes.getFullYear(), statsExternosMes.getMonth() + 1, 0, 23, 59, 59);
+      
+      let totalTomas = 0;
+      let totalArticulos = 0;
+      let totalAverias = 0;
+      let totalReparaciones = 0;
+      let tiemposResolucion = [];
+      
+      try {
+        const bienesConAddon = bienesData.filter(b => b.mayordomoActivo || b.gerenteActivo || b.capatazActivo);
+        
+        for (const bien of bienesConAddon) {
+          // 1. Tomas de inventario del mes
+          try {
+            const tomasSnap = await db.collection('bienes').doc(bien.id)
+              .collection('tomasInventario')
+              .where('fecha', '>=', inicioMes)
+              .where('fecha', '<=', finMes)
+              .get();
+            
+            tomasSnap.docs.forEach(doc => {
+              const data = doc.data();
+              if (doc.id !== 'current') { // Excluir documento current
+                totalTomas++;
+                totalArticulos += data.articulosActualizados || 0;
+              }
+            });
+          } catch (e) { console.log('Sin tomas en', bien.nombre); }
+          
+          // 2. Reparaciones completadas del mes
+          try {
+            const reparacionesSnap = await db.collection('bienes').doc(bien.id)
+              .collection('reparaciones')
+              .where('fechaCompletado', '>=', inicioMes)
+              .where('fechaCompletado', '<=', finMes)
+              .get();
+            
+            reparacionesSnap.docs.forEach(doc => {
+              const data = doc.data();
+              totalReparaciones++;
+              
+              // Calcular tiempo de resolución si hay fecha de creación
+              if (data.creado && data.fechaCompletado) {
+                const fechaCreado = data.creado.toDate ? data.creado.toDate() : new Date(data.creado);
+                const fechaCompletado = data.fechaCompletado.toDate ? data.fechaCompletado.toDate() : new Date(data.fechaCompletado);
+                const dias = Math.round((fechaCompletado - fechaCreado) / (1000 * 60 * 60 * 24));
+                if (dias >= 0) tiemposResolucion.push(dias);
+              }
+            });
+          } catch (e) { console.log('Sin reparaciones completadas en', bien.nombre); }
+        }
+        
+        // 3. Averías reportadas del mes (desde solicitudes)
+        try {
+          const averiasSnap = await db.collection('solicitudes')
+            .where('familiaId', '==', currentFamilia.id)
+            .where('tipo', '==', 'averia')
+            .where('fechaCreacion', '>=', inicioMes)
+            .where('fechaCreacion', '<=', finMes)
+            .get();
+          
+          totalAverias = averiasSnap.docs.length;
+        } catch (e) { console.log('Error cargando averías:', e); }
+        
+        // Calcular tiempo medio
+        let tiempoMedio = '—';
+        if (tiemposResolucion.length > 0) {
+          const media = tiemposResolucion.reduce((a, b) => a + b, 0) / tiemposResolucion.length;
+          tiempoMedio = media < 1 ? '<1' : Math.round(media);
+        }
+        
+        // Actualizar UI
+        document.getElementById('stat-tomas').textContent = totalTomas;
+        document.getElementById('stat-articulos').textContent = totalArticulos;
+        document.getElementById('stat-averias').textContent = totalAverias;
+        document.getElementById('stat-reparaciones').textContent = totalReparaciones;
+        document.getElementById('stat-tiempo-medio').textContent = `${tiempoMedio} días`;
+        
+        // Mostrar/ocultar mensaje vacío
+        const hayDatos = totalTomas > 0 || totalArticulos > 0 || totalAverias > 0 || totalReparaciones > 0;
+        if (empty) empty.style.display = hayDatos ? 'none' : 'block';
+        
+      } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+      }
+      
+      loading.style.display = 'none';
+      content.style.opacity = '1';
     }
 
     // ============ PERMISOS EXTERNOS POR ÁREA ============

@@ -2903,16 +2903,29 @@
     async function guardarReparacion(e) {
       e.preventDefault();
       const id = document.getElementById('reparacion-id').value;
+      const estadoNuevo = document.getElementById('reparacion-estado').value;
+      
       const data = {
         titulo: document.getElementById('reparacion-titulo').value.trim(),
         descripcion: document.getElementById('reparacion-descripcion').value.trim(),
-        estado: document.getElementById('reparacion-estado').value,
+        estado: estadoNuevo,
         prioridad: document.getElementById('reparacion-prioridad').value,
         fecha: document.getElementById('reparacion-fecha').value,
         coste: parseFloat(document.getElementById('reparacion-coste').value) || null,
         responsable: document.getElementById('reparacion-responsable').value.trim(),
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
       };
+      
+      // Si se marca como completada, registrar fecha y quién completó
+      if (estadoNuevo === 'completada') {
+        // Verificar si ya tenía fechaCompletado (para no sobrescribir)
+        const reparacionExistente = reparaciones.find(r => r.id === id);
+        if (!reparacionExistente?.fechaCompletado) {
+          data.fechaCompletado = firebase.firestore.FieldValue.serverTimestamp();
+          data.completadoPor = currentUser.uid;
+        }
+      }
+      
       try {
         const ref = db.collection('bienes').doc(bienId).collection('reparaciones');
         if (id) { await ref.doc(id).update(data); }
