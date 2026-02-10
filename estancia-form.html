@@ -304,6 +304,8 @@
     .btn-secondary { background: var(--cream-dark); color: var(--text); }
     .btn-estancia { background: var(--estancia); color: var(--white); }
     .btn-estancia:hover:not(:disabled) { background: var(--sage-dark); }
+    .btn-enviar-externo { background: var(--terracotta); color: var(--white); }
+    .btn-enviar-externo:hover:not(:disabled) { background: #A85D42; }
 
     /* ========== MODAL ========== */
     .modal-overlay {
@@ -612,6 +614,7 @@
 
   <div class="footer-actions" id="footer-actions" style="display:none;">
     <button class="btn btn-secondary" onclick="volverAtras()">Cancelar</button>
+    <button class="btn btn-enviar-externo hidden" id="btn-enviar-externo" onclick="enviarAExternos()">📤 Enviar a externos</button>
     <button class="btn btn-estancia" id="btn-enviar" onclick="guardarEstancia()">📋 Crear estancia</button>
   </div>
 
@@ -846,6 +849,7 @@
       const badge = document.querySelector('.header-badge');
       const infoTitle = document.getElementById('info-card-title');
       const btnEnviar = document.getElementById('btn-enviar');
+      const btnEnviarExterno = document.getElementById('btn-enviar-externo');
       
       if (modoEdicion) {
         titulo.textContent = '✏️ Editar Estancia';
@@ -856,6 +860,16 @@
         btnEnviar.textContent = '💾 Guardar cambios';
         // Deshabilitar cambio de bien
         document.getElementById('sol-bien').disabled = true;
+        
+        // Mostrar botón "Enviar a externos" si estado = borrador
+        if (estanciaOriginal && estanciaOriginal.estado === 'borrador') {
+          btnEnviarExterno.classList.remove('hidden');
+        } else if (estanciaOriginal && estanciaOriginal.estado === 'enviado') {
+          // Ya enviado, mostrar indicador
+          badge.textContent = '✅ Enviado';
+          badge.style.background = 'var(--sage-muted)';
+          badge.style.color = 'var(--sage-dark)';
+        }
       } else {
         titulo.textContent = '📋 Nueva Estancia';
         badge.textContent = 'Nueva';
@@ -1848,6 +1862,85 @@
         }
       } catch (e) {
         console.error('Error notificando:', e);
+      }
+    }
+
+    async function enviarAExternos() {
+      if (!modoEdicion || !estanciaOriginal) {
+        alert('Primero guarda la estancia');
+        return;
+      }
+
+      // Primero guardar cambios pendientes
+      await guardarEstancia();
+
+      const bienId = estanciaOriginal.bienId;
+      
+      try {
+        // Cargar caseros del bien
+        const caserosSnap = await db.collection('bienes').doc(bienId).collection('caseros').get();
+        const caseros = caserosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        if (caseros.length === 0) {
+          alert('No hay externos (caseros) configurados para este bien.\nConfigúralos primero en la ficha del bien.');
+          return;
+        }
+
+        const nombreEstancia = estanciaOriginal.nombre || estanciaOriginal.tipoReservaNombre || 'Estancia';
+        const nombresExternos = caseros.map(c => c.nombre || c.email).join(', ');
+        
+        if (!confirm(`¿Enviar información de "${nombreEstancia}" a los externos?\n\nDestinatarios: ${nombresExternos}`)) {
+          return;
+        }
+
+        // Actualizar estado de la estancia
+        await db.collection('bienes').doc(bienId).collection('estancias').doc(estanciaId).update({
+          estado: 'enviado',
+          colorCalendario: 'color',
+          enviadoA: {
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            por: currentUser.uid,
+            porNombre: userData?.nombre || currentUser.email,
+            externos: caseros.map(c => ({ id: c.id, nombre: c.nombre, email: c.email }))
+          }
+        });
+
+        // Crear notificación para cada casero
+        const destinatariosCaseros = caseros.map(c => c.userId).filter(Boolean);
+        
+        if (destinatariosCaseros.length > 0) {
+          await db.collection('notificaciones').add({
+            tipo: 'accion',
+            categoria: 'estancia-externo',
+            titulo: `🏠 Nueva estancia: ${nombreEstancia}`,
+            mensaje: `Se ha programado una estancia del ${estanciaOriginal.fechaInicio} al ${estanciaOriginal.fechaFin}`,
+            familiaId: currentFamilia.id,
+            bienId: bienId,
+            destinatarios: destinatariosCaseros,
+            leidoPor: [],
+            completadoPor: [],
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+            fechaExpiracion: new Date(new Date(estanciaOriginal.fechaFin).getTime() + 7 * 24 * 60 * 60 * 1000),
+            enlace: `casero.html?id=${bienId}`,
+            origen: { tipo: 'estancia', bienId: bienId, id: estanciaId },
+            estado: 'activa'
+          });
+        }
+
+        alert('✅ Información enviada a los externos.\nLa estancia ahora aparece en color en el calendario.');
+        
+        // Actualizar UI
+        estanciaOriginal.estado = 'enviado';
+        estanciaOriginal.colorCalendario = 'color';
+        document.getElementById('btn-enviar-externo').classList.add('hidden');
+        const badge = document.querySelector('.header-badge');
+        badge.textContent = '✅ Enviado';
+        badge.style.background = 'var(--sage-muted)';
+        badge.style.color = 'var(--sage-dark)';
+
+      } catch (error) {
+        console.error('Error enviando a externos:', error);
+        alert('Error al enviar: ' + (error.message || 'Inténtalo de nuevo'));
       }
     }
 
