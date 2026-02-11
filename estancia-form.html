@@ -912,20 +912,28 @@
       try {
         const bienId = estanciaOriginal.bienId;
         await db.collection('bienes').doc(bienId).collection('estancias').doc(estanciaId).delete();
+        console.log('✅ Estancia eliminada');
         
-        // También eliminar notificaciones relacionadas
-        const notifsSnap = await db.collection('notificaciones')
-          .where('origen.id', '==', estanciaId)
-          .get();
-        
-        const batch = db.batch();
-        notifsSnap.docs.forEach(doc => batch.delete(doc.ref));
-        if (notifsSnap.docs.length > 0) await batch.commit();
+        // Intentar eliminar notificaciones relacionadas (no crítico si falla)
+        try {
+          const notifsSnap = await db.collection('notificaciones')
+            .where('origen.id', '==', estanciaId)
+            .get();
+          
+          if (notifsSnap.docs.length > 0) {
+            const batch = db.batch();
+            notifsSnap.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            console.log('✅ Notificaciones eliminadas:', notifsSnap.docs.length);
+          }
+        } catch (e) {
+          console.warn('⚠️ No se pudieron eliminar notificaciones (no crítico):', e.message);
+        }
 
         alert('✅ Estancia eliminada');
         volverAtras();
       } catch (error) {
-        console.error('Error eliminando:', error);
+        console.error('Error eliminando estancia:', error);
         alert('Error al eliminar: ' + (error.message || 'Inténtalo de nuevo'));
       }
     }
