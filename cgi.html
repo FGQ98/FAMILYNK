@@ -752,6 +752,11 @@
     .cta-asistencia { border-color: #9C27B0; }
     .cta-asistencia:hover { background: rgba(156, 39, 176, 0.1); border-color: #7B1FA2; }
 
+    .cta-encuestar { border-color: #F9A825; }
+    .cta-encuestar:hover { background: rgba(249, 168, 37, 0.15); border-color: #F57F17; }
+    .cta-convocar { border-color: #00897B; }
+    .cta-convocar:hover { background: rgba(0, 137, 123, 0.1); border-color: #00695C; }
+
     /* ============ MODALES ============ */
     .modal-overlay {
       position: fixed;
@@ -3145,6 +3150,10 @@
         <button class="cta-btn cta-convocar" id="cta-convocar" onclick="abrirModalConvocatoria()">
           <span class="cta-icon">✋</span>
           <span class="cta-label">Convocar</span>
+        </button>
+        <button class="cta-btn cta-encuestar" id="cta-encuestar" onclick="window.location.href='herramienta-encuestas.html'">
+          <span class="cta-icon">⭐</span>
+          <span class="cta-label">Encuestar</span>
         </button>
       </div>
 
@@ -6350,10 +6359,7 @@
         `<div class="notif-remitente">De: ${n.remitenteNombre}</div>` : '';
 
       // Botón eliminar solo para el creador o admins
-      const rolLower = String(userData?.rol || '').toLowerCase();
-      const credLower = String(userData?.credencial || userData?.credenciales || '').toLowerCase();
-      const esAdminRamaLocal = rolLower.includes('admin') || credLower.includes('admin') || 
-        userData?.esAdmin === true || userData?.adminRama === true || userData?.superAdmin === true;
+      const esAdminRamaLocal = userData?.rol === 'adminRama' || userData?.rol === 'AdminRama' || userData?.rol === 'admin-rama' || userData?.esAdmin;
       const puedeEliminar = n.remitente === currentUser.uid || n.creadoPor === currentUser.uid || esAdminRamaLocal;
       const btnEliminar = puedeEliminar ? 
         `<button class="notif-eliminar" onclick="event.stopPropagation(); eliminarNotificacion('${sourceId}', '${sourceType}')" title="Eliminar">🗑️</button>` : '';
@@ -8317,7 +8323,7 @@
 
     // ============ SOLICITAR — REDIRIGIR DIRECTO ============
     function abrirModalSolicitar() {
-      window.location.href = 'estancia-form.html';
+      window.location.href = 'solicitud-preparacion.html';
     }
 
     // ============ MODAL CONFIRMACIÓN FINDE ============
@@ -9140,14 +9146,11 @@
       if (!container) return;
       
       try {
-        // Determinar si es admin (buscar en rol y credenciales)
-        const rolLower = String(userData?.rol || '').toLowerCase();
-        const credLower = String(userData?.credencial || userData?.credenciales || '').toLowerCase();
-        const esAdmin = rolLower.includes('admin') || credLower.includes('admin') ||
-                        userData?.esAdmin === true || userData?.adminRama === true;
+        // Determinar si es admin
+        const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
         const familiaId = currentFamilia?.id || familiaData?.id;
         
-        console.log('Cargando respondidas tablón - esAdmin:', esAdmin, 'rol:', userData?.rol, 'familiaId:', familiaId);
+        console.log('Cargando respondidas tablón - esAdmin:', esAdmin, 'familiaId:', familiaId);
         
         let snap;
         if (esAdmin && familiaId) {
@@ -9252,8 +9255,7 @@
       
       // Copiar contenido de tablón desktop
       const tablonDesktop = document.getElementById('tablon-list');
-      console.log('Tablón desktop innerHTML:', tablonDesktop?.innerHTML?.substring(0, 100) || 'VACÍO');
-      if (tablonDesktop && tablonDesktop.innerHTML && !tablonDesktop.innerHTML.includes('Sin novedades')) {
+      if (tablonDesktop && tablonDesktop.innerHTML) {
         tablonContainer.innerHTML = tablonDesktop.innerHTML;
       } else {
         tablonContainer.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📢</div>Sin novedades</div>';
@@ -9273,15 +9275,14 @@
         chatBadge.style.display = mensajesNoLeidos > 0 ? 'inline-block' : 'none';
       }
       
-      // Contar notificaciones de acción (arreglado selector)
-      const notifAccion = tablonContainer.querySelectorAll('.mensaje-item.notif-accion').length;
-      const totalItems = tablonContainer.querySelectorAll('.mensaje-item').length;
+      // Contar notificaciones de acción
+      const notifAccion = tablonContainer.querySelectorAll('.notif-item.accion').length;
       if (notifBadge) {
-        notifBadge.textContent = notifAccion || totalItems;
-        notifBadge.style.display = (notifAccion > 0 || totalItems > 0) ? 'inline-block' : 'none';
+        notifBadge.textContent = notifAccion;
+        notifBadge.style.display = notifAccion > 0 ? 'inline-block' : 'none';
       }
       
-      console.log('Buzón renderizado - Mensajes:', mensajesNoLeidos, 'Notifs acción:', notifAccion, 'Total items:', totalItems);
+      console.log('Buzón renderizado - Mensajes:', mensajesNoLeidos, 'Notifs:', notifAccion);
     }
 
     async function cargarRespondidasBuzon() {
@@ -9291,14 +9292,11 @@
       if (!container) return;
       
       try {
-        // Determinar si es admin (buscar en rol y credenciales)
-        const rolLower = String(userData?.rol || '').toLowerCase();
-        const credLower = String(userData?.credencial || userData?.credenciales || '').toLowerCase();
-        const esAdmin = rolLower.includes('admin') || credLower.includes('admin') ||
-                        userData?.esAdmin === true || userData?.adminRama === true;
+        // Determinar si es admin
+        const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
         const familiaId = currentFamilia?.id || familiaData?.id;
         
-        console.log('Cargando respondidas - esAdmin:', esAdmin, 'rol:', userData?.rol, 'familiaId:', familiaId, 'uid:', currentUser?.uid);
+        console.log('Cargando respondidas - esAdmin:', esAdmin, 'familiaId:', familiaId, 'uid:', currentUser?.uid);
         
         if (!familiaId && !currentUser?.uid) {
           console.error('No hay familiaId ni uid para buscar respondidas');
