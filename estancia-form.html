@@ -828,7 +828,7 @@
       // Si viene bienId de Mayordomo, preseleccionarlo
       if (bienIdParam) {
         document.getElementById('sol-bien').value = bienIdParam;
-        await alSeleccionarBien();
+        await onBienChange();
       }
 
       // Si es modo edición, cargar estancia existente
@@ -919,7 +919,7 @@
         
         // Seleccionar bien
         document.getElementById('sol-bien').value = bienIdEstancia;
-        await alSeleccionarBien();
+        await onBienChange();
 
         // Rellenar campos básicos
         document.getElementById('sol-nombre').value = estanciaOriginal.nombre || '';
@@ -988,6 +988,8 @@
       try {
         const snap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
         dependenciasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('📍 Dependencias cargadas:', dependenciasData.length, dependenciasData);
+        
         const zonasMap = {};
         dependenciasData.forEach(dep => {
           const ubicacion = dep.zona || 'Sin asignar';
@@ -997,6 +999,7 @@
           zonasMap[ubicacion].dependencias.push(dep);
         });
         zonasData = Object.values(zonasMap);
+        console.log('📍 Zonas generadas:', zonasData.length, zonasData);
       } catch (e) {
         console.error('Error zonas:', e);
         zonasData = []; dependenciasData = [];
@@ -1216,7 +1219,12 @@
     // RENDER ZONAS (idéntico a preparar-semana)
     // ========================================
     function renderZonas() {
+      console.log('📍 renderZonas llamado, zonasData:', zonasData.length);
       const container = document.getElementById('zonas-container');
+      if (!container) {
+        console.error('❌ zonas-container no encontrado');
+        return;
+      }
       const count = preparacionData.zonas.length;
       document.getElementById('count-zonas').textContent = count;
 
