@@ -1126,6 +1126,64 @@
       margin-bottom: 16px;
     }
 
+    /* Bloques colapsables */
+    .bloque-colapsable {
+      background: var(--cream-medium);
+      border-radius: var(--radius-md);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    
+    .bloque-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .bloque-header:hover { background: var(--cream-dark); }
+    
+    .bloque-header-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .bloque-header-icon { font-size: 1.1rem; }
+    .bloque-header-titulo { font-weight: 600; font-size: 0.85rem; }
+    .bloque-header-badge {
+      background: var(--terracotta);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .bloque-header-badge.success { background: var(--sage); }
+    .bloque-header-badge.neutral { background: var(--text-muted); }
+    
+    .bloque-header-arrow {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+    
+    .bloque-colapsable.expanded .bloque-header-arrow { transform: rotate(180deg); }
+    
+    .bloque-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+      padding: 0 14px;
+    }
+    
+    .bloque-colapsable.expanded .bloque-body {
+      max-height: 500px;
+      padding: 0 14px 14px 14px;
+    }
+
     .pedido-seccion-titulo {
       font-size: 0.7rem;
       text-transform: uppercase;
@@ -1165,6 +1223,10 @@
     .necesidad-cantidad.danger { 
       background: var(--terracotta-muted); 
       color: var(--terracotta); 
+    }
+    .necesidad-cantidad.neutral { 
+      background: var(--sage-muted); 
+      color: var(--sage-dark); 
     }
 
     .solicitud-estancia-header {
@@ -1387,6 +1449,98 @@
     }
 
     .modal-body { padding: 20px; }
+
+    /* Estilos Detalle Estancia */
+    .estancia-detalle-header {
+      background: var(--sage-muted);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      margin-bottom: 16px;
+    }
+    .estancia-detalle-nombre {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--sage-dark);
+      margin-bottom: 8px;
+    }
+    .estancia-detalle-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+      margin-bottom: 6px;
+    }
+    .estancia-detalle-org {
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .estancia-detalle-seccion {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--cream-dark);
+    }
+    .estancia-detalle-seccion:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .estancia-detalle-seccion-titulo {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .estancia-detalle-lista {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .estancia-detalle-tag {
+      background: var(--cream-medium);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+    }
+    .estancia-detalle-tabla {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .estancia-detalle-fila {
+      display: flex;
+      gap: 12px;
+      padding: 8px 10px;
+      background: var(--cream-medium);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+    }
+    .estancia-detalle-fila-fecha {
+      font-weight: 600;
+      min-width: 50px;
+    }
+    .estancia-detalle-item {
+      padding: 8px 10px;
+      background: var(--cream-medium);
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .estancia-detalle-asignado {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .estancia-detalle-notas {
+      background: var(--cream-medium);
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+    }
 
     .modal-footer {
       padding: 0 20px 20px;
@@ -2890,19 +3044,19 @@
 
     // ========== PEDIDOS ==========
     function renderModuloPedidos() {
-      // BLOQUE A: Necesidades de Inventario (stock actual < stock mínimo)
+      // BLOQUE 1: Desfase de Inventario (stock actual < stock mínimo)
       const inventario = datosModulos.inventario || [];
-      const necesidades = inventario.filter(item => {
+      const desfases = inventario.filter(item => {
         const actual = item.stockActual || 0;
         const minimo = item.stockMinimo || 0;
         return minimo > 0 && actual < minimo;
       });
 
-      let htmlNecesidades = '';
-      if (necesidades.length === 0) {
-        htmlNecesidades = '<div class="pedido-seccion-empty">✅ Inventario completo</div>';
+      let htmlDesfase = '';
+      if (desfases.length === 0) {
+        htmlDesfase = '<div class="pedido-seccion-empty">✅ Inventario completo</div>';
       } else {
-        htmlNecesidades = necesidades.slice(0, 8).map(item => {
+        htmlDesfase = desfases.map(item => {
           const falta = (item.stockMinimo || 0) - (item.stockActual || 0);
           return `
             <div class="necesidad-item">
@@ -2916,7 +3070,7 @@
         }).join('');
       }
 
-      // BLOQUE B: Solicitudes de la próxima estancia
+      // Obtener próxima estancia
       const estancias = datosModulos.estancias || [];
       const hoy = new Date();
       const proximaEstancia = estancias.find(e => {
@@ -2924,79 +3078,110 @@
         return fechaInicio && fechaInicio >= hoy;
       });
 
-      let htmlSolicitudes = '';
+      const nombreEstancia = proximaEstancia?.nombre || 'Próxima estancia';
+      const fechaEstancia = proximaEstancia?.fechaInicio ? 
+        parseDate(proximaEstancia.fechaInicio)?.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+
+      // BLOQUE 2: Necesidades de Estancia (productosSolicitados - la casa compra)
+      const productosSolicitados = proximaEstancia?.preparacion?.productosSolicitados || [];
+      let htmlNecesidades = '';
       if (!proximaEstancia) {
-        htmlSolicitudes = '<div class="pedido-seccion-empty">Sin estancias próximas</div>';
+        htmlNecesidades = '<div class="pedido-seccion-empty">Sin estancias próximas</div>';
+      } else if (productosSolicitados.length === 0) {
+        htmlNecesidades = '<div class="pedido-seccion-empty">Sin productos solicitados</div>';
       } else {
-        const productosSolicitados = proximaEstancia.preparacion?.productosSolicitados || [];
-        if (productosSolicitados.length === 0) {
-          htmlSolicitudes = '<div class="pedido-seccion-empty">Sin solicitudes de compra</div>';
-        } else {
-          const nombreEstancia = proximaEstancia.nombre || 'Próxima estancia';
-          const fechaStr = proximaEstancia.fechaInicio ? 
-            parseDate(proximaEstancia.fechaInicio)?.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
-          
-          htmlSolicitudes = `<div class="solicitud-estancia-header">📅 ${nombreEstancia} (${fechaStr})</div>`;
-          htmlSolicitudes += productosSolicitados.slice(0, 8).map(prod => `
-            <div class="necesidad-item">
-              <div class="necesidad-info">
-                <div class="necesidad-nombre">${prod.nombre || prod}</div>
-                ${prod.notas ? `<div class="necesidad-ubicacion">${prod.notas}</div>` : ''}
-              </div>
-              <div class="necesidad-cantidad">${prod.cantidad || 1} ${prod.unidad || 'uds'}</div>
+        htmlNecesidades = productosSolicitados.map(prod => `
+          <div class="necesidad-item">
+            <div class="necesidad-info">
+              <div class="necesidad-nombre">${prod.nombre || prod}</div>
+              ${prod.notas ? `<div class="necesidad-ubicacion">${prod.notas}</div>` : ''}
             </div>
-          `).join('');
-        }
+            <div class="necesidad-cantidad">${prod.cantidad || 1} ${prod.unidad || 'uds'}</div>
+          </div>
+        `).join('');
       }
 
-      // También mostrar pedidos tradicionales si existen
-      const pedidos = datosModulos.pedidos || [];
-      const pendientes = pedidos.filter(p => p.estado === 'pendiente').length;
-
-      let htmlPedidos = '';
-      if (pedidos.length > 0) {
-        htmlPedidos = `
-          <div class="pedido-seccion-titulo" style="margin-top: 16px;">📦 Pedidos recibidos</div>
-          ${pedidos.slice(0, 3).map(p => {
-            const fechaObj = parseDate(p.fechaCreacion);
-            const fecha = fechaObj ? 
-              fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
-            return `
-              <div class="pedido-card ${p.estado === 'pendiente' ? 'urgente' : ''}" onclick="abrirPedido('${p.id}')">
-                <div class="pedido-header">
-                  <div class="pedido-info">
-                    <div class="pedido-nido">${p.nidoNombre || 'Pedido'}</div>
-                    <div class="pedido-meta">${fecha} · ${p.items?.length || 0} productos</div>
-                  </div>
-                  <span class="pedido-estado ${p.estado}">${p.estado === 'pendiente' ? 'Pendiente' : 'Hecho'}</span>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        `;
+      // BLOQUE 3: Peticiones de Estancia (productosAportados - la familia trae)
+      const productosAportados = proximaEstancia?.preparacion?.productosAportados || [];
+      let htmlPeticiones = '';
+      if (!proximaEstancia) {
+        htmlPeticiones = '<div class="pedido-seccion-empty">Sin estancias próximas</div>';
+      } else if (productosAportados.length === 0) {
+        htmlPeticiones = '<div class="pedido-seccion-empty">Sin productos aportados por familia</div>';
+      } else {
+        htmlPeticiones = productosAportados.map(prod => `
+          <div class="necesidad-item">
+            <div class="necesidad-info">
+              <div class="necesidad-nombre">${prod.nombre || prod}</div>
+              ${prod.notas ? `<div class="necesidad-ubicacion">${prod.notas}</div>` : ''}
+            </div>
+            <div class="necesidad-cantidad neutral">${prod.cantidad || 1} ${prod.unidad || 'uds'}</div>
+          </div>
+        `).join('');
       }
 
-      const totalNecesidades = necesidades.length + (proximaEstancia?.preparacion?.productosSolicitados?.length || 0);
+      // Badges con contadores
+      const badgeDesfase = desfases.length > 0 ? `<span class="bloque-header-badge">${desfases.length}</span>` : '<span class="bloque-header-badge success">✓</span>';
+      const badgeNecesidades = productosSolicitados.length > 0 ? `<span class="bloque-header-badge">${productosSolicitados.length}</span>` : '<span class="bloque-header-badge neutral">0</span>';
+      const badgePeticiones = productosAportados.length > 0 ? `<span class="bloque-header-badge neutral">${productosAportados.length}</span>` : '<span class="bloque-header-badge neutral">0</span>';
 
       return `
         <div class="modulo-card" style="grid-column: 1 / -1;">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">
-              🛒 Pedidos y Necesidades
-              ${totalNecesidades > 0 ? `<span class="pedido-badge">${totalNecesidades} items</span>` : ''}
-            </div>
+            <div class="modulo-card-title">🛒 Pedidos y Necesidades</div>
+            ${proximaEstancia ? `<div style="font-size: 0.75rem; color: var(--text-muted);">📅 ${nombreEstancia} (${fechaEstancia})</div>` : ''}
           </div>
           <div class="modulo-card-body">
-            <div class="pedido-seccion-titulo">📦 Necesidades de Inventario</div>
-            ${htmlNecesidades}
             
-            <div class="pedido-seccion-titulo" style="margin-top: 16px;">🛍️ Solicitudes de Estancia</div>
-            ${htmlSolicitudes}
+            <!-- Bloque 1: Desfase Inventario -->
+            <div class="bloque-colapsable" id="bloque-desfase">
+              <div class="bloque-header" onclick="toggleBloque('bloque-desfase')">
+                <div class="bloque-header-info">
+                  <span class="bloque-header-icon">📦</span>
+                  <span class="bloque-header-titulo">Desfase Inventario</span>
+                  ${badgeDesfase}
+                </div>
+                <span class="bloque-header-arrow">▼</span>
+              </div>
+              <div class="bloque-body">${htmlDesfase}</div>
+            </div>
             
-            ${htmlPedidos}
+            <!-- Bloque 2: Necesidades de Estancia -->
+            <div class="bloque-colapsable" id="bloque-necesidades">
+              <div class="bloque-header" onclick="toggleBloque('bloque-necesidades')">
+                <div class="bloque-header-info">
+                  <span class="bloque-header-icon">🛒</span>
+                  <span class="bloque-header-titulo">Necesidades de Estancia</span>
+                  ${badgeNecesidades}
+                </div>
+                <span class="bloque-header-arrow">▼</span>
+              </div>
+              <div class="bloque-body">${htmlNecesidades}</div>
+            </div>
+            
+            <!-- Bloque 3: Peticiones de Estancia -->
+            <div class="bloque-colapsable" id="bloque-peticiones">
+              <div class="bloque-header" onclick="toggleBloque('bloque-peticiones')">
+                <div class="bloque-header-info">
+                  <span class="bloque-header-icon">🛍️</span>
+                  <span class="bloque-header-titulo">Peticiones de Estancia</span>
+                  ${badgePeticiones}
+                </div>
+                <span class="bloque-header-arrow">▼</span>
+              </div>
+              <div class="bloque-body">${htmlPeticiones}</div>
+            </div>
+            
           </div>
         </div>
       `;
+    }
+
+    function toggleBloque(bloqueId) {
+      const bloque = document.getElementById(bloqueId);
+      if (bloque) {
+        bloque.classList.toggle('expanded');
+      }
     }
 
     function abrirPedido(pedidoId) {
@@ -3216,27 +3401,141 @@
       const estancia = (datosModulos.estancias || []).find(e => e.id === estanciaId);
       if (!estancia) return;
       
-      // Por ahora, mostrar alert con info básica
       const prep = estancia.preparacion || {};
-      let info = `📅 ${estancia.nombre || 'Estancia'}\n`;
-      info += `📆 ${estancia.fechaInicio} → ${estancia.fechaFin}\n`;
-      info += `👤 Organiza: ${estancia.nidoReservaNombre || estancia.creadoPorNombre || 'N/A'}\n\n`;
+      const nombre = estancia.nombre || estancia.tipoReservaNombre || 'Estancia';
+      const organizador = estancia.nidoReservaNombre || estancia.creadoPorNombre || 'N/A';
       
+      // Formatear fechas
+      const fechaInicio = parseDate(estancia.fechaInicio);
+      const fechaFin = parseDate(estancia.fechaFin);
+      const fechaInicioStr = fechaInicio ? fechaInicio.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }) : estancia.fechaInicio;
+      const fechaFinStr = fechaFin ? fechaFin.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }) : estancia.fechaFin;
+      
+      // Calcular días
+      let numDias = 1;
+      if (fechaInicio && fechaFin) {
+        numDias = Math.ceil((fechaFin - fechaInicio) / (1000 * 60 * 60 * 24)) + 1;
+      }
+      
+      // Calcular personas máximas
+      let maxPersonas = 0;
+      if (prep.personas) {
+        Object.values(prep.personas).forEach(dia => {
+          const total = (dia.familiares || 0) + (dia.duermen || 0);
+          maxPersonas = Math.max(maxPersonas, total);
+        });
+      }
+      
+      let html = `
+        <div class="estancia-detalle">
+          <div class="estancia-detalle-header">
+            <div class="estancia-detalle-nombre">${nombre}</div>
+            <div class="estancia-detalle-meta">
+              <span>📅 ${fechaInicioStr} → ${fechaFinStr}</span>
+              <span>⏱️ ${numDias} día${numDias > 1 ? 's' : ''}</span>
+              ${maxPersonas > 0 ? `<span>👥 ${maxPersonas} personas</span>` : ''}
+            </div>
+            <div class="estancia-detalle-org">👤 Organiza: ${organizador}</div>
+          </div>
+      `;
+      
+      // Zonas
       if (prep.zonas?.length > 0) {
-        info += `🏠 Zonas: ${prep.zonas.length} a preparar\n`;
-      }
-      if (prep.tareas?.length > 0) {
-        info += `✅ Tareas: ${prep.tareas.length}\n`;
-      }
-      if (prep.productosSolicitados?.length > 0) {
-        info += `🛒 Productos solicitados: ${prep.productosSolicitados.length}\n`;
-      }
-      if (prep.notas) {
-        info += `\n📝 Notas: ${prep.notas}`;
+        html += `
+          <div class="estancia-detalle-seccion">
+            <div class="estancia-detalle-seccion-titulo">🏠 Zonas a preparar (${prep.zonas.length})</div>
+            <div class="estancia-detalle-lista">
+              ${prep.zonas.map(z => `<span class="estancia-detalle-tag">${z.nombre || z}</span>`).join('')}
+            </div>
+          </div>
+        `;
       }
       
-      alert(info);
-      // TODO: Fase 3 - Abrir modal con detalle completo
+      // Personas por día
+      if (prep.personas && Object.keys(prep.personas).length > 0) {
+        html += `
+          <div class="estancia-detalle-seccion">
+            <div class="estancia-detalle-seccion-titulo">👥 Personas por día</div>
+            <div class="estancia-detalle-tabla">
+              ${Object.entries(prep.personas).map(([key, dia]) => {
+                const fecha = key.split('-').slice(1).join('/');
+                return `
+                  <div class="estancia-detalle-fila">
+                    <span class="estancia-detalle-fila-fecha">${fecha}</span>
+                    <span>🍳 ${dia.desayuno || 0}</span>
+                    <span>🍽️ ${dia.comida || 0}</span>
+                    <span>🌙 ${dia.cena || 0}</span>
+                    <span>🛏️ ${dia.duermen || 0}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Menús especiales
+      if (prep.menus && Object.keys(prep.menus).length > 0) {
+        const menusEspeciales = Object.entries(prep.menus).filter(([k, v]) => v.especial);
+        if (menusEspeciales.length > 0) {
+          html += `
+            <div class="estancia-detalle-seccion">
+              <div class="estancia-detalle-seccion-titulo">🍽️ Menús especiales</div>
+              ${menusEspeciales.map(([key, menu]) => `
+                <div class="estancia-detalle-item">${menu.descripcion || 'Menú especial'}</div>
+              `).join('')}
+            </div>
+          `;
+        }
+      }
+      
+      // Tareas
+      if (prep.tareas?.length > 0) {
+        html += `
+          <div class="estancia-detalle-seccion">
+            <div class="estancia-detalle-seccion-titulo">✅ Tareas adicionales (${prep.tareas.length})</div>
+            ${prep.tareas.map(t => `
+              <div class="estancia-detalle-item">
+                <span>${t.nombre || t.descripcion || t}</span>
+                ${t.asignado ? `<span class="estancia-detalle-asignado">→ ${t.asignado}</span>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      // Ajuar especial
+      if (prep.menajeEspecial && prep.menaje?.length > 0) {
+        html += `
+          <div class="estancia-detalle-seccion">
+            <div class="estancia-detalle-seccion-titulo">🏠 Ajuar especial</div>
+            <div class="estancia-detalle-lista">
+              ${prep.menaje.map(m => `<span class="estancia-detalle-tag">${m.nombre || m}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      // Notas
+      if (prep.notas) {
+        html += `
+          <div class="estancia-detalle-seccion">
+            <div class="estancia-detalle-seccion-titulo">📝 Notas</div>
+            <div class="estancia-detalle-notas">${prep.notas}</div>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
+      
+      // Actualizar modal
+      document.getElementById('modal-estancia-titulo').textContent = `📅 ${nombre}`;
+      document.getElementById('modal-estancia-body').innerHTML = html;
+      document.getElementById('modal-estancia').classList.add('active');
+    }
+
+    function cerrarModalEstancia() {
+      document.getElementById('modal-estancia').classList.remove('active');
     }
 
     // ========== INFORME DE ESTANCIAS ==========
@@ -4849,36 +5148,42 @@
 
     // ========== NORMAS Y PROCEDIMIENTOS ==========
     async function cargarNormasYConfig() {
-      if (!bienActual) return;
+      if (!bienActual) {
+        console.log('🔖 Normas: bienActual no existe');
+        return;
+      }
+      
+      console.log('🔖 Cargando normas para bien:', bienActual.bien.id, 'familia:', bienActual.bien.familiaId);
       
       try {
         // Cargar configuración de la familia
         const familiaDoc = await db.collection('familias').doc(bienActual.bien.familiaId).get();
         if (familiaDoc.exists) {
           configFamilia = familiaDoc.data().config || {};
+          console.log('🔖 Config familia:', configFamilia);
+          console.log('🔖 mostrarNormasExternos:', configFamilia.mostrarNormasExternos);
         }
         
-        // Verificar si mostrar el botón
-        if (configFamilia.mostrarNormasExternos) {
-          // Cargar normas del bien
-          const normasSnap = await db.collection('bienes').doc(bienActual.bien.id)
-            .collection('normasExternos')
-            .orderBy('orden', 'asc')
-            .get();
-          
-          normasData = normasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          
-          // Mostrar botón si hay normas
-          if (normasData.length > 0) {
-            document.getElementById('btn-normas').classList.add('visible');
-          } else {
-            document.getElementById('btn-normas').classList.remove('visible');
-          }
+        // Cargar normas del bien (independiente de config para verificar)
+        const normasSnap = await db.collection('bienes').doc(bienActual.bien.id)
+          .collection('normasExternos')
+          .orderBy('orden', 'asc')
+          .get();
+        
+        normasData = normasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('🔖 Normas encontradas:', normasData.length);
+        
+        // Mostrar botón si hay normas Y config lo permite (o si hay normas y no hay config definida)
+        const mostrarBoton = normasData.length > 0 && (configFamilia.mostrarNormasExternos !== false);
+        console.log('🔖 Mostrar botón:', mostrarBoton);
+        
+        if (mostrarBoton) {
+          document.getElementById('btn-normas').classList.add('visible');
         } else {
           document.getElementById('btn-normas').classList.remove('visible');
         }
       } catch (e) {
-        console.log('Error cargando normas:', e.message);
+        console.log('🔖 Error cargando normas:', e.message);
         document.getElementById('btn-normas').classList.remove('visible');
       }
     }
@@ -4972,6 +5277,19 @@
         <button class="modal-normas-close" onclick="cerrarModalNormas()">×</button>
       </div>
       <div class="modal-normas-body" id="modal-normas-body">
+        <!-- Se genera dinámicamente -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalle Estancia -->
+  <div class="modal-overlay" id="modal-estancia">
+    <div class="modal" style="max-width: 600px; max-height: 85vh;">
+      <div class="modal-header" style="background: linear-gradient(135deg, var(--sage), var(--sage-dark));">
+        <h3 class="modal-title" id="modal-estancia-titulo" style="color: white;">📅 Detalle de Estancia</h3>
+        <button class="modal-close" onclick="cerrarModalEstancia()" style="color: white;">×</button>
+      </div>
+      <div class="modal-body" id="modal-estancia-body" style="max-height: 60vh; overflow-y: auto; padding: 20px;">
         <!-- Se genera dinámicamente -->
       </div>
     </div>
