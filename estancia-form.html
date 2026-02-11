@@ -1230,9 +1230,9 @@
         const showDeps = desglose.length > 0 || selected;
         return `
           <div class="zona-group">
-            <div class="zona-header" onclick="toggleZona('${z.id}')">
-              <input type="checkbox" ${selected ? 'checked' : ''} onclick="event.stopPropagation()">
-              <span class="zona-header-label">🏠 ${z.nombre}</span>
+            <div class="zona-header">
+              <input type="checkbox" ${selected ? 'checked' : ''} onchange="toggleZona('${z.id}')">
+              <span class="zona-header-label" onclick="toggleZona('${z.id}')">🏠 ${z.nombre}</span>
               <span class="zona-count">${z.dependencias.length} deps</span>
               ${selected ? `<span class="zona-toggle-deps" onclick="event.stopPropagation(); toggleDesglose('${z.id}')">Desglosar</span>` : ''}
             </div>
@@ -1253,13 +1253,14 @@
 
     function toggleZona(id) {
       const idx = preparacionData.zonas.indexOf(id);
-      if (idx >= 0) { preparacionData.zonas.splice(idx, 1); delete preparacionData.zonasDesglose[id]; }
-      else {
+      if (idx >= 0) { 
+        preparacionData.zonas.splice(idx, 1); 
+        delete preparacionData.zonasDesglose[id]; 
+      } else {
         preparacionData.zonas.push(id);
-        if (confirm('¿Quieres desglosar las dependencias de esta zona?')) {
-          const zona = zonasData.find(z => z.id === id);
-          if (zona) preparacionData.zonasDesglose[id] = zona.dependencias.map(d => d.id);
-        }
+        // Auto-seleccionar todas las dependencias
+        const zona = zonasData.find(z => z.id === id);
+        if (zona) preparacionData.zonasDesglose[id] = zona.dependencias.map(d => d.id);
       }
       renderZonas();
     }
@@ -1665,27 +1666,10 @@
         errores.push({ seccionId: 'seccion-servicio', nombre: '👨‍🍳 Servicio' });
       }
 
-      // 5. MENAJE — algo indicado: toggle especial, items del ajuar, o menaje adicional
-      const tieneMenaje = preparacionData.menajeEspecial ||
-        (preparacionData.menajeAjuar && preparacionData.menajeAjuar.length > 0) ||
-        (preparacionData.menaje && preparacionData.menaje.length > 0);
-      if (!tieneMenaje) {
-        errores.push({ seccionId: 'seccion-menaje', nombre: '🍷 Menaje' });
-      }
-
-      // 6. PRODUCTO — al menos 1 producto (aportado o solicitado)
-      const tieneProducto = (preparacionData.productosAportados && preparacionData.productosAportados.length > 0) ||
-        (preparacionData.productosSolicitados && preparacionData.productosSolicitados.length > 0);
-      if (!tieneProducto) {
-        errores.push({ seccionId: 'seccion-producto', nombre: '📦 Producto' });
-      }
-
-      // 7. TAREAS — NO obligatorio (skip)
-
-      // 8. NOTAS — texto no vacío
-      if (!preparacionData.notas || !preparacionData.notas.trim()) {
-        errores.push({ seccionId: 'seccion-notas', nombre: '📝 Notas' });
-      }
+      // 5. MENAJE — OPCIONAL (no validar)
+      // 6. PRODUCTO — OPCIONAL (no validar)
+      // 7. TAREAS — OPCIONAL (no validar)
+      // 8. NOTAS — OPCIONAL (no validar)
 
       return errores;
     }
@@ -1947,16 +1931,19 @@
     async function cargarAdminsParaNotificacion() {
       try {
         const snap = await db.collection('usuarios').where('familiaId', '==', currentFamilia.id).get();
-        return snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+        const admins = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
           .filter(u => {
             const rol = String(u.rol || '').toLowerCase();
-            const cred = String(u.credencial || '').toLowerCase();
+            const cred = String(u.credencial || u.credenciales || '').toLowerCase();
             return rol.includes('admin') || cred.includes('admin') ||
               rol === 'patriarca' || rol === 'matriarca' ||
               cred === 'patriarca' || cred === 'matriarca' ||
+              cred === 'adminrama' || cred === 'adminnido' ||
               u.esAdmin === true || u.adminRama === true || u.superAdmin === true ||
               u.esPatriarca === true || u.esMatriarca === true;
           });
+        console.log('Admins encontrados para notificación:', admins.map(a => a.nombre || a.email));
+        return admins;
       } catch (e) {
         console.error('Error cargando admins:', e);
         return [];
