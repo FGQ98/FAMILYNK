@@ -3455,29 +3455,42 @@
         `;
       }
       
-      // Personas por día
+      // Personas por día - ordenar por fecha
       if (prep.personas && Object.keys(prep.personas).length > 0) {
-        html += `
-          <div class="estancia-detalle-seccion">
-            <div class="estancia-detalle-seccion-titulo">👥 Personas por día</div>
-            <div class="estancia-detalle-tabla">
-              ${Object.entries(prep.personas).map(([key, dia]) => {
-                // key puede ser "d-2024-02-15" o "2024-02-15"
-                const partes = key.split('-');
-                const fecha = partes.length > 3 ? `${partes[2]}/${partes[1]}` : `${partes[2]}/${partes[1]}`;
-                return `
-                  <div class="estancia-detalle-fila">
-                    <span class="estancia-detalle-fila-fecha">${fecha}</span>
-                    <span>🍳 ${dia.desayuno || 0}</span>
-                    <span>🍽️ ${dia.comida || 0}</span>
-                    <span>🌙 ${dia.cena || 0}</span>
-                    <span>🛏️ ${dia.duermen || 0}</span>
-                  </div>
-                `;
-              }).join('')}
+        // Filtrar entradas válidas y ordenar por fecha
+        const personasEntries = Object.entries(prep.personas)
+          .filter(([key, dia]) => {
+            // Verificar que tiene al menos un valor > 0
+            return (dia.familiares || 0) + (dia.desayuno || 0) + (dia.comida || 0) + (dia.cena || 0) + (dia.duermen || 0) > 0;
+          })
+          .sort((a, b) => {
+            // Ordenar por fecha (key es YYYY-MM-DD)
+            return a[0].localeCompare(b[0]);
+          });
+        
+        if (personasEntries.length > 0) {
+          html += `
+            <div class="estancia-detalle-seccion">
+              <div class="estancia-detalle-seccion-titulo">👥 Personas por día</div>
+              <div class="estancia-detalle-tabla">
+                ${personasEntries.map(([key, dia]) => {
+                  // key es "YYYY-MM-DD"
+                  const partes = key.split('-');
+                  const fecha = partes.length === 3 ? `${parseInt(partes[2])}/${parseInt(partes[1])}` : key;
+                  return `
+                    <div class="estancia-detalle-fila">
+                      <span class="estancia-detalle-fila-fecha">${fecha}</span>
+                      <span>🍳 ${dia.desayuno || 0}</span>
+                      <span>🍽️ ${dia.comida || 0}</span>
+                      <span>🌙 ${dia.cena || 0}</span>
+                      <span>🛏️ ${dia.duermen || 0}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
       }
       
       // Menús especiales
@@ -3500,53 +3513,59 @@
       if (prep.servicio && Object.keys(prep.servicio).length > 0) {
         const servicioEntries = Object.entries(prep.servicio).filter(([k, v]) => v && v.length > 0);
         if (servicioEntries.length > 0) {
-          // Extraer días únicos (formato YYYY-MM-DD)
-          const diasUnicos = [...new Set(servicioEntries.map(([k]) => {
-            // "desayuno-2024-02-15" → "2024-02-15"
-            const partes = k.split('-');
-            return partes.slice(1).join('-'); // Toma todo después del primer guión
-          }))].sort();
-          
-          const pases = ['desayuno', 'comida', 'cena'];
-          const paseIcons = { desayuno: '🍳', comida: '🍽️', cena: '🌙' };
-          
-          // Formatear cabeceras de días
-          const diasFormateados = diasUnicos.map(d => {
-            const partes = d.split('-');
-            return partes.length === 3 ? `${partes[2]}/${partes[1]}` : d;
+          // Extraer días únicos (formato YYYY-MM-DD) y ordenarlos
+          const diasSet = new Set();
+          servicioEntries.forEach(([k]) => {
+            // "desayuno-2024-02-15" → extraer "2024-02-15"
+            const match = k.match(/^\w+-(\d{4}-\d{2}-\d{2})$/);
+            if (match) {
+              diasSet.add(match[1]);
+            }
           });
+          const diasUnicos = [...diasSet].sort();
           
-          let tablaHtml = `
-            <div class="estancia-detalle-tabla-servicio">
-              <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
-                <thead>
-                  <tr style="background: var(--cream-dark);">
-                    <th style="padding: 8px; text-align: left;"></th>
-                    ${diasFormateados.map(d => `<th style="padding: 8px; text-align: center;">${d}</th>`).join('')}
-                  </tr>
-                </thead>
-                <tbody>
-                  ${pases.map(p => {
-                    const celdas = diasUnicos.map(d => {
-                      const key = `${p}-${d}`;
-                      const roles = prep.servicio[key] || [];
-                      return roles.length > 0 
-                        ? `<td style="padding: 6px; text-align: center;">${roles.map(r => `<span class="estancia-detalle-tag" style="font-size: 0.7rem;">${r}</span>`).join(' ')}</td>`
-                        : '<td style="padding: 6px; text-align: center; color: var(--text-muted);">—</td>';
-                    }).join('');
-                    return `<tr><td style="padding: 6px; font-weight: 600;">${paseIcons[p]} ${p.charAt(0).toUpperCase() + p.slice(1)}</td>${celdas}</tr>`;
-                  }).join('')}
-                </tbody>
-              </table>
-            </div>
-          `;
-          
-          html += `
-            <div class="estancia-detalle-seccion">
-              <div class="estancia-detalle-seccion-titulo">👨‍🍳 Servicios</div>
-              ${tablaHtml}
-            </div>
-          `;
+          if (diasUnicos.length > 0) {
+            const pases = ['desayuno', 'comida', 'cena'];
+            const paseIcons = { desayuno: '🍳', comida: '🍽️', cena: '🌙' };
+            
+            // Formatear cabeceras de días (día/mes)
+            const diasFormateados = diasUnicos.map(d => {
+              const partes = d.split('-');
+              return `${parseInt(partes[2])}/${parseInt(partes[1])}`;
+            });
+            
+            let tablaHtml = `
+              <div class="estancia-detalle-tabla-servicio">
+                <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: var(--cream-dark);">
+                      <th style="padding: 8px; text-align: left;"></th>
+                      ${diasFormateados.map(d => `<th style="padding: 8px; text-align: center;">${d}</th>`).join('')}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${pases.map(p => {
+                      const celdas = diasUnicos.map(d => {
+                        const key = `${p}-${d}`;
+                        const roles = prep.servicio[key] || [];
+                        return roles.length > 0 
+                          ? `<td style="padding: 6px; text-align: center;">${roles.map(r => `<span class="estancia-detalle-tag" style="font-size: 0.7rem;">${r}</span>`).join(' ')}</td>`
+                          : '<td style="padding: 6px; text-align: center; color: var(--text-muted);">—</td>';
+                      }).join('');
+                      return `<tr><td style="padding: 6px; font-weight: 600;">${paseIcons[p]} ${p.charAt(0).toUpperCase() + p.slice(1)}</td>${celdas}</tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+            
+            html += `
+              <div class="estancia-detalle-seccion">
+                <div class="estancia-detalle-seccion-titulo">👨‍🍳 Servicios</div>
+                ${tablaHtml}
+              </div>
+            `;
+          }
         }
       }
       
