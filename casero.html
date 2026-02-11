@@ -195,62 +195,64 @@
       overflow-y: auto;
     }
 
-    .norma-capitulo {
-      margin-bottom: 20px;
-    }
-
-    .norma-capitulo-titulo {
+    /* Estilos para normas - estructura plana con indentación visual */
+    .norma-capitulo,
+    .norma-apartado,
+    .norma-linea,
+    .norma-sublinea,
+    .norma-detalle {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 10px;
-      font-weight: 700;
-      font-size: 1rem;
-      color: var(--mayordomo);
-      margin-bottom: 10px;
-      padding-bottom: 6px;
-      border-bottom: 2px solid var(--mayordomo-muted);
-    }
-
-    .norma-capitulo-num {
-      background: var(--mayordomo);
-      color: white;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-    }
-
-    .norma-precepto {
-      display: flex;
-      gap: 10px;
-      padding: 8px 0;
+      padding: 10px 12px;
       font-size: 0.9rem;
       color: var(--text);
       border-bottom: 1px solid var(--cream-dark);
     }
 
-    .norma-precepto:last-child { border-bottom: none; }
-
-    .norma-precepto-num {
-      color: var(--text-muted);
-      font-size: 0.8rem;
-      min-width: 35px;
+    .norma-capitulo {
+      background: var(--mayordomo-muted);
+      font-weight: 700;
+      font-size: 1rem;
+      border-radius: var(--radius-sm);
+      margin-top: 16px;
+      border-bottom: none;
     }
+    .norma-capitulo:first-child { margin-top: 0; }
 
     .norma-apartado {
-      margin: 12px 0 12px 20px;
-      padding-left: 12px;
-      border-left: 3px solid var(--mayordomo-muted);
+      background: rgba(99, 102, 241, 0.08);
+      font-weight: 600;
+      margin-left: 16px;
+      border-radius: var(--radius-sm);
+      border-bottom: none;
+      margin-top: 8px;
     }
 
-    .norma-apartado-titulo {
-      font-weight: 600;
-      font-size: 0.9rem;
-      color: var(--text);
-      margin-bottom: 8px;
+    .norma-linea {
+      margin-left: 32px;
+    }
+
+    .norma-sublinea {
+      margin-left: 48px;
+      font-size: 0.85rem;
+      color: var(--text-light);
+    }
+
+    .norma-detalle {
+      margin-left: 64px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .norma-icono {
+      flex-shrink: 0;
+    }
+
+    .norma-texto {
+      flex: 1;
+      line-height: 1.4;
     }
 
     .normas-empty {
@@ -1883,7 +1885,7 @@
 
       <!-- Contenido de cada pestaña -->
       <div class="casero-tab-content active" id="tab-estancias">
-        <div class="tab-section-title">📅 Estancias, Pedidos y Menús</div>
+        <div class="tab-section-title">📅 Estancias, Compras y Menús</div>
         <div class="modulos-grid" id="grid-estancias"></div>
       </div>
 
@@ -3082,7 +3084,7 @@
       const fechaEstancia = proximaEstancia?.fechaInicio ? 
         parseDate(proximaEstancia.fechaInicio)?.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
 
-      // BLOQUE 2: Necesidades de Estancia (productosSolicitados - la casa compra)
+      // BLOQUE 2: Compras para Estancia (productosSolicitados - la casa compra)
       const productosSolicitados = proximaEstancia?.preparacion?.productosSolicitados || [];
       let htmlNecesidades = '';
       if (!proximaEstancia) {
@@ -3093,29 +3095,29 @@
         htmlNecesidades = productosSolicitados.map(prod => `
           <div class="necesidad-item">
             <div class="necesidad-info">
-              <div class="necesidad-nombre">${prod.nombre || prod}</div>
+              <div class="necesidad-nombre">${prod.descripcion || prod.nombre || prod}</div>
               ${prod.notas ? `<div class="necesidad-ubicacion">${prod.notas}</div>` : ''}
             </div>
-            <div class="necesidad-cantidad">${prod.cantidad || 1} ${prod.unidad || 'uds'}</div>
+            <div class="necesidad-cantidad">${prod.cantidad || ''}</div>
           </div>
         `).join('');
       }
 
-      // BLOQUE 3: Peticiones de Estancia (productosAportados - la familia trae)
+      // BLOQUE 3: Aportes de Familia (productosAportados - la familia trae, solo info)
       const productosAportados = proximaEstancia?.preparacion?.productosAportados || [];
       let htmlPeticiones = '';
       if (!proximaEstancia) {
         htmlPeticiones = '<div class="pedido-seccion-empty">Sin estancias próximas</div>';
       } else if (productosAportados.length === 0) {
-        htmlPeticiones = '<div class="pedido-seccion-empty">Sin productos aportados por familia</div>';
+        htmlPeticiones = '<div class="pedido-seccion-empty">Sin productos aportados</div>';
       } else {
         htmlPeticiones = productosAportados.map(prod => `
           <div class="necesidad-item">
             <div class="necesidad-info">
-              <div class="necesidad-nombre">${prod.nombre || prod}</div>
+              <div class="necesidad-nombre">${prod.descripcion || prod.nombre || prod}</div>
               ${prod.notas ? `<div class="necesidad-ubicacion">${prod.notas}</div>` : ''}
             </div>
-            <div class="necesidad-cantidad neutral">${prod.cantidad || 1} ${prod.unidad || 'uds'}</div>
+            <div class="necesidad-cantidad neutral">${prod.cantidad || ''}</div>
           </div>
         `).join('');
       }
@@ -3128,7 +3130,7 @@
       return `
         <div class="modulo-card" style="grid-column: 1 / -1;">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">🛒 Pedidos y Necesidades</div>
+            <div class="modulo-card-title">🛒 Compras</div>
             ${proximaEstancia ? `<div style="font-size: 0.75rem; color: var(--text-muted);">📅 ${nombreEstancia} (${fechaEstancia})</div>` : ''}
           </div>
           <div class="modulo-card-body">
@@ -3138,7 +3140,7 @@
               <div class="bloque-header" onclick="toggleBloque('bloque-desfase')">
                 <div class="bloque-header-info">
                   <span class="bloque-header-icon">📦</span>
-                  <span class="bloque-header-titulo">Desfase Inventario</span>
+                  <span class="bloque-header-titulo">Reposición Inventario</span>
                   ${badgeDesfase}
                 </div>
                 <span class="bloque-header-arrow">▼</span>
@@ -3146,12 +3148,12 @@
               <div class="bloque-body">${htmlDesfase}</div>
             </div>
             
-            <!-- Bloque 2: Necesidades de Estancia -->
+            <!-- Bloque 2: Compras para Estancia -->
             <div class="bloque-colapsable" id="bloque-necesidades">
               <div class="bloque-header" onclick="toggleBloque('bloque-necesidades')">
                 <div class="bloque-header-info">
                   <span class="bloque-header-icon">🛒</span>
-                  <span class="bloque-header-titulo">Necesidades de Estancia</span>
+                  <span class="bloque-header-titulo">Compras para Estancia</span>
                   ${badgeNecesidades}
                 </div>
                 <span class="bloque-header-arrow">▼</span>
@@ -3159,12 +3161,12 @@
               <div class="bloque-body">${htmlNecesidades}</div>
             </div>
             
-            <!-- Bloque 3: Peticiones de Estancia -->
+            <!-- Bloque 3: Aportes de Familia (info) -->
             <div class="bloque-colapsable" id="bloque-peticiones">
               <div class="bloque-header" onclick="toggleBloque('bloque-peticiones')">
                 <div class="bloque-header-info">
-                  <span class="bloque-header-icon">🛍️</span>
-                  <span class="bloque-header-titulo">Peticiones de Estancia</span>
+                  <span class="bloque-header-icon">🎁</span>
+                  <span class="bloque-header-titulo">Aportes Familia</span>
                   ${badgePeticiones}
                 </div>
                 <span class="bloque-header-arrow">▼</span>
@@ -5262,22 +5264,15 @@
           .get();
         
         if (normasDoc.exists) {
-          const elementos = normasDoc.data().elementos || [];
-          // Convertir a formato de capítulos
-          normasData = elementos.map((el, idx) => ({
-            id: `cap-${idx}`,
-            orden: idx,
-            titulo: el.titulo || `Capítulo ${idx + 1}`,
-            preceptos: el.preceptos || [],
-            apartados: el.apartados || []
-          }));
-          console.log('🔖 Normas encontradas:', normasData.length);
+          // Es un array plano de {tipo, texto}
+          normasData = normasDoc.data().elementos || [];
+          console.log('🔖 Normas encontradas:', normasData.length, normasData);
         } else {
           normasData = [];
           console.log('🔖 No hay documento de normas para casero');
         }
         
-        // Mostrar botón si hay normas (config opcional)
+        // Mostrar botón si hay normas
         const mostrarBoton = normasData.length > 0;
         console.log('🔖 Mostrar botón normas:', mostrarBoton);
         
@@ -5323,45 +5318,23 @@
         return;
       }
       
-      container.innerHTML = normasData.map((cap, capIdx) => {
-        const preceptosDirectos = cap.preceptos || [];
-        const apartados = cap.apartados || [];
-        
-        let html = `
-          <div class="norma-capitulo">
-            <div class="norma-capitulo-titulo">
-              <span class="norma-capitulo-num">${capIdx + 1}</span>
-              <span>${cap.titulo || 'Sin título'}</span>
-            </div>
+      // Iconos y estilos por tipo
+      const tiposNorma = {
+        capitulo: { icono: '📖', clase: 'norma-capitulo' },
+        apartado: { icono: '📄', clase: 'norma-apartado' },
+        linea: { icono: '✏️', clase: 'norma-linea' },
+        sublinea: { icono: '➡️', clase: 'norma-sublinea' },
+        detalle: { icono: '📌', clase: 'norma-detalle' }
+      };
+      
+      container.innerHTML = normasData.map((el, idx) => {
+        const tipo = tiposNorma[el.tipo] || tiposNorma.linea;
+        return `
+          <div class="${tipo.clase}">
+            <span class="norma-icono">${tipo.icono}</span>
+            <span class="norma-texto">${el.texto || ''}</span>
+          </div>
         `;
-        
-        // Preceptos directos del capítulo
-        if (preceptosDirectos.length > 0) {
-          html += preceptosDirectos.map((prec, precIdx) => `
-            <div class="norma-precepto">
-              <span class="norma-precepto-num">${capIdx + 1}.${precIdx + 1}</span>
-              <span>${typeof prec === 'string' ? prec : prec.texto}</span>
-            </div>
-          `).join('');
-        }
-        
-        // Apartados
-        if (apartados.length > 0) {
-          html += apartados.map((ap, apIdx) => `
-            <div class="norma-apartado">
-              <div class="norma-apartado-titulo">${capIdx + 1}.${apIdx + 1} ${ap.titulo}</div>
-              ${(ap.preceptos || []).map((prec, precIdx) => `
-                <div class="norma-precepto">
-                  <span class="norma-precepto-num">${capIdx + 1}.${apIdx + 1}.${precIdx + 1}</span>
-                  <span>${typeof prec === 'string' ? prec : prec.texto}</span>
-                </div>
-              `).join('')}
-            </div>
-          `).join('');
-        }
-        
-        html += '</div>';
-        return html;
       }).join('');
     }
 
@@ -5440,7 +5413,7 @@
               <div class="onboarding-item compact">
                 <span class="onboarding-icon">📋</span>
                 <div>
-                  <strong>Pedidos</strong>
+                  <strong>Compras</strong>
                   <p>Encargos solicitados por la familia y artículos bajo stock mínimo que hay que reponer.</p>
                 </div>
               </div>
