@@ -680,6 +680,9 @@
     .item-row:hover { background: var(--cream-dark); }
     .item-row.no-hover { cursor: default; }
     .item-row.no-hover:hover { background: var(--cream-medium); }
+    .item-row.clickable { cursor: pointer; }
+    .item-row.clickable:hover { background: var(--sage-muted); }
+    .item-arrow { color: var(--text-muted); font-size: 0.9rem; }
 
     .item-icon { font-size: 1.2rem; }
     .item-content { flex: 1; }
@@ -1124,6 +1127,48 @@
       color: var(--text-muted);
       margin-bottom: 8px;
       font-weight: 700;
+    }
+
+    .pedido-seccion-empty {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 8px 0;
+      font-style: italic;
+    }
+
+    .necesidad-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: var(--cream-medium);
+      border-radius: var(--radius-sm);
+      margin-bottom: 6px;
+    }
+
+    .necesidad-info { flex: 1; }
+    .necesidad-nombre { font-size: 0.85rem; font-weight: 600; }
+    .necesidad-ubicacion { font-size: 0.7rem; color: var(--text-muted); }
+    .necesidad-cantidad { 
+      font-size: 0.8rem; 
+      font-weight: 700; 
+      padding: 2px 8px;
+      border-radius: var(--radius-sm);
+      background: var(--cream-dark);
+    }
+    .necesidad-cantidad.danger { 
+      background: var(--terracotta-muted); 
+      color: var(--terracotta); 
+    }
+
+    .solicitud-estancia-header {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--sage-dark);
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      background: var(--sage-muted);
+      border-radius: var(--radius-sm);
     }
 
     .pedido-totales {
@@ -1658,9 +1703,9 @@
 
       <!-- Pestañas de navegación -->
       <div class="casero-tabs">
-        <button type="button" class="casero-tab active" data-tab="reservas" onclick="cambiarTabCasero('reservas', this)">
+        <button type="button" class="casero-tab active" data-tab="estancias" onclick="cambiarTabCasero('estancias', this)">
           <span class="tab-icon">📅</span>
-          <span class="tab-label">Reservas</span>
+          <span class="tab-label">Estancias</span>
         </button>
         <button type="button" class="casero-tab" data-tab="inventario" onclick="cambiarTabCasero('inventario', this)">
           <span class="tab-icon">📦</span>
@@ -1677,9 +1722,9 @@
       </div>
 
       <!-- Contenido de cada pestaña -->
-      <div class="casero-tab-content active" id="tab-reservas">
-        <div class="tab-section-title">📅 Reservas, Pedidos y Menús</div>
-        <div class="modulos-grid" id="grid-reservas"></div>
+      <div class="casero-tab-content active" id="tab-estancias">
+        <div class="tab-section-title">📅 Estancias, Pedidos y Menús</div>
+        <div class="modulos-grid" id="grid-estancias"></div>
       </div>
 
       <div class="casero-tab-content" id="tab-inventario">
@@ -1924,7 +1969,8 @@
     let normasData = [];
     let configFamilia = {};
     let datosModulos = {
-      reservas: [],
+      estancias: [],      // Antes era 'reservas'
+      reservas: [],       // Mantener por compatibilidad
       inventario: [],
       mantenimiento: [],
       reparaciones: [],
@@ -2354,15 +2400,26 @@
       console.log('Cargando datos para bienId:', bienId);
       console.log('Permisos actuales:', permisosActuales);
 
-      // Reservas (permiso: calendario)
-      if (permisosActuales.calendario?.ver || permisosActuales.reservas?.ver) {
+      // Estancias (permiso: calendario) - solo las enviadas a externos
+      if (permisosActuales.calendario?.ver || permisosActuales.reservas?.ver || permisosActuales.estancias?.ver) {
         try {
-          const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('fechaInicio', 'asc').get();
-          datosModulos.reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const snap = await db.collection('bienes').doc(bienId).collection('estancias')
+            .where('estado', '==', 'enviado')
+            .orderBy('fechaInicio', 'asc')
+            .get();
+          datosModulos.estancias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('Estancias enviadas cargadas:', datosModulos.estancias.length);
         } catch (e) {
-          console.log('Error cargando reservas:', e);
-          const snap = await db.collection('bienes').doc(bienId).collection('reservas').get();
-          datosModulos.reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('Error cargando estancias:', e);
+          // Fallback sin ordenar
+          try {
+            const snap = await db.collection('bienes').doc(bienId).collection('estancias')
+              .where('estado', '==', 'enviado')
+              .get();
+            datosModulos.estancias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch (e2) {
+            datosModulos.estancias = [];
+          }
         }
       }
 
@@ -2659,17 +2716,17 @@
     function renderModulos() {
       console.log('renderModulos - permisosActuales:', JSON.stringify(permisosActuales, null, 2));
       
-      // TAB RESERVAS: Si tiene permiso "calendario" o "reservas" (bloque)
-      let htmlReservas = '';
-      htmlReservas += renderModuloPedidos();
-      if (permisosActuales.calendario?.ver || permisosActuales.reservas?.ver) {
-        htmlReservas += renderModuloReservas();
+      // TAB ESTANCIAS: Si tiene permiso "calendario" o "reservas" o "estancias" (bloque)
+      let htmlEstancias = '';
+      htmlEstancias += renderModuloPedidos();
+      if (permisosActuales.calendario?.ver || permisosActuales.reservas?.ver || permisosActuales.estancias?.ver) {
+        htmlEstancias += renderModuloEstancias();
       }
-      htmlReservas += renderModuloMenus();
+      htmlEstancias += renderModuloMenus();
       // Informe de Estancias - siempre visible para caseros
-      htmlReservas += renderModuloInformeEstancias();
-      document.getElementById('grid-reservas').innerHTML = htmlReservas || '<div class="modulo-card-empty">Sin módulos disponibles</div>';
-      console.log('grid-reservas tiene contenido:', !!htmlReservas);
+      htmlEstancias += renderModuloInformeEstancias();
+      document.getElementById('grid-estancias').innerHTML = htmlEstancias || '<div class="modulo-card-empty">Sin módulos disponibles</div>';
+      console.log('grid-estancias tiene contenido:', !!htmlEstancias);
 
       // TAB INVENTARIO: tomaInventario, reparaciones, herramientas, zonas
       let htmlInventario = '';
@@ -2827,46 +2884,111 @@
 
     // ========== PEDIDOS ==========
     function renderModuloPedidos() {
-      const pedidos = datosModulos.pedidos;
-      const pendientes = pedidos.filter(p => p.estado === 'pendiente').length;
+      // BLOQUE A: Necesidades de Inventario (stock actual < stock mínimo)
+      const inventario = datosModulos.inventario || [];
+      const necesidades = inventario.filter(item => {
+        const actual = item.stockActual || 0;
+        const minimo = item.stockMinimo || 0;
+        return minimo > 0 && actual < minimo;
+      });
 
-      let itemsHtml = '';
-      if (pedidos.length === 0) {
-        itemsHtml = '<div class="modulo-card-empty">No hay pedidos pendientes</div>';
+      let htmlNecesidades = '';
+      if (necesidades.length === 0) {
+        htmlNecesidades = '<div class="pedido-seccion-empty">✅ Inventario completo</div>';
       } else {
-        itemsHtml = pedidos.slice(0, 5).map(p => {
-          const fechaObj = parseDate(p.fechaCreacion);
-          const fecha = fechaObj ? 
-            fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 
-            '';
-          const esUrgente = p.estado === 'pendiente';
-
+        htmlNecesidades = necesidades.slice(0, 8).map(item => {
+          const falta = (item.stockMinimo || 0) - (item.stockActual || 0);
           return `
-            <div class="pedido-card ${esUrgente ? 'urgente' : ''}" onclick="abrirPedido('${p.id}')">
-              <div class="pedido-header">
-                <div class="pedido-info">
-                  <div class="pedido-nido">${p.nidoNombre || 'Pedido'}</div>
-                  <div class="pedido-meta">
-                    <span>${fecha}</span>
-                    <span>${p.totalItems || p.items?.length || 0} productos</span>
-                  </div>
-                </div>
-                <span class="pedido-estado ${p.estado}">${p.estado === 'pendiente' ? 'Pendiente' : 'En proceso'}</span>
+            <div class="necesidad-item">
+              <div class="necesidad-info">
+                <div class="necesidad-nombre">${item.nombre}</div>
+                <div class="necesidad-ubicacion">${item.lugarNombre} · ${item.grupoNombre}</div>
               </div>
+              <div class="necesidad-cantidad danger">-${falta} ${item.unidad || 'uds'}</div>
             </div>
           `;
         }).join('');
       }
 
+      // BLOQUE B: Solicitudes de la próxima estancia
+      const estancias = datosModulos.estancias || [];
+      const hoy = new Date();
+      const proximaEstancia = estancias.find(e => {
+        const fechaInicio = parseDate(e.fechaInicio);
+        return fechaInicio && fechaInicio >= hoy;
+      });
+
+      let htmlSolicitudes = '';
+      if (!proximaEstancia) {
+        htmlSolicitudes = '<div class="pedido-seccion-empty">Sin estancias próximas</div>';
+      } else {
+        const productosSolicitados = proximaEstancia.preparacion?.productosSolicitados || [];
+        if (productosSolicitados.length === 0) {
+          htmlSolicitudes = '<div class="pedido-seccion-empty">Sin solicitudes de compra</div>';
+        } else {
+          const nombreEstancia = proximaEstancia.nombre || 'Próxima estancia';
+          const fechaStr = proximaEstancia.fechaInicio ? 
+            parseDate(proximaEstancia.fechaInicio)?.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+          
+          htmlSolicitudes = `<div class="solicitud-estancia-header">📅 ${nombreEstancia} (${fechaStr})</div>`;
+          htmlSolicitudes += productosSolicitados.slice(0, 8).map(prod => `
+            <div class="necesidad-item">
+              <div class="necesidad-info">
+                <div class="necesidad-nombre">${prod.nombre || prod}</div>
+                ${prod.notas ? `<div class="necesidad-ubicacion">${prod.notas}</div>` : ''}
+              </div>
+              <div class="necesidad-cantidad">${prod.cantidad || 1} ${prod.unidad || 'uds'}</div>
+            </div>
+          `).join('');
+        }
+      }
+
+      // También mostrar pedidos tradicionales si existen
+      const pedidos = datosModulos.pedidos || [];
+      const pendientes = pedidos.filter(p => p.estado === 'pendiente').length;
+
+      let htmlPedidos = '';
+      if (pedidos.length > 0) {
+        htmlPedidos = `
+          <div class="pedido-seccion-titulo" style="margin-top: 16px;">📦 Pedidos recibidos</div>
+          ${pedidos.slice(0, 3).map(p => {
+            const fechaObj = parseDate(p.fechaCreacion);
+            const fecha = fechaObj ? 
+              fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+            return `
+              <div class="pedido-card ${p.estado === 'pendiente' ? 'urgente' : ''}" onclick="abrirPedido('${p.id}')">
+                <div class="pedido-header">
+                  <div class="pedido-info">
+                    <div class="pedido-nido">${p.nidoNombre || 'Pedido'}</div>
+                    <div class="pedido-meta">${fecha} · ${p.items?.length || 0} productos</div>
+                  </div>
+                  <span class="pedido-estado ${p.estado}">${p.estado === 'pendiente' ? 'Pendiente' : 'Hecho'}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        `;
+      }
+
+      const totalNecesidades = necesidades.length + (proximaEstancia?.preparacion?.productosSolicitados?.length || 0);
+
       return `
         <div class="modulo-card" style="grid-column: 1 / -1;">
           <div class="modulo-card-header">
             <div class="modulo-card-title">
-              Pedidos
-              ${pendientes > 0 ? `<span class="pedido-badge">${pendientes} nuevo${pendientes > 1 ? 's' : ''}</span>` : ''}
+              🛒 Pedidos y Necesidades
+              ${totalNecesidades > 0 ? `<span class="pedido-badge">${totalNecesidades} items</span>` : ''}
             </div>
           </div>
-          <div class="modulo-card-body">${itemsHtml}</div>
+          <div class="modulo-card-body">
+            <div class="pedido-seccion-titulo">📦 Necesidades de Inventario</div>
+            ${htmlNecesidades}
+            
+            <div class="pedido-seccion-titulo" style="margin-top: 16px;">🛍️ Solicitudes de Estancia</div>
+            ${htmlSolicitudes}
+            
+            ${htmlPedidos}
+          </div>
         </div>
       `;
     }
@@ -3024,29 +3146,49 @@
     }
 
     // ========== RESERVAS ==========
-    function renderModuloReservas() {
-      const p = permisosActuales.calendario || permisosActuales.reservas;
+    function renderModuloEstancias() {
+      const p = permisosActuales.calendario || permisosActuales.reservas || permisosActuales.estancias;
       const hoy = new Date();
-      const proximas = datosModulos.reservas.filter(r => {
-        const fechaFin = parseDate(r.fechaFin);
+      const estancias = datosModulos.estancias || [];
+      
+      // Filtrar próximas (desde hoy)
+      const proximas = estancias.filter(e => {
+        const fechaFin = parseDate(e.fechaFin);
         return fechaFin && fechaFin >= hoy;
       }).slice(0, 5);
 
       let itemsHtml = '';
       if (proximas.length === 0) {
-        itemsHtml = '<div class="modulo-card-empty">No hay reservas próximas</div>';
+        itemsHtml = '<div class="modulo-card-empty">No hay estancias próximas</div>';
       } else {
-        itemsHtml = '<div class="item-list">' + proximas.map(r => {
-          const inicio = parseDate(r.fechaInicio);
-          const fin = parseDate(r.fechaFin);
-          const fechaStr = inicio ? inicio.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+        itemsHtml = '<div class="item-list">' + proximas.map(e => {
+          const inicio = parseDate(e.fechaInicio);
+          const fin = parseDate(e.fechaFin);
+          const fechaInicioStr = inicio ? inicio.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+          const fechaFinStr = fin ? fin.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+          const organizador = e.nidoReservaNombre || e.creadoPorNombre || 'Familia';
+          const nombre = e.nombre || e.tipoReservaNombre || 'Estancia';
+          
+          // Calcular personas si hay preparación
+          let numPersonas = '';
+          if (e.preparacion?.personas) {
+            const maxPersonas = Object.values(e.preparacion.personas).reduce((max, dia) => {
+              const total = (dia.familiares || 0) + (dia.duermen || 0);
+              return Math.max(max, total);
+            }, 0);
+            if (maxPersonas > 0) numPersonas = `👥 ${maxPersonas}`;
+          }
+          
           return `
-            <div class="item-row no-hover">
+            <div class="item-row clickable" onclick="verDetalleEstancia('${e.id}')">
               <span class="item-icon">📅</span>
               <div class="item-content">
-                <div class="item-title">${r.nidoNombre || 'Reserva'}</div>
-                <div class="item-subtitle">${fechaStr}${fin ? ' - ' + fin.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}</div>
+                <div class="item-title">${nombre}</div>
+                <div class="item-subtitle">
+                  ${fechaInicioStr} → ${fechaFinStr} · ${organizador} ${numPersonas}
+                </div>
               </div>
+              <span class="item-arrow">→</span>
             </div>
           `;
         }).join('') + '</div>';
@@ -3055,12 +3197,40 @@
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
-            <div class="modulo-card-title">📅 Reservas</div>
+            <div class="modulo-card-title">📅 Estancias</div>
             <div class="modulo-card-permisos">${renderPermisosBadges('calendario')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
         </div>
       `;
+    }
+
+    // Función para ver detalle de estancia (se implementará en Fase 3)
+    function verDetalleEstancia(estanciaId) {
+      const estancia = (datosModulos.estancias || []).find(e => e.id === estanciaId);
+      if (!estancia) return;
+      
+      // Por ahora, mostrar alert con info básica
+      const prep = estancia.preparacion || {};
+      let info = `📅 ${estancia.nombre || 'Estancia'}\n`;
+      info += `📆 ${estancia.fechaInicio} → ${estancia.fechaFin}\n`;
+      info += `👤 Organiza: ${estancia.nidoReservaNombre || estancia.creadoPorNombre || 'N/A'}\n\n`;
+      
+      if (prep.zonas?.length > 0) {
+        info += `🏠 Zonas: ${prep.zonas.length} a preparar\n`;
+      }
+      if (prep.tareas?.length > 0) {
+        info += `✅ Tareas: ${prep.tareas.length}\n`;
+      }
+      if (prep.productosSolicitados?.length > 0) {
+        info += `🛒 Productos solicitados: ${prep.productosSolicitados.length}\n`;
+      }
+      if (prep.notas) {
+        info += `\n📝 Notas: ${prep.notas}`;
+      }
+      
+      alert(info);
+      // TODO: Fase 3 - Abrir modal con detalle completo
     }
 
     // ========== INFORME DE ESTANCIAS ==========
