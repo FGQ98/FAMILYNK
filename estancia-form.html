@@ -306,6 +306,8 @@
     .btn-estancia:hover:not(:disabled) { background: var(--sage-dark); }
     .btn-enviar-externo { background: var(--terracotta); color: var(--white); }
     .btn-enviar-externo:hover:not(:disabled) { background: #A85D42; }
+    .btn-danger { background: var(--error); color: var(--white); }
+    .btn-danger:hover:not(:disabled) { background: #B5574A; }
 
     /* ========== MODAL ========== */
     .modal-overlay {
@@ -613,6 +615,7 @@
   </main>
 
   <div class="footer-actions" id="footer-actions" style="display:none;">
+    <button class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminarEstancia()">🗑️ Eliminar</button>
     <button class="btn btn-secondary" onclick="volverAtras()">Cancelar</button>
     <button class="btn btn-enviar-externo hidden" id="btn-enviar-externo" onclick="enviarAExternos()">📤 Enviar a externos</button>
     <button class="btn btn-estancia" id="btn-enviar" onclick="guardarEstancia()">📋 Crear estancia</button>
@@ -850,6 +853,7 @@
       const infoTitle = document.getElementById('info-card-title');
       const btnEnviar = document.getElementById('btn-enviar');
       const btnEnviarExterno = document.getElementById('btn-enviar-externo');
+      const btnEliminar = document.getElementById('btn-eliminar');
       
       if (modoEdicion) {
         titulo.textContent = '✏️ Editar Estancia';
@@ -860,6 +864,8 @@
         btnEnviar.textContent = '💾 Guardar cambios';
         // Deshabilitar cambio de bien
         document.getElementById('sol-bien').disabled = true;
+        // Mostrar botón eliminar
+        btnEliminar.classList.remove('hidden');
         
         // Mostrar botón "Enviar a externos" si estado = borrador
         if (estanciaOriginal && estanciaOriginal.estado === 'borrador') {
@@ -883,6 +889,38 @@
         window.location.href = `estancias.html?id=${bienIdParam}`;
       } else {
         window.location.href = 'cgi.html';
+      }
+    }
+
+    async function eliminarEstancia() {
+      if (!modoEdicion || !estanciaOriginal) {
+        alert('No hay estancia para eliminar');
+        return;
+      }
+
+      const nombre = estanciaOriginal.nombre || estanciaOriginal.tipoReservaNombre || 'esta estancia';
+      if (!confirm(`¿Eliminar "${nombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        return;
+      }
+
+      try {
+        const bienId = estanciaOriginal.bienId;
+        await db.collection('bienes').doc(bienId).collection('estancias').doc(estanciaId).delete();
+        
+        // También eliminar notificaciones relacionadas
+        const notifsSnap = await db.collection('notificaciones')
+          .where('origen.id', '==', estanciaId)
+          .get();
+        
+        const batch = db.batch();
+        notifsSnap.docs.forEach(doc => batch.delete(doc.ref));
+        if (notifsSnap.docs.length > 0) await batch.commit();
+
+        alert('✅ Estancia eliminada');
+        volverAtras();
+      } catch (error) {
+        console.error('Error eliminando:', error);
+        alert('Error al eliminar: ' + (error.message || 'Inténtalo de nuevo'));
       }
     }
 
@@ -1827,16 +1865,21 @@
 
     async function notificarAdmins(bien, nombre, inicio, fin, estanciaId, bienId) {
       try {
+        console.log('📧 Iniciando notificación...');
         const admins = await cargarAdminsParaNotificacion();
+        console.log('📧 Admins encontrados:', admins.length, admins.map(a => a.nombre || a.email));
+        
         const destinatarios = admins.filter(a => a.uid !== currentUser.uid).map(a => a.uid);
         const destinatariosFinales = destinatarios.length > 0 ? destinatarios : admins.map(a => a.uid);
+        
+        console.log('📧 Destinatarios finales:', destinatariosFinales);
 
         if (destinatariosFinales.length > 0) {
           const tituloNotif = nombre
             ? `📋 Nueva estancia: ${nombre} — ${bien?.nombre || 'Bien'}`
             : `📋 Nueva estancia: ${bien?.nombre || 'Bien'} (${inicio} → ${fin})`;
 
-          await db.collection('notificaciones').add({
+          const notifData = {
             tipo: 'info',
             categoria: 'estancia',
             titulo: tituloNotif,
@@ -1844,16 +1887,23 @@
             familiaId: currentFamilia.id,
             nidoId: miNidoPrincipal?.id || null,
             destinatarios: destinatariosFinales,
-            leidoPor: [], completadoPor: [],
+            leidoPor: [], 
+            completadoPor: [],
             fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
             fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
             enlace: `estancia-form.html?bienId=${bienId}&id=${estanciaId}`,
             origen: { tipo: 'estancia', bienId: bienId, id: estanciaId },
             estado: 'activa'
-          });
+          };
+          
+          console.log('📧 Creando notificación:', notifData);
+          const notifRef = await db.collection('notificaciones').add(notifData);
+          console.log('📧 Notificación creada:', notifRef.id);
+        } else {
+          console.warn('📧 No hay destinatarios para notificar');
         }
       } catch (e) {
-        console.error('Error notificando:', e);
+        console.error('📧 Error notificando:', e);
       }
     }
 
@@ -1939,18 +1989,41 @@
     async function cargarAdminsParaNotificacion() {
       try {
         const snap = await db.collection('usuarios').where('familiaId', '==', currentFamilia.id).get();
-        const admins = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
-          .filter(u => {
-            const rol = String(u.rol || '').toLowerCase();
-            const cred = String(u.credencial || u.credenciales || '').toLowerCase();
-            return rol.includes('admin') || cred.includes('admin') ||
-              rol === 'patriarca' || rol === 'matriarca' ||
-              cred === 'patriarca' || cred === 'matriarca' ||
-              cred === 'adminrama' || cred === 'adminnido' ||
-              u.esAdmin === true || u.adminRama === true || u.superAdmin === true ||
-              u.esPatriarca === true || u.esMatriarca === true;
-          });
-        console.log('Admins encontrados para notificación:', admins.map(a => a.nombre || a.email));
+        const todosUsuarios = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+        
+        console.log('👥 Todos los usuarios de la familia:', todosUsuarios.map(u => ({
+          nombre: u.nombre,
+          rol: u.rol,
+          credencial: u.credencial,
+          credenciales: u.credenciales,
+          esAdmin: u.esAdmin,
+          adminRama: u.adminRama
+        })));
+        
+        const admins = todosUsuarios.filter(u => {
+          const rol = String(u.rol || '').toLowerCase();
+          const cred = String(u.credencial || u.credenciales || '').toLowerCase();
+          const esCreador = u.uid === currentFamilia.creadoPor;
+          
+          return esCreador ||
+            rol.includes('admin') || cred.includes('admin') ||
+            rol === 'patriarca' || rol === 'matriarca' ||
+            cred === 'patriarca' || cred === 'matriarca' ||
+            cred === 'adminrama' || cred === 'adminnido' ||
+            cred === 'admin-rama' || cred === 'admin-nido' ||
+            u.esAdmin === true || u.adminRama === true || u.superAdmin === true ||
+            u.esPatriarca === true || u.esMatriarca === true ||
+            u.esCreador === true;
+        });
+        
+        console.log('👥 Admins filtrados:', admins.map(a => a.nombre || a.email));
+        
+        // Si no hay admins, usar el primer usuario (fallback)
+        if (admins.length === 0 && todosUsuarios.length > 0) {
+          console.log('👥 No hay admins, usando primer usuario como fallback');
+          return [todosUsuarios[0]];
+        }
+        
         return admins;
       } catch (e) {
         console.error('Error cargando admins:', e);
