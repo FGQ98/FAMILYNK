@@ -761,6 +761,10 @@
     const modoEdicion = !!estanciaId;
     let estanciaOriginal = null; // Datos originales en edición
 
+    console.log('🚀 ESTANCIA-FORM iniciado');
+    console.log('🚀 URL params - estanciaId:', estanciaId, 'bienIdParam:', bienIdParam);
+    console.log('🚀 Modo edición:', modoEdicion);
+
     let preparacionData = {
       zonas: [],
       zonasDesglose: {},
@@ -885,8 +889,10 @@
     }
 
     function volverAtras() {
-      if (bienIdParam) {
-        window.location.href = `estancias.html?id=${bienIdParam}`;
+      // Prioridad: bienIdParam > estanciaOriginal.bienId > cgi
+      const bienIdVolver = bienIdParam || estanciaOriginal?.bienId;
+      if (bienIdVolver) {
+        window.location.href = `estancias.html?id=${bienIdVolver}`;
       } else {
         window.location.href = 'cgi.html';
       }
@@ -926,21 +932,29 @@
 
     async function cargarEstanciaParaEdicion() {
       try {
+        console.log('🔄 Cargando estancia para edición...');
+        console.log('🔄 estanciaId:', estanciaId);
+        console.log('🔄 bienIdParam:', bienIdParam);
+        console.log('🔄 bienesDisponibles:', bienesDisponibles.length);
+        
         // Buscar la estancia - necesitamos el bienId
         let bienIdEstancia = bienIdParam;
         
         // Si no tenemos bienId, buscar en todos los bienes
         if (!bienIdEstancia) {
+          console.log('🔄 Buscando estancia en todos los bienes...');
           for (const bien of bienesDisponibles) {
             const doc = await db.collection('bienes').doc(bien.id).collection('estancias').doc(estanciaId).get();
             if (doc.exists) {
               bienIdEstancia = bien.id;
+              console.log('🔄 Encontrada en bien:', bien.id);
               break;
             }
           }
         }
         
         if (!bienIdEstancia) {
+          console.error('❌ Estancia no encontrada en ningún bien');
           alert('Estancia no encontrada');
           window.history.back();
           return;
@@ -948,12 +962,14 @@
 
         const doc = await db.collection('bienes').doc(bienIdEstancia).collection('estancias').doc(estanciaId).get();
         if (!doc.exists) {
+          console.error('❌ Documento no existe:', bienIdEstancia, estanciaId);
           alert('Estancia no encontrada');
           window.history.back();
           return;
         }
 
         estanciaOriginal = { id: doc.id, bienId: bienIdEstancia, ...doc.data() };
+        console.log('✅ Estancia cargada:', estanciaOriginal);
         
         // Seleccionar bien
         document.getElementById('sol-bien').value = bienIdEstancia;
@@ -987,14 +1003,19 @@
         // Cargar preparación
         if (estanciaOriginal.preparacion) {
           preparacionData = { ...preparacionData, ...estanciaOriginal.preparacion };
+          console.log('✅ Preparación cargada:', preparacionData);
+        } else {
+          console.log('⚠️ No hay preparación en la estancia');
         }
 
         // Calcular días y renderizar
+        console.log('🔄 Calculando días y renderizando...');
         calcularDiasSolicitud();
         renderAll();
+        console.log('✅ Formulario cargado completamente');
         
       } catch (e) {
-        console.error('Error cargando estancia:', e);
+        console.error('❌ Error cargando estancia:', e);
         alert('Error al cargar la estancia');
       }
     }
