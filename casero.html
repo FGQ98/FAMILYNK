@@ -3489,6 +3489,48 @@
         }
       }
       
+      // Matriz de Servicios (cocina/sirve por pase y día)
+      if (prep.servicio && Object.keys(prep.servicio).length > 0) {
+        const servicioEntries = Object.entries(prep.servicio).filter(([k, v]) => v && v.length > 0);
+        if (servicioEntries.length > 0) {
+          // Obtener días únicos
+          const diasUnicos = [...new Set(servicioEntries.map(([k]) => k.split('-')[1]))].sort();
+          const pases = ['desayuno', 'comida', 'cena'];
+          const paseIcons = { desayuno: '🍳', comida: '🍽️', cena: '🌙' };
+          
+          let tablaHtml = `
+            <div class="estancia-detalle-tabla-servicio">
+              <table style="width: 100%; font-size: 0.8rem; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: var(--cream-dark);">
+                    <th style="padding: 8px; text-align: left;"></th>
+                    ${diasUnicos.map(d => `<th style="padding: 8px; text-align: center;">${d}</th>`).join('')}
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pases.map(p => {
+                    const celdas = diasUnicos.map(d => {
+                      const roles = prep.servicio[`${p}-${d}`] || [];
+                      return roles.length > 0 
+                        ? `<td style="padding: 6px; text-align: center;">${roles.map(r => `<span class="estancia-detalle-tag" style="font-size: 0.7rem;">${r}</span>`).join(' ')}</td>`
+                        : '<td style="padding: 6px; text-align: center; color: var(--text-muted);">—</td>';
+                    }).join('');
+                    return `<tr><td style="padding: 6px; font-weight: 600;">${paseIcons[p]} ${p.charAt(0).toUpperCase() + p.slice(1)}</td>${celdas}</tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+          
+          html += `
+            <div class="estancia-detalle-seccion">
+              <div class="estancia-detalle-seccion-titulo">👨‍🍳 Servicios</div>
+              ${tablaHtml}
+            </div>
+          `;
+        }
+      }
+      
       // Tareas
       if (prep.tareas?.length > 0) {
         html += `
@@ -5153,7 +5195,7 @@
         return;
       }
       
-      console.log('🔖 Cargando normas para bien:', bienActual.bien.id, 'familia:', bienActual.bien.familiaId);
+      console.log('🔖 Cargando normas para familia:', bienActual.bien.familiaId);
       
       try {
         // Cargar configuración de la familia
@@ -5161,21 +5203,33 @@
         if (familiaDoc.exists) {
           configFamilia = familiaDoc.data().config || {};
           console.log('🔖 Config familia:', configFamilia);
-          console.log('🔖 mostrarNormasExternos:', configFamilia.mostrarNormasExternos);
         }
         
-        // Cargar normas del bien (independiente de config para verificar)
-        const normasSnap = await db.collection('bienes').doc(bienActual.bien.id)
-          .collection('normasExternos')
-          .orderBy('orden', 'asc')
+        // Cargar normas del tipo "casero" desde la familia
+        const normasDoc = await db.collection('familias').doc(bienActual.bien.familiaId)
+          .collection('plantillasNormasExternos')
+          .doc('casero')
           .get();
         
-        normasData = normasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log('🔖 Normas encontradas:', normasData.length);
+        if (normasDoc.exists) {
+          const elementos = normasDoc.data().elementos || [];
+          // Convertir a formato de capítulos
+          normasData = elementos.map((el, idx) => ({
+            id: `cap-${idx}`,
+            orden: idx,
+            titulo: el.titulo || `Capítulo ${idx + 1}`,
+            preceptos: el.preceptos || [],
+            apartados: el.apartados || []
+          }));
+          console.log('🔖 Normas encontradas:', normasData.length);
+        } else {
+          normasData = [];
+          console.log('🔖 No hay documento de normas para casero');
+        }
         
-        // Mostrar botón si hay normas Y config lo permite (o si hay normas y no hay config definida)
-        const mostrarBoton = normasData.length > 0 && (configFamilia.mostrarNormasExternos !== false);
-        console.log('🔖 Mostrar botón:', mostrarBoton);
+        // Mostrar botón si hay normas (config opcional)
+        const mostrarBoton = normasData.length > 0;
+        console.log('🔖 Mostrar botón normas:', mostrarBoton);
         
         if (mostrarBoton) {
           document.getElementById('btn-normas').classList.add('visible');
