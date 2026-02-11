@@ -3396,7 +3396,7 @@
       `;
     }
 
-    // Función para ver detalle de estancia (se implementará en Fase 3)
+    // Función para ver detalle de estancia
     function verDetalleEstancia(estanciaId) {
       const estancia = (datosModulos.estancias || []).find(e => e.id === estanciaId);
       if (!estancia) return;
@@ -3404,6 +3404,8 @@
       const prep = estancia.preparacion || {};
       const nombre = estancia.nombre || estancia.tipoReservaNombre || 'Estancia';
       const organizador = estancia.nidoReservaNombre || estancia.creadoPorNombre || 'N/A';
+      
+      console.log('📋 Preparación de estancia:', prep);
       
       // Formatear fechas
       const fechaInicio = parseDate(estancia.fechaInicio);
@@ -3458,7 +3460,9 @@
             <div class="estancia-detalle-seccion-titulo">👥 Personas por día</div>
             <div class="estancia-detalle-tabla">
               ${Object.entries(prep.personas).map(([key, dia]) => {
-                const fecha = key.split('-').slice(1).join('/');
+                // key puede ser "d-2024-02-15" o "2024-02-15"
+                const partes = key.split('-');
+                const fecha = partes.length > 3 ? `${partes[2]}/${partes[1]}` : `${partes[2]}/${partes[1]}`;
                 return `
                   <div class="estancia-detalle-fila">
                     <span class="estancia-detalle-fila-fecha">${fecha}</span>
@@ -3490,13 +3494,25 @@
       }
       
       // Matriz de Servicios (cocina/sirve por pase y día)
+      // Keys son como "desayuno-2024-02-15" o "comida-2024-02-16"
       if (prep.servicio && Object.keys(prep.servicio).length > 0) {
         const servicioEntries = Object.entries(prep.servicio).filter(([k, v]) => v && v.length > 0);
         if (servicioEntries.length > 0) {
-          // Obtener días únicos
-          const diasUnicos = [...new Set(servicioEntries.map(([k]) => k.split('-')[1]))].sort();
+          // Extraer días únicos (formato YYYY-MM-DD)
+          const diasUnicos = [...new Set(servicioEntries.map(([k]) => {
+            // "desayuno-2024-02-15" → "2024-02-15"
+            const partes = k.split('-');
+            return partes.slice(1).join('-'); // Toma todo después del primer guión
+          }))].sort();
+          
           const pases = ['desayuno', 'comida', 'cena'];
           const paseIcons = { desayuno: '🍳', comida: '🍽️', cena: '🌙' };
+          
+          // Formatear cabeceras de días
+          const diasFormateados = diasUnicos.map(d => {
+            const partes = d.split('-');
+            return partes.length === 3 ? `${partes[2]}/${partes[1]}` : d;
+          });
           
           let tablaHtml = `
             <div class="estancia-detalle-tabla-servicio">
@@ -3504,13 +3520,14 @@
                 <thead>
                   <tr style="background: var(--cream-dark);">
                     <th style="padding: 8px; text-align: left;"></th>
-                    ${diasUnicos.map(d => `<th style="padding: 8px; text-align: center;">${d}</th>`).join('')}
+                    ${diasFormateados.map(d => `<th style="padding: 8px; text-align: center;">${d}</th>`).join('')}
                   </tr>
                 </thead>
                 <tbody>
                   ${pases.map(p => {
                     const celdas = diasUnicos.map(d => {
-                      const roles = prep.servicio[`${p}-${d}`] || [];
+                      const key = `${p}-${d}`;
+                      const roles = prep.servicio[key] || [];
                       return roles.length > 0 
                         ? `<td style="padding: 6px; text-align: center;">${roles.map(r => `<span class="estancia-detalle-tag" style="font-size: 0.7rem;">${r}</span>`).join(' ')}</td>`
                         : '<td style="padding: 6px; text-align: center; color: var(--text-muted);">—</td>';
@@ -3531,28 +3548,61 @@
         }
       }
       
-      // Tareas
-      if (prep.tareas?.length > 0) {
+      // Productos Solicitados (lo que debe comprar la casa)
+      if (prep.productosSolicitados?.length > 0) {
         html += `
           <div class="estancia-detalle-seccion">
-            <div class="estancia-detalle-seccion-titulo">✅ Tareas adicionales (${prep.tareas.length})</div>
-            ${prep.tareas.map(t => `
+            <div class="estancia-detalle-seccion-titulo">🛒 Productos a comprar (${prep.productosSolicitados.length})</div>
+            ${prep.productosSolicitados.map(p => `
               <div class="estancia-detalle-item">
-                <span>${t.nombre || t.descripcion || t}</span>
-                ${t.asignado ? `<span class="estancia-detalle-asignado">→ ${t.asignado}</span>` : ''}
+                <span>${p.descripcion || p.nombre || p}${p.cantidad ? ` x${p.cantidad}` : ''}</span>
+                ${p.notas ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">${p.notas}</div>` : ''}
               </div>
             `).join('')}
           </div>
         `;
       }
       
-      // Ajuar especial
-      if (prep.menajeEspecial && prep.menaje?.length > 0) {
+      // Productos Aportados (lo que trae la familia)
+      if (prep.productosAportados?.length > 0) {
         html += `
           <div class="estancia-detalle-seccion">
-            <div class="estancia-detalle-seccion-titulo">🏠 Ajuar especial</div>
+            <div class="estancia-detalle-seccion-titulo">🎁 Productos que aportan (${prep.productosAportados.length})</div>
+            ${prep.productosAportados.map(p => `
+              <div class="estancia-detalle-item">
+                <span>${p.descripcion || p.nombre || p}${p.cantidad ? ` x${p.cantidad}` : ''}</span>
+                ${p.notas ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">${p.notas}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      // Tareas adicionales
+      if (prep.tareas?.length > 0) {
+        html += `
+          <div class="estancia-detalle-seccion">
+            <div class="estancia-detalle-seccion-titulo">✅ Tareas adicionales (${prep.tareas.length})</div>
+            ${prep.tareas.map(t => `
+              <div class="estancia-detalle-item">
+                <span>${t.titulo || t.nombre || t.descripcion || t}</span>
+                ${t.dia ? `<span class="estancia-detalle-tag" style="font-size: 0.7rem; margin-left: 8px;">${t.dia}</span>` : ''}
+                ${t.prioridad && t.prioridad !== 'normal' ? `<span class="estancia-detalle-tag" style="font-size: 0.7rem; background: ${t.prioridad === 'alta' ? 'var(--terracotta-muted)' : 'var(--sage-muted)'};">${t.prioridad}</span>` : ''}
+                ${t.notas ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">${t.notas}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+      
+      // Ajuar/Menaje especial
+      if (prep.menajeEspecial || prep.menaje?.length > 0 || prep.menajeAjuar?.length > 0) {
+        const items = [...(prep.menaje || []), ...(prep.menajeAjuar || [])];
+        html += `
+          <div class="estancia-detalle-seccion">
+            <div class="estancia-detalle-seccion-titulo">🍷 Menaje especial</div>
             <div class="estancia-detalle-lista">
-              ${prep.menaje.map(m => `<span class="estancia-detalle-tag">${m.nombre || m}</span>`).join('')}
+              ${items.map(m => `<span class="estancia-detalle-tag">${m.articulo || m.nombre || m}${m.cantidad && m.cantidad > 1 ? ` x${m.cantidad}` : ''}</span>`).join('')}
             </div>
           </div>
         `;
