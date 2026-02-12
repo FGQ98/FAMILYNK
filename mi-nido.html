@@ -448,6 +448,10 @@
             <label class="form-label">Email</label>
             <input type="email" class="form-input" id="perfil-email" disabled>
           </div>
+          <div class="form-group" id="grupo-perfil-boda" style="display:none;">
+            <label class="form-label">💒 Fecha de enlace/boda</label>
+            <input type="date" class="form-input" id="perfil-fechaBoda">
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
@@ -498,6 +502,37 @@
     </div>
   </div>
 
+  <!-- Modal: Admin editar fechas de un miembro -->
+  <div class="modal-overlay" id="modal-admin-fechas">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">📝 Editar fechas</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-admin-fechas" onsubmit="guardarAdminFechas(event)">
+        <div class="modal-body">
+          <div class="info-box">
+            ℹ️ Editando fechas de: <strong id="admin-fechas-nombre">—</strong>
+          </div>
+          <input type="hidden" id="admin-fechas-idx">
+          <div class="form-group" id="grupo-admin-boda" style="display:none;">
+            <label class="form-label">💒 Fecha de enlace/boda</label>
+            <input type="date" class="form-input" id="admin-fechaBoda">
+          </div>
+          <div class="form-group">
+            <label class="form-label">🕯️ Fecha de defunción</label>
+            <input type="date" class="form-input" id="admin-fechaDefuncion">
+            <span style="font-size:0.72rem; color:var(--text-muted);">Dejar vacío si no aplica</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+          <button type="submit" class="btn btn-sage">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -510,6 +545,7 @@
     let userData = null;
     let nidoData = null;
     let miIndexEnNido = -1; // Índice del usuario actual en miembrosData
+    let esAdminNido = false; // Si el usuario actual es admin del nido
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -627,6 +663,7 @@
         // Mostrar botón gestionar si es admin
         const esAdmin = (nidoData.admins || []).includes(currentUser.uid) || 
                         (nidoData.miembrosData || []).some(m => m.uid === currentUser.uid && m.esAdmin);
+        esAdminNido = esAdmin;
         if (esAdmin) {
           const btnGestionar = document.getElementById('btn-gestionar-nido');
           btnGestionar.href = `nido.html?id=${nidoData.id}`;
@@ -728,8 +765,17 @@
           badgeInvitacion = '<span class="miembro-badge validar" title="Ha aceptado pero no ha validado contraseña">🔑 Validar</span>';
         }
 
+        // Meta info (edad + fechas si existen)
+        let metaItems = [];
+        if (edad) metaItems.push(edad);
+        if (m.fechaBoda) metaItems.push(`💒 ${new Date(m.fechaBoda).toLocaleDateString('es-ES', {day:'numeric',month:'short',year:'numeric'})}`);
+        if (m.fechaDefuncion) metaItems.push(`🕯️ ${new Date(m.fechaDefuncion).toLocaleDateString('es-ES', {day:'numeric',month:'short',year:'numeric'})}`);
+        const metaText = metaItems.join(' · ');
+
         return `
-          <div class="miembro-row ${esYo ? 'es-yo' : ''} ${estadoClase}" onclick="${esYo ? 'editarMiPerfil()' : ''}">
+          <div class="miembro-row ${esYo ? 'es-yo' : ''} ${estadoClase}" 
+               onclick="${esYo ? 'editarMiPerfil()' : (esAdminNido ? `abrirAdminFechas(${idx})` : '')}"
+               style="${!esYo && esAdminNido ? 'cursor:pointer;' : ''}">
             <div class="miembro-avatar">${m.iniciales || '?'}</div>
             <div class="miembro-info">
               <div class="miembro-nombre">
@@ -739,7 +785,7 @@
                 ${badgeVincular}
                 ${badgeInvitacion}
               </div>
-              <div class="miembro-meta">${edad}</div>
+              <div class="miembro-meta">${metaText}</div>
             </div>
             <span class="miembro-relacion ${relacion}">${relacionLabels[relacion] || 'Otro'}</span>
           </div>
@@ -792,6 +838,12 @@
       document.getElementById('perfil-nacimiento').value = miembro.fechaNacimiento || '';
       document.getElementById('perfil-email').value = miembro.email || currentUser.email || '';
       
+      // Mostrar campo boda solo si es consorte con vínculo
+      const vincular = miembro.estadoVincular || '';
+      const mostrarBoda = ['matrimonio', 'de-hecho', 'separado', 'divorciado'].includes(vincular);
+      document.getElementById('grupo-perfil-boda').style.display = mostrarBoda ? '' : 'none';
+      document.getElementById('perfil-fechaBoda').value = miembro.fechaBoda || '';
+      
       document.getElementById('modal-perfil').classList.add('active');
     }
 
@@ -803,6 +855,11 @@
       miembros[miIndexEnNido].iniciales = document.getElementById('perfil-iniciales').value.trim().toUpperCase();
       miembros[miIndexEnNido].nombre = document.getElementById('perfil-nombre').value.trim();
       miembros[miIndexEnNido].fechaNacimiento = document.getElementById('perfil-nacimiento').value || null;
+      
+      // Guardar fechaBoda si el campo está visible
+      if (document.getElementById('grupo-perfil-boda').style.display !== 'none') {
+        miembros[miIndexEnNido].fechaBoda = document.getElementById('perfil-fechaBoda').value || null;
+      }
 
       try {
         await db.collection('nidos').doc(nidoData.id).update({ miembrosData: miembros });
@@ -857,6 +914,52 @@
       } catch (error) {
         console.error('Error:', error);
         alert('Error al añadir miembro');
+      }
+    }
+
+    // ============================================
+    // ADMIN: EDITAR FECHAS DE OTRO MIEMBRO
+    // ============================================
+    function abrirAdminFechas(idx) {
+      if (!esAdminNido) return;
+      const miembro = nidoData.miembrosData[idx];
+      if (!miembro) return;
+
+      document.getElementById('admin-fechas-nombre').textContent = miembro.nombre || 'Sin nombre';
+      document.getElementById('admin-fechas-idx').value = idx;
+      document.getElementById('admin-fechaBoda').value = miembro.fechaBoda || '';
+      document.getElementById('admin-fechaDefuncion').value = miembro.fechaDefuncion || '';
+
+      // Mostrar campo boda solo si tiene estado vincular de pareja
+      const vincular = miembro.estadoVincular || '';
+      const mostrarBoda = ['matrimonio', 'de-hecho', 'separado', 'divorciado'].includes(vincular);
+      document.getElementById('grupo-admin-boda').style.display = mostrarBoda ? '' : 'none';
+
+      document.getElementById('modal-admin-fechas').classList.add('active');
+    }
+
+    async function guardarAdminFechas(e) {
+      e.preventDefault();
+      const idx = parseInt(document.getElementById('admin-fechas-idx').value);
+      if (isNaN(idx)) return;
+
+      const miembros = nidoData.miembrosData;
+      
+      // Solo guardar fechaBoda si el campo está visible
+      if (document.getElementById('grupo-admin-boda').style.display !== 'none') {
+        miembros[idx].fechaBoda = document.getElementById('admin-fechaBoda').value || null;
+      }
+      miembros[idx].fechaDefuncion = document.getElementById('admin-fechaDefuncion').value || null;
+
+      try {
+        await db.collection('nidos').doc(nidoData.id).update({ miembrosData: miembros });
+        nidoData.miembrosData = miembros;
+        cerrarModales();
+        renderNido();
+        alert('✅ Fechas actualizadas');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al guardar');
       }
     }
 
