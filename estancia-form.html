@@ -2130,67 +2130,99 @@
         
         // Colores Familynk
         const sage = [122, 158, 126];
-        const text = [61, 60, 54];
+        const txt = [61, 60, 54];
         const muted = [150, 150, 140];
+        const cream = [245, 241, 232];
+        
+        // Helper: quitar emojis de texto
+        function sinEmoji(str) {
+          return (str || '').replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FEFF}]|[\u200D\uFE0F]/gu, '').trim();
+        }
+        
+        // Helper: formatear fecha "2026-02-13" → "Vie 13 feb"
+        function formatFechaDia(dateStr) {
+          if (!dateStr) return dateStr;
+          const d = new Date(dateStr + 'T12:00:00');
+          const dias = ['Dom', 'Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab'];
+          const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+          return `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+        }
+        
+        // Helper: formatear fecha larga
+        function formatFechaLarga(dateStr) {
+          if (!dateStr) return '';
+          return new Date(dateStr + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        
+        // Helper: resolver nombre de zona desde zonasData
+        function nombreZona(zonaId) {
+          const z = zonasData.find(x => x.id === zonaId);
+          return z ? z.nombre : zonaId.replace(/_/g, ' ');
+        }
+        
+        // Helper: resolver nombre de dependencia
+        function nombreDependencia(zonaId, depId) {
+          const z = zonasData.find(x => x.id === zonaId);
+          if (!z) return depId;
+          const dep = z.dependencias.find(d => d.id === depId);
+          return dep ? dep.nombre : depId;
+        }
+        
+        // Helper: check page break
+        function checkPage(need) {
+          if (y + need > 275) { doc.addPage(); y = 20; }
+        }
         
         // Helper: línea de texto con wrap
-        function addText(label, value, bold) {
+        function addText(label, value) {
           if (!value) return;
+          checkPage(8);
           doc.setFontSize(9);
           doc.setTextColor(...muted);
           doc.text(label, M, y);
           doc.setFontSize(10);
-          doc.setTextColor(...text);
-          if (bold) doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...txt);
           const lines = doc.splitTextToSize(String(value), W - M * 2 - 40);
           doc.text(lines, M + 42, y);
-          doc.setFont('helvetica', 'normal');
           y += lines.length * 5 + 2;
-          if (y > 270) { doc.addPage(); y = 20; }
         }
         
         function addSection(titulo) {
           y += 4;
-          if (y > 260) { doc.addPage(); y = 20; }
+          checkPage(14);
           doc.setFillColor(...sage);
           doc.roundedRect(M, y - 3, W - M * 2, 7, 2, 2, 'F');
           doc.setFontSize(10);
           doc.setTextColor(255, 255, 255);
           doc.setFont('helvetica', 'bold');
-          doc.text(titulo, M + 4, y + 2);
+          doc.text(sinEmoji(titulo), M + 4, y + 2);
           doc.setFont('helvetica', 'normal');
-          doc.setTextColor(...text);
+          doc.setTextColor(...txt);
           y += 10;
-        }
-        
-        function addLine() {
-          doc.setDrawColor(220, 215, 200);
-          doc.line(M, y, W - M, y);
-          y += 4;
         }
         
         // ===== CABECERA =====
         doc.setFillColor(...sage);
-        doc.rect(0, 0, W, 30, 'F');
-        doc.setFontSize(16);
+        doc.rect(0, 0, W, 28, 'F');
+        doc.setFontSize(15);
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        const nombre = document.getElementById('sol-nombre').value || 'Estancia';
-        doc.text(nombre, M, 15);
+        const nombre = sinEmoji(document.getElementById('sol-nombre').value || 'Estancia');
+        doc.text(nombre, M, 14);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         const bien = document.getElementById('sol-bien');
-        const bienNombre = bien.options[bien.selectedIndex]?.text || '';
-        doc.text(bienNombre + '  |  ' + new Date().toLocaleDateString('es-ES'), M, 23);
-        y = 38;
+        const bienNombre = sinEmoji(bien.options[bien.selectedIndex]?.text || '');
+        doc.text(bienNombre + '  |  ' + new Date().toLocaleDateString('es-ES'), M, 22);
+        y = 36;
         
         // ===== DATOS GENERALES =====
         addSection('Datos generales');
         
         const fechaIni = document.getElementById('sol-fecha-inicio').value;
         const fechaFin = document.getElementById('sol-fecha-fin').value;
-        if (fechaIni) addText('Entrada:', new Date(fechaIni + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
-        if (fechaFin) addText('Salida:', new Date(fechaFin + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+        if (fechaIni) addText('Entrada:', formatFechaLarga(fechaIni));
+        if (fechaFin) addText('Salida:', formatFechaLarga(fechaFin));
         
         const motivo = document.getElementById('sol-motivo').value;
         if (motivo) addText('Motivo:', motivo);
@@ -2200,51 +2232,70 @@
         
         // ===== PERSONAS POR DÍA =====
         if (preparacionData.personas && Object.keys(preparacionData.personas).length > 0) {
-          addSection('Personas por día');
+          addSection('Personas por dia');
           
-          const diasAbrev = { 'lun': 'Lun', 'mar': 'Mar', 'mie': 'Mié', 'jue': 'Jue', 'vie': 'Vie', 'sab': 'Sáb', 'dom': 'Dom' };
-          const filas = ['familiares', 'desayuno', 'comida', 'cena', 'duermen'];
-          const filasLabel = { familiares: 'Familiares', desayuno: 'Desayunos', comida: 'Comidas', cena: 'Cenas', duermen: 'Duermen' };
+          const filas = [
+            { key: 'familiares', label: 'Familiares' },
+            { key: 'desayuno', label: 'Desayunos' },
+            { key: 'comida', label: 'Comidas' },
+            { key: 'cena', label: 'Cenas' },
+            { key: 'duermen', label: 'Duermen' }
+          ];
           
-          // Obtener días que tienen datos
-          const diasConDatos = Object.keys(preparacionData.personas).sort();
+          // Usar diasSolicitud si existen, sino formatear keys
+          let diasPDF = [];
+          if (diasSolicitud.length > 0) {
+            diasPDF = diasSolicitud.map(d => ({ key: d.key, label: d.label }));
+          } else {
+            diasPDF = Object.keys(preparacionData.personas).sort().map(k => ({
+              key: k, label: formatFechaDia(k)
+            }));
+          }
           
-          if (diasConDatos.length > 0) {
-            // Tabla simple
-            const colW = Math.min(16, (W - M * 2 - 30) / diasConDatos.length);
+          if (diasPDF.length > 0) {
+            const colW = Math.min(18, (W - M * 2 - 32) / diasPDF.length);
             const x0 = M;
             
-            // Header
-            doc.setFontSize(7);
-            doc.setTextColor(...muted);
-            diasConDatos.forEach((dia, i) => {
-              const label = diasAbrev[dia] || dia;
-              doc.text(label, x0 + 30 + i * colW + colW / 2, y, { align: 'center' });
+            // Header con fondo
+            doc.setFillColor(...cream);
+            doc.rect(x0, y - 4, W - M * 2, 6, 'F');
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...sage);
+            diasPDF.forEach((dia, i) => {
+              doc.text(dia.label, x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
             });
-            y += 5;
+            doc.setFont('helvetica', 'normal');
+            y += 6;
             
-            // Filas
-            filas.forEach(fila => {
-              doc.setFontSize(8);
-              doc.setTextColor(...text);
-              doc.text(filasLabel[fila] || fila, x0, y);
-              doc.setFontSize(9);
-              diasConDatos.forEach((dia, i) => {
-                const val = preparacionData.personas[dia]?.[fila] || 0;
+            // Filas de datos
+            filas.forEach((fila, fIdx) => {
+              checkPage(6);
+              // Fondo alterno
+              if (fIdx % 2 === 0) {
+                doc.setFillColor(250, 248, 244);
+                doc.rect(x0, y - 3.5, W - M * 2, 5.5, 'F');
+              }
+              doc.setFontSize(8.5);
+              doc.setTextColor(...txt);
+              doc.text(fila.label, x0 + 2, y);
+              doc.setFontSize(9.5);
+              diasPDF.forEach((dia, i) => {
+                const val = preparacionData.personas[dia.key]?.[fila.key] || 0;
                 if (val > 0) {
                   doc.setFont('helvetica', 'bold');
-                  doc.text(String(val), x0 + 30 + i * colW + colW / 2, y, { align: 'center' });
+                  doc.setTextColor(...txt);
+                  doc.text(String(val), x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
                   doc.setFont('helvetica', 'normal');
                 } else {
                   doc.setTextColor(...muted);
-                  doc.text('-', x0 + 30 + i * colW + colW / 2, y, { align: 'center' });
-                  doc.setTextColor(...text);
+                  doc.text('-', x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
                 }
               });
-              y += 5;
-              if (y > 270) { doc.addPage(); y = 20; }
+              doc.setTextColor(...txt);
+              y += 5.5;
             });
-            y += 2;
+            y += 3;
           }
         }
         
@@ -2252,69 +2303,112 @@
         if (preparacionData.zonas && preparacionData.zonas.length > 0) {
           addSection('Zonas de limpieza');
           preparacionData.zonas.forEach(zonaId => {
+            checkPage(8);
+            const nombre = nombreZona(zonaId);
             const deps = preparacionData.zonasDesglose[zonaId] || [];
-            const depsText = deps.length > 0 ? ' (' + deps.join(', ') + ')' : '';
-            addText('•', zonaId + depsText);
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...txt);
+            doc.text('> ' + nombre, M, y);
+            doc.setFont('helvetica', 'normal');
+            
+            if (deps.length > 0) {
+              const nombresResueltos = deps.map(depId => nombreDependencia(zonaId, depId));
+              doc.setFontSize(8.5);
+              doc.setTextColor(...muted);
+              const depsText = doc.splitTextToSize(nombresResueltos.join(', '), W - M * 2 - 10);
+              doc.text(depsText, M + 6, y + 5);
+              y += 5 + depsText.length * 4;
+            } else {
+              y += 6;
+            }
           });
         }
         
         // ===== MENÚS =====
         const menusKeys = Object.keys(preparacionData.menus || {}).filter(k => {
           const m = preparacionData.menus[k];
-          return m && (m.plato || m.notas);
+          return m && (m.plato || m.notas || m.especial);
         });
         if (menusKeys.length > 0) {
-          addSection('Menús');
+          addSection('Menus');
           const paseLabels = { desayuno: 'Desayuno', aperitivo: 'Aperitivo', comida: 'Comida', cena: 'Cena' };
           menusKeys.sort().forEach(key => {
             const m = preparacionData.menus[key];
             const parts = key.split('-');
             const pase = paseLabels[parts[0]] || parts[0];
-            const dia = parts[1] || '';
-            const label = pase + ' ' + dia;
-            addText(label + ':', m.plato || m.notas || '');
+            const diaKey = parts.slice(1).join('-');
+            const diaLabel = formatFechaDia(diaKey) || diaKey;
+            const contenido = m.plato || m.notas || (m.especial ? 'Menu especial' : '');
+            if (contenido) addText(pase + ' ' + diaLabel + ':', contenido);
           });
         }
         
         // ===== SERVICIO =====
         const servicioKeys = Object.keys(preparacionData.servicio || {}).filter(k => {
-          const s = preparacionData.servicio[k];
-          return s && Object.values(s).some(v => v);
+          const roles = preparacionData.servicio[k];
+          return Array.isArray(roles) && roles.length > 0;
         });
         if (servicioKeys.length > 0) {
           addSection('Servicio');
+          const paseLabels = { desayuno: 'Desayuno', aperitivo: 'Aperitivo', comida: 'Comida', cena: 'Cena' };
           servicioKeys.sort().forEach(key => {
-            const s = preparacionData.servicio[key];
-            const activos = Object.entries(s).filter(([k, v]) => v).map(([k]) => k);
-            if (activos.length > 0) {
-              const parts = key.split('-');
-              addText(parts.join(' ') + ':', activos.join(', '));
-            }
+            const roles = preparacionData.servicio[key];
+            const parts = key.split('-');
+            const pase = paseLabels[parts[0]] || parts[0];
+            const diaKey = parts.slice(1).join('-');
+            const diaLabel = formatFechaDia(diaKey) || diaKey;
+            addText(pase + ' ' + diaLabel + ':', roles.join(', '));
           });
         }
         
         // ===== MENAJE =====
-        if (preparacionData.menaje && preparacionData.menaje.length > 0) {
+        if (preparacionData.menajeEspecial && preparacionData.menaje && preparacionData.menaje.length > 0) {
           addSection('Menaje especial');
-          addText('Items:', preparacionData.menaje.join(', '));
+          preparacionData.menaje.forEach(item => {
+            checkPage(6);
+            const texto = typeof item === 'object' ? (item.nombre || item.descripcion || JSON.stringify(item)) : String(item);
+            doc.setFontSize(9);
+            doc.setTextColor(...txt);
+            doc.text('  > ' + texto, M, y);
+            y += 5;
+          });
+          y += 2;
         }
         
         // ===== PRODUCTOS =====
-        if (preparacionData.productosAportados && preparacionData.productosAportados.length > 0) {
-          addSection('Productos aportados');
-          addText('Items:', preparacionData.productosAportados.join(', '));
+        function renderProductos(titulo, lista) {
+          if (!lista || lista.length === 0) return;
+          addSection(titulo);
+          lista.forEach(p => {
+            checkPage(8);
+            let linea = '';
+            if (typeof p === 'object') {
+              linea = p.descripcion || p.nombre || '';
+              if (p.cantidad) linea += ' (' + p.cantidad + ')';
+              if (p.notas) linea += ' — ' + p.notas;
+            } else {
+              linea = String(p);
+            }
+            doc.setFontSize(9);
+            doc.setTextColor(...txt);
+            const wrapped = doc.splitTextToSize('  > ' + linea, W - M * 2 - 4);
+            doc.text(wrapped, M, y);
+            y += wrapped.length * 4.5 + 1;
+          });
         }
-        if (preparacionData.productosSolicitados && preparacionData.productosSolicitados.length > 0) {
-          addSection('Productos solicitados');
-          addText('Items:', preparacionData.productosSolicitados.join(', '));
-        }
+        renderProductos('Productos aportados', preparacionData.productosAportados);
+        renderProductos('Productos solicitados', preparacionData.productosSolicitados);
         
         // ===== NOTAS =====
         const notas = document.getElementById('notas-general')?.value;
         if (notas) {
           addSection('Notas');
           doc.setFontSize(10);
+          doc.setTextColor(...txt);
           const lineas = doc.splitTextToSize(notas, W - M * 2);
+          checkPage(lineas.length * 5);
           doc.text(lineas, M, y);
           y += lineas.length * 5;
         }
@@ -2325,7 +2419,7 @@
           doc.setPage(p);
           doc.setFontSize(7);
           doc.setTextColor(...muted);
-          doc.text('Familynk — ' + bienNombre + ' — ' + nombre, M, 290);
+          doc.text('Familynk  |  ' + bienNombre + '  |  ' + nombre, M, 290);
           doc.text(p + '/' + paginas, W - M, 290, { align: 'right' });
         }
         
