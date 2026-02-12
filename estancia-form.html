@@ -2230,6 +2230,18 @@
         const estado = estanciaOriginal?.estado || 'borrador';
         addText('Estado:', estado === 'enviado' ? 'Enviado a externos' : 'Borrador');
         
+        // ===== DIAS PARA MATRICES =====
+        let diasPDF = [];
+        if (diasSolicitud.length > 0) {
+          diasPDF = diasSolicitud.map(d => ({ key: d.key, label: d.label }));
+        } else {
+          // Fallback: extraer de personas keys
+          const personasKeys = Object.keys(preparacionData.personas || {}).sort();
+          if (personasKeys.length > 0) {
+            diasPDF = personasKeys.map(k => ({ key: k, label: formatFechaDia(k) }));
+          }
+        }
+        
         // ===== PERSONAS POR DÍA =====
         if (preparacionData.personas && Object.keys(preparacionData.personas).length > 0) {
           addSection('Personas por dia');
@@ -2241,16 +2253,6 @@
             { key: 'cena', label: 'Cenas' },
             { key: 'duermen', label: 'Duermen' }
           ];
-          
-          // Usar diasSolicitud si existen, sino formatear keys
-          let diasPDF = [];
-          if (diasSolicitud.length > 0) {
-            diasPDF = diasSolicitud.map(d => ({ key: d.key, label: d.label }));
-          } else {
-            diasPDF = Object.keys(preparacionData.personas).sort().map(k => ({
-              key: k, label: formatFechaDia(k)
-            }));
-          }
           
           if (diasPDF.length > 0) {
             const colW = Math.min(18, (W - M * 2 - 32) / diasPDF.length);
@@ -2326,41 +2328,170 @@
           });
         }
         
-        // ===== MENÚS =====
-        const menusKeys = Object.keys(preparacionData.menus || {}).filter(k => {
-          const m = preparacionData.menus[k];
-          return m && (m.plato || m.notas || m.especial);
-        });
-        if (menusKeys.length > 0) {
-          addSection('Menus');
-          const paseLabels = { desayuno: 'Desayuno', aperitivo: 'Aperitivo', comida: 'Comida', cena: 'Cena' };
-          menusKeys.sort().forEach(key => {
-            const m = preparacionData.menus[key];
-            const parts = key.split('-');
-            const pase = paseLabels[parts[0]] || parts[0];
-            const diaKey = parts.slice(1).join('-');
-            const diaLabel = formatFechaDia(diaKey) || diaKey;
-            const contenido = m.plato || m.notas || (m.especial ? 'Menu especial' : '');
-            if (contenido) addText(pase + ' ' + diaLabel + ':', contenido);
-          });
+        // ===== MENÚS (MATRIZ) =====
+        if (diasPDF.length > 0) {
+          const pases = [
+            { key: 'desayuno', label: 'Desayuno' },
+            { key: 'aperitivo', label: 'Aperitivo' },
+            { key: 'comida', label: 'Comida' },
+            { key: 'cena', label: 'Cena' }
+          ];
+          
+          // Comprobar si hay datos de menú
+          const tieneMenus = pases.some(pase => 
+            diasPDF.some(dia => {
+              const m = preparacionData.menus?.[`${pase.key}-${dia.key}`];
+              return m && (m.plato || m.notas || m.especial);
+            })
+          );
+          
+          if (tieneMenus) {
+            addSection('Menus');
+            const colW = Math.min(18, (W - M * 2 - 32) / diasPDF.length);
+            const x0 = M;
+            
+            // Header
+            doc.setFillColor(...cream);
+            doc.rect(x0, y - 4, W - M * 2, 6, 'F');
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...sage);
+            diasPDF.forEach((dia, i) => {
+              doc.text(dia.label, x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+            });
+            doc.setFont('helvetica', 'normal');
+            y += 6;
+            
+            pases.forEach((pase, pIdx) => {
+              // Comprobar si este pase tiene algún dato
+              const tieneAlgo = diasPDF.some(dia => {
+                const m = preparacionData.menus?.[`${pase.key}-${dia.key}`];
+                return m && (m.plato || m.notas || m.especial);
+              });
+              if (!tieneAlgo) return;
+              
+              checkPage(6);
+              if (pIdx % 2 === 0) {
+                doc.setFillColor(250, 248, 244);
+                doc.rect(x0, y - 3.5, W - M * 2, 5.5, 'F');
+              }
+              doc.setFontSize(8.5);
+              doc.setTextColor(...txt);
+              doc.text(pase.label, x0 + 2, y);
+              doc.setFontSize(7);
+              diasPDF.forEach((dia, i) => {
+                const m = preparacionData.menus?.[`${pase.key}-${dia.key}`];
+                if (m && (m.plato || m.notas || m.especial)) {
+                  const val = m.plato || m.notas || 'Especial';
+                  doc.setTextColor(...txt);
+                  // Truncar si es muy largo
+                  const maxW = colW - 2;
+                  const truncated = doc.splitTextToSize(val, maxW)[0];
+                  doc.text(truncated, x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+                } else {
+                  doc.setTextColor(...muted);
+                  doc.text('-', x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+                }
+              });
+              y += 5.5;
+            });
+            
+            // Si hay menús con texto largo, listarlos debajo
+            const menusDetalle = [];
+            pases.forEach(pase => {
+              diasPDF.forEach(dia => {
+                const m = preparacionData.menus?.[`${pase.key}-${dia.key}`];
+                if (m && (m.plato || m.notas) && (m.plato || m.notas || '').length > 15) {
+                  menusDetalle.push({ pase: pase.label, dia: dia.label, texto: m.plato || m.notas });
+                }
+              });
+            });
+            if (menusDetalle.length > 0) {
+              y += 3;
+              doc.setFontSize(7.5);
+              doc.setTextColor(...muted);
+              doc.text('Detalle:', M, y);
+              y += 4;
+              menusDetalle.forEach(md => {
+                checkPage(8);
+                doc.setFontSize(8);
+                doc.setTextColor(...txt);
+                const linea = `${md.pase} ${md.dia}: ${md.texto}`;
+                const wrapped = doc.splitTextToSize(linea, W - M * 2 - 4);
+                doc.text(wrapped, M + 4, y);
+                y += wrapped.length * 4 + 1;
+              });
+            }
+            y += 3;
+          }
         }
         
-        // ===== SERVICIO =====
-        const servicioKeys = Object.keys(preparacionData.servicio || {}).filter(k => {
-          const roles = preparacionData.servicio[k];
-          return Array.isArray(roles) && roles.length > 0;
-        });
-        if (servicioKeys.length > 0) {
-          addSection('Servicio');
-          const paseLabels = { desayuno: 'Desayuno', aperitivo: 'Aperitivo', comida: 'Comida', cena: 'Cena' };
-          servicioKeys.sort().forEach(key => {
-            const roles = preparacionData.servicio[key];
-            const parts = key.split('-');
-            const pase = paseLabels[parts[0]] || parts[0];
-            const diaKey = parts.slice(1).join('-');
-            const diaLabel = formatFechaDia(diaKey) || diaKey;
-            addText(pase + ' ' + diaLabel + ':', roles.join(', '));
-          });
+        // ===== SERVICIO (MATRIZ) =====
+        if (diasPDF.length > 0) {
+          const pases = [
+            { key: 'desayuno', label: 'Desayuno' },
+            { key: 'aperitivo', label: 'Aperitivo' },
+            { key: 'comida', label: 'Comida' },
+            { key: 'cena', label: 'Cena' }
+          ];
+          
+          const tieneServicio = pases.some(pase =>
+            diasPDF.some(dia => {
+              const roles = preparacionData.servicio?.[`${pase.key}-${dia.key}`];
+              return Array.isArray(roles) && roles.length > 0;
+            })
+          );
+          
+          if (tieneServicio) {
+            addSection('Servicio');
+            const colW = Math.min(18, (W - M * 2 - 32) / diasPDF.length);
+            const x0 = M;
+            
+            // Header
+            doc.setFillColor(...cream);
+            doc.rect(x0, y - 4, W - M * 2, 6, 'F');
+            doc.setFontSize(7.5);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...sage);
+            diasPDF.forEach((dia, i) => {
+              doc.text(dia.label, x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+            });
+            doc.setFont('helvetica', 'normal');
+            y += 6;
+            
+            pases.forEach((pase, pIdx) => {
+              const tieneAlgo = diasPDF.some(dia => {
+                const roles = preparacionData.servicio?.[`${pase.key}-${dia.key}`];
+                return Array.isArray(roles) && roles.length > 0;
+              });
+              if (!tieneAlgo) return;
+              
+              checkPage(6);
+              if (pIdx % 2 === 0) {
+                doc.setFillColor(250, 248, 244);
+                doc.rect(x0, y - 3.5, W - M * 2, 5.5, 'F');
+              }
+              doc.setFontSize(8.5);
+              doc.setTextColor(...txt);
+              doc.text(pase.label, x0 + 2, y);
+              doc.setFontSize(7);
+              diasPDF.forEach((dia, i) => {
+                const roles = preparacionData.servicio?.[`${pase.key}-${dia.key}`];
+                if (Array.isArray(roles) && roles.length > 0) {
+                  doc.setTextColor(...txt);
+                  const val = roles.join(', ');
+                  const maxW = colW - 2;
+                  const truncated = doc.splitTextToSize(val, maxW)[0];
+                  doc.text(truncated, x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+                } else {
+                  doc.setTextColor(...muted);
+                  doc.text('-', x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+                }
+              });
+              y += 5.5;
+            });
+            y += 3;
+          }
         }
         
         // ===== MENAJE =====
