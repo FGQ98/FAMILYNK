@@ -963,14 +963,27 @@
 
         if (addon && configCalendarioData?.tiposAddon?.[addon]) {
           tiposActuales = configCalendarioData.tiposAddon[addon].map(t => ({
-            id: t.id, nombre: t.nombre, icono: t.emoji || '', esFamiliar: t.esFamiliar || false
+            id: t.id, nombre: t.nombre, icono: t.emoji || '', esFamiliar: t.esFamiliar || false, categoria: t.categoria || t.id
           }));
         }
         if (tiposActuales.length === 0 && addon) {
+          // Tipos por defecto según addon - SIEMPRE: Familiar (verde), Eventos (azul), Otros (naranja)
           const defaults = {
-            mayordomo: [{ id: 'estancia-familiar', nombre: 'Estancias familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false }],
-            gerente: [{ id: 'reserva-familiar', nombre: 'Reservas familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'reserva-huespedes', nombre: 'Reservas de huéspedes', icono: '👥', esFamiliar: false }],
-            capataz: [{ id: 'caceria', nombre: 'Cacerías', icono: '🦌', esFamiliar: false }, { id: 'actividad', nombre: 'Otras actividades', icono: '🎯', esFamiliar: false }]
+            mayordomo: [
+              { id: 'familiar', nombre: 'Estancia Familiar', icono: '👨‍👩‍👧‍👦', esFamiliar: true, categoria: 'familiar' },
+              { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false, categoria: 'evento' },
+              { id: 'otros', nombre: 'Otros', icono: '📋', esFamiliar: false, categoria: 'otros' }
+            ],
+            gerente: [
+              { id: 'familiar', nombre: 'Estancia Familiar', icono: '👨‍👩‍👧‍👦', esFamiliar: true, categoria: 'familiar' },
+              { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false, categoria: 'evento' },
+              { id: 'otros', nombre: 'Otros', icono: '📋', esFamiliar: false, categoria: 'otros' }
+            ],
+            capataz: [
+              { id: 'familiar', nombre: 'Estancia Familiar', icono: '👨‍👩‍👧‍👦', esFamiliar: true, categoria: 'familiar' },
+              { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false, categoria: 'evento' },
+              { id: 'otros', nombre: 'Otros', icono: '📋', esFamiliar: false, categoria: 'otros' }
+            ]
           };
           tiposActuales = defaults[addon] || [];
         }
@@ -1619,10 +1632,10 @@
         else if (bien?.gerenteActivo) addonActivo = 'gerente';
         else if (bien?.capatazActivo) addonActivo = 'capataz';
 
-        // Construir solicitud
+        // Construir solicitud - usar categoría del tipo (familiar/evento/otros)
         const solicitudData = {
           tipo: 'solicitud',
-          categoria: 'reserva-evento',
+          categoria: tipoInfo.categoria || tipoId || 'familiar',
           esReserva: true,
           esEvento: true,
           nombre: nombre,
