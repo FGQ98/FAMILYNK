@@ -107,7 +107,6 @@
     /* Fallback (sin tipo) - usa familiar */
     .calendario-evento.borrador { background: #C5D4C7 !important; color: var(--text) !important; border: 1px dashed #7A9E7E; }
     .calendario-evento.enviado { background: #7A9E7E !important; color: white !important; }
-    .calendario-evento.confirmada { background: #26A69A !important; color: white !important; }
 
     .sidebar { display: flex; flex-direction: column; gap: 16px; }
     .sidebar-card { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
@@ -147,7 +146,6 @@
     .estancia-item.otros.enviado { border-left: 3px solid #E8A87C; }
     .estancia-item.borrador { border-left: 3px solid #C5D4C7; }
     .estancia-item.enviado { border-left: 3px solid #7A9E7E; }
-    .estancia-item.confirmada { border-left: 3px solid #26A69A; }
     .estancia-info { flex: 1; }
     .estancia-nombre { font-weight: 600; font-size: 0.9rem; }
     .estancia-fechas { font-size: 0.75rem; color: var(--text-light); }
@@ -158,8 +156,6 @@
     }
     .estancia-estado.borrador { background: var(--sage-claro); color: var(--text); }
     .estancia-estado.enviado { background: var(--sage); color: white; }
-    .estancia-estado.confirmada { background: #26A69A; color: white; }
-    .estancia-estado.pendiente { background: #FF9800; color: white; }
     .estancia-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px 0; }
 
     /* Dropdown de nueva estancia */
@@ -451,7 +447,8 @@
         });
 
         const eventosHtml = estanciasDia.map(e => {
-          const estado = e.estado || 'borrador';
+          const estadoRaw = e.estado || 'borrador';
+          const estado = (estadoRaw === 'confirmada') ? 'enviado' : estadoRaw;
           const tipo = getTipoEstancia(e);
           const nombre = e.titulo || e.nombre || e.tipoReservaNombre || 'Estancia';
           const creador = e.creadoPorNombre ? ` (${e.creadoPorNombre.split(' ')[0]})` : '';
@@ -492,10 +489,10 @@
       }
 
       container.innerHTML = proximas.map(e => {
-        const estado = e.estado || 'borrador';
+        const estadoRaw = e.estado || 'borrador';
+        const estado = (estadoRaw === 'confirmada') ? 'enviado' : estadoRaw;
         const tipo = getTipoEstancia(e);
-        const estadoLabels = { 'borrador': 'Borrador', 'enviado': 'Enviado', 'confirmada': 'Confirmada', 'pendiente': 'Pendiente' };
-        const estadoLabel = estadoLabels[estado] || estado;
+        const estadoLabel = estado === 'enviado' ? 'Enviado' : 'Borrador';
         const nombre = e.titulo || e.nombre || e.tipoReservaNombre || 'Estancia';
         const fechas = `${formatFecha(toFechaStr(e.fechaInicio))} → ${formatFecha(toFechaStr(e.fechaFin))}`;
         const creador = e.creadoPorNombre || '';
