@@ -357,33 +357,42 @@
 
     async function cargarEstancias() {
       try {
-        console.log('🔄 Cargando reservas (mayordomo) para bien:', bienId);
-        let snap;
+        console.log('🔄 Cargando reservas+estancias para bien:', bienId);
+        
+        // Leer AMBAS colecciones y fusionar
+        let todas = [];
+        
+        // 1. Colección nueva: reservas
         try {
-          snap = await db.collection('bienes').doc(bienId).collection('reservas')
-            .where('addon', '==', 'mayordomo')
-            .orderBy('fechaInicio', 'asc')
-            .get();
-        } catch (indexError) {
-          console.warn('Índice compuesto no disponible, usando fallback:', indexError);
-          snap = await db.collection('bienes').doc(bienId).collection('reservas')
-            .orderBy('fechaInicio', 'asc')
-            .get();
-        }
-        estancias = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .filter(r => !r.addon || r.addon === 'mayordomo');
-
-        // Fallback: si no hay nada en reservas, leer colección vieja
-        if (estancias.length === 0) {
-          console.log('📦 Sin datos en reservas, buscando en estancias...');
+          let snap;
+          try {
+            snap = await db.collection('bienes').doc(bienId).collection('reservas')
+              .where('addon', '==', 'mayordomo')
+              .orderBy('fechaInicio', 'asc')
+              .get();
+          } catch (indexError) {
+            snap = await db.collection('bienes').doc(bienId).collection('reservas')
+              .orderBy('fechaInicio', 'asc')
+              .get();
+          }
+          const reservas = snap.docs.map(d => ({ id: d.id, src: 'reservas', ...d.data() }))
+            .filter(r => !r.addon || r.addon === 'mayordomo');
+          todas = todas.concat(reservas);
+          console.log('📦 De reservas:', reservas.length);
+        } catch (e) { console.warn('Error leyendo reservas:', e); }
+        
+        // 2. Colección vieja: estancias
+        try {
           const snapVieja = await db.collection('bienes').doc(bienId).collection('estancias')
             .orderBy('fechaInicio', 'asc')
             .get();
-          estancias = snapVieja.docs.map(d => ({ id: d.id, ...d.data() }));
-          if (estancias.length > 0) console.log('✅ Recuperados de estancias:', estancias.length);
-        }
-
-        console.log('✅ Total cargadas:', estancias.length);
+          const viejas = snapVieja.docs.map(d => ({ id: d.id, src: 'estancias', ...d.data() }));
+          todas = todas.concat(viejas);
+          console.log('📦 De estancias:', viejas.length);
+        } catch (e) { console.warn('Error leyendo estancias:', e); }
+        
+        estancias = todas;
+        console.log('✅ Total fusionadas:', estancias.length);
       } catch (e) {
         console.error('❌ Error cargando:', e);
         estancias = [];

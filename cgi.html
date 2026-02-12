@@ -5284,13 +5284,17 @@
             else if (bien.gerenteActivo) addonActivo = 'gerente';
             else if (bien.capatazActivo) addonActivo = 'capataz';
             
-            let reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
-            // Fallback: si no hay reservas, buscar en colección vieja estancias
-            if (reservasSnap.empty) {
+            // Leer AMBAS colecciones y fusionar
+            let allReservaDocs = [];
+            try {
+              const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+              allReservaDocs = allReservaDocs.concat(reservasSnap.docs);
+            } catch (e) { console.warn('Error reservas:', e); }
+            try {
               const estanciasSnap = await db.collection('bienes').doc(bienDoc.id).collection('estancias').get();
-              if (!estanciasSnap.empty) reservasSnap = estanciasSnap;
-            }
-            reservasSnap.docs.forEach(resDoc => {
+              allReservaDocs = allReservaDocs.concat(estanciasSnap.docs);
+            } catch (e) { console.warn('Error estancias:', e); }
+            allReservaDocs.forEach(resDoc => {
               const r = { id: resDoc.id, ...resDoc.data() };
               if (!esVisibleParaUsuario(r, nidosMap)) return;
               
