@@ -6014,6 +6014,38 @@
           }
         }
         
+        // ========== PARA TODOS: Mis solicitudes pendientes (las que yo envié) ==========
+        try {
+          const misPendientes = await db.collection('solicitudes')
+            .where('solicitadoPor', '==', miUid)
+            .where('estado', '==', 'pendiente')
+            .orderBy('fechaCreacion', 'desc')
+            .limit(10)
+            .get();
+          
+          console.log('✅ Mis solicitudes pendientes:', misPendientes.size);
+          
+          misPendientes.docs.forEach(doc => {
+            const data = doc.data();
+            
+            itemsInfo.push({
+              id: doc.id,
+              source: 'mi-solicitud',
+              tipo: 'info',
+              categoria: 'solicitud',
+              icono: '⏳',
+              titulo: `Pendiente: ${data.nombre || data.bienNombre || 'Solicitud'}`,
+              mensaje: `Enviada el ${data.fechaCreacion?.toDate?.().toLocaleDateString('es-ES') || 'recientemente'}`,
+              fecha: data.fechaCreacion,
+              enlace: data.enlace || '',
+              data: data,
+              solicitadoPor: miUid
+            });
+          });
+        } catch (e) {
+          console.error('Error cargando mis solicitudes pendientes:', e);
+        }
+        
         // ========== PARA TODOS: Mis solicitudes respondidas ==========
         try {
           const misRespondidas = await db.collection('solicitudes')
@@ -6480,25 +6512,17 @@
       if (!confirm('¿Eliminar este aviso?')) return;
       
       try {
-        // Determinar colección según el tipo
         let deleted = false;
         
         if (sourceType === 'queo') {
           console.log('Eliminando queo:', notifId);
           await db.collection('queos').doc(notifId).delete();
           deleted = true;
-        } else if (sourceType === 'solicitud') {
-          // Intentar primero en solicitudes, luego en notificaciones
-          try {
-            await db.collection('solicitudes').doc(notifId).delete();
-            deleted = true;
-            console.log('Eliminado de solicitudes:', notifId);
-          } catch (e) {
-            // Si falla, intentar en notificaciones
-            await db.collection('notificaciones').doc(notifId).delete();
-            deleted = true;
-            console.log('Eliminado de notificaciones (fallback):', notifId);
-          }
+        } else if (sourceType === 'solicitud' || sourceType === 'mi-solicitud') {
+          // Eliminar de colección solicitudes
+          console.log('Eliminando solicitud:', notifId);
+          await db.collection('solicitudes').doc(notifId).delete();
+          deleted = true;
         } else {
           // Por defecto, eliminar de notificaciones
           console.log('Eliminando de notificaciones:', notifId);

@@ -1667,37 +1667,51 @@
           respuesta: null, respondidoPor: null, fechaRespuesta: null
         };
 
-        // 1. Guardar en colección unificada
+        // 1. Guardar en colección del bien (para gestión de reservas)
         solicitudData.origen = 'solicitud';
         const solicitudRef = await db.collection('bienes').doc(bienId).collection('reservas').add(solicitudData);
-        console.log('✅ Solicitud creada:', solicitudRef.id);
+        console.log('✅ Solicitud creada en bien:', solicitudRef.id);
+        
+        // 1b. Guardar TAMBIÉN en colección raíz solicitudes (para tablón CGI)
+        const solicitudRaizData = {
+          ...solicitudData,
+          reservaId: solicitudRef.id,  // Referencia a la reserva original
+          tipo: 'reserva',  // Para el tablón
+        };
+        const solicitudRaizRef = await db.collection('solicitudes').add(solicitudRaizData);
+        console.log('✅ Solicitud creada en raíz:', solicitudRaizRef.id);
 
         // 2. Notificar a admins
         const admins = await cargarAdminsParaNotificacion();
+        console.log('👥 Admins encontrados:', admins.length, admins.map(a => a.nombre || a.uid));
+        
         const destinatarios = admins.filter(a => a.uid !== currentUser.uid).map(a => a.uid);
         const destinatariosFinales = destinatarios.length > 0 ? destinatarios : admins.map(a => a.uid);
 
-        if (destinatariosFinales.length > 0) {
-          const tituloNotif = nombre
-            ? `📋 Solicitud: ${nombre} — ${bien?.nombre || 'Bien'}`
-            : `📋 Solicitud: ${bien?.nombre || 'Bien'} (${inicio} → ${fin})`;
+        // Crear notificación siempre (aunque no haya destinatarios específicos)
+        const tituloNotif = nombre
+          ? `📋 Solicitud: ${nombre} — ${bien?.nombre || 'Bien'}`
+          : `📋 Solicitud: ${bien?.nombre || 'Bien'} (${inicio} → ${fin})`;
 
-          await db.collection('notificaciones').add({
-            tipo: 'accion',
-            categoria: 'solicitud',
-            titulo: tituloNotif,
-            mensaje: `${userData?.nombre || 'Usuario'} ha enviado una solicitud con detalle de preparación`,
-            familiaId: currentFamilia.id,
-            nidoId: miNidoPrincipal?.id || null,
-            destinatarios: destinatariosFinales,
-            leidoPor: [], completadoPor: [],
-            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
-            fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            enlace: `reservas.html?id=${bienId}`,
-            origen: { tipo: 'solicitud', bienId: bienId, id: solicitudRef.id },
-            estado: 'activa'
-          });
-        }
+        const notifData = {
+          tipo: 'accion',
+          categoria: 'solicitud',
+          titulo: tituloNotif,
+          mensaje: `${userData?.nombre || 'Usuario'} ha enviado una solicitud con detalle de preparación`,
+          familiaId: currentFamilia.id,
+          nidoId: miNidoPrincipal?.id || null,
+          destinatarios: destinatariosFinales.length > 0 ? destinatariosFinales : [currentUser.uid],
+          leidoPor: [], completadoPor: [],
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          enlace: `reservas.html?id=${bienId}`,
+          origen: { tipo: 'solicitud', bienId: bienId, id: solicitudRef.id, solicitadoPor: currentUser.uid },
+          estado: 'activa'
+        };
+        
+        console.log('📩 Creando notificación:', notifData);
+        await db.collection('notificaciones').add(notifData);
+        console.log('✅ Notificación creada');
 
         alert('✅ Solicitud enviada correctamente.\nLos administradores la revisarán y recibirás notificación.');
         window.location.href = 'cgi.html';
@@ -1714,16 +1728,24 @@
     async function cargarAdminsParaNotificacion() {
       try {
         const snap = await db.collection('usuarios').where('familiaId', '==', currentFamilia.id).get();
-        return snap.docs.map(d => ({ uid: d.id, ...d.data() }))
+        console.log('🔍 Usuarios en familia:', snap.size);
+        
+        const admins = snap.docs.map(d => ({ uid: d.id, ...d.data() }))
           .filter(u => {
             const rol = String(u.rol || '').toLowerCase();
-            const cred = String(u.credencial || '').toLowerCase();
-            return rol.includes('admin') || cred.includes('admin') ||
+            // Buscar en ambos campos: credencial y credenciales
+            const cred = String(u.credencial || u.credenciales || '').toLowerCase();
+            const esAdmin = rol.includes('admin') || cred.includes('admin') ||
               rol === 'patriarca' || rol === 'matriarca' ||
               cred === 'patriarca' || cred === 'matriarca' ||
               u.esAdmin === true || u.adminRama === true || u.superAdmin === true ||
               u.esPatriarca === true || u.esMatriarca === true;
+            
+            if (esAdmin) console.log('👤 Admin encontrado:', u.nombre || u.uid, 'rol:', rol, 'cred:', cred);
+            return esAdmin;
           });
+        
+        return admins;
       } catch (e) {
         console.error('Error cargando admins:', e);
         return [];
