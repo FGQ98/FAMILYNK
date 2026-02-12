@@ -358,7 +358,6 @@
     async function cargarEstancias() {
       try {
         console.log('🔄 Cargando reservas (mayordomo) para bien:', bienId);
-        // Intentar query compuesta primero
         let snap;
         try {
           snap = await db.collection('bienes').doc(bienId).collection('reservas')
@@ -366,7 +365,6 @@
             .orderBy('fechaInicio', 'asc')
             .get();
         } catch (indexError) {
-          // Fallback si no existe índice compuesto: cargar todas y filtrar
           console.warn('Índice compuesto no disponible, usando fallback:', indexError);
           snap = await db.collection('bienes').doc(bienId).collection('reservas')
             .orderBy('fechaInicio', 'asc')
@@ -374,10 +372,20 @@
         }
         estancias = snap.docs.map(d => ({ id: d.id, ...d.data() }))
           .filter(r => !r.addon || r.addon === 'mayordomo');
-        console.log('✅ Reservas cargadas:', estancias.length);
-        estancias.forEach(e => console.log('  -', e.id, e.titulo || e.nombre, e.estado, e.fechaInicio));
+
+        // Fallback: si no hay nada en reservas, leer colección vieja
+        if (estancias.length === 0) {
+          console.log('📦 Sin datos en reservas, buscando en estancias...');
+          const snapVieja = await db.collection('bienes').doc(bienId).collection('estancias')
+            .orderBy('fechaInicio', 'asc')
+            .get();
+          estancias = snapVieja.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (estancias.length > 0) console.log('✅ Recuperados de estancias:', estancias.length);
+        }
+
+        console.log('✅ Total cargadas:', estancias.length);
       } catch (e) {
-        console.error('❌ Error cargando reservas:', e);
+        console.error('❌ Error cargando:', e);
         estancias = [];
       }
     }

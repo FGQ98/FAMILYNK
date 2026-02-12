@@ -21,13 +21,7 @@
       --evento: #FF9800;
       --reserva: #9C27B0;
       
-      /* Subtipos de reserva */
-      --reserva-estancia: #9C27B0;    /* Familia - morado */
-      --reserva-huespedes: #FF7043;   /* Huéspedes - coral */
-      --reserva-zafarrancho: #66BB6A; /* Zafarrancho - verde */
-      --reserva-monteria: #8D6E63;    /* Montería - marrón */
-      --reserva-recoleccion: #FFA726; /* Recolección - dorado */
-      --reserva-actividad: #42A5F5;   /* Actividad - azul */
+      /* Colores de subtipos de reserva: ahora dinámicos desde configCalendario */
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
@@ -117,13 +111,7 @@
     .day-event.evento { background: var(--evento); }
     .day-event.reserva { background: var(--reserva); }
     
-    /* Subtipos de reserva */
-    .day-event.reserva-estancia { background: var(--reserva-estancia); }
-    .day-event.reserva-huespedes { background: var(--reserva-huespedes); }
-    .day-event.reserva-zafarrancho { background: var(--reserva-zafarrancho); }
-    .day-event.reserva-monteria { background: var(--reserva-monteria); }
-    .day-event.reserva-recoleccion { background: var(--reserva-recoleccion); }
-    .day-event.reserva-actividad { background: var(--reserva-actividad); }
+    /* Colores day-event de reserva: dinámicos via style attr desde config */
     
     /* Botón Ver más */
     .btn-ver-mas {
@@ -161,12 +149,7 @@
     .leyenda-dot.cita { background: var(--cita); }
     .leyenda-dot.evento { background: var(--evento); }
     .leyenda-dot.reserva { background: var(--reserva); }
-    .leyenda-dot.reserva-estancia { background: var(--reserva-estancia); }
-    .leyenda-dot.reserva-huespedes { background: var(--reserva-huespedes); }
-    .leyenda-dot.reserva-zafarrancho { background: var(--reserva-zafarrancho); }
-    .leyenda-dot.reserva-monteria { background: var(--reserva-monteria); }
-    .leyenda-dot.reserva-recoleccion { background: var(--reserva-recoleccion); }
-    .leyenda-dot.reserva-actividad { background: var(--reserva-actividad); }
+    /* Leyenda-dot de reservas: dinámicos via style attr */
     
     /* Filtros */
     .filtros-container {
@@ -289,12 +272,7 @@
     .mobile-event-color.cita { background: var(--cita); }
     .mobile-event-color.evento { background: var(--evento); }
     .mobile-event-color.reserva { background: var(--reserva); }
-    .mobile-event-color.reserva-estancia { background: var(--reserva-estancia); }
-    .mobile-event-color.reserva-huespedes { background: var(--reserva-huespedes); }
-    .mobile-event-color.reserva-zafarrancho { background: var(--reserva-zafarrancho); }
-    .mobile-event-color.reserva-monteria { background: var(--reserva-monteria); }
-    .mobile-event-color.reserva-recoleccion { background: var(--reserva-recoleccion); }
-    .mobile-event-color.reserva-actividad { background: var(--reserva-actividad); }
+    /* Mobile-event-color de reservas: dinámicos via style attr */
     .mobile-event-info { flex: 1; }
     .mobile-event-titulo { font-weight: 600; font-size: 0.85rem; margin-bottom: 2px; }
     .mobile-event-meta { font-size: 0.75rem; color: var(--text-muted); }
@@ -884,10 +862,17 @@
           else if (bien.capatazActivo) addonActivo = 'capataz';
           
           try {
-            // Cargar reservas
-            const reservasSnap = await db.collection('bienes').doc(bienDoc.id)
+            // Cargar reservas (nueva colección)
+            let reservasSnap = await db.collection('bienes').doc(bienDoc.id)
               .collection('reservas')
               .get();
+            
+            // Fallback: si no hay reservas, buscar en colección vieja estancias
+            if (reservasSnap.empty) {
+              const estanciasSnap = await db.collection('bienes').doc(bienDoc.id)
+                .collection('estancias').get();
+              if (!estanciasSnap.empty) reservasSnap = estanciasSnap;
+            }
             
             reservasSnap.docs.forEach(resDoc => {
               const r = resDoc.data();

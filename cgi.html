@@ -1141,10 +1141,7 @@
     .cal-dot.evento { background: #FF9800; }
     .cal-dot.cita { background: #2196F3; }
     .cal-dot.reserva { background: #9C27B0; }
-    .cal-dot.reserva-estancia { background: #9C27B0; }
-    .cal-dot.reserva-huespedes { background: #FF7043; }
-    .cal-dot.reserva-zafarrancho { background: #66BB6A; }
-    .cal-dot.reserva-monteria { background: #8D6E63; }
+    /* Colores de reserva: dinámicos desde configCalendario */
 
     .eventos-hoy {
       margin-top: 8px;
@@ -1168,10 +1165,7 @@
     .evento-dot.evento { background: #FF9800; }
     .evento-dot.cita { background: #2196F3; }
     .evento-dot.reserva { background: #9C27B0; }
-    .evento-dot.reserva-estancia { background: #9C27B0; }
-    .evento-dot.reserva-huespedes { background: #FF7043; }
-    .evento-dot.reserva-zafarrancho { background: #66BB6A; }
-    .evento-dot.reserva-monteria { background: #8D6E63; }
+    /* Colores evento-dot: dinámicos desde configCalendario */
 
     /* ============ CALENDARIO MÓVIL (Próximos 3 días) ============ */
     .proximos-dias { display: flex; flex-direction: column; gap: 12px; }
@@ -5290,7 +5284,12 @@
             else if (bien.gerenteActivo) addonActivo = 'gerente';
             else if (bien.capatazActivo) addonActivo = 'capataz';
             
-            const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+            let reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+            // Fallback: si no hay reservas, buscar en colección vieja estancias
+            if (reservasSnap.empty) {
+              const estanciasSnap = await db.collection('bienes').doc(bienDoc.id).collection('estancias').get();
+              if (!estanciasSnap.empty) reservasSnap = estanciasSnap;
+            }
             reservasSnap.docs.forEach(resDoc => {
               const r = { id: resDoc.id, ...resDoc.data() };
               if (!esVisibleParaUsuario(r, nidosMap)) return;
