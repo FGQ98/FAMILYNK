@@ -345,7 +345,7 @@
 
   <header class="header">
     <div class="header-left">
-      <a href="cgi.html" class="back-btn">← CGI</a>
+      <a href="reservas-mayordomo.html" class="back-btn" id="btn-volver">← Estancias</a>
       <h1 class="page-title" id="page-title">📋 Nueva Estancia</h1>
     </div>
     <div class="header-right">
@@ -758,13 +758,20 @@
     const urlParams = new URLSearchParams(window.location.search);
     const estanciaId = urlParams.get('id'); // Si existe, es edición
     const bienIdParam = urlParams.get('bienId'); // Viene de Mayordomo
-    const tipoParam = urlParams.get('tipo') || 'familiar'; // tipo de estancia: familiar, evento, otros
+    const tipoParam = urlParams.get('tipo') || 'familiar';
+    const srcParam = urlParams.get('src') || ''; // 'reservas' o 'estancias'
     const modoEdicion = !!estanciaId;
-    let estanciaOriginal = null; // Datos originales en edición
+    let estanciaOriginal = null;
+    let coleccionOrigen = 'estancias'; // colección donde vive el doc: 'estancias' o 'reservas'
 
     console.log('🚀 ESTANCIA-FORM iniciado');
     console.log('🚀 URL params - estanciaId:', estanciaId, 'bienIdParam:', bienIdParam, 'tipo:', tipoParam);
     console.log('🚀 Modo edición:', modoEdicion);
+
+    // Configurar botón volver
+    if (bienIdParam) {
+      document.getElementById('btn-volver').href = `reservas-mayordomo.html?id=${bienIdParam}`;
+    }
 
     let preparacionData = {
       zonas: [],
@@ -890,10 +897,9 @@
     }
 
     function volverAtras() {
-      // Prioridad: bienIdParam > estanciaOriginal.bienId > cgi
       const bienIdVolver = bienIdParam || estanciaOriginal?.bienId;
       if (bienIdVolver) {
-        window.location.href = `estancias.html?id=${bienIdVolver}`;
+        window.location.href = `reservas-mayordomo.html?id=${bienIdVolver}`;
       } else {
         window.location.href = 'cgi.html';
       }
@@ -912,7 +918,7 @@
 
       try {
         const bienId = estanciaOriginal.bienId;
-        await db.collection('bienes').doc(bienId).collection('estancias').doc(estanciaId).delete();
+        await db.collection('bienes').doc(bienId).collection(coleccionOrigen).doc(estanciaId).delete();
         console.log('✅ Estancia eliminada');
         
         // Intentar eliminar notificaciones relacionadas (no crítico si falla)
@@ -942,40 +948,55 @@
     async function cargarEstanciaParaEdicion() {
       try {
         console.log('🔄 Cargando estancia para edición...');
-        console.log('🔄 estanciaId:', estanciaId);
-        console.log('🔄 bienIdParam:', bienIdParam);
-        console.log('🔄 bienesDisponibles:', bienesDisponibles.length);
+        console.log('🔄 estanciaId:', estanciaId, 'bienIdParam:', bienIdParam, 'src:', srcParam);
         
-        // Buscar la estancia - necesitamos el bienId
         let bienIdEstancia = bienIdParam;
         
-        // Si no tenemos bienId, buscar en todos los bienes
-        if (!bienIdEstancia) {
-          console.log('🔄 Buscando estancia en todos los bienes...');
-          for (const bien of bienesDisponibles) {
-            const doc = await db.collection('bienes').doc(bien.id).collection('estancias').doc(estanciaId).get();
-            if (doc.exists) {
-              bienIdEstancia = bien.id;
-              console.log('🔄 Encontrada en bien:', bien.id);
-              break;
-            }
+        // Helper: buscar doc en una colección
+        async function buscarEnColeccion(bId, col) {
+          const d = await db.collection('bienes').doc(bId).collection(col).doc(estanciaId).get();
+          return d.exists ? { doc: d, col: col, bienId: bId } : null;
+        }
+        
+        // Orden de búsqueda según src
+        const colecciones = srcParam === 'reservas' 
+          ? ['reservas', 'estancias'] 
+          : ['estancias', 'reservas'];
+        
+        let resultado = null;
+        
+        if (bienIdEstancia) {
+          // Buscar en el bien indicado, ambas colecciones
+          for (const col of colecciones) {
+            resultado = await buscarEnColeccion(bienIdEstancia, col);
+            if (resultado) break;
           }
         }
         
-        if (!bienIdEstancia) {
-          console.error('❌ Estancia no encontrada en ningún bien');
+        // Si no se encontró, buscar en todos los bienes
+        if (!resultado) {
+          console.log('🔄 Buscando en todos los bienes...');
+          for (const bien of bienesDisponibles) {
+            for (const col of colecciones) {
+              resultado = await buscarEnColeccion(bien.id, col);
+              if (resultado) break;
+            }
+            if (resultado) break;
+          }
+        }
+        
+        if (!resultado) {
+          console.error('❌ Estancia no encontrada en ninguna colección');
           alert('Estancia no encontrada');
           window.history.back();
           return;
         }
-
-        const doc = await db.collection('bienes').doc(bienIdEstancia).collection('estancias').doc(estanciaId).get();
-        if (!doc.exists) {
-          console.error('❌ Documento no existe:', bienIdEstancia, estanciaId);
-          alert('Estancia no encontrada');
-          window.history.back();
-          return;
-        }
+        
+        bienIdEstancia = resultado.bienId;
+        coleccionOrigen = resultado.col;
+        const doc = resultado.doc;
+        
+        console.log('✅ Encontrada en colección:', coleccionOrigen, 'bien:', bienIdEstancia);
 
         estanciaOriginal = { id: doc.id, bienId: bienIdEstancia, ...doc.data() };
         console.log('✅ Estancia cargada:', estanciaOriginal);
@@ -1187,27 +1208,14 @@
 
         if (addon && configCalendarioData?.tiposAddon?.[addon]) {
           tiposActuales = configCalendarioData.tiposAddon[addon].map(t => ({
-            id: t.id, nombre: t.nombre, icono: t.emoji || '', esFamiliar: t.esFamiliar || false, categoria: t.categoria || t.id
+            id: t.id, nombre: t.nombre, icono: t.emoji || '', esFamiliar: t.esFamiliar || false
           }));
         }
         if (tiposActuales.length === 0 && addon) {
-          // Tipos por defecto: Familiar (verde), Eventos (azul), Otros (naranja)
           const defaults = {
-            mayordomo: [
-              { id: 'familiar', nombre: 'Estancia Familiar', icono: '👨‍👩‍👧‍👦', esFamiliar: true, categoria: 'familiar' },
-              { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false, categoria: 'evento' },
-              { id: 'otros', nombre: 'Otros', icono: '📋', esFamiliar: false, categoria: 'otros' }
-            ],
-            gerente: [
-              { id: 'familiar', nombre: 'Estancia Familiar', icono: '👨‍👩‍👧‍👦', esFamiliar: true, categoria: 'familiar' },
-              { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false, categoria: 'evento' },
-              { id: 'otros', nombre: 'Otros', icono: '📋', esFamiliar: false, categoria: 'otros' }
-            ],
-            capataz: [
-              { id: 'familiar', nombre: 'Estancia Familiar', icono: '👨‍👩‍👧‍👦', esFamiliar: true, categoria: 'familiar' },
-              { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false, categoria: 'evento' },
-              { id: 'otros', nombre: 'Otros', icono: '📋', esFamiliar: false, categoria: 'otros' }
-            ]
+            mayordomo: [{ id: 'estancia-familiar', nombre: 'Estancias familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false }],
+            gerente: [{ id: 'reserva-familiar', nombre: 'Reservas familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'reserva-huespedes', nombre: 'Reservas de huéspedes', icono: '👥', esFamiliar: false }],
+            capataz: [{ id: 'caceria', nombre: 'Cacerías', icono: '🦌', esFamiliar: false }, { id: 'actividad', nombre: 'Otras actividades', icono: '🎯', esFamiliar: false }]
           };
           tiposActuales = defaults[addon] || [];
         }
@@ -1845,13 +1853,12 @@
         else if (bien?.gerenteActivo) addonActivo = 'gerente';
         else if (bien?.capatazActivo) addonActivo = 'capataz';
 
-        // Construir datos de estancia - usar categoría del tipo (familiar/evento/otros)
+        // Construir datos de estancia
         const estanciaData = {
           nombre: nombre,
           bienId: bienId,
           bienNombre: bien?.nombre || '',
           addonActivo: addonActivo,
-          categoria: tipoInfo.categoria || tipoId || 'familiar',
           tipoEstancia: modoEdicion ? (estanciaOriginal.tipoEstancia || tipoParam) : tipoParam,
           tipoReserva: tipoId || null,
           tipoReservaNombre: tipoInfo.nombre || tipoId || null,
@@ -1880,7 +1887,7 @@
         
         if (modoEdicion) {
           // Actualizar existente
-          await db.collection('bienes').doc(bienId).collection('estancias').doc(estanciaId).update(estanciaData);
+          await db.collection('bienes').doc(bienId).collection(coleccionOrigen).doc(estanciaId).update(estanciaData);
           estanciaRef = { id: estanciaId };
           console.log('✅ Estancia actualizada:', estanciaId);
         } else {
@@ -1906,7 +1913,7 @@
         
         // Redirigir según origen
         if (bienIdParam) {
-          window.location.href = `estancias.html?id=${bienId}`;
+          window.location.href = `reservas-mayordomo.html?id=${bienId}`;
         } else {
           window.location.href = 'cgi.html';
         }
@@ -1990,7 +1997,7 @@
         }
 
         // Actualizar estado de la estancia
-        await db.collection('bienes').doc(bienId).collection('estancias').doc(estanciaId).update({
+        await db.collection('bienes').doc(bienId).collection(coleccionOrigen).doc(estanciaId).update({
           estado: 'enviado',
           colorCalendario: 'color',
           enviadoA: {
