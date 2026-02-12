@@ -515,7 +515,8 @@
                     visibleCGI: tipoData.visibleCGI || false,
                     color: tipoData.color || '#9C27B0',
                     emoji: tipoData.emoji || '📋',
-                    nombre: tipoData.nombre || tipoId
+                    nombre: tipoData.nombre || tipoId,
+                    familiar: tipoData.familiar || false
                   });
                   
                   // Inicializar filtros
@@ -904,7 +905,7 @@
               }
               
               const fecha = new Date(fechaEntrada);
-              const tipoReservaId = r.tipo || '';
+              const tipoReservaId = r.tipoId || r.tipo || '';
               
               // Buscar color en config
               let color = '#9C27B0'; // Default
@@ -919,14 +920,18 @@
                 }
               }
               
-              // Texto descriptivo
-              let textoLargo = bienNombre;
-              if (r.quienesNombre) textoLargo += ` — ${r.quienesNombre}`;
+              // Texto descriptivo (nuevo formato: titulo + nidoNombre; viejo: quienesNombre, etc.)
+              let textoLargo = r.titulo || bienNombre;
+              if (r.nidoNombre) textoLargo += ` — ${r.nidoNombre}`;
+              else if (r.quienesNombre) textoLargo += ` — ${r.quienesNombre}`;
               else if (r.nidoReservaNombre) textoLargo += ` — ${r.nidoReservaNombre}`;
               else if (r.otroGrupoNombre) textoLargo += ` — ${r.otroGrupoNombre}`;
               else if (r.quien) textoLargo += ` — ${r.quien}`;
               else if (r.motivo) textoLargo += ` — ${r.motivo}`;
               else if (r.solicitadoPorNombre) textoLargo += ` — ${r.solicitadoPorNombre}`;
+              
+              // textoCorto: titulo si existe, sino nombre del bien
+              const textoCortoReserva = (r.titulo || bienNombre).substring(0, 12);
               
               todosEventos.push({
                 tipo: 'reserva',
@@ -934,7 +939,7 @@
                 tipoConfigId: tipoConfigId,
                 color: color,
                 titulo: textoLargo,
-                textoCorto: bienNombre.substring(0, 12),
+                textoCorto: textoCortoReserva,
                 fecha: fechaEntrada,
                 fechaFin: fechaSalida,
                 mesNum: fecha.getMonth() + 1,
