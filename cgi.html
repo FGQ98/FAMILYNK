@@ -5051,68 +5051,8 @@
           });
         }
 
-        // DÍAS ESPECIALES (solo si eventosYCitas visible)
-        if (esHitoVisible('eventosYCitas')) {
-          const colorEventosCitas = configCalendarioCGI?.hitos?.eventosYCitas?.color || '#2196F3';
-          const colorEventos = '#2196F3'; // Azul
-          const colorCitas = '#FF9800';   // Naranja
-          try {
-            const diasSnap = await db.collection('diasEspeciales').where('familiaId', '==', currentFamilia.id).get();
-            diasSnap.docs.forEach(doc => {
-              const d = { id: doc.id, ...doc.data() };
-              if (!esVisibleParaUsuario(d, nidosMap)) return;
-              
-              [añoActual, añoActual+1].forEach(y => {
-                eventosCalendario.push({ 
-                  tipo: 'especial',
-                  color: colorEventosCitas,
-                  titulo: `🎉 ${d.nombre}`, 
-                  fecha: `${y}-${String(d.mes).padStart(2,'0')}-${String(d.dia).padStart(2,'0')}` 
-                });
-              });
-            });
-          } catch (e) {
-            console.warn('Error cargando días especiales (ignorado)');
-          }
-
-          // EVENTOS
-          try {
-            const eventosSnap = await db.collection('eventos').where('familiaId', '==', currentFamilia.id).get();
-            eventosSnap.docs.forEach(doc => {
-              const e = { id: doc.id, ...doc.data() };
-              if (!esVisibleParaUsuario(e, nidosMap)) return;
-              
-              if (e.fecha) eventosCalendario.push({ 
-                tipo:'evento', 
-                color: colorEventos,
-                titulo: `🎊 ${e.nombre}`, 
-                fecha: e.fecha, 
-                hora: e.hora 
-              });
-            });
-          } catch (e) {
-            console.warn('Error cargando eventos (ignorado)');
-          }
-
-          // CITAS
-          try {
-            const citasSnap = await db.collection('citas').where('familiaId', '==', currentFamilia.id).get();
-            citasSnap.docs.forEach(doc => {
-              const c = { id: doc.id, ...doc.data() };
-              if (!esVisibleParaUsuario(c, nidosMap)) return;
-              
-              if (c.fecha) eventosCalendario.push({ 
-                tipo:'cita', 
-                color: colorCitas,
-                titulo: `📋 ${c.titulo}`, 
-                fecha: c.fecha, 
-                hora: c.hora 
-              });
-            });
-          } catch (e) {
-            console.warn('Error cargando citas (ignorado)');
-          }
-        }
+        // [ELIMINADO] Colecciones diasEspeciales, eventos y citas
+        // Sus funciones quedan absorbidas por los tipos de reserva de cada add-on
 
         // RESERVAS de bienes (con colores dinámicos de config)
         try {
@@ -5501,7 +5441,7 @@
       const eventosHoy = eventosCalendario.filter(e => e.fecha === fechaStr);
       
       if (eventosHoy.length === 0) {
-        container.innerHTML = `<div class="evento-mini"><div class="evento-dot cita"></div><span style="color:var(--text-muted);">Sin eventos hoy</span></div>`;
+        container.innerHTML = `<div class="evento-mini"><div class="evento-dot" style="background:#ccc"></div><span style="color:var(--text-muted);">Sin eventos hoy</span></div>`;
         return;
       }
 
@@ -6790,23 +6730,8 @@
             });
           }
           
-          // Crear evento en calendario
-          const eventoData = {
-            tipo: solicitudActual.categoria === 'reserva' ? 'reserva' : 'evento',
-            nombre: solicitudActual.categoria === 'reserva' 
-              ? ('Reserva: ' + (solData.bienNombre || 'Bien'))
-              : (solData.nombre || 'Evento'),
-            fecha: solData.fechaInicio || solData.fecha,
-            fechaFin: solData.fechaFin || null,
-            descripcion: solData.descripcion || solData.motivo || '',
-            familiaId: currentFamilia.id,
-            nidoId: solData.nidoId || null,
-            visibilidad: solData.visibilidad || 'rama',
-            creadoPor: currentUser.uid,
-            origenSolicitud: solicitudId,
-            fechaCreacion: fechaActual
-          };
-          await db.collection('eventos').add(eventoData);
+          // [ELIMINADO] Ya no se crea en collection('eventos')
+          // La reserva borrador creada arriba es la fuente única para el calendario
           
           // 5. Si la solicitud tiene datos de preparación, generar borrador(es) en preparacionSemanal
           if (solData.preparacion && solData.bienId && solData.diasSolicitud && solData.diasSolicitud.length > 0) {

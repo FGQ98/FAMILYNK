@@ -342,12 +342,6 @@
           <div class="filtro-chip hito active" data-tipo="hito" onclick="toggleFiltro(this)">
             <span class="chip-dot hito"></span> Hitos
           </div>
-          <div class="filtro-chip cita active" data-tipo="cita" onclick="toggleFiltro(this)">
-            <span class="chip-dot cita"></span> Citas
-          </div>
-          <div class="filtro-chip evento active" data-tipo="evento" onclick="toggleFiltro(this)">
-            <span class="chip-dot evento"></span> Eventos
-          </div>
           <div class="filtro-chip reserva active" data-tipo="reserva" onclick="toggleFiltro(this)">
             <span class="chip-dot reserva"></span> Reservas
           </div>
@@ -384,9 +378,7 @@
 
         <div class="leyenda" id="leyenda-dinamica">
           <!-- Se carga dinámicamente según config -->
-          <div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> Cumpleaños</div>
-          <div class="leyenda-item"><div class="leyenda-dot" style="background:#2196F3"></div> Eventos</div>
-          <div class="leyenda-item"><div class="leyenda-dot" style="background:#FF9800"></div> Citas</div>
+          <div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>
         </div>
       </div>
 
@@ -579,21 +571,9 @@
         if (configCalendario.hitos.fallecimientos?.visibleCGI) {
           html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.fallecimientos.color || '#607D8B'}"></div> 🕯️ Recordatorios</div>`;
         }
-        // Eventos y Citas separados
-        if (configCalendario.hitos.eventosYCitas?.visibleCGI) {
-          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: #2196F3"></div> 🎉 Eventos</div>`;
-          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: #FF9800"></div> 📋 Citas</div>`;
-        }
-        if (configCalendario.hitos.solicitudesCTAs?.visibleCGI) {
-          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.solicitudesCTAs.color || '#4CAF50'}"></div> ✅ Solicitudes</div>`;
-        }
       } else {
         // Fallback si no hay config
-        html += `
-          <div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>
-          <div class="leyenda-item"><div class="leyenda-dot" style="background:#2196F3"></div> 🎉 Eventos</div>
-          <div class="leyenda-item"><div class="leyenda-dot" style="background:#FF9800"></div> 📋 Citas</div>
-        `;
+        html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>`;
       }
       
       // Añadir tipos de reserva desde config
@@ -766,78 +746,8 @@
         });
       } catch(e) { console.error('Error hitos:', e); }
 
-      // ========================================
-      // 2. CITAS (manuales) - verificar visibilidad eventosYCitas
-      // ========================================
-      if (esHitoVisible('eventosYCitas')) {
-        try {
-          const citasSnap = await db.collection('citas').where('familiaId','==',currentFamilia.id).get();
-          const colorCitas = '#FF9800'; // Naranja
-          
-          citasSnap.docs.forEach(doc => {
-            const c = doc.data();
-            if (!esVisibleParaUsuario(c)) return;
-            if (c.creadoPor !== currentUser.uid && c.nidoId !== miNidoPrincipal?.id) return;
-            if (!c.fecha) return;
-            
-            const fecha = new Date(c.fecha);
-            const titulo = c.titulo || 'Cita';
-            
-            todosEventos.push({
-              tipo: 'cita',
-              subtipo: c.subtipo || c.categoria || 'reunion',
-              color: colorCitas,
-              titulo: titulo,
-              textoCorto: titulo.substring(0, 15),
-              fecha: c.fecha,
-              mesNum: fecha.getMonth() + 1,
-              diaNum: fecha.getDate(),
-              anioNum: fecha.getFullYear(),
-              hora: c.hora,
-              lugar: c.lugar,
-              anual: false,
-              origen: 'Citas',
-              id: doc.id
-            });
-          });
-        } catch(e) { console.error('Error citas:', e); }
-      }
-
-      // ========================================
-      // 3. EVENTOS (manuales) - verificar visibilidad eventosYCitas
-      // ========================================
-      if (esHitoVisible('eventosYCitas')) {
-        try {
-          const eventosSnap = await db.collection('eventos').where('familiaId','==',currentFamilia.id).get();
-          const colorEventos = '#2196F3'; // Azul
-          
-          eventosSnap.docs.forEach(doc => {
-            const e = doc.data();
-            if (!esVisibleParaUsuario(e)) return;
-            if (!e.fecha) return;
-            
-            const fecha = new Date(e.fecha);
-            const nombre = e.nombre || e.titulo || 'Evento';
-            
-            todosEventos.push({
-              tipo: 'evento',
-              subtipo: e.subtipo || e.tipo || 'fiesta',
-              color: colorEventos,
-              titulo: nombre,
-              textoCorto: nombre.substring(0, 15),
-              fecha: e.fecha,
-              mesNum: fecha.getMonth() + 1,
-              diaNum: fecha.getDate(),
-              anioNum: fecha.getFullYear(),
-              hora: e.hora,
-              lugar: e.lugar,
-              anual: e.recurrente || false,
-              origen: 'Eventos',
-              id: doc.id
-            });
-          });
-        } catch(e) { console.error('Error eventos:', e); }
-      }
+      // [ELIMINADO] Colecciones citas y eventos
+      // Sus funciones quedan absorbidas por los tipos de reserva de cada add-on
 
       // ========================================
       // 4. RESERVAS (desde bienes con add-on)
