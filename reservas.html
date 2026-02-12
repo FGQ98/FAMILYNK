@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Reservas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E;
+      --sage-light: #9BB89E;
+      --sage-dark: #5C7D5F;
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --cream-medium: #FAF5EF;
+      --terracotta: #C17757;
+      --mayordomo: #8B7355;
+      --mayordomo-dark: #6B5A45;
+      --gerente: #5B7B9A;
+      --gerente-dark: #3D5A73;
+      --capataz: #6B8E23;
+      --capataz-dark: #556B2F;
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-dark) 100%);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-medium);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header.gerente { background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%); }
+    .header.capataz { background: linear-gradient(135deg, var(--capataz) 0%, var(--capataz-dark) 100%); }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+      background: rgba(255,255,255,0.15); border: none; border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: white;
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+    .header-title { display: flex; align-items: center; gap: 10px; color: white; }
+    .header-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .header-info h1 { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; }
+    .header-info p { font-size: 0.75rem; opacity: 0.85; }
+
+    .main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+
+    .calendario-card { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .calendario-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--cream-medium); border-bottom: 1px solid var(--cream-dark); }
+    .calendario-mes { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; }
+    .calendario-nav button { width: 32px; height: 32px; border: none; background: white; border-radius: var(--radius-sm); cursor: pointer; font-size: 1.2rem; transition: all 0.2s; }
+    .calendario-nav button:hover { background: var(--sage); color: white; }
+    .calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--cream-dark); padding: 1px; }
+    .calendario-dia-header { background: var(--cream-medium); padding: 10px; text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--text-light); }
+    .calendario-dia { background: white; min-height: 80px; padding: 6px; cursor: pointer; transition: background 0.2s; }
+    .calendario-dia:hover { background: var(--cream-medium); }
+    .calendario-dia.hoy { background: rgba(122,158,126,0.15); }
+    .calendario-dia.otro-mes { background: var(--cream-medium); }
+    .calendario-dia.otro-mes .calendario-dia-numero { color: var(--text-muted); }
+    .calendario-dia-numero { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+    .calendario-dia.hoy .calendario-dia-numero { color: var(--sage-dark); font-weight: 700; }
+    .calendario-dia-eventos { display: flex; flex-direction: column; gap: 2px; }
+    .calendario-evento { font-size: 0.65rem; padding: 2px 4px; border-radius: 3px; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .sidebar { display: flex; flex-direction: column; gap: 16px; }
+    .sidebar-card { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .sidebar-card-header { padding: 14px 16px; background: var(--cream-medium); border-bottom: 1px solid var(--cream-dark); }
+    .sidebar-card-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.95rem; }
+    .sidebar-card-body { padding: 16px; }
+
+    .leyenda { display: flex; flex-direction: column; gap: 8px; }
+    .leyenda-item { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+    .leyenda-color { width: 12px; height: 12px; border-radius: 3px; }
+
+    .reserva-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--cream-dark); cursor: pointer; }
+    .reserva-item:last-child { border-bottom: none; }
+    .reserva-item:hover { background: var(--cream-medium); margin: 0 -16px; padding: 10px 16px; }
+    .reserva-tipo-indicator { width: 4px; height: 36px; border-radius: 2px; }
+    .reserva-info { flex: 1; }
+    .reserva-quien { font-weight: 600; font-size: 0.85rem; }
+    .reserva-fechas { font-size: 0.75rem; color: var(--text-light); }
+    .reserva-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px 0; }
+
+    /* Solicitudes pendientes */
+    .solicitud-item { padding: 12px; background: var(--cream-medium); border-radius: var(--radius-md); margin-bottom: 10px; border-left: 3px solid var(--warning); }
+    .solicitud-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .solicitud-titulo { font-weight: 600; font-size: 0.85rem; }
+    .solicitud-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; background: #FFF3E0; color: #E65100; }
+    .solicitud-meta { font-size: 0.75rem; color: var(--text-light); margin-bottom: 8px; }
+    .solicitud-actions { display: flex; gap: 8px; }
+    .solicitud-btn { padding: 6px 12px; border: none; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+    .solicitud-btn.aprobar { background: var(--success); color: white; }
+    .solicitud-btn.rechazar { background: var(--error); color: white; }
+    .solicitud-btn.ver { background: var(--cream-dark); color: var(--text); }
+    .solicitud-count { background: var(--warning); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; margin-left: 8px; }
+
+    .btn { padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-addon { background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-dark) 100%); color: white; width: 100%; }
+    .btn-addon:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    .btn-secondary { background: var(--cream); color: var(--text); border: 1px solid var(--cream-dark); }
+    .btn-danger { background: var(--error); color: white; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s; }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal { background: white; border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; transform: scale(0.9); transition: transform 0.3s; }
+    .modal-overlay.active .modal { transform: scale(1); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; color: white; }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; }
+    .modal-close { width: 32px; height: 32px; border: none; background: rgba(255,255,255,0.2); border-radius: var(--radius-sm); color: white; font-size: 1.2rem; cursor: pointer; }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-input, .form-textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.9rem; }
+    .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--sage); }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .tipo-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tipo-option { flex: 1; min-width: 100px; padding: 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); text-align: center; cursor: pointer; transition: all 0.2s; font-size: 0.8rem; font-weight: 600; }
+    .tipo-option:hover { border-color: var(--sage-light); }
+    .tipo-option.active { border-color: var(--tipo-color, var(--sage)); background: rgba(122, 158, 126, 0.1); }
+    .tipo-option-icon { font-size: 1.5rem; margin-bottom: 4px; }
+
+    .hidden { display: none !important; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { order: -1; } }
+    @media (max-width: 600px) { .header { padding: 12px 16px; } .main { padding: 16px; } .form-row { grid-template-columns: 1fr; } .calendario-dia { min-height: 50px; } .tipo-selector { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <header class="header" id="page-header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Volver</a>
+      <div class="header-title">
+        <div class="header-icon">📅</div>
+        <div class="header-info">
+          <h1>Reservas</h1>
+          <p id="bien-nombre">Cargando...</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="layout">
+      <div class="calendario-card">
+        <div class="calendario-header">
+          <div class="calendario-nav"><button onclick="mesAnterior()">‹</button></div>
+          <div class="calendario-mes" id="calendario-mes">Enero 2025</div>
+          <div class="calendario-nav"><button onclick="mesSiguiente()">›</button></div>
+        </div>
+        <div class="calendario-grid" id="calendario-grid"></div>
+      </div>
+      <div class="sidebar">
+        <button class="btn btn-addon" id="btn-nueva-reserva" onclick="abrirModal()">+ Nueva reserva</button>
+        
+        <!-- SOLICITUDES PENDIENTES -->
+        <div class="sidebar-card" id="card-solicitudes" style="display:none;">
+          <div class="sidebar-card-header">
+            <div class="sidebar-card-title">📋 Solicitudes pendientes <span class="solicitud-count" id="solicitudes-count">0</span></div>
+          </div>
+          <div class="sidebar-card-body" id="lista-solicitudes"></div>
+        </div>
+        
+        <div class="sidebar-card">
+          <div class="sidebar-card-header"><div class="sidebar-card-title">Tipos de reserva</div></div>
+          <div class="sidebar-card-body"><div class="leyenda" id="leyenda-tipos"></div></div>
+        </div>
+        <div class="sidebar-card">
+          <div class="sidebar-card-header"><div class="sidebar-card-title">Próximas reservas</div></div>
+          <div class="sidebar-card-body" id="proximas-reservas"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header" id="modal-header">
+        <h3 class="modal-title" id="modal-titulo">Nueva reserva</h3>
+        <button class="modal-close" onclick="cerrarModal()">×</button>
+      </div>
+      <form id="form" onsubmit="guardar(event)">
+        <input type="hidden" id="item-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Tipo de reserva</label>
+            <div class="tipo-selector" id="tipo-selector-container"></div>
+            <input type="hidden" id="item-tipo" value="">
+          </div>
+          <div class="form-group">
+            <label class="form-label">¿Quién?</label>
+            <input type="text" class="form-input" id="item-quien" placeholder="Nombre o grupo">
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Entrada</label><input type="date" class="form-input" id="item-entrada" required></div>
+            <div class="form-group"><label class="form-label">Salida</label><input type="date" class="form-input" id="item-salida" required></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-textarea" id="item-notas" placeholder="Información adicional..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminar()">Eliminar</button>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+            <button type="submit" class="btn btn-addon" id="btn-guardar">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let currentUser = null, bienId = null, bienData = null, origen = 'mayordomo', reservas = [], eventos = [], mesActual = new Date();
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const DIAS_SEMANA = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+    const TIPOS_POR_ADDON = {
+      mayordomo: [
+        { id: 'estancias', nombre: 'Estancias', emoji: '🏠', color: '#9C27B0' },
+        { id: 'celebraciones', nombre: 'Celebraciones', emoji: '🎊', color: '#FF9800' },
+        { id: 'zafarrancho', nombre: 'Zafarrancho', emoji: '🧹', color: '#66BB6A' }
+      ],
+      gerente: [
+        { id: 'reservasFamiliares', nombre: 'Familiares', emoji: '👨‍👩‍👧', color: '#9C27B0' },
+        { id: 'reservasHuespedes', nombre: 'Huéspedes', emoji: '🏠', color: '#FF7043' },
+        { id: 'actividad', nombre: 'Actividad', emoji: '📌', color: '#42A5F5' }
+      ],
+      capataz: [
+        { id: 'cacerias', nombre: 'Cacerías', emoji: '🦌', color: '#8D6E63' },
+        { id: 'recolecciones', nombre: 'Recolecciones', emoji: '🌾', color: '#FFA726' },
+        { id: 'otrasActividades', nombre: 'Otras', emoji: '📋', color: '#78909C' }
+      ]
+    };
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      const params = new URLSearchParams(window.location.search);
+      bienId = params.get('id');
+      origen = params.get('origen') || 'mayordomo';
+      if (!bienId) { alert('No se especificó el bien'); window.location.href = 'lo-comun.html'; return; }
+      await cargarBien();
+      await cargarReservas();
+      await cargarEventos();
+      await cargarSolicitudes();
+      renderTiposReserva();
+      renderLeyenda();
+      aplicarTemaAddon();
+    });
+
+    async function cargarBien() {
+      const doc = await db.collection('bienes').doc(bienId).get();
+      if (!doc.exists) { alert('Bien no encontrado'); window.location.href = 'lo-comun.html'; return; }
+      bienData = doc.data();
+      document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
+      document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+    }
+
+    function getAddonActivo() {
+      if (!bienData) return 'mayordomo';
+      console.log('bienData addons:', { mayordomoActivo: bienData.mayordomoActivo, gerenteActivo: bienData.gerenteActivo, capatazActivo: bienData.capatazActivo });
+      if (bienData.mayordomoActivo === true) return 'mayordomo';
+      if (bienData.gerenteActivo === true) return 'gerente';
+      if (bienData.capatazActivo === true) return 'capataz';
+      return 'mayordomo';
+    }
+
+    function renderTiposReserva() {
+      const addon = getAddonActivo();
+      const tipos = TIPOS_POR_ADDON[addon] || TIPOS_POR_ADDON.mayordomo;
+      document.getElementById('tipo-selector-container').innerHTML = tipos.map((t, idx) => `
+        <div class="tipo-option ${idx === 0 ? 'active' : ''}" data-tipo="${t.id}" style="--tipo-color: ${t.color};" onclick="seleccionarTipo('${t.id}')">
+          <div class="tipo-option-icon">${t.emoji}</div>${t.nombre}
+        </div>
+      `).join('');
+      document.getElementById('item-tipo').value = tipos[0]?.id || 'estancias';
+    }
+
+    function renderLeyenda() {
+      const addon = getAddonActivo();
+      const tipos = TIPOS_POR_ADDON[addon] || TIPOS_POR_ADDON.mayordomo;
+      document.getElementById('leyenda-tipos').innerHTML = tipos.map(t => `
+        <div class="leyenda-item"><div class="leyenda-color" style="background: ${t.color};"></div><span>${t.emoji} ${t.nombre}</span></div>
+      `).join('');
+    }
+
+    function getTipoInfo(tipoId) {
+      const addon = getAddonActivo();
+      const tipos = TIPOS_POR_ADDON[addon] || TIPOS_POR_ADDON.mayordomo;
+      return tipos.find(t => t.id === tipoId) || { color: '#9C27B0', emoji: '📋', nombre: 'Reserva' };
+    }
+
+    function aplicarTemaAddon() {
+      const addon = getAddonActivo();
+      const colores = { mayordomo: { p: '#8B7355', d: '#6B5A45' }, gerente: { p: '#5B7B9A', d: '#3D5A73' }, capataz: { p: '#6B8E23', d: '#556B2F' } };
+      const c = colores[addon] || colores.mayordomo;
+      document.getElementById('page-header').className = 'header ' + addon;
+      const grad = `linear-gradient(135deg, ${c.p} 0%, ${c.d} 100%)`;
+      document.getElementById('btn-nueva-reserva').style.background = grad;
+      document.getElementById('btn-guardar').style.background = grad;
+      document.getElementById('modal-header').style.background = grad;
+      console.log('Tema aplicado:', addon);
+    }
+
+    async function cargarReservas() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('entrada', 'asc').get();
+        // Filtrar: solo mostrar confirmadas, aprobadas o las que no tienen estado (legacy)
+        reservas = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(r => !r.estado || r.estado === 'confirmada' || r.estado === 'aprobada');
+        renderCalendario();
+        renderProximasReservas();
+      } catch (e) { console.error('Error cargando reservas:', e); }
+    }
+
+    async function cargarEventos() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('eventos').orderBy('fecha', 'asc').get();
+        eventos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCalendario();
+      } catch (e) { console.error('Error cargando eventos:', e); }
+    }
+
+    function renderCalendario() {
+      const grid = document.getElementById('calendario-grid');
+      const año = mesActual.getFullYear(), mes = mesActual.getMonth();
+      document.getElementById('calendario-mes').textContent = `${MESES[mes]} ${año}`;
+      const primerDia = new Date(año, mes, 1), ultimoDia = new Date(año, mes + 1, 0);
+      let diaSemana = primerDia.getDay(); diaSemana = diaSemana === 0 ? 6 : diaSemana - 1;
+      let html = ''; DIAS_SEMANA.forEach(d => { html += `<div class="calendario-dia-header">${d}</div>`; });
+      const diasMesAnterior = new Date(año, mes, 0).getDate();
+      for (let i = diaSemana - 1; i >= 0; i--) html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${diasMesAnterior - i}</span></div>`;
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+        const fecha = new Date(año, mes, dia), fechaStr = fecha.toISOString().split('T')[0], esHoy = fecha.getTime() === hoy.getTime();
+        const reservasDia = reservas.filter(r => { const e = new Date(r.entrada), s = new Date(r.salida); return fecha >= e && fecha <= s; });
+        const eventosDia = eventos.filter(e => e.fecha && new Date(e.fecha).toDateString() === fecha.toDateString());
+        const items = [...reservasDia.map(r => { const ti = getTipoInfo(r.tipo); return { color: ti.color, label: r.quien || ti.nombre }; }), ...eventosDia.map(e => ({ color: '#FF9800', label: e.nombre }))];
+        html += `<div class="calendario-dia ${esHoy ? 'hoy' : ''}" onclick="clickDia('${fechaStr}')"><span class="calendario-dia-numero">${dia}</span><div class="calendario-dia-eventos">${items.slice(0, 2).map(i => `<div class="calendario-evento" style="background:${i.color};">${i.label}</div>`).join('')}${items.length > 2 ? `<div class="calendario-evento" style="background:var(--text-muted)">+${items.length - 2}</div>` : ''}</div></div>`;
+      }
+      const totalCeldas = diaSemana + ultimoDia.getDate(), celdasFaltantes = totalCeldas % 7 === 0 ? 0 : 7 - (totalCeldas % 7);
+      for (let dia = 1; dia <= celdasFaltantes; dia++) html += `<div class="calendario-dia otro-mes"><span class="calendario-dia-numero">${dia}</span></div>`;
+      grid.innerHTML = html;
+    }
+
+    function mesAnterior() { mesActual.setMonth(mesActual.getMonth() - 1); renderCalendario(); }
+    function mesSiguiente() { mesActual.setMonth(mesActual.getMonth() + 1); renderCalendario(); }
+    function clickDia(fechaStr) {
+      const r = reservas.find(r => { const e = new Date(r.entrada), s = new Date(r.salida), f = new Date(fechaStr); return f >= e && f <= s; });
+      if (r) editar(r.id); else abrirModal(fechaStr);
+    }
+
+    function renderProximasReservas() {
+      const container = document.getElementById('proximas-reservas');
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      const proximas = reservas.filter(r => new Date(r.salida) >= hoy).slice(0, 5);
+      if (proximas.length === 0) { container.innerHTML = '<div class="reserva-empty">Sin reservas próximas</div>'; return; }
+      container.innerHTML = proximas.map(r => {
+        const e = new Date(r.entrada), s = new Date(r.salida), ti = getTipoInfo(r.tipo);
+        return `<div class="reserva-item" onclick="editar('${r.id}')"><div class="reserva-tipo-indicator" style="background: ${ti.color};"></div><div class="reserva-info"><div class="reserva-quien">${r.quien || ti.nombre}</div><div class="reserva-fechas">${e.getDate()}/${e.getMonth()+1} - ${s.getDate()}/${s.getMonth()+1}</div></div></div>`;
+      }).join('');
+    }
+
+    function abrirModal(fecha = null) {
+      document.getElementById('form').reset();
+      document.getElementById('item-id').value = '';
+      const addon = getAddonActivo();
+      seleccionarTipo(TIPOS_POR_ADDON[addon]?.[0]?.id || 'estancias');
+      if (fecha) { document.getElementById('item-entrada').value = fecha; const s = new Date(fecha); s.setDate(s.getDate() + 1); document.getElementById('item-salida').value = s.toISOString().split('T')[0]; }
+      else document.getElementById('item-entrada').value = new Date().toISOString().split('T')[0];
+      document.getElementById('modal-titulo').textContent = 'Nueva reserva';
+      document.getElementById('btn-eliminar').classList.add('hidden');
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function editar(id) {
+      const r = reservas.find(x => x.id === id); if (!r) return;
+      document.getElementById('item-id').value = id;
+      seleccionarTipo(r.tipo || 'estancias');
+      document.getElementById('item-quien').value = r.quien || '';
+      document.getElementById('item-entrada').value = r.entrada || '';
+      document.getElementById('item-salida').value = r.salida || '';
+      document.getElementById('item-notas').value = r.notas || '';
+      document.getElementById('modal-titulo').textContent = 'Editar reserva';
+      document.getElementById('btn-eliminar').classList.remove('hidden');
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function cerrarModal() { document.getElementById('modal').classList.remove('active'); }
+    function seleccionarTipo(tipo) {
+      document.querySelectorAll('.tipo-option').forEach(o => { o.classList.remove('active'); if (o.dataset.tipo === tipo) o.classList.add('active'); });
+      document.getElementById('item-tipo').value = tipo;
+    }
+
+    async function guardar(e) {
+      e.preventDefault();
+      const id = document.getElementById('item-id').value;
+      const data = { 
+        tipo: document.getElementById('item-tipo').value, 
+        quien: document.getElementById('item-quien').value.trim(), 
+        entrada: document.getElementById('item-entrada').value, 
+        salida: document.getElementById('item-salida').value, 
+        notas: document.getElementById('item-notas').value.trim(), 
+        addon: getAddonActivo(), 
+        actualizado: firebase.firestore.FieldValue.serverTimestamp() 
+      };
+      if (new Date(data.salida) < new Date(data.entrada)) { alert('La fecha de salida debe ser posterior a la entrada'); return; }
+      try {
+        const ref = db.collection('bienes').doc(bienId).collection('reservas');
+        if (id) {
+          await ref.doc(id).update(data);
+        } else { 
+          // Nueva reserva directa del admin
+          data.origen = 'directa';
+          data.estado = 'confirmada';
+          data.creado = firebase.firestore.FieldValue.serverTimestamp(); 
+          data.creadoPor = currentUser.uid; 
+          await ref.add(data); 
+        }
+        cerrarModal(); await cargarReservas();
+      } catch (err) { console.error('Error guardando:', err); alert('Error al guardar'); }
+    }
+
+    async function eliminar() {
+      const id = document.getElementById('item-id').value;
+      if (!id || !confirm('¿Eliminar esta reserva?')) return;
+      try { await db.collection('bienes').doc(bienId).collection('reservas').doc(id).delete(); cerrarModal(); await cargarReservas(); } catch (err) { console.error('Error eliminando:', err); }
+    }
+
+    document.getElementById('modal').addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) cerrarModal(); });
+
+    // ========== SOLICITUDES PENDIENTES ==========
+    let solicitudesPendientes = [];
+
+    async function cargarSolicitudes() {
+      try {
+        // Query simple sin orderBy para evitar índice compuesto
+        const snap = await db.collection('bienes').doc(bienId).collection('reservas')
+          .where('origen', '==', 'solicitud')
+          .where('estado', '==', 'pendiente')
+          .get();
+        
+        solicitudesPendientes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Ordenar en cliente
+        solicitudesPendientes.sort((a, b) => {
+          const fechaA = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fechaB - fechaA;
+        });
+        renderSolicitudes();
+      } catch (e) { 
+        console.error('Error cargando solicitudes:', e);
+      }
+    }
+
+    function renderSolicitudes() {
+      const container = document.getElementById('lista-solicitudes');
+      const card = document.getElementById('card-solicitudes');
+      const countEl = document.getElementById('solicitudes-count');
+      
+      countEl.textContent = solicitudesPendientes.length;
+      
+      if (solicitudesPendientes.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+      
+      card.style.display = 'block';
+      
+      container.innerHTML = solicitudesPendientes.map(s => {
+        const nombre = s.nombre || s.solicitadoPorNombre || 'Solicitud';
+        const fechas = s.fechaInicio && s.fechaFin 
+          ? `${formatFecha(s.fechaInicio)} → ${formatFecha(s.fechaFin)}`
+          : 'Sin fechas';
+        const solicitante = s.solicitadoPorNombre || 'Usuario';
+        
+        return `
+          <div class="solicitud-item">
+            <div class="solicitud-header">
+              <span class="solicitud-titulo">${nombre}</span>
+              <span class="solicitud-badge">Pendiente</span>
+            </div>
+            <div class="solicitud-meta">
+              📅 ${fechas}<br>
+              👤 ${solicitante}
+            </div>
+            <div class="solicitud-actions">
+              <button class="solicitud-btn aprobar" onclick="aprobarSolicitud('${s.id}')">✓ Aprobar</button>
+              <button class="solicitud-btn rechazar" onclick="rechazarSolicitud('${s.id}')">✗ Rechazar</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatFecha(fecha) {
+      if (!fecha) return '—';
+      const d = typeof fecha === 'string' ? new Date(fecha) : fecha.toDate?.() || new Date(fecha);
+      return `${d.getDate()}/${d.getMonth()+1}`;
+    }
+
+    async function aprobarSolicitud(id) {
+      if (!confirm('¿Aprobar esta solicitud? Se convertirá en reserva confirmada.')) return;
+      try {
+        await db.collection('bienes').doc(bienId).collection('reservas').doc(id).update({
+          estado: 'aprobada',
+          respuesta: {
+            estado: 'aprobada',
+            por: currentUser.uid,
+            fecha: firebase.firestore.FieldValue.serverTimestamp()
+          }
+        });
+        alert('✅ Solicitud aprobada');
+        await cargarSolicitudes();
+        await cargarReservas();
+      } catch (e) { console.error('Error aprobando:', e); alert('Error al aprobar'); }
+    }
+
+    async function rechazarSolicitud(id) {
+      const motivo = prompt('Motivo del rechazo (opcional):');
+      if (motivo === null) return; // Canceló
+      try {
+        await db.collection('bienes').doc(bienId).collection('reservas').doc(id).update({
+          estado: 'rechazada',
+          respuesta: {
+            estado: 'rechazada',
+            por: currentUser.uid,
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            motivo: motivo || ''
+          }
+        });
+        alert('Solicitud rechazada');
+        await cargarSolicitudes();
+      } catch (e) { console.error('Error rechazando:', e); alert('Error al rechazar'); }
+    }
+  </script>
+</body>
+</html>
