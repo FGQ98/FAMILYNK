@@ -306,6 +306,8 @@
     .btn-estancia:hover:not(:disabled) { background: var(--sage-dark); }
     .btn-enviar-externo { background: var(--terracotta); color: var(--white); }
     .btn-enviar-externo:hover:not(:disabled) { background: #A85D42; }
+    .btn-pdf { background: #607D8B; color: var(--white); }
+    .btn-pdf:hover:not(:disabled) { background: #455A64; }
     .btn-danger { background: var(--error); color: var(--white); }
     .btn-danger:hover:not(:disabled) { background: #B5574A; }
 
@@ -617,6 +619,7 @@
   <div class="footer-actions" id="footer-actions" style="display:none;">
     <button class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminarEstancia()">🗑️ Eliminar</button>
     <button class="btn btn-secondary" onclick="volverAtras()">Cancelar</button>
+    <button class="btn btn-pdf hidden" id="btn-exportar-pdf" onclick="exportarPDF()">📄 Exportar PDF</button>
     <button class="btn btn-enviar-externo hidden" id="btn-enviar-externo" onclick="enviarAExternos()">📤 Enviar a externos</button>
     <button class="btn btn-estancia" id="btn-enviar" onclick="guardarEstancia()">📋 Crear estancia</button>
   </div>
@@ -730,6 +733,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="js/firebase-config.js"></script>
 
   <script>
@@ -879,10 +883,13 @@
         // Mostrar botón eliminar
         btnEliminar.classList.remove('hidden');
         
-        // Mostrar botón "Enviar a externos" si NO está ya enviado
+        // Mostrar botón "Enviar a externos" y "Exportar PDF" si NO está ya enviado
         if (estanciaOriginal && estanciaOriginal.estado !== 'enviado') {
           btnEnviarExterno.classList.remove('hidden');
+          document.getElementById('btn-exportar-pdf').classList.remove('hidden');
         } else if (estanciaOriginal && estanciaOriginal.estado === 'enviado') {
+          // Ya enviado, solo mostrar PDF
+          document.getElementById('btn-exportar-pdf').classList.remove('hidden');
           // Ya enviado, mostrar indicador
           badge.textContent = '✅ Enviado';
           badge.style.background = 'var(--sage-muted)';
@@ -2109,6 +2116,227 @@
     function cerrarModales() {
       document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
       editingIdx = null; editingType = null;
+    }
+
+    // ========================================
+    // EXPORTAR PDF
+    // ========================================
+    function exportarPDF() {
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const W = 210, M = 18;
+        let y = 20;
+        
+        // Colores Familynk
+        const sage = [122, 158, 126];
+        const text = [61, 60, 54];
+        const muted = [150, 150, 140];
+        
+        // Helper: línea de texto con wrap
+        function addText(label, value, bold) {
+          if (!value) return;
+          doc.setFontSize(9);
+          doc.setTextColor(...muted);
+          doc.text(label, M, y);
+          doc.setFontSize(10);
+          doc.setTextColor(...text);
+          if (bold) doc.setFont('helvetica', 'bold');
+          const lines = doc.splitTextToSize(String(value), W - M * 2 - 40);
+          doc.text(lines, M + 42, y);
+          doc.setFont('helvetica', 'normal');
+          y += lines.length * 5 + 2;
+          if (y > 270) { doc.addPage(); y = 20; }
+        }
+        
+        function addSection(titulo) {
+          y += 4;
+          if (y > 260) { doc.addPage(); y = 20; }
+          doc.setFillColor(...sage);
+          doc.roundedRect(M, y - 3, W - M * 2, 7, 2, 2, 'F');
+          doc.setFontSize(10);
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+          doc.text(titulo, M + 4, y + 2);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...text);
+          y += 10;
+        }
+        
+        function addLine() {
+          doc.setDrawColor(220, 215, 200);
+          doc.line(M, y, W - M, y);
+          y += 4;
+        }
+        
+        // ===== CABECERA =====
+        doc.setFillColor(...sage);
+        doc.rect(0, 0, W, 30, 'F');
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        const nombre = document.getElementById('sol-nombre').value || 'Estancia';
+        doc.text(nombre, M, 15);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        const bien = document.getElementById('sol-bien');
+        const bienNombre = bien.options[bien.selectedIndex]?.text || '';
+        doc.text(bienNombre + '  |  ' + new Date().toLocaleDateString('es-ES'), M, 23);
+        y = 38;
+        
+        // ===== DATOS GENERALES =====
+        addSection('Datos generales');
+        
+        const fechaIni = document.getElementById('sol-fecha-inicio').value;
+        const fechaFin = document.getElementById('sol-fecha-fin').value;
+        if (fechaIni) addText('Entrada:', new Date(fechaIni + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+        if (fechaFin) addText('Salida:', new Date(fechaFin + 'T12:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+        
+        const motivo = document.getElementById('sol-motivo').value;
+        if (motivo) addText('Motivo:', motivo);
+        
+        const estado = estanciaOriginal?.estado || 'borrador';
+        addText('Estado:', estado === 'enviado' ? 'Enviado a externos' : 'Borrador');
+        
+        // ===== PERSONAS POR DÍA =====
+        if (preparacionData.personas && Object.keys(preparacionData.personas).length > 0) {
+          addSection('Personas por día');
+          
+          const diasAbrev = { 'lun': 'Lun', 'mar': 'Mar', 'mie': 'Mié', 'jue': 'Jue', 'vie': 'Vie', 'sab': 'Sáb', 'dom': 'Dom' };
+          const filas = ['familiares', 'desayuno', 'comida', 'cena', 'duermen'];
+          const filasLabel = { familiares: 'Familiares', desayuno: 'Desayunos', comida: 'Comidas', cena: 'Cenas', duermen: 'Duermen' };
+          
+          // Obtener días que tienen datos
+          const diasConDatos = Object.keys(preparacionData.personas).sort();
+          
+          if (diasConDatos.length > 0) {
+            // Tabla simple
+            const colW = Math.min(16, (W - M * 2 - 30) / diasConDatos.length);
+            const x0 = M;
+            
+            // Header
+            doc.setFontSize(7);
+            doc.setTextColor(...muted);
+            diasConDatos.forEach((dia, i) => {
+              const label = diasAbrev[dia] || dia;
+              doc.text(label, x0 + 30 + i * colW + colW / 2, y, { align: 'center' });
+            });
+            y += 5;
+            
+            // Filas
+            filas.forEach(fila => {
+              doc.setFontSize(8);
+              doc.setTextColor(...text);
+              doc.text(filasLabel[fila] || fila, x0, y);
+              doc.setFontSize(9);
+              diasConDatos.forEach((dia, i) => {
+                const val = preparacionData.personas[dia]?.[fila] || 0;
+                if (val > 0) {
+                  doc.setFont('helvetica', 'bold');
+                  doc.text(String(val), x0 + 30 + i * colW + colW / 2, y, { align: 'center' });
+                  doc.setFont('helvetica', 'normal');
+                } else {
+                  doc.setTextColor(...muted);
+                  doc.text('-', x0 + 30 + i * colW + colW / 2, y, { align: 'center' });
+                  doc.setTextColor(...text);
+                }
+              });
+              y += 5;
+              if (y > 270) { doc.addPage(); y = 20; }
+            });
+            y += 2;
+          }
+        }
+        
+        // ===== ZONAS DE LIMPIEZA =====
+        if (preparacionData.zonas && preparacionData.zonas.length > 0) {
+          addSection('Zonas de limpieza');
+          preparacionData.zonas.forEach(zonaId => {
+            const deps = preparacionData.zonasDesglose[zonaId] || [];
+            const depsText = deps.length > 0 ? ' (' + deps.join(', ') + ')' : '';
+            addText('•', zonaId + depsText);
+          });
+        }
+        
+        // ===== MENÚS =====
+        const menusKeys = Object.keys(preparacionData.menus || {}).filter(k => {
+          const m = preparacionData.menus[k];
+          return m && (m.plato || m.notas);
+        });
+        if (menusKeys.length > 0) {
+          addSection('Menús');
+          const paseLabels = { desayuno: 'Desayuno', aperitivo: 'Aperitivo', comida: 'Comida', cena: 'Cena' };
+          menusKeys.sort().forEach(key => {
+            const m = preparacionData.menus[key];
+            const parts = key.split('-');
+            const pase = paseLabels[parts[0]] || parts[0];
+            const dia = parts[1] || '';
+            const label = pase + ' ' + dia;
+            addText(label + ':', m.plato || m.notas || '');
+          });
+        }
+        
+        // ===== SERVICIO =====
+        const servicioKeys = Object.keys(preparacionData.servicio || {}).filter(k => {
+          const s = preparacionData.servicio[k];
+          return s && Object.values(s).some(v => v);
+        });
+        if (servicioKeys.length > 0) {
+          addSection('Servicio');
+          servicioKeys.sort().forEach(key => {
+            const s = preparacionData.servicio[key];
+            const activos = Object.entries(s).filter(([k, v]) => v).map(([k]) => k);
+            if (activos.length > 0) {
+              const parts = key.split('-');
+              addText(parts.join(' ') + ':', activos.join(', '));
+            }
+          });
+        }
+        
+        // ===== MENAJE =====
+        if (preparacionData.menaje && preparacionData.menaje.length > 0) {
+          addSection('Menaje especial');
+          addText('Items:', preparacionData.menaje.join(', '));
+        }
+        
+        // ===== PRODUCTOS =====
+        if (preparacionData.productosAportados && preparacionData.productosAportados.length > 0) {
+          addSection('Productos aportados');
+          addText('Items:', preparacionData.productosAportados.join(', '));
+        }
+        if (preparacionData.productosSolicitados && preparacionData.productosSolicitados.length > 0) {
+          addSection('Productos solicitados');
+          addText('Items:', preparacionData.productosSolicitados.join(', '));
+        }
+        
+        // ===== NOTAS =====
+        const notas = document.getElementById('notas-general')?.value;
+        if (notas) {
+          addSection('Notas');
+          doc.setFontSize(10);
+          const lineas = doc.splitTextToSize(notas, W - M * 2);
+          doc.text(lineas, M, y);
+          y += lineas.length * 5;
+        }
+        
+        // ===== PIE =====
+        const paginas = doc.internal.getNumberOfPages();
+        for (let p = 1; p <= paginas; p++) {
+          doc.setPage(p);
+          doc.setFontSize(7);
+          doc.setTextColor(...muted);
+          doc.text('Familynk — ' + bienNombre + ' — ' + nombre, M, 290);
+          doc.text(p + '/' + paginas, W - M, 290, { align: 'right' });
+        }
+        
+        // Descargar
+        const nombreArchivo = (nombre || 'estancia').replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, '').replace(/\s+/g, '_');
+        doc.save(nombreArchivo + '.pdf');
+        
+      } catch (error) {
+        console.error('Error generando PDF:', error);
+        alert('Error al generar el PDF. Asegúrate de tener conexión a internet.');
+      }
     }
 
     document.querySelectorAll('.modal-overlay').forEach(modal => {
