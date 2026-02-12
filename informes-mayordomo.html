@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7A9E7E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Informes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --sage-light: #9BB89E; --sage-dark: #5C7D5F;
+      --sage-muted: rgba(122,158,126,0.15);
+      --cream: #FDF8F3; --cream-dark: #F5EDE4; --cream-medium: #FAF5EF;
+      --terracotta: #C17757; --terracotta-muted: rgba(193,119,87,0.15);
+      --mayordomo: #8B7355; --mayordomo-dark: #6B5A45; --mayordomo-muted: rgba(139,115,85,0.15);
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A; --warning: #E8B44D; --error: #D4695A; --info: #5B8BD4;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* HEADER */
+    .header {
+      background: var(--white); padding: 16px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+      background: var(--cream); border: none; border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: var(--text-light);
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+    .back-btn:hover { background: var(--cream-dark); }
+    .header-title { display: flex; align-items: center; gap: 10px; }
+    .header-title h1 { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 700; }
+    .header-title p { font-size: 0.8rem; color: var(--text-muted); }
+    .header-icon { font-size: 1.4rem; }
+
+    /* MAIN */
+    .main { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* CARDS */
+    .card {
+      background: var(--white); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft); margin-bottom: 24px; overflow: hidden;
+    }
+    .card-header {
+      padding: 18px 24px; border-bottom: 1px solid var(--cream-dark);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 20px 24px; }
+
+    /* TABLA RESUMEN */
+    .tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tabla-resumen {
+      width: 100%; border-collapse: collapse; font-size: 0.85rem;
+    }
+    .tabla-resumen thead th {
+      padding: 10px 12px; text-align: left; font-weight: 700;
+      color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;
+      letter-spacing: 0.5px; border-bottom: 2px solid var(--cream-dark);
+      white-space: nowrap;
+    }
+    .tabla-resumen tbody tr {
+      border-bottom: 1px solid var(--cream-dark); cursor: pointer; transition: background 0.15s;
+    }
+    .tabla-resumen tbody tr:hover { background: var(--cream); }
+    .tabla-resumen tbody tr:last-child { border-bottom: none; }
+    .tabla-resumen tbody td { padding: 12px; vertical-align: middle; }
+    .estancia-nombre { font-weight: 700; font-size: 0.9rem; }
+    .estancia-fechas { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .tabla-valor { text-align: center; font-weight: 600; white-space: nowrap; }
+    .tabla-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: var(--radius-full);
+      font-size: 0.75rem; font-weight: 700;
+    }
+    .tabla-badge.success { background: rgba(125,181,154,0.15); color: #2E7D32; }
+    .tabla-badge.pending { background: rgba(232,180,77,0.15); color: #E65100; }
+    .tabla-badge.neutral { background: var(--cream-dark); color: var(--text-muted); }
+
+    /* LISTA ITEMS (Encuestas, Informes Caseros) */
+    .lista-items { display: flex; flex-direction: column; gap: 10px; }
+    .lista-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; background: var(--cream); border-radius: var(--radius-md);
+      cursor: pointer; transition: all 0.15s; gap: 12px;
+    }
+    .lista-item:hover { background: var(--cream-dark); }
+    .lista-item-info { flex: 1; min-width: 0; }
+    .lista-item-titulo { font-weight: 700; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lista-item-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .lista-item-badge { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.88rem; white-space: nowrap; }
+    .lista-item-arrow { color: var(--text-muted); font-size: 1.2rem; }
+
+    /* COSTES */
+    .costes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .coste-box {
+      padding: 16px; background: var(--cream); border-radius: var(--radius-md); text-align: center;
+    }
+    .coste-box-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+    .coste-box-valor { font-family: 'Quicksand', sans-serif; font-size: 1.4rem; font-weight: 700; color: var(--sage-dark); }
+    .coste-box-sub { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+    .costes-tabla { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .costes-tabla thead th {
+      padding: 10px 12px; text-align: left; font-weight: 700;
+      color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;
+      border-bottom: 2px solid var(--cream-dark); white-space: nowrap;
+    }
+    .costes-tabla tbody tr { border-bottom: 1px solid var(--cream-dark); }
+    .costes-tabla tbody tr:last-child { border-bottom: none; }
+    .costes-tabla tbody td { padding: 10px 12px; }
+    .costes-total { font-weight: 700; color: var(--sage-dark); }
+
+    /* MODAL DETALLE */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.2s; padding: 20px;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg); width: 100%; max-width: 650px;
+      max-height: 90vh; display: flex; flex-direction: column;
+    }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--cream-dark);
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 24px; overflow-y: auto; flex: 1; min-height: 0; }
+
+    /* Detalle encuesta en modal */
+    .detalle-seccion { margin-bottom: 20px; }
+    .detalle-seccion-titulo { font-weight: 700; font-size: 0.85rem; color: var(--sage-dark); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .detalle-pregunta { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--cream-dark); }
+    .detalle-pregunta:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .detalle-pregunta-texto { font-weight: 700; font-size: 0.92rem; margin-bottom: 8px; }
+    .detalle-barra-container { display: flex; flex-direction: column; gap: 6px; }
+    .detalle-barra-item { display: flex; align-items: center; gap: 10px; }
+    .detalle-barra-label { font-size: 0.82rem; min-width: 80px; flex-shrink: 0; }
+    .detalle-barra { flex: 1; height: 18px; background: var(--cream-dark); border-radius: 9px; overflow: hidden; }
+    .detalle-barra-fill { height: 100%; background: linear-gradient(90deg, var(--sage-light), var(--sage)); border-radius: 9px; transition: width 0.5s ease; }
+    .detalle-barra-pct { font-size: 0.78rem; font-weight: 700; color: var(--sage-dark); min-width: 50px; text-align: right; }
+    .detalle-promedio { text-align: center; padding: 14px; background: var(--cream); border-radius: var(--radius-md); }
+    .detalle-promedio-num { font-size: 1.8rem; font-weight: 700; color: var(--sage-dark); }
+    .detalle-texto-item { padding: 8px 12px; background: var(--cream); border-radius: var(--radius-sm); font-size: 0.85rem; margin-bottom: 6px; }
+    .detalle-texto-autor { font-weight: 700; color: var(--sage-dark); }
+
+    /* Detalle informe casero en modal */
+    .informe-linea { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--cream-dark); }
+    .informe-linea:last-child { border-bottom: none; }
+    .informe-check { font-size: 1.1rem; }
+    .informe-check.ok { color: var(--success); }
+    .informe-check.ko { color: var(--error); }
+    .informe-texto { font-size: 0.88rem; flex: 1; }
+    .informe-nota { font-size: 0.82rem; color: var(--text-light); font-style: italic; }
+
+    .empty-state { text-align: center; padding: 40px 20px; }
+    .empty-state-icon { font-size: 3rem; opacity: 0.3; margin-bottom: 12px; }
+    .empty-state-text { color: var(--text-muted); font-size: 0.9rem; }
+
+    @media (max-width: 600px) {
+      .costes-grid { grid-template-columns: 1fr; }
+      .tabla-resumen { font-size: 0.78rem; }
+      .tabla-resumen thead th, .tabla-resumen tbody td { padding: 8px 6px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a id="btn-volver" class="back-btn">← Volver</a>
+      <div class="header-title">
+        <span class="header-icon">📊</span>
+        <div>
+          <h1>Informes</h1>
+          <p id="bien-nombre">Cargando...</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+
+      <!-- Card 1: Resumen de Estancias -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 Resumen de Estancias</div>
+        </div>
+        <div class="card-body">
+          <div class="tabla-scroll">
+            <table class="tabla-resumen" id="tabla-resumen">
+              <thead>
+                <tr>
+                  <th>Estancia</th>
+                  <th style="text-align:center">Días</th>
+                  <th style="text-align:center">Familiar</th>
+                  <th style="text-align:center">Total</th>
+                  <th style="text-align:center">Zonas</th>
+                  <th style="text-align:center">Gastos</th>
+                  <th style="text-align:center">Encuesta</th>
+                  <th style="text-align:center">Caseros</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-resumen-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state hidden" id="empty-resumen">
+            <div class="empty-state-icon">📊</div>
+            <div class="empty-state-text">No hay estancias registradas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Encuestas de Satisfacción -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📝 Encuestas de Satisfacción</div>
+        </div>
+        <div class="card-body">
+          <div class="lista-items" id="lista-encuestas"></div>
+          <div class="empty-state hidden" id="empty-encuestas">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-text">No hay encuestas de satisfacción recibidas</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Informes de Caseros -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📋 Informes de Caseros</div>
+        </div>
+        <div class="card-body">
+          <div class="lista-items" id="lista-informes-caseros"></div>
+          <div class="empty-state hidden" id="empty-informes-caseros">
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-text">No hay informes de caseros recibidos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Costes de Estancia -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">💰 Costes de Estancia</div>
+        </div>
+        <div class="card-body">
+          <div class="costes-grid" id="costes-resumen"></div>
+          <div class="tabla-scroll">
+            <table class="costes-tabla" id="costes-tabla">
+              <thead>
+                <tr>
+                  <th>Estancia</th>
+                  <th style="text-align:center">Días</th>
+                  <th style="text-align:right">Total</th>
+                  <th style="text-align:right">€/día</th>
+                  <th style="text-align:right">€/persona</th>
+                </tr>
+              </thead>
+              <tbody id="costes-tabla-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-state hidden" id="empty-costes">
+            <div class="empty-state-icon">💰</div>
+            <div class="empty-state-text">No hay gastos registrados</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Modal Detalle Encuesta -->
+  <div class="modal-overlay" id="modal-encuesta">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-enc-titulo">📝 Detalle</h3>
+        <button class="modal-close" onclick="cerrarModal('modal-encuesta')">×</button>
+      </div>
+      <div class="modal-body" id="modal-enc-body"></div>
+    </div>
+  </div>
+
+  <!-- Modal Detalle Informe Casero -->
+  <div class="modal-overlay" id="modal-informe">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-inf-titulo">📋 Informe</h3>
+        <button class="modal-close" onclick="cerrarModal('modal-informe')">×</button>
+      </div>
+      <div class="modal-body" id="modal-inf-body"></div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let familiaId = null;
+
+    // Datos cargados
+    let estancias = [];
+    let gastos = [];
+    let encuestas = [];
+    let informesCaseros = [];
+    let zonasDelBien = [];
+    let miembrosData = [];
+
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('id');
+    const origen = params.get('origen') || 'mayordomo';
+
+    document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+
+    if (!bienId) {
+      alert('No se especificó el bien');
+      window.location.href = 'cgi.html';
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarTodo();
+    });
+
+    async function cargarTodo() {
+      try {
+        // Cargar bien
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); window.location.href = 'cgi.html'; return; }
+        bienData = bienDoc.data();
+        familiaId = bienData.familiaId;
+        document.getElementById('bien-nombre').textContent = bienData.nombre || 'Sin nombre';
+
+        // Cargar miembros
+        try {
+          const miembrosSnap = await db.collection('usuarios').where('familiaId', '==', familiaId).get();
+          miembrosData = miembrosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) { console.error('Error cargando miembros:', e); }
+
+        // Cargar estancias
+        try {
+          const estSnap = await db.collection('bienes').doc(bienId).collection('estancias').get();
+          estancias = estSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          estancias.sort((a, b) => {
+            const fa = a.fechaInicio || ''; const fb = b.fechaInicio || '';
+            return fb.localeCompare(fa);
+          });
+        } catch (e) { console.error('Error cargando estancias:', e); }
+
+        // Cargar gastos del bien
+        try {
+          const gastosSnap = await db.collection('bienes').doc(bienId).collection('gastos').get();
+          gastos = gastosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) { console.error('Error cargando gastos:', e); }
+
+        // Cargar zonas del bien
+        try {
+          const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonas').get();
+          zonasDelBien = zonasSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        } catch (e) { console.error('Error cargando zonas:', e); }
+
+        // Cargar encuestas de satisfacción vinculadas a este bien
+        try {
+          const encSnap = await db.collection('encuestas')
+            .where('familiaId', '==', familiaId)
+            .get();
+          // Filtrar por las vinculadas a este bien O las de tipo satisfacción-estancia
+          encuestas = encSnap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(e => {
+              // Encuestas vinculadas a este bien
+              if (e.vinculacion?.bienId === bienId) return true;
+              // Encuestas de satisfacción (encuesta-satisfaccion.html) con bienId
+              if (e.bienId === bienId && e.tipo === 'satisfaccion-estancia') return true;
+              return false;
+            });
+          encuestas.sort((a, b) => {
+            const fa = a.fechaCreacion?.toDate?.() || new Date(0);
+            const fb = b.fechaCreacion?.toDate?.() || new Date(0);
+            return fb - fa;
+          });
+        } catch (e) { console.error('Error cargando encuestas:', e); }
+
+        // Cargar informes de caseros
+        try {
+          const infSnap = await db.collection('bienes').doc(bienId).collection('informesCaseros').get();
+          informesCaseros = infSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          informesCaseros.sort((a, b) => {
+            const fa = a.fecha?.toDate?.() || new Date(0);
+            const fb = b.fecha?.toDate?.() || new Date(0);
+            return fb - fa;
+          });
+        } catch (e) { console.error('Error cargando informes caseros:', e); }
+
+        // Render todo
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+
+        renderResumen();
+        renderEncuestas();
+        renderInformesCaseros();
+        renderCostes();
+
+      } catch (e) {
+        console.error('Error general:', e);
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      }
+    }
+
+    // ========================================
+    // CARD 1: RESUMEN DE ESTANCIAS
+    // ========================================
+    function renderResumen() {
+      const tbody = document.getElementById('tabla-resumen-body');
+      const empty = document.getElementById('empty-resumen');
+
+      if (!estancias.length) {
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      tbody.innerHTML = estancias.map(est => {
+        const nombre = est.nombre || est.tipoReservaNombre || 'Estancia';
+        const fechas = `${formatFecha(est.fechaInicio)} → ${formatFecha(est.fechaFin)}`;
+        const dias = calcularDias(est.fechaInicio, est.fechaFin);
+
+        // Personas
+        let familiares = 0, total = 0;
+        if (est.preparacion?.personas) {
+          Object.values(est.preparacion.personas).forEach(dia => {
+            familiares = Math.max(familiares, dia.familiares || 0);
+            total = Math.max(total, (dia.familiares || 0) + (dia.duermen || 0));
+          });
+        }
+
+        // Zonas usadas
+        const zonasUsadas = est.preparacion?.zonas?.length || 0;
+        const zonasTotal = zonasDelBien.length || '—';
+
+        // Gastos de esta estancia
+        const gastosEstancia = gastos
+          .filter(g => g.estanciaId === est.id)
+          .reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+
+        // Encuesta vinculada
+        const encuesta = encuestas.find(e => e.estanciaId === est.id || e.vinculacion?.estanciaId === est.id);
+        let encuestaBadge = '<span class="tabla-badge neutral">—</span>';
+        if (encuesta) {
+          const puntuacion = encuesta.puntuacionMedia || encuesta.puntuacion || 0;
+          if (puntuacion > 0) {
+            encuestaBadge = `<span class="tabla-badge success">⭐ ${puntuacion.toFixed(1)}</span>`;
+          } else if (encuesta.estado === 'activa') {
+            encuestaBadge = `<span class="tabla-badge pending">⏳</span>`;
+          }
+        }
+
+        // Informe casero
+        const informe = informesCaseros.find(i => i.estanciaId === est.id);
+        let informeBadge = '<span class="tabla-badge neutral">—</span>';
+        if (informe) {
+          informeBadge = '<span class="tabla-badge success">✅</span>';
+        }
+
+        return `
+          <tr>
+            <td>
+              <div class="estancia-nombre">${nombre}</div>
+              <div class="estancia-fechas">${fechas}</div>
+            </td>
+            <td class="tabla-valor">${dias}</td>
+            <td class="tabla-valor">${familiares || '—'}</td>
+            <td class="tabla-valor">${total || '—'}</td>
+            <td class="tabla-valor">${zonasUsadas}/${zonasTotal}</td>
+            <td class="tabla-valor">${gastosEstancia > 0 ? gastosEstancia.toFixed(0) + '€' : '—'}</td>
+            <td class="tabla-valor">${encuestaBadge}</td>
+            <td class="tabla-valor">${informeBadge}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ========================================
+    // CARD 2: ENCUESTAS DE SATISFACCIÓN
+    // ========================================
+    function renderEncuestas() {
+      const container = document.getElementById('lista-encuestas');
+      const empty = document.getElementById('empty-encuestas');
+
+      // Filtrar encuestas cerradas o con respuestas
+      const encuestasMostrar = encuestas.filter(e => e.estado === 'cerrada' || Object.keys(e.respuestas || {}).length > 0);
+
+      if (!encuestasMostrar.length) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      container.innerHTML = encuestasMostrar.map(enc => {
+        const totalResp = Object.keys(enc.respuestas || {}).length;
+        const fecha = formatFechaTS(enc.fechaCierre || enc.fechaCreacion);
+        
+        // Puntuación media si es encuesta de satisfacción con estrellas
+        let puntuacionHTML = '';
+        if (enc.puntuacionMedia || enc.puntuacion) {
+          const p = enc.puntuacionMedia || enc.puntuacion;
+          puntuacionHTML = `<span style="color:var(--sage-dark)">⭐ ${p.toFixed(1)}</span>`;
+        } else if (totalResp > 0 && enc.preguntas) {
+          // Calcular promedio de preguntas escala
+          let sumaEscala = 0, countEscala = 0;
+          enc.preguntas.forEach((preg, pIdx) => {
+            if (preg.tipo === 'escala') {
+              Object.values(enc.respuestas || {}).forEach(r => {
+                if (r[pIdx]) { sumaEscala += r[pIdx]; countEscala++; }
+              });
+            }
+          });
+          if (countEscala > 0) {
+            puntuacionHTML = `<span style="color:var(--sage-dark)">⭐ ${(sumaEscala / countEscala).toFixed(1)}</span>`;
+          }
+        }
+
+        const estadoBadge = enc.estado === 'cerrada'
+          ? '<span class="tabla-badge neutral">🔒 Cerrada</span>'
+          : '<span class="tabla-badge success">🟢 Abierta</span>';
+
+        return `
+          <div class="lista-item" onclick="abrirDetalleEncuesta('${enc.id}')">
+            <div class="lista-item-info">
+              <div class="lista-item-titulo">${enc.titulo || 'Encuesta de satisfacción'}</div>
+              <div class="lista-item-meta">
+                <span>📅 ${fecha}</span>
+                <span>👥 ${totalResp} respuesta${totalResp !== 1 ? 's' : ''}</span>
+                ${estadoBadge}
+              </div>
+            </div>
+            <div class="lista-item-badge">
+              ${puntuacionHTML || `👥 ${totalResp}`}
+            </div>
+            <span class="lista-item-arrow">›</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ========================================
+    // CARD 3: INFORMES DE CASEROS
+    // ========================================
+    function renderInformesCaseros() {
+      const container = document.getElementById('lista-informes-caseros');
+      const empty = document.getElementById('empty-informes-caseros');
+
+      if (!informesCaseros.length) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      container.innerHTML = informesCaseros.map(inf => {
+        const fecha = formatFechaTS(inf.fecha || inf.fechaEnvio);
+        const estancia = estancias.find(e => e.id === inf.estanciaId);
+        const estanciaNombre = estancia?.nombre || inf.estanciaNombre || 'Estancia';
+
+        // Contar líneas OK / KO
+        const lineas = inf.respuestas || inf.lineas || {};
+        let totalLineas = 0, lineasOk = 0;
+        Object.values(lineas).forEach(v => {
+          totalLineas++;
+          if (v === true || v === 'ok') lineasOk++;
+        });
+
+        const caseroNombre = inf.caseroNombre || 'Casero';
+
+        return `
+          <div class="lista-item" onclick="abrirDetalleInforme('${inf.id}')">
+            <div class="lista-item-info">
+              <div class="lista-item-titulo">${estanciaNombre}</div>
+              <div class="lista-item-meta">
+                <span>📅 ${fecha}</span>
+                <span>👷 ${caseroNombre}</span>
+                ${totalLineas > 0 ? `<span>✅ ${lineasOk}/${totalLineas}</span>` : ''}
+              </div>
+            </div>
+            <span class="lista-item-arrow">›</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ========================================
+    // CARD 4: COSTES DE ESTANCIA
+    // ========================================
+    function renderCostes() {
+      const resumenContainer = document.getElementById('costes-resumen');
+      const tbody = document.getElementById('costes-tabla-body');
+      const empty = document.getElementById('empty-costes');
+
+      if (!gastos.length) {
+        resumenContainer.innerHTML = '';
+        tbody.innerHTML = '';
+        empty.classList.remove('hidden');
+        document.querySelector('.costes-tabla')?.closest('.tabla-scroll')?.classList.add('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      // Calcular totales
+      const totalGastos = gastos.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+      const totalDias = estancias.reduce((sum, e) => sum + calcularDias(e.fechaInicio, e.fechaFin), 0);
+      const mediaEstancia = estancias.length > 0 ? totalGastos / estancias.length : 0;
+      const mediaDia = totalDias > 0 ? totalGastos / totalDias : 0;
+
+      // Boxes resumen
+      resumenContainer.innerHTML = `
+        <div class="coste-box">
+          <div class="coste-box-label">Total gastos</div>
+          <div class="coste-box-valor">${totalGastos.toFixed(0)}€</div>
+          <div class="coste-box-sub">${estancias.length} estancia${estancias.length !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="coste-box">
+          <div class="coste-box-label">Media por estancia</div>
+          <div class="coste-box-valor">${mediaEstancia.toFixed(0)}€</div>
+          <div class="coste-box-sub">${totalDias} días totales</div>
+        </div>
+        <div class="coste-box">
+          <div class="coste-box-label">Media diaria</div>
+          <div class="coste-box-valor">${mediaDia.toFixed(1)}€</div>
+          <div class="coste-box-sub">€/día</div>
+        </div>
+        <div class="coste-box">
+          <div class="coste-box-label">Media por persona</div>
+          <div class="coste-box-valor">${calcularMediaPersona().toFixed(1)}€</div>
+          <div class="coste-box-sub">€/persona/día</div>
+        </div>
+      `;
+
+      // Tabla desglose por estancia
+      const estanciasConGastos = estancias.map(est => {
+        const gastosEst = gastos
+          .filter(g => g.estanciaId === est.id)
+          .reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+        const dias = calcularDias(est.fechaInicio, est.fechaFin);
+        let maxPersonas = 0;
+        if (est.preparacion?.personas) {
+          Object.values(est.preparacion.personas).forEach(dia => {
+            maxPersonas = Math.max(maxPersonas, (dia.familiares || 0) + (dia.duermen || 0));
+          });
+        }
+        return { ...est, gastosTotal: gastosEst, dias, maxPersonas };
+      }).filter(e => e.gastosTotal > 0);
+
+      if (estanciasConGastos.length) {
+        tbody.innerHTML = estanciasConGastos.map(est => `
+          <tr>
+            <td>
+              <div style="font-weight:700">${est.nombre || 'Estancia'}</div>
+              <div style="font-size:0.75rem;color:var(--text-muted)">${formatFecha(est.fechaInicio)} → ${formatFecha(est.fechaFin)}</div>
+            </td>
+            <td style="text-align:center">${est.dias}</td>
+            <td style="text-align:right" class="costes-total">${est.gastosTotal.toFixed(0)}€</td>
+            <td style="text-align:right">${est.dias > 0 ? (est.gastosTotal / est.dias).toFixed(1) : '—'}€</td>
+            <td style="text-align:right">${est.maxPersonas > 0 && est.dias > 0 ? (est.gastosTotal / est.maxPersonas / est.dias).toFixed(1) : '—'}€</td>
+          </tr>
+        `).join('');
+      }
+
+      // Gastos sin asignar a estancia
+      const gastosHuerfanos = gastos.filter(g => !g.estanciaId);
+      if (gastosHuerfanos.length) {
+        const totalHuerfanos = gastosHuerfanos.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+        tbody.innerHTML += `
+          <tr style="background:var(--cream)">
+            <td><div style="font-weight:700;color:var(--text-muted)">Sin estancia asignada</div></td>
+            <td style="text-align:center">—</td>
+            <td style="text-align:right" class="costes-total">${totalHuerfanos.toFixed(0)}€</td>
+            <td style="text-align:right">—</td>
+            <td style="text-align:right">—</td>
+          </tr>
+        `;
+      }
+    }
+
+    function calcularMediaPersona() {
+      let totalPersonasDia = 0;
+      estancias.forEach(est => {
+        if (est.preparacion?.personas) {
+          Object.values(est.preparacion.personas).forEach(dia => {
+            totalPersonasDia += (dia.familiares || 0) + (dia.duermen || 0);
+          });
+        }
+      });
+      const totalGastos = gastos.reduce((sum, g) => sum + (parseFloat(g.importe) || 0), 0);
+      return totalPersonasDia > 0 ? totalGastos / totalPersonasDia : 0;
+    }
+
+    // ========================================
+    // MODAL: DETALLE ENCUESTA
+    // ========================================
+    function abrirDetalleEncuesta(id) {
+      const enc = encuestas.find(e => e.id === id);
+      if (!enc) return;
+
+      document.getElementById('modal-enc-titulo').textContent = '📝 ' + (enc.titulo || 'Encuesta');
+      const body = document.getElementById('modal-enc-body');
+      const respuestas = enc.respuestas || {};
+      const total = Object.keys(respuestas).length;
+
+      let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:12px 16px;background:var(--cream);border-radius:var(--radius-md);">
+        <span style="font-weight:700">👥 ${total} respuesta${total !== 1 ? 's' : ''}</span>
+        <span style="font-size:0.82rem;color:var(--text-muted)">📅 ${formatFechaTS(enc.fechaCierre || enc.fechaCreacion)}</span>
+      </div>`;
+
+      // Si es encuesta tipo satisfaccion-estancia (con ratings)
+      if (enc.tipo === 'satisfaccion-estancia' && enc.ratings) {
+        html += '<div class="detalle-seccion"><div class="detalle-seccion-titulo">Valoraciones</div>';
+        const ratingLabels = {
+          general: '⭐ General', limpieza: '🧹 Limpieza', equipamiento: '🔧 Equipamiento',
+          confort: '🛋️ Confort', ubicacion: '📍 Ubicación', servicio: '👨‍🍳 Servicio'
+        };
+        Object.entries(enc.ratings || {}).forEach(([key, val]) => {
+          if (val) {
+            html += `<div class="detalle-barra-item" style="margin-bottom:6px">
+              <span class="detalle-barra-label">${ratingLabels[key] || key}</span>
+              <div class="detalle-barra"><div class="detalle-barra-fill" style="width:${val * 20}%"></div></div>
+              <span class="detalle-barra-pct">${val}/5</span>
+            </div>`;
+          }
+        });
+        html += '</div>';
+
+        // Comentarios
+        if (enc.comentarioPositivo || enc.comentarioMejora || enc.comentarioAdicional) {
+          html += '<div class="detalle-seccion"><div class="detalle-seccion-titulo">Comentarios</div>';
+          if (enc.comentarioPositivo) html += `<div class="detalle-texto-item">👍 ${enc.comentarioPositivo}</div>`;
+          if (enc.comentarioMejora) html += `<div class="detalle-texto-item">💡 ${enc.comentarioMejora}</div>`;
+          if (enc.comentarioAdicional) html += `<div class="detalle-texto-item">💬 ${enc.comentarioAdicional}</div>`;
+          html += '</div>';
+        }
+      }
+
+      // Preguntas tipo herramienta-encuestas (con preguntas array)
+      if (enc.preguntas?.length) {
+        enc.preguntas.forEach((preg, pIdx) => {
+          html += `<div class="detalle-pregunta">
+            <div class="detalle-pregunta-texto">${preg.texto}</div>`;
+
+          if (preg.tipo === 'opciones' || preg.tipo === 'multiple') {
+            const conteo = {};
+            (preg.opciones || []).forEach((_, i) => conteo[i] = 0);
+            Object.values(respuestas).forEach(r => {
+              const resp = r[pIdx];
+              if (preg.tipo === 'multiple' && Array.isArray(resp)) {
+                resp.forEach(idx => { if (conteo[idx] !== undefined) conteo[idx]++; });
+              } else if (conteo[resp] !== undefined) { conteo[resp]++; }
+            });
+            html += '<div class="detalle-barra-container">';
+            (preg.opciones || []).forEach((op, i) => {
+              const pct = total > 0 ? (conteo[i] / total * 100) : 0;
+              html += `<div class="detalle-barra-item">
+                <span class="detalle-barra-label">${op}</span>
+                <div class="detalle-barra"><div class="detalle-barra-fill" style="width:${pct}%"></div></div>
+                <span class="detalle-barra-pct">${conteo[i]} (${Math.round(pct)}%)</span>
+              </div>`;
+            });
+            html += '</div>';
+
+          } else if (preg.tipo === 'escala') {
+            let suma = 0, count = 0;
+            Object.values(respuestas).forEach(r => { if (r[pIdx]) { suma += r[pIdx]; count++; } });
+            const promedio = count > 0 ? (suma / count).toFixed(1) : '–';
+            html += `<div class="detalle-promedio">
+              <div class="detalle-promedio-num">${promedio} / 5</div>
+              <div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px">${count} respuesta${count !== 1 ? 's' : ''}</div>
+            </div>`;
+
+          } else if (preg.tipo === 'texto') {
+            Object.entries(respuestas).filter(([_, r]) => r[pIdx]).forEach(([uid, r]) => {
+              const m = miembrosData.find(x => x.id === uid);
+              html += `<div class="detalle-texto-item"><span class="detalle-texto-autor">${m?.nombre || 'Anónimo'}:</span> ${r[pIdx]}</div>`;
+            });
+          }
+
+          html += `</div>`;
+        });
+      }
+
+      body.innerHTML = html;
+      document.getElementById('modal-encuesta').classList.add('active');
+    }
+
+    // ========================================
+    // MODAL: DETALLE INFORME CASERO
+    // ========================================
+    function abrirDetalleInforme(id) {
+      const inf = informesCaseros.find(i => i.id === id);
+      if (!inf) return;
+
+      const estancia = estancias.find(e => e.id === inf.estanciaId);
+      document.getElementById('modal-inf-titulo').textContent = '📋 ' + (estancia?.nombre || inf.estanciaNombre || 'Informe');
+
+      const body = document.getElementById('modal-inf-body');
+      let html = `<div style="margin-bottom:16px;padding:12px 16px;background:var(--cream);border-radius:var(--radius-md);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span>👷 ${inf.caseroNombre || 'Casero'}</span>
+        <span style="color:var(--text-muted)">📅 ${formatFechaTS(inf.fecha || inf.fechaEnvio)}</span>
+      </div>`;
+
+      // Líneas del informe (checklist)
+      const lineas = inf.respuestas || inf.lineas || {};
+      const plantillaLineas = inf.plantillaLineas || [];
+
+      if (plantillaLineas.length) {
+        html += '<div class="detalle-seccion">';
+        plantillaLineas.forEach(linea => {
+          const valor = lineas[linea.id];
+          const check = valor === true || valor === 'ok';
+          html += `<div class="informe-linea">
+            <span class="informe-check ${check ? 'ok' : 'ko'}">${check ? '✅' : '❌'}</span>
+            <span class="informe-texto">${linea.texto || linea.nombre || linea.id}</span>
+          </div>`;
+        });
+        html += '</div>';
+      } else if (Object.keys(lineas).length) {
+        // Sin plantilla, mostrar claves
+        html += '<div class="detalle-seccion">';
+        Object.entries(lineas).forEach(([key, val]) => {
+          const check = val === true || val === 'ok';
+          html += `<div class="informe-linea">
+            <span class="informe-check ${check ? 'ok' : 'ko'}">${check ? '✅' : '❌'}</span>
+            <span class="informe-texto">${key}</span>
+          </div>`;
+        });
+        html += '</div>';
+      }
+
+      // Observaciones
+      if (inf.observaciones || inf.notas) {
+        html += `<div class="detalle-seccion" style="margin-top:16px">
+          <div class="detalle-seccion-titulo">Observaciones</div>
+          <div class="detalle-texto-item">${inf.observaciones || inf.notas}</div>
+        </div>`;
+      }
+
+      body.innerHTML = html;
+      document.getElementById('modal-informe').classList.add('active');
+    }
+
+    // ========================================
+    // MODALES
+    // ========================================
+    function cerrarModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    document.getElementById('modal-encuesta').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-encuesta') cerrarModal('modal-encuesta');
+    });
+    document.getElementById('modal-informe').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-informe') cerrarModal('modal-informe');
+    });
+
+    // ========================================
+    // UTILIDADES
+    // ========================================
+    function calcularDias(inicio, fin) {
+      if (!inicio || !fin) return 0;
+      const a = new Date(inicio), b = new Date(fin);
+      return Math.max(1, Math.round((b - a) / (1000 * 60 * 60 * 24)));
+    }
+
+    function formatFecha(fechaStr) {
+      if (!fechaStr) return '—';
+      const [y, m, d] = fechaStr.split('-');
+      const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      return `${parseInt(d)} ${meses[parseInt(m) - 1]}`;
+    }
+
+    function formatFechaTS(ts) {
+      if (!ts) return '—';
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+  </script>
+</body>
+</html>
