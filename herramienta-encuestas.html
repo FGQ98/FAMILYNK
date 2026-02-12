@@ -245,7 +245,7 @@
 </head>
 <body>
   <header class="header">
-    <a href="activacion.html" class="back-btn">← Activación</a>
+    <a href="cgi.html" class="back-btn">← Volver</a>
   </header>
 
   <main class="main">
@@ -609,15 +609,23 @@
       }
     }
 
-    // Verifica si hay reservas/solicitudes finalizadas que aún no tienen encuesta enviada
+    // Verifica si hay reservas/solicitudes finalizadas del BIEN VINCULADO que aún no tienen encuesta enviada
     async function verificarReservaFinalizada(encuesta) {
       const ahora = new Date();
       const encuestaCreacion = encuesta.fechaCreacion?.toDate?.() || new Date(0);
+      const bienIdVinculado = encuesta.vinculacion?.bienId;
+      
+      // Si no hay bien vinculado, no puede ser automática
+      if (!bienIdVinculado) {
+        console.log('Encuesta automática sin bien vinculado, ignorando:', encuesta.titulo);
+        return false;
+      }
       
       try {
-        // Buscar en solicitudes aprobadas de la familia
+        // Buscar en solicitudes aprobadas del bien vinculado
         const solicitudesSnap = await db.collection('solicitudes')
           .where('familiaId', '==', familiaId)
+          .where('bienId', '==', bienIdVinculado)
           .where('estado', '==', 'aprobada')
           .get();
         
@@ -636,15 +644,15 @@
           }
         }
         
-        // Buscar en reservas del add-on (si existe)
+        // Buscar en estancias del bien vinculado
         try {
-          const reservasSnap = await db.collection('reservas')
-            .where('familiaId', '==', familiaId)
+          const estanciasSnap = await db.collection('bienes').doc(bienIdVinculado)
+            .collection('estancias')
             .get();
           
-          for (const doc of reservasSnap.docs) {
-            const res = doc.data();
-            let fechaFin = res.fechaFin || res.fechaHasta || res.fin || res.checkout;
+          for (const doc of estanciasSnap.docs) {
+            const est = doc.data();
+            let fechaFin = est.fechaFin || est.fechaHasta || est.checkout;
             if (fechaFin) {
               fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
               if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
@@ -656,7 +664,7 @@
             }
           }
         } catch (e) {
-          // Colección reservas puede no existir
+          // Subcolección estancias puede no existir
         }
         
         return false;
@@ -1398,32 +1406,9 @@
         return;
       }
       
-      document.getElementById('modulo-check-wrapper').classList.remove('hidden');
-      
-      if (v.moduloId) {
-        // Marcar checkbox y cargar módulos
-        const checkModulo = document.getElementById('check-vincular-modulo');
-        if (checkModulo) checkModulo.checked = true;
-        document.getElementById('modulo-selector-wrapper').classList.remove('hidden');
-        
-        await cargarModulosDelBien(v.bienId);
-        document.getElementById('enc-modulo').value = v.moduloId;
-        
-        const modulo = modulosDelBien.find(m => m.id === v.moduloId);
-        vinculacionModulo = modulo;
-        
-        if (modulo?.esReservaEvento) {
-          mostrarOpcionAutomatico();
-        }
-        
-        if (v.cardId) {
-          await cargarCardsDelModulo(v.bienId, v.moduloId);
-          if (cardsDelModulo.length > 1) {
-            document.getElementById('enc-card').value = v.cardId;
-          }
-          vinculacionCard = cardsDelModulo.find(c => c.id === v.cardId);
-        }
-      }
+      // Mismo flujo que onBienSeleccionado: si tiene add-on, reservas/eventos disponibles
+      vinculacionModulo = { id: 'reservas-eventos', nombre: 'Reservas/Eventos', esReservaEvento: true };
+      mostrarOpcionAutomatico();
     }
 
     // ========================================
