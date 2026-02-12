@@ -743,7 +743,8 @@
     .cta-solicitar { border-color: #7E57C2; }
     .cta-solicitar:hover { background: #EDE7F6; border-color: #5E35B1; }
 
-    /* CTA Finde eliminado — la solicitud de reserva lo sustituye */
+    .cta-finde { border-color: #26A69A; }
+    .cta-finde:hover { background: #E0F2F1; border-color: #00897B; }
 
     .cta-queo { border-color: #5B7BA3; }
     .cta-queo:hover { background: rgba(91, 123, 163, 0.15); border-color: #5B7BA3; }
@@ -1140,7 +1141,10 @@
     .cal-dot.evento { background: #FF9800; }
     .cal-dot.cita { background: #2196F3; }
     .cal-dot.reserva { background: #9C27B0; }
-    /* Colores de reserva: dinámicos desde configCalendario */
+    .cal-dot.reserva-estancia { background: #9C27B0; }
+    .cal-dot.reserva-huespedes { background: #FF7043; }
+    .cal-dot.reserva-zafarrancho { background: #66BB6A; }
+    .cal-dot.reserva-monteria { background: #8D6E63; }
 
     .eventos-hoy {
       margin-top: 8px;
@@ -1164,7 +1168,10 @@
     .evento-dot.evento { background: #FF9800; }
     .evento-dot.cita { background: #2196F3; }
     .evento-dot.reserva { background: #9C27B0; }
-    /* Colores evento-dot: dinámicos desde configCalendario */
+    .evento-dot.reserva-estancia { background: #9C27B0; }
+    .evento-dot.reserva-huespedes { background: #FF7043; }
+    .evento-dot.reserva-zafarrancho { background: #66BB6A; }
+    .evento-dot.reserva-monteria { background: #8D6E63; }
 
     /* ============ CALENDARIO MÓVIL (Próximos 3 días) ============ */
     .proximos-dias { display: flex; flex-direction: column; gap: 12px; }
@@ -1375,21 +1382,22 @@
     }
 
     .notif-marcar, .notif-eliminar {
-      width: 18px;
-      height: 18px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       border: 2px solid var(--text-muted);
       background: transparent;
       cursor: pointer;
-      font-size: 0.55rem;
+      font-size: 0.65rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      opacity: 0.5;
+      opacity: 0.6;
       transition: all 0.2s;
     }
     .notif-marcar:hover { opacity: 1; border-color: var(--sage); background: var(--sage); color: white; }
-    .notif-eliminar:hover { opacity: 1; border-color: var(--terracotta); background: var(--terracotta); }
+    .notif-eliminar { border-color: var(--terracotta-muted); }
+    .notif-eliminar:hover { opacity: 1; border-color: var(--terracotta); background: var(--terracotta); color: white; }
 
     .tablon-separator {
       font-size: 0.65rem;
@@ -3132,6 +3140,10 @@
           <span class="cta-icon">📋</span>
           <span class="cta-label">Solicitar</span>
         </button>
+        <button class="cta-btn cta-finde" id="cta-finde" onclick="abrirModalConfirmacionFinde()">
+          <span class="cta-icon">🏡</span>
+          <span class="cta-label">Confirmar finde</span>
+        </button>
         <button class="cta-btn cta-queo" id="cta-queo" onclick="abrirModalComunicado()">
           <span class="cta-icon">📣</span>
           <span class="cta-label">Enviar queo</span>
@@ -3724,6 +3736,161 @@
       </form>
     </div>
   </div>
+
+  <!-- Modal Confirmación Finde -->
+  <div class="modal-overlay" id="modal-confirmacion-finde">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #26A69A, #00897B);">
+        <h3 class="modal-title">🏡 Confirmación de fin de semana</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <form id="form-confirmacion-finde">
+        <div class="modal-body">
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; text-align: center;">
+            Confirma los detalles de tu llegada para este fin de semana
+          </p>
+          
+          <div class="form-group">
+            <label class="form-label">¿A qué casa vas? *</label>
+            <select class="form-select" id="finde-bien" required onchange="cargarHabitacionesBien()">
+              <option value="">Selecciona...</option>
+            </select>
+          </div>
+          
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">📅 Día de entrada *</label>
+              <input type="date" class="form-input" id="finde-fecha-entrada" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">📅 Día de salida *</label>
+              <input type="date" class="form-input" id="finde-fecha-salida" required>
+            </div>
+          </div>
+          
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="form-group">
+              <label class="form-label">🕐 Hora de llegada *</label>
+              <input type="time" class="form-input" id="finde-hora-llegada" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">🕐 Hora de salida</label>
+              <input type="time" class="form-input" id="finde-hora-salida" placeholder="Estimada">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">👥 Personas *</label>
+            <input type="number" class="form-input" id="finde-personas" min="1" max="20" value="1" required>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">🛏️ Habitaciones</label>
+            <div id="finde-habitaciones-container" style="display: none;">
+              <select class="form-select" id="finde-habitaciones-select" onchange="addHabitacionFinde()">
+                <option value="">+ Añadir habitación...</option>
+              </select>
+              <div id="finde-habitaciones-chips" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+            </div>
+            <p id="finde-habitaciones-empty" style="color: var(--text-muted); font-size: 0.85rem; font-style: italic;">
+              Selecciona primero una casa para ver sus habitaciones
+            </p>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">🍽️ ¿Menús nuevos?</label>
+            <div class="finde-toggle-group">
+              <label class="finde-toggle-option">
+                <input type="radio" name="finde-menus-nuevos" value="no" checked onchange="toggleMenusNuevos()">
+                <span class="finde-toggle-label">No</span>
+              </label>
+              <label class="finde-toggle-option">
+                <input type="radio" name="finde-menus-nuevos" value="si" onchange="toggleMenusNuevos()">
+                <span class="finde-toggle-label">Sí</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group" id="finde-menus-detalle" style="display: none;">
+            <label class="form-label">¿Cuáles menús?</label>
+            <textarea class="form-input" id="finde-menus-cuales" rows="2" placeholder="Ej: Cena del sábado para 6, comida domingo para 8..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">🐕 ¿Sujetar perros a la llegada?</label>
+            <div class="finde-toggle-group">
+              <label class="finde-toggle-option">
+                <input type="radio" name="finde-sujetar-perros" value="no" checked>
+                <span class="finde-toggle-label">No hace falta</span>
+              </label>
+              <label class="finde-toggle-option">
+                <input type="radio" name="finde-sujetar-perros" value="si">
+                <span class="finde-toggle-label">Sí, por favor</span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">📝 Notas adicionales</label>
+            <textarea class="form-input" id="finde-notas" rows="2" placeholder="Cualquier cosa que debamos saber..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="abandonarModal('finde')">Cancelar</button>
+          <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #26A69A, #00897B);">✅ Confirmar llegada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    .finde-toggle-group {
+      display: flex;
+      gap: 8px;
+    }
+    .finde-toggle-option {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 16px;
+      background: var(--cream);
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .finde-toggle-option:has(input:checked) {
+      border-color: #26A69A;
+      background: #E0F2F1;
+    }
+    .finde-toggle-option input { display: none; }
+    .finde-toggle-label { font-weight: 600; font-size: 0.9rem; color: var(--text); }
+    .finde-toggle-option:has(input:checked) .finde-toggle-label { color: #00897B; }
+    
+    .habitacion-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #E0F2F1;
+      border: 1px solid #26A69A;
+      border-radius: var(--radius-full);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #00897B;
+    }
+    .habitacion-chip-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      opacity: 0.6;
+      padding: 0;
+      line-height: 1;
+    }
+    .habitacion-chip-remove:hover { opacity: 1; }
+  </style>
 
   <!-- Modal Convocatoria -->
   <div class="modal-overlay" id="modal-convocatoria">
@@ -4993,8 +5160,7 @@
                       visibleCGI: tipoData.visibleCGI || false,
                       color: tipoData.color || '#9C27B0',
                       emoji: tipoData.emoji || '📋',
-                      nombre: tipoData.nombre || tipoId,
-                      familiar: tipoData.familiar || false
+                      nombre: tipoData.nombre || tipoId
                     });
                   });
                 }
@@ -5124,17 +5290,8 @@
             else if (bien.gerenteActivo) addonActivo = 'gerente';
             else if (bien.capatazActivo) addonActivo = 'capataz';
             
-            // Leer AMBAS colecciones y fusionar
-            let allReservaDocs = [];
-            try {
-              const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
-              allReservaDocs = allReservaDocs.concat(reservasSnap.docs);
-            } catch (e) { console.warn('Error reservas:', e); }
-            try {
-              const estanciasSnap = await db.collection('bienes').doc(bienDoc.id).collection('estancias').get();
-              allReservaDocs = allReservaDocs.concat(estanciasSnap.docs);
-            } catch (e) { console.warn('Error estancias:', e); }
-            allReservaDocs.forEach(resDoc => {
+            const reservasSnap = await db.collection('bienes').doc(bienDoc.id).collection('reservas').get();
+            reservasSnap.docs.forEach(resDoc => {
               const r = { id: resDoc.id, ...resDoc.data() };
               if (!esVisibleParaUsuario(r, nidosMap)) return;
               
@@ -5148,7 +5305,7 @@
                   (fechaSalida.toDate ? fechaSalida.toDate().toISOString().split('T')[0] : fechaSalida) : null;
                 
                 // Buscar color y emoji en config
-                const tipoId = r.tipoId || r.tipo || '';
+                const tipoId = r.tipo || '';
                 let color = '#9C27B0';
                 let emoji = '🏠';
                 
@@ -5161,10 +5318,9 @@
                   }
                 }
                 
-                // Texto descriptivo (nuevo formato: titulo + nidoNombre; viejo: quienesNombre, etc.)
-                let descripcion = r.titulo || bien.nombre || 'Reserva';
-                if (r.nidoNombre) descripcion += ` · ${r.nidoNombre}`;
-                else if (r.quienesNombre) descripcion += ` · ${r.quienesNombre}`;
+                // Texto descriptivo
+                let descripcion = bien.nombre || 'Reserva';
+                if (r.quienesNombre) descripcion += ` · ${r.quienesNombre}`;
                 else if (r.nidoReservaNombre) descripcion += ` · ${r.nidoReservaNombre}`;
                 else if (r.otroGrupoNombre) descripcion += ` · ${r.otroGrupoNombre}`;
                 
@@ -6203,9 +6359,13 @@
       const remitenteInfo = n.source === 'queo' && n.remitenteNombre ? 
         `<div class="notif-remitente">De: ${n.remitenteNombre}</div>` : '';
 
-      // Botón eliminar solo para el creador o admins
-      const esAdminRamaLocal = userData?.rol === 'adminRama' || userData?.rol === 'AdminRama' || userData?.rol === 'admin-rama' || userData?.esAdmin;
-      const puedeEliminar = n.remitente === currentUser.uid || n.creadoPor === currentUser.uid || esAdminRamaLocal;
+      // Botón eliminar - siempre visible para admins, o para el creador
+      const puedeEliminar = esAdminRama || 
+        userData?.credenciales === 'admin-rama' || 
+        userData?.credenciales === 'admin-nido' ||
+        n.remitente === currentUser.uid || 
+        n.creadoPor === currentUser.uid ||
+        n.solicitadoPor === currentUser.uid;
       const btnEliminar = puedeEliminar ? 
         `<button class="notif-eliminar" onclick="event.stopPropagation(); eliminarNotificacion('${sourceId}', '${sourceType}')" title="Eliminar">🗑️</button>` : '';
 
@@ -6296,27 +6456,41 @@
       
       try {
         // Determinar colección según el tipo
-        let collection;
+        let deleted = false;
+        
         if (sourceType === 'queo') {
-          collection = 'queos';
-        } else if (sourceType === 'solicitud' || sourceType === 'solicitud-respuesta') {
-          collection = 'solicitudes';
+          console.log('Eliminando queo:', notifId);
+          await db.collection('queos').doc(notifId).delete();
+          deleted = true;
+        } else if (sourceType === 'solicitud') {
+          // Intentar primero en solicitudes, luego en notificaciones
+          try {
+            await db.collection('solicitudes').doc(notifId).delete();
+            deleted = true;
+            console.log('Eliminado de solicitudes:', notifId);
+          } catch (e) {
+            // Si falla, intentar en notificaciones
+            await db.collection('notificaciones').doc(notifId).delete();
+            deleted = true;
+            console.log('Eliminado de notificaciones (fallback):', notifId);
+          }
         } else {
-          collection = 'notificaciones';
+          // Por defecto, eliminar de notificaciones
+          console.log('Eliminando de notificaciones:', notifId);
+          await db.collection('notificaciones').doc(notifId).delete();
+          deleted = true;
         }
         
-        console.log('Eliminando de', collection, ':', notifId);
-        await db.collection(collection).doc(notifId).delete();
-        
-        // Refrescar tablón
-        await renderTablon();
-        // Refrescar buzón móvil
-        if (typeof renderBuzonUnificado === 'function') {
-          await renderBuzonUnificado();
+        if (deleted) {
+          // Refrescar tablón y buzón
+          await renderTablon();
+          if (typeof renderBuzonUnificado === 'function') {
+            await renderBuzonUnificado();
+          }
         }
       } catch (error) {
         console.error('Error eliminando:', error);
-        alert('No tienes permisos para eliminar este aviso');
+        alert('Error al eliminar. Verifica permisos.');
       }
     }
 
@@ -6751,13 +6925,9 @@
             // Crear reserva en el bien con todos los campos
             await db.collection('bienes').doc(solData.bienId).collection('reservas').add({
               tipo: solData.tipoReserva || 'estancia',
-              tipoId: solData.tipoReserva || 'estancia',
               tipoNombre: solData.tipoReservaNombre || 'Estancia',
-              titulo: solData.tipoReservaNombre || 'Estancia',
-              addon: solData.addonActivo || 'mayordomo',
               nidoReservaId: solData.nidoReservaId || null,
               nidoReservaNombre: solData.nidoReservaNombre || '',
-              nidoNombre: solData.nidoReservaNombre || '',
               otroGrupoId: solData.otroGrupoId || null,
               otroGrupoNombre: solData.otroGrupoNombre || '',
               fechaInicio: solData.fechaInicio,
@@ -6768,12 +6938,10 @@
               visibilidad: solData.visibilidad || 'rama',
               solicitadoPor: solData.solicitadoPor,
               solicitadoPorNombre: solData.solicitadoPorNombre,
-              creadoPor: currentUser.uid,
-              creadoPorNombre: userData?.nombre || '',
-              estado: 'borrador',
-              colorCalendario: 'gris',
-              familiaId: currentFamilia.id,
-              fechaCreacion: fechaActual,
+              aprobadoPor: currentUser.uid,
+              aprobadoPorNombre: userData?.nombre || '',
+              estado: 'confirmada',
+              fechaAprobacion: fechaActual,
               origenSolicitud: solicitudId
             });
           }
@@ -7753,7 +7921,7 @@
                     color: tipoData.color || '#9C27B0',
                     emoji: tipoData.emoji || '📋',
                     nombre: tipoData.nombre || tipoId,
-                    esFamiliar: tipoData.familiar || tipoData.esFamiliar || false
+                    esFamiliar: tipoData.esFamiliar || false
                   });
                 });
               }
@@ -8072,6 +8240,9 @@
         case 'reserva': return `📅 Solicitud de reserva: ${datos.bienNombre || 'Bien'}`;
         case 'averia': return `🔧 Avería reportada: ${datos.bienNombre || datos.descripcion?.substring(0, 30) || 'Ver detalle'}`;
         case 'encargo': return `🛒 Nuevo encargo: ${datos.bienNombre || 'Bien'}`;
+        case 'confirmacion-finde': 
+          const fechaCorta = datos.fechaEntrada ? new Date(datos.fechaEntrada).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
+          return `🏡 Confirmación finde: ${datos.bienNombre || 'Llegada'} ${fechaCorta} (${datos.personas} pers.)`;
         default: return '📌 Nueva solicitud';
       }
     }
@@ -8175,6 +8346,165 @@
     }
 
     // ============ MODAL CONFIRMACIÓN FINDE ============
+    let habitacionesSeleccionadas = [];
+    let habitacionesBienActual = [];
+
+    async function abrirModalConfirmacionFinde() {
+      await cargarBienesConGestion();
+      
+      // Verificar si hay bienes con gestión
+      if (bienesConGestion.length === 0) {
+        alert('No hay bienes con gestión activa.\n\nPara confirmar tu llegada, primero debe activarse Mayordomo, Gerente o Capataz en algún bien.');
+        return;
+      }
+      
+      // Popular select de bienes
+      const selectBien = document.getElementById('finde-bien');
+      selectBien.innerHTML = '<option value="">Selecciona...</option>' + 
+        bienesConGestion.map(b => `<option value="${b.id}">${b.nombre}</option>`).join('');
+      
+      // Reset formulario
+      document.getElementById('form-confirmacion-finde').reset();
+      document.getElementById('finde-menus-detalle').style.display = 'none';
+      
+      // Configurar fechas mínimas (hoy)
+      const hoy = new Date().toISOString().split('T')[0];
+      document.getElementById('finde-fecha-entrada').min = hoy;
+      document.getElementById('finde-fecha-salida').min = hoy;
+      
+      // Reset habitaciones
+      habitacionesSeleccionadas = [];
+      habitacionesBienActual = [];
+      document.getElementById('finde-habitaciones-container').style.display = 'none';
+      document.getElementById('finde-habitaciones-empty').style.display = 'block';
+      document.getElementById('finde-habitaciones-chips').innerHTML = '';
+      
+      document.getElementById('modal-confirmacion-finde').classList.add('active');
+      track.iniciar('finde');
+    }
+
+    async function cargarHabitacionesBien() {
+      const bienId = document.getElementById('finde-bien').value;
+      const container = document.getElementById('finde-habitaciones-container');
+      const emptyMsg = document.getElementById('finde-habitaciones-empty');
+      const select = document.getElementById('finde-habitaciones-select');
+      
+      // Reset
+      habitacionesSeleccionadas = [];
+      habitacionesBienActual = [];
+      document.getElementById('finde-habitaciones-chips').innerHTML = '';
+      
+      if (!bienId) {
+        container.style.display = 'none';
+        emptyMsg.style.display = 'block';
+        emptyMsg.textContent = 'Selecciona primero una casa para ver sus habitaciones';
+        return;
+      }
+      
+      // Buscar el bien y sus habitaciones
+      const bien = bienesConGestion.find(b => b.id === bienId);
+      if (!bien || !bien.habitaciones || bien.habitaciones.length === 0) {
+        container.style.display = 'none';
+        emptyMsg.style.display = 'block';
+        emptyMsg.textContent = 'Este bien no tiene habitaciones definidas';
+        return;
+      }
+      
+      habitacionesBienActual = bien.habitaciones;
+      
+      // Popular select
+      select.innerHTML = '<option value="">+ Añadir habitación...</option>' +
+        habitacionesBienActual.map((h, idx) => {
+          const nombre = typeof h === 'string' ? h : h.nombre;
+          return `<option value="${idx}">${nombre}</option>`;
+        }).join('');
+      
+      container.style.display = 'block';
+      emptyMsg.style.display = 'none';
+    }
+
+    function addHabitacionFinde() {
+      const select = document.getElementById('finde-habitaciones-select');
+      const idx = select.value;
+      
+      if (idx === '') return;
+      
+      const habitacion = habitacionesBienActual[idx];
+      const nombre = typeof habitacion === 'string' ? habitacion : habitacion.nombre;
+      
+      // Evitar duplicados
+      if (habitacionesSeleccionadas.includes(nombre)) {
+        select.value = '';
+        return;
+      }
+      
+      habitacionesSeleccionadas.push(nombre);
+      renderHabitacionesChips();
+      select.value = '';
+    }
+
+    function removeHabitacionFinde(nombre) {
+      habitacionesSeleccionadas = habitacionesSeleccionadas.filter(h => h !== nombre);
+      renderHabitacionesChips();
+    }
+
+    function renderHabitacionesChips() {
+      const container = document.getElementById('finde-habitaciones-chips');
+      container.innerHTML = habitacionesSeleccionadas.map(nombre => `
+        <span class="habitacion-chip">
+          🛏️ ${nombre}
+          <button type="button" class="habitacion-chip-remove" onclick="removeHabitacionFinde('${nombre}')">✕</button>
+        </span>
+      `).join('');
+    }
+
+    function toggleMenusNuevos() {
+      const valor = document.querySelector('input[name="finde-menus-nuevos"]:checked').value;
+      document.getElementById('finde-menus-detalle').style.display = valor === 'si' ? 'block' : 'none';
+    }
+
+    // Envío del formulario de Confirmación Finde
+    document.getElementById('form-confirmacion-finde')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const btn = e.target.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Enviando...';
+      
+      try {
+        const bienId = document.getElementById('finde-bien').value;
+        const bien = bienesConGestion.find(b => b.id === bienId);
+        
+        const datos = {
+          bienId: bienId,
+          bienNombre: bien?.nombre || '',
+          fechaEntrada: document.getElementById('finde-fecha-entrada').value,
+          fechaSalida: document.getElementById('finde-fecha-salida').value,
+          horaLlegada: document.getElementById('finde-hora-llegada').value,
+          horaSalida: document.getElementById('finde-hora-salida').value || null,
+          personas: parseInt(document.getElementById('finde-personas').value) || 1,
+          habitaciones: habitacionesSeleccionadas,
+          menusNuevos: document.querySelector('input[name="finde-menus-nuevos"]:checked').value === 'si',
+          menusCuales: document.getElementById('finde-menus-cuales')?.value || '',
+          sujetarPerros: document.querySelector('input[name="finde-sujetar-perros"]:checked').value === 'si',
+          notas: document.getElementById('finde-notas').value || ''
+        };
+        
+        await enviarSolicitud('confirmacion-finde', datos);
+        
+        alert('✅ Confirmación de fin de semana enviada');
+        track.completar('finde');
+        cerrarModales();
+        
+      } catch (error) {
+        console.error('Error enviando confirmación:', error);
+        alert('Error al enviar: ' + error.message);
+      }
+      
+      btn.disabled = false;
+      btn.innerHTML = '✅ Confirmar llegada';
+    });
+
     // Cargar tipos de reserva según el add-on del bien seleccionado
     async function cargarTiposReserva() {
       const bienId = document.getElementById('reserva-bien').value;
