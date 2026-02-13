@@ -17,10 +17,9 @@
       
       /* Colores por categoría */
       --hito: #E91E63;
-      --cita: #2196F3;
+      --cita: #FF9800;
       --evento: #2196F3;
-      --reserva: #7A9E7E;
-      --externo: #607D8B;
+      --reserva: #9C27B0;
       
       /* Colores de subtipos de reserva: ahora dinámicos desde configCalendario */
     }
@@ -420,6 +419,25 @@
     };
     let subtiposFiltro = {}; // Subtipos de reserva activos
 
+    // TIPOS FIJOS - Ignorar config de Firebase, usar siempre estos
+    const TIPOS_FIJOS = {
+      mayordomo: [
+        { id: 'estancia-familiar', nombre: 'Estancias familiares', emoji: '🏠', color: '#7A9E7E', visibleCGI: true, esFamiliar: true },
+        { id: 'evento', nombre: 'Eventos', emoji: '🎉', color: '#2196F3', visibleCGI: true, esFamiliar: false },
+        { id: 'otros', nombre: 'Otros', emoji: '📋', color: '#FF9800', visibleCGI: true, esFamiliar: false }
+      ],
+      gerente: [
+        { id: 'reserva-familiar', nombre: 'Reservas familiares', emoji: '👨‍👩‍👧‍👦', color: '#FF9800', visibleCGI: true, esFamiliar: true },
+        { id: 'reserva-huespedes', nombre: 'Reservas huéspedes', emoji: '🏨', color: '#8D6E63', visibleCGI: true, esFamiliar: false },
+        { id: 'actividad', nombre: 'Actividad', emoji: '🎯', color: '#2196F3', visibleCGI: true, esFamiliar: false }
+      ],
+      capataz: [
+        { id: 'caceria', nombre: 'Cacerías', emoji: '🦌', color: '#7A9E7E', visibleCGI: true, esFamiliar: false },
+        { id: 'recoleccion', nombre: 'Recolecciones', emoji: '🌾', color: '#FF9800', visibleCGI: true, esFamiliar: false },
+        { id: 'otras-actividades', nombre: 'Otras actividades', emoji: '🎯', color: '#2196F3', visibleCGI: true, esFamiliar: false }
+      ]
+    };
+
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
@@ -484,7 +502,7 @@
                   configCalendario.tiposAddon[addon].push({
                     id: tipoId,
                     visibleCGI: tipoData.visibleCGI || false,
-                    color: tipoData.color || '#7A9E7E',
+                    color: tipoData.color || '#9C27B0',
                     emoji: tipoData.emoji || '📋',
                     nombre: tipoData.nombre || tipoId,
                     familiar: tipoData.familiar || false
@@ -524,16 +542,13 @@
 
     function renderChipsSubtipos() {
       const container = document.getElementById('chips-subtipos');
-      if (!configCalendario?.tiposAddon) {
-        document.getElementById('filtros-subtipos').style.display = 'none';
-        return;
-      }
       
       let html = '';
       let hayTipos = false;
       
+      // Usar TIPOS_FIJOS en lugar de configCalendario
       ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
-        const tipos = configCalendario.tiposAddon[addon] || [];
+        const tipos = TIPOS_FIJOS[addon] || [];
         tipos.filter(t => t.visibleCGI).forEach(t => {
           hayTipos = true;
           const activo = subtiposFiltro[t.id] !== false;
@@ -541,9 +556,9 @@
             <div class="filtro-chip ${activo ? 'active' : ''}" 
                  data-subtipo="${t.id}" 
                  onclick="toggleSubtipo(this)"
-                 style="color: ${t.color || '#7A9E7E'}">
-              <span class="chip-dot" style="background: ${t.color || '#7A9E7E'}"></span>
-              ${t.emoji || ''} ${t.nombre}
+                 style="color: ${t.color}">
+              <span class="chip-dot" style="background: ${t.color}"></span>
+              ${t.emoji} ${t.nombre}
             </div>
           `;
         });
@@ -561,41 +576,25 @@
       
       let html = '';
       
-      // Hitos familiares (si están habilitados)
-      if (configCalendario?.hitos) {
-        if (configCalendario.hitos.cumpleanos?.visibleCGI) {
-          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.cumpleanos.color || '#E91E63'}"></div> 🎂 Cumpleaños</div>`;
-        }
-        if (configCalendario.hitos.uniones?.visibleCGI) {
-          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.uniones.color || '#E91E63'}"></div> 💒 Aniversarios</div>`;
-        }
-        if (configCalendario.hitos.fallecimientos?.visibleCGI) {
-          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.fallecimientos.color || '#607D8B'}"></div> 🕯️ Recordatorios</div>`;
-        }
-      } else {
-        // Fallback si no hay config
-        html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>`;
-      }
+      // Hitos familiares - siempre en rojo
+      html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>`;
+      html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 💒 Aniversarios</div>`;
       
-      // Añadir tipos de reserva desde config
-      if (configCalendario?.tiposAddon) {
-        ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
-          const tipos = configCalendario.tiposAddon[addon] || [];
-          tipos.filter(t => t.visibleCGI).forEach(t => {
-            html += `
-              <div class="leyenda-item">
-                <div class="leyenda-dot" style="background: ${t.color || '#7A9E7E'}"></div>
-                ${t.emoji || ''} ${t.nombre}
-              </div>
-            `;
-          });
+      // Usar TIPOS_FIJOS en lugar de configCalendario
+      ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
+        const tipos = TIPOS_FIJOS[addon] || [];
+        tipos.filter(t => t.visibleCGI).forEach(t => {
+          html += `
+            <div class="leyenda-item">
+              <div class="leyenda-dot" style="background: ${t.color}"></div>
+              ${t.emoji} ${t.nombre}
+            </div>
+          `;
         });
-      }
+      });
       
-      // Añadir externos si están habilitados
-      if (configCalendario?.externos?.mostrarLibranzas || configCalendario?.externos?.mostrarVacaciones) {
-        html += `<div class="leyenda-item"><div class="leyenda-dot externo"></div> 📅 Externos</div>`;
-      }
+      // Externos en gris
+      html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#607D8B"></div> 📅 Externos</div>`;
       
       leyenda.innerHTML = html;
     }
@@ -677,7 +676,7 @@
             const claveUnica = `aniv-${nido.nombre}-${mes}-${dia}`;
             if (!hitosUnicos.has(claveUnica)) {
               hitosUnicos.add(claveUnica);
-              const colorUniones = configCalendario?.hitos?.uniones?.color || '#E91E63';
+              const colorUniones = configCalendario?.hitos?.uniones?.color || '#9C27B0';
               todosEventos.push({
                 tipo: 'hito',
                 subtipo: 'aniversario',
@@ -810,15 +809,15 @@
               const fecha = new Date(fechaEntrada);
               const tipoReservaId = r.tipoId || r.tipo || '';
               
-              // Buscar color en config
-              let color = '#7A9E7E'; // Default verde (Estancias Familiares)
+              // Buscar color en TIPOS_FIJOS
+              let color = '#7A9E7E'; // Default verde
               let tipoConfigId = tipoReservaId;
               
-              if (configCalendario?.tiposAddon && addonActivo) {
-                const tiposAddon = configCalendario.tiposAddon[addonActivo] || [];
+              if (addonActivo && TIPOS_FIJOS[addonActivo]) {
+                const tiposAddon = TIPOS_FIJOS[addonActivo];
                 const tipoConfig = tiposAddon.find(t => t.id === tipoReservaId);
                 if (tipoConfig) {
-                  color = tipoConfig.color || color;
+                  color = tipoConfig.color;
                   tipoConfigId = tipoConfig.id;
                 }
               }
