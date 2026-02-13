@@ -1157,14 +1157,24 @@
     .cal-day-dots { display: flex; gap: 2px; justify-content: center; margin-top: 2px; }
     .cal-dot { width: 4px; height: 4px; border-radius: 50%; }
     .cal-dot.cumple { background: #E91E63; }
-    .cal-dot.especial { background: #4CAF50; }
-    .cal-dot.evento { background: #FF9800; }
+    .cal-dot.especial { background: #E91E63; }
+    .cal-dot.hito { background: #E91E63; }
+    .cal-dot.evento { background: #2196F3; }
     .cal-dot.cita { background: #2196F3; }
-    .cal-dot.reserva { background: #9C27B0; }
-    .cal-dot.reserva-estancia { background: #9C27B0; }
-    .cal-dot.reserva-huespedes { background: #FF7043; }
-    .cal-dot.reserva-zafarrancho { background: #66BB6A; }
-    .cal-dot.reserva-monteria { background: #8D6E63; }
+    .cal-dot.reserva { background: #7A9E7E; }
+    .cal-dot.externo { background: #607D8B; }
+    /* MAYORDOMO */
+    .cal-dot.reserva-estancia-familiar { background: #7A9E7E; }
+    .cal-dot.reserva-evento { background: #2196F3; }
+    .cal-dot.reserva-otros { background: #FF9800; }
+    /* GERENTE */
+    .cal-dot.reserva-reserva-familiar { background: #FF9800; }
+    .cal-dot.reserva-reserva-huespedes { background: #8D6E63; }
+    .cal-dot.reserva-actividad { background: #2196F3; }
+    /* CAPATAZ */
+    .cal-dot.reserva-caceria { background: #7A9E7E; }
+    .cal-dot.reserva-recoleccion { background: #FF9800; }
+    .cal-dot.reserva-otras-actividades { background: #2196F3; }
 
     .eventos-hoy {
       margin-top: 8px;
@@ -1184,14 +1194,24 @@
 
     .evento-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .evento-dot.cumple { background: #E91E63; }
-    .evento-dot.especial { background: #4CAF50; }
-    .evento-dot.evento { background: #FF9800; }
+    .evento-dot.especial { background: #E91E63; }
+    .evento-dot.hito { background: #E91E63; }
+    .evento-dot.evento { background: #2196F3; }
     .evento-dot.cita { background: #2196F3; }
-    .evento-dot.reserva { background: #9C27B0; }
-    .evento-dot.reserva-estancia { background: #9C27B0; }
-    .evento-dot.reserva-huespedes { background: #FF7043; }
-    .evento-dot.reserva-zafarrancho { background: #66BB6A; }
-    .evento-dot.reserva-monteria { background: #8D6E63; }
+    .evento-dot.reserva { background: #7A9E7E; }
+    .evento-dot.externo { background: #607D8B; }
+    /* MAYORDOMO */
+    .evento-dot.reserva-estancia-familiar { background: #7A9E7E; }
+    .evento-dot.reserva-evento { background: #2196F3; }
+    .evento-dot.reserva-otros { background: #FF9800; }
+    /* GERENTE */
+    .evento-dot.reserva-reserva-familiar { background: #FF9800; }
+    .evento-dot.reserva-reserva-huespedes { background: #8D6E63; }
+    .evento-dot.reserva-actividad { background: #2196F3; }
+    /* CAPATAZ */
+    .evento-dot.reserva-caceria { background: #7A9E7E; }
+    .evento-dot.reserva-recoleccion { background: #FF9800; }
+    .evento-dot.reserva-otras-actividades { background: #2196F3; }
 
     /* ============ CALENDARIO MÓVIL (Próximos 3 días) ============ */
     .proximos-dias { display: flex; flex-direction: column; gap: 12px; }
@@ -5124,7 +5144,7 @@
     let eventosCalendario = [];
     let configCalendarioCGI = null; // Config de tipos de reserva y colores
 
-    // TIPOS FIJOS - Ignorar config de Firebase, usar siempre estos
+    // TIPOS FIJOS - Siempre usar estos, ignorar config de Firebase
     const TIPOS_FIJOS = {
       mayordomo: [
         { id: 'estancia-familiar', nombre: 'Estancias familiares', emoji: '🏠', color: '#7A9E7E', visibleCGI: true, esFamiliar: true },
@@ -5215,7 +5235,7 @@
                     configCalendarioCGI.tiposAddon[addon].push({
                       id: tipoId,
                       visibleCGI: tipoData.visibleCGI || false,
-                      color: tipoData.color || '#9C27B0',
+                      color: tipoData.color || '#7A9E7E',
                       emoji: tipoData.emoji || '📋',
                       nombre: tipoData.nombre || tipoId
                     });
@@ -5361,25 +5381,30 @@
                 const fechaFinStr = fechaSalida ? 
                   (fechaSalida.toDate ? fechaSalida.toDate().toISOString().split('T')[0] : fechaSalida) : null;
                 
-                // Buscar color y emoji en TIPOS_FIJOS
-                const tipoId = r.tipo || '';
+                // Buscar color y emoji en TIPOS_FIJOS (no en Firebase)
+                const tipoId = r.tipo || 'estancia-familiar';
                 let color = '#7A9E7E'; // Verde por defecto
                 let emoji = '🏠';
                 
                 if (addonActivo && TIPOS_FIJOS[addonActivo]) {
-                  const tiposAddon = TIPOS_FIJOS[addonActivo];
-                  const tipoConfig = tiposAddon.find(t => t.id === tipoId);
+                  const tipoConfig = TIPOS_FIJOS[addonActivo].find(t => t.id === tipoId);
                   if (tipoConfig) {
                     color = tipoConfig.color;
                     emoji = tipoConfig.emoji;
                   }
                 }
                 
-                // Texto descriptivo
-                let descripcion = bien.nombre || 'Reserva';
-                if (r.quienesNombre) descripcion += ` · ${r.quienesNombre}`;
-                else if (r.nidoReservaNombre) descripcion += ` · ${r.nidoReservaNombre}`;
-                else if (r.otroGrupoNombre) descripcion += ` · ${r.otroGrupoNombre}`;
+                // Texto descriptivo: PRIMERO quién reserva, LUEGO el bien
+                const quienReserva = r.nidoReservaNombre || r.quienesNombre || r.otroGrupoNombre || r.nidoNombre || r.quien || r.solicitadoPorNombre || '';
+                let descripcion = '';
+                
+                if (r.titulo) {
+                  descripcion = r.titulo;
+                } else if (quienReserva) {
+                  descripcion = `${quienReserva} — ${bien.nombre}`;
+                } else {
+                  descripcion = bien.nombre || 'Reserva';
+                }
                 
                 eventosCalendario.push({ 
                   tipo: 'reserva',
@@ -8025,7 +8050,7 @@
                   configCalendarioData.tiposAddon[addon].push({
                     id: tipoId,
                     visibleCGI: tipoData.visibleCGI || false,
-                    color: tipoData.color || '#9C27B0',
+                    color: tipoData.color || '#7A9E7E',
                     emoji: tipoData.emoji || '📋',
                     nombre: tipoData.nombre || tipoId,
                     esFamiliar: tipoData.esFamiliar || false
@@ -8636,10 +8661,7 @@
         return;
       }
       
-      // Cargar config y nidos si no están cargados
-      if (!configCalendarioData) {
-        await cargarConfigCalendario();
-      }
+      // Cargar nidos si no están cargados
       if (nidosData.length === 0) {
         await cargarNidosRama();
       }
@@ -8650,9 +8672,8 @@
       else if (bien.gerenteActivo) addon = 'gerente';
       else if (bien.capatazActivo) addon = 'capataz';
       
+      // SIEMPRE usar TIPOS_FIJOS (ignorar config de Firebase)
       let tipos = [];
-      
-      // SIEMPRE usar TIPOS_FIJOS, ignorar config de Firebase
       if (addon && TIPOS_FIJOS[addon]) {
         tipos = TIPOS_FIJOS[addon].map(t => ({
           id: t.id,

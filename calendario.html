@@ -19,7 +19,7 @@
       --hito: #E91E63;
       --cita: #FF9800;
       --evento: #2196F3;
-      --reserva: #9C27B0;
+      --reserva: #7A9E7E;
       
       /* Colores de subtipos de reserva: ahora dinámicos desde configCalendario */
     }
@@ -419,7 +419,7 @@
     };
     let subtiposFiltro = {}; // Subtipos de reserva activos
 
-    // TIPOS FIJOS - Ignorar config de Firebase, usar siempre estos
+    // TIPOS FIJOS - Siempre usar estos, ignorar config de Firebase
     const TIPOS_FIJOS = {
       mayordomo: [
         { id: 'estancia-familiar', nombre: 'Estancias familiares', emoji: '🏠', color: '#7A9E7E', visibleCGI: true, esFamiliar: true },
@@ -502,7 +502,7 @@
                   configCalendario.tiposAddon[addon].push({
                     id: tipoId,
                     visibleCGI: tipoData.visibleCGI || false,
-                    color: tipoData.color || '#9C27B0',
+                    color: tipoData.color || '#7A9E7E',
                     emoji: tipoData.emoji || '📋',
                     nombre: tipoData.nombre || tipoId,
                     familiar: tipoData.familiar || false
@@ -544,13 +544,11 @@
       const container = document.getElementById('chips-subtipos');
       
       let html = '';
-      let hayTipos = false;
       
-      // Usar TIPOS_FIJOS en lugar de configCalendario
+      // Usar TIPOS_FIJOS en lugar de config de Firebase
       ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
         const tipos = TIPOS_FIJOS[addon] || [];
-        tipos.filter(t => t.visibleCGI).forEach(t => {
-          hayTipos = true;
+        tipos.forEach(t => {
           const activo = subtiposFiltro[t.id] !== false;
           html += `
             <div class="filtro-chip ${activo ? 'active' : ''}" 
@@ -565,10 +563,7 @@
       });
       
       container.innerHTML = html;
-      
-      if (hayTipos) {
-        document.getElementById('filtros-subtipos').classList.add('visible');
-      }
+      document.getElementById('filtros-subtipos').classList.add('visible');
     }
 
     function renderLeyendaDinamica() {
@@ -576,14 +571,14 @@
       
       let html = '';
       
-      // Hitos familiares - siempre en rojo
+      // Hitos - siempre en rojo
       html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>`;
       html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 💒 Aniversarios</div>`;
       
-      // Usar TIPOS_FIJOS en lugar de configCalendario
+      // Tipos de reserva desde TIPOS_FIJOS
       ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
         const tipos = TIPOS_FIJOS[addon] || [];
-        tipos.filter(t => t.visibleCGI).forEach(t => {
+        tipos.forEach(t => {
           html += `
             <div class="leyenda-item">
               <div class="leyenda-dot" style="background: ${t.color}"></div>
@@ -676,7 +671,7 @@
             const claveUnica = `aniv-${nido.nombre}-${mes}-${dia}`;
             if (!hitosUnicos.has(claveUnica)) {
               hitosUnicos.add(claveUnica);
-              const colorUniones = configCalendario?.hitos?.uniones?.color || '#9C27B0';
+              const colorUniones = configCalendario?.hitos?.uniones?.color || '#E91E63';
               todosEventos.push({
                 tipo: 'hito',
                 subtipo: 'aniversario',
@@ -774,24 +769,11 @@
           else if (bien.capatazActivo) addonActivo = 'capataz';
           
           try {
-            // Leer AMBAS colecciones y fusionar
-            let allReservaDocs = [];
+            // SOLO leer de collection 'reservas' (eliminar estancias legacy para evitar duplicados)
+            const reservasSnap = await db.collection('bienes').doc(bienDoc.id)
+              .collection('reservas').get();
             
-            // Colección nueva: reservas
-            try {
-              const reservasSnap = await db.collection('bienes').doc(bienDoc.id)
-                .collection('reservas').get();
-              allReservaDocs = allReservaDocs.concat(reservasSnap.docs);
-            } catch (e) { console.warn('Error reservas:', e); }
-            
-            // Colección vieja: estancias
-            try {
-              const estanciasSnap = await db.collection('bienes').doc(bienDoc.id)
-                .collection('estancias').get();
-              allReservaDocs = allReservaDocs.concat(estanciasSnap.docs);
-            } catch (e) { console.warn('Error estancias:', e); }
-            
-            allReservaDocs.forEach(resDoc => {
+            reservasSnap.docs.forEach(resDoc => {
               const r = resDoc.data();
               
               let fechaEntrada = r.entrada || r.fechaInicio;
@@ -807,38 +789,42 @@
               }
               
               const fecha = new Date(fechaEntrada);
-              const tipoReservaId = r.tipoId || r.tipo || '';
+              const tipoReservaId = r.tipoId || r.tipo || 'estancia-familiar';
               
-              // Buscar color en TIPOS_FIJOS
+              // Buscar color en TIPOS_FIJOS (no en Firebase)
               let color = '#7A9E7E'; // Default verde
-              let tipoConfigId = tipoReservaId;
-              
               if (addonActivo && TIPOS_FIJOS[addonActivo]) {
-                const tiposAddon = TIPOS_FIJOS[addonActivo];
-                const tipoConfig = tiposAddon.find(t => t.id === tipoReservaId);
+                const tipoConfig = TIPOS_FIJOS[addonActivo].find(t => t.id === tipoReservaId);
                 if (tipoConfig) {
                   color = tipoConfig.color;
-                  tipoConfigId = tipoConfig.id;
                 }
               }
               
-              // Texto descriptivo (nuevo formato: titulo + nidoNombre; viejo: quienesNombre, etc.)
-              let textoLargo = r.titulo || bienNombre;
-              if (r.nidoNombre) textoLargo += ` — ${r.nidoNombre}`;
-              else if (r.quienesNombre) textoLargo += ` — ${r.quienesNombre}`;
-              else if (r.nidoReservaNombre) textoLargo += ` — ${r.nidoReservaNombre}`;
-              else if (r.otroGrupoNombre) textoLargo += ` — ${r.otroGrupoNombre}`;
-              else if (r.quien) textoLargo += ` — ${r.quien}`;
-              else if (r.motivo) textoLargo += ` — ${r.motivo}`;
-              else if (r.solicitadoPorNombre) textoLargo += ` — ${r.solicitadoPorNombre}`;
+              // Texto descriptivo: PRIMERO quién reserva, LUEGO el bien
+              let textoLargo = '';
+              let textoCortoReserva = '';
               
-              // textoCorto: titulo si existe, sino nombre del bien
-              const textoCortoReserva = (r.titulo || bienNombre).substring(0, 12);
+              // Buscar nombre de quién reserva
+              const quienReserva = r.nidoReservaNombre || r.quienesNombre || r.otroGrupoNombre || r.nidoNombre || r.quien || r.solicitadoPorNombre || '';
+              
+              if (r.titulo) {
+                // Si hay título explícito, usarlo
+                textoLargo = r.titulo;
+                textoCortoReserva = r.titulo.substring(0, 12);
+              } else if (quienReserva) {
+                // Si hay quién reserva, mostrar "Quién - Bien"
+                textoLargo = `${quienReserva} — ${bienNombre}`;
+                textoCortoReserva = quienReserva.substring(0, 12);
+              } else {
+                // Fallback: solo nombre del bien
+                textoLargo = bienNombre;
+                textoCortoReserva = bienNombre.substring(0, 12);
+              }
               
               todosEventos.push({
                 tipo: 'reserva',
                 subtipo: tipoReservaId,
-                tipoConfigId: tipoConfigId,
+                tipoConfigId: tipoReservaId,
                 color: color,
                 titulo: textoLargo,
                 textoCorto: textoCortoReserva,
