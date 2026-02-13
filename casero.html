@@ -1967,7 +1967,7 @@
       // Inventario (permiso: tomaInventario)
       if (permisosActuales.tomaInventario?.ver || permisosActuales.inventario?.ver) {
         try {
-          // Primero intentar leer de la subcolección (última toma guardada)
+          // Primero intentar leer de la subcolección
           let inventarioData = {};
           const tomaDoc = await db.collection('bienes').doc(bienId)
             .collection('tomasInventario').doc('current').get();
@@ -1975,7 +1975,6 @@
           if (tomaDoc.exists && tomaDoc.data()?.inventario) {
             inventarioData = tomaDoc.data().inventario;
           } else {
-            // Si no existe toma previa, leer del documento principal
             const bienDoc = await db.collection('bienes').doc(bienId).get();
             inventarioData = bienDoc.data()?.inventario || {};
           }
@@ -2736,19 +2735,45 @@
     }
 
     async function ajustarInventario(itemId, delta) {
-      const item = datosModulos.inventario.find(i => i.id === itemId);
+      const item = datosModulos.inventario.find(i => i.id == itemId);
       if (!item) return;
 
       const nuevoStock = Math.max(0, item.stockActual + delta);
       
       try {
-        await db.collection('bienes').doc(bienActual.bienId).collection('inventario').doc(itemId).update({
-          stockActual: nuevoStock
-        });
+        // Leer inventario actual de la subcolección
+        let inventarioActual = {};
+        const tomaDoc = await db.collection('bienes').doc(bienActual.bienId)
+          .collection('tomasInventario').doc('current').get();
+        
+        if (tomaDoc.exists && tomaDoc.data()?.inventario) {
+          inventarioActual = tomaDoc.data().inventario;
+        } else {
+          const bienDoc = await db.collection('bienes').doc(bienActual.bienId).get();
+          inventarioActual = bienDoc.data()?.inventario || {};
+        }
+        
+        // Actualizar en la estructura anidada
+        const lugar = inventarioActual[item.lugarKey];
+        if (lugar?.grupos?.[item.grupoKey]?.articulos) {
+          const artIdx = lugar.grupos[item.grupoKey].articulos.findIndex(a => a.nombre === item.nombre);
+          if (artIdx >= 0) {
+            lugar.grupos[item.grupoKey].articulos[artIdx].actual = nuevoStock;
+          }
+        }
+        
+        // Guardar en subcolección
+        await db.collection('bienes').doc(bienActual.bienId)
+          .collection('tomasInventario').doc('current').set({
+            inventario: inventarioActual,
+            ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
+            tomaPor: currentUser.uid
+          });
+        
         item.stockActual = nuevoStock;
         renderModulos();
       } catch (error) {
-        console.error(error);
+        console.error('Error ajustando inventario:', error);
       }
     }
 
@@ -3428,13 +3453,42 @@
         const ref = db.collection('bienes').doc(bienActual.bienId);
 
         if (modalTipo === 'inventario') {
-          await ref.collection('inventario').add({
+          // Leer inventario actual de la subcolección
+          let inventarioActual = {};
+          const tomaDoc = await ref.collection('tomasInventario').doc('current').get();
+          
+          if (tomaDoc.exists && tomaDoc.data()?.inventario) {
+            inventarioActual = tomaDoc.data().inventario;
+          } else {
+            const bienDoc = await ref.get();
+            inventarioActual = bienDoc.data()?.inventario || {};
+          }
+          
+          // Crear estructura si no existe
+          const categoria = document.getElementById('add-categoria').value || 'general';
+          if (!inventarioActual[categoria]) {
+            inventarioActual[categoria] = { nombre: categoria, grupos: {} };
+          }
+          if (!inventarioActual[categoria].grupos) {
+            inventarioActual[categoria].grupos = {};
+          }
+          if (!inventarioActual[categoria].grupos['general']) {
+            inventarioActual[categoria].grupos['general'] = { nombre: 'General', articulos: [] };
+          }
+          
+          // Añadir artículo
+          inventarioActual[categoria].grupos['general'].articulos.push({
             nombre: document.getElementById('add-nombre').value,
-            categoria: document.getElementById('add-categoria').value,
-            stockActual: parseInt(document.getElementById('add-stock').value) || 1,
-            stockMinimo: 1,
-            creadoPor: currentUser.uid,
-            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+            actual: parseInt(document.getElementById('add-stock').value) || 1,
+            minimo: 1,
+            unidad: 'uds'
+          });
+          
+          // Guardar en subcolección
+          await ref.collection('tomasInventario').doc('current').set({
+            inventario: inventarioActual,
+            ultimaToma: firebase.firestore.FieldValue.serverTimestamp(),
+            tomaPor: currentUser.uid
           });
         } else if (modalTipo === 'gasto') {
           const data = {
@@ -3458,12 +3512,14 @@
           }
           editingGasto = null;
         } else if (modalTipo === 'mantenimiento') {
-          await ref.collection('mantenimiento').add({
+          await ref.collection('reparaciones').add({
             titulo: document.getElementById('add-titulo').value,
             urgencia: document.getElementById('add-urgencia').value,
+            prioridad: document.getElementById('add-urgencia').value, // Para compatibilidad
             estado: 'pendiente',
             creadoPor: currentUser.uid,
-            fecha: firebase.firestore.FieldValue.serverTimestamp()
+            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
           });
         }
 
@@ -3501,7 +3557,6 @@
           .collection('tomasInventario').doc('current').get();
         
         if (tomaDoc.exists && tomaDoc.data()?.inventario) {
-          // Usar la última toma (tiene los valores actualizados)
           inventarioToma = tomaDoc.data().inventario;
         } else {
           // 2. Si no existe toma previa, leer estructura del documento principal
@@ -3902,7 +3957,7 @@
       btn.textContent = '⏳ Guardando...';
       
       try {
-        // Primero cargar el inventario actual de la subcolección
+        // Leer inventario actual de la subcolección
         let inventarioActual = {};
         const tomaDoc = await db.collection('bienes').doc(bienActual.bienId)
           .collection('tomasInventario').doc('current').get();
@@ -3910,26 +3965,24 @@
         if (tomaDoc.exists && tomaDoc.data()?.inventario) {
           inventarioActual = tomaDoc.data().inventario;
         } else {
-          // Si no existe, cargar del documento principal
           const bienDoc = await db.collection('bienes').doc(bienActual.bienId).get();
           inventarioActual = bienDoc.data()?.inventario || {};
         }
         
         let cambios = 0;
         
-        // Actualizar valores en el inventario según los inputs
+        // Actualizar valores según los inputs
         inputs.forEach(input => {
-          const itemId = input.dataset.itemId;
           const nuevoValor = parseInt(input.value) || 0;
-          const item = datosModulos.inventario.find(i => i.id === itemId);
+          const item = datosModulos.inventario.find(i => i.id == input.dataset.itemId);
           
           if (item && item.stockActual !== nuevoValor) {
             // Actualizar en la estructura anidada
             const lugar = inventarioActual[item.lugarKey];
             if (lugar?.grupos?.[item.grupoKey]?.articulos) {
-              const articulo = lugar.grupos[item.grupoKey].articulos.find(a => a.nombre === item.nombre);
-              if (articulo) {
-                articulo.actual = nuevoValor;
+              const artIdx = lugar.grupos[item.grupoKey].articulos.findIndex(a => a.nombre === item.nombre);
+              if (artIdx >= 0) {
+                lugar.grupos[item.grupoKey].articulos[artIdx].actual = nuevoValor;
                 item.stockActual = nuevoValor;
                 cambios++;
               }
