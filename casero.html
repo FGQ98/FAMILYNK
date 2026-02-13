@@ -1776,14 +1776,16 @@
     async function cargarPermisosGlobales(familiaId, tipoExterno, permisosFallback) {
       console.log('=== cargarPermisosGlobales ===');
       console.log('familiaId:', familiaId);
+      console.log('tipoExterno:', tipoExterno);
       
       try {
         const familiaDoc = await db.collection('familias').doc(familiaId).get();
         
         if (familiaDoc.exists) {
           const data = familiaDoc.data();
+          console.log('Familia data.permisosExternos:', data.permisosExternos);
           const permisosGlobales = data.permisosExternos?.[tipoExterno];
-          console.log('Permisos desde Firestore:', permisosGlobales);
+          console.log('Permisos para', tipoExterno, ':', permisosGlobales);
           
           if (permisosGlobales && Object.keys(permisosGlobales).length > 0) {
             // Mapear cards a bloques según nueva estructura
@@ -1801,6 +1803,8 @@
               planSemanalLimp: 'planesSem',
               zonasTareas: 'planesSem',
               limpiezaProg: 'planesSem',
+              instalaciones: 'planesSem',
+              informeEstancia: 'planesSem',
               // GASTOS
               registro: 'gastos'
             };
@@ -1810,10 +1814,10 @@
             // Primero pasar todas las cards individuales
             for (const [cardId, vceb] of Object.entries(permisosGlobales)) {
               permisosMapeados[cardId] = {
-                ver: vceb.v || false,
-                crear: vceb.c || false,
-                editar: vceb.e || false,
-                borrar: vceb.b || false
+                ver: vceb.v === true,
+                crear: vceb.c === true,
+                editar: vceb.e === true,
+                borrar: vceb.b === true
               };
               
               // Además, activar el bloque padre si alguna card tiene "ver"
@@ -1826,7 +1830,7 @@
               }
             }
             
-            console.log('Permisos mapeados:', permisosMapeados);
+            console.log('Permisos mapeados final:', permisosMapeados);
             return permisosMapeados;
           }
         }
@@ -1834,7 +1838,7 @@
         console.error('Error cargando permisos globales:', error);
       }
       
-      console.log('Usando fallback');
+      console.log('Usando fallback:', permisosFallback);
       return permisosFallback || {};
     }
 
@@ -3207,7 +3211,17 @@
     // ========== MANTENIMIENTO ==========
     // ========== REPARACIONES ==========
     function renderModuloReparaciones() {
-      const p = permisosActuales.reparaciones || permisosActuales.inventario;
+      const pRep = permisosActuales.reparaciones || {};
+      const pInv = permisosActuales.inventario || {};
+      // Combinar permisos: si tiene permiso específico de reparaciones, usarlo; si no, usar inventario
+      const p = {
+        ver: pRep.ver || pInv.ver || false,
+        crear: pRep.crear || pInv.crear || false,
+        editar: pRep.editar || pInv.editar || false,
+        borrar: pRep.borrar || pInv.borrar || false
+      };
+      console.log('renderModuloReparaciones - permisos:', p);
+      
       const estadoIcons = { pendiente: '🔴', en_proceso: '🟡', completada: '🟢' };
       const estadoLabels = { pendiente: 'Pendiente', en_proceso: 'En proceso', completada: 'Completada' };
 
