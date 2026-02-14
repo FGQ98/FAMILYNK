@@ -2382,45 +2382,46 @@
               diasPDF.forEach((dia, i) => {
                 const m = preparacionData.menus?.[`${pase.key}-${dia.key}`];
                 if (m && (m.descripcion || m.plato || m.notas || m.especial)) {
-                  const val = m.descripcion || m.plato || m.notas || 'Especial';
-                  doc.setTextColor(...txt);
-                  // Truncar si es muy largo
-                  const maxW = colW - 2;
-                  const truncated = doc.splitTextToSize(val, maxW)[0];
-                  doc.text(truncated, x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+                  // Mostrar solo indicador en la celda
+                  doc.setTextColor(...sage);
+                  doc.setFont('helvetica', 'bold');
+                  doc.text('Esp', x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+                  doc.setFont('helvetica', 'normal');
                 } else {
                   doc.setTextColor(...muted);
-                  doc.text('-', x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
+                  doc.text('Prev', x0 + 32 + i * colW + colW / 2, y, { align: 'center' });
                 }
               });
               y += 5.5;
             });
             
-            // Si hay menús con texto largo, listarlos debajo
+            // Listar TODOS los menús especiales con detalle completo
             const menusDetalle = [];
             pases.forEach(pase => {
               diasPDF.forEach(dia => {
                 const m = preparacionData.menus?.[`${pase.key}-${dia.key}`];
                 const texto = m?.descripcion || m?.plato || m?.notas || '';
-                if (texto && texto.length > 15) {
-                  menusDetalle.push({ pase: pase.label, dia: dia.label, texto: texto });
+                if (m?.especial || texto) {
+                  menusDetalle.push({ pase: sinEmoji(pase.label), dia: dia.label, texto: texto || '(Especial sin especificar)' });
                 }
               });
             });
             if (menusDetalle.length > 0) {
               y += 3;
-              doc.setFontSize(7.5);
-              doc.setTextColor(...muted);
-              doc.text('Detalle:', M, y);
-              y += 4;
+              doc.setFontSize(8);
+              doc.setTextColor(...sage);
+              doc.setFont('helvetica', 'bold');
+              doc.text('Detalle de menus especiales:', M, y);
+              doc.setFont('helvetica', 'normal');
+              y += 5;
               menusDetalle.forEach(md => {
-                checkPage(8);
-                doc.setFontSize(8);
+                checkPage(10);
+                doc.setFontSize(8.5);
                 doc.setTextColor(...txt);
-                const linea = `${md.pase} ${md.dia}: ${md.texto}`;
+                const linea = `${md.pase} (${md.dia}): ${md.texto}`;
                 const wrapped = doc.splitTextToSize(linea, W - M * 2 - 4);
                 doc.text(wrapped, M + 4, y);
-                y += wrapped.length * 4 + 1;
+                y += wrapped.length * 4.5 + 2;
               });
             }
             y += 3;
