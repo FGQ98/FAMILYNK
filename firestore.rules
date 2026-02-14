@@ -39,7 +39,10 @@ service cloud.firestore {
              (getUserData().rol == 'AdminRama' || 
               getUserData().rol == 'adminRama' || 
               getUserData().rol == 'admin-rama' ||
-              getUserData().credencial == 'admin-rama');
+              getUserData().credencial == 'admin-rama' ||
+              getUserData().credenciales == 'admin-rama' ||
+              getUserData().rol == 'patriarca' ||
+              getUserData().rol == 'matriarca');
     }
     
     function isPatriarcaOrMatriarca() {
@@ -232,26 +235,44 @@ service cloud.firestore {
     match /queos/{queoId} {
       allow read: if isAuthenticated() && 
                     (request.auth.uid in resource.data.destinatarios || 
-                     request.auth.uid == resource.data.remitente);
+                     request.auth.uid == resource.data.remitente ||
+                     belongsToFamilia(resource.data.familiaId));
       allow create: if isAuthenticated();
       allow update: if isAuthenticated() && 
                       (request.auth.uid in resource.data.destinatarios || 
-                       request.auth.uid == resource.data.remitente);
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.remitente;
+                       request.auth.uid == resource.data.remitente ||
+                       belongsToFamilia(resource.data.familiaId));
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.remitente ||
+                       isAdminOfFamilia(resource.data.familiaId) ||
+                       isSuperAdmin() || isAdminSistema());
     }
     
     // ============================================================
     // COLECCIÓN: notificaciones
     // ============================================================
     match /notificaciones/{notifId} {
+      // Lectura: destinatarios o cualquier miembro de la familia
       allow read: if isAuthenticated() && 
                     (request.auth.uid in resource.data.destinatarios ||
                      belongsToFamilia(resource.data.familiaId));
+      
+      // Crear: cualquier usuario autenticado
       allow create: if isAuthenticated();
+      
+      // Actualizar: destinatarios o miembros de la familia
       allow update: if isAuthenticated() && 
                       (request.auth.uid in resource.data.destinatarios ||
                        belongsToFamilia(resource.data.familiaId));
-      allow delete: if isSuperAdmin() || isAdminSistema();
+      
+      // ELIMINAR: Admins de la familia, creador, o superadmin
+      // *** CAMBIO PRINCIPAL: ahora admins de familia pueden eliminar ***
+      allow delete: if isAuthenticated() && 
+                      (isSuperAdmin() || 
+                       isAdminSistema() ||
+                       isAdminOfFamilia(resource.data.familiaId) ||
+                       request.auth.uid == resource.data.creadoPor ||
+                       request.auth.uid in resource.data.destinatarios);
     }
     
     // ============================================================
@@ -270,6 +291,7 @@ service cloud.firestore {
                        isSuperAdmin() || isAdminSistema());
       allow delete: if isAuthenticated() && 
                       (request.auth.uid == resource.data.solicitadoPor ||
+                       isAdminOfFamilia(resource.data.familiaId) ||
                        belongsToFamilia(resource.data.familiaId) ||
                        isSuperAdmin() || isAdminSistema());
     }
@@ -288,7 +310,7 @@ service cloud.firestore {
                        isSuperAdmin() || isAdminSistema());
       allow delete: if isAuthenticated() && 
                       (request.auth.uid == resource.data.creadoPor ||
-                       belongsToFamilia(resource.data.familiaId) ||
+                       isAdminOfFamilia(resource.data.familiaId) ||
                        isSuperAdmin() || isAdminSistema());
     }
     
@@ -299,21 +321,27 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.creadoPor;
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.creadoPor ||
+                       isAdminOfFamilia(resource.data.familiaId));
     }
     
     match /citas/{citaId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.creadoPor;
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.creadoPor ||
+                       isAdminOfFamilia(resource.data.familiaId));
     }
     
     match /eventos/{eventoId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.creadoPor;
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.creadoPor ||
+                       isAdminOfFamilia(resource.data.familiaId));
     }
     
     match /tareas/{tareaId} {
@@ -338,7 +366,9 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
       allow update: if isAuthenticated();
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.autor;
+      allow delete: if isAuthenticated() && 
+                      (request.auth.uid == resource.data.autor ||
+                       isAdminOfFamilia(resource.data.familiaId));
     }
     
     match /menus/{menuId} {
