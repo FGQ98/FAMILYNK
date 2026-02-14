@@ -1667,19 +1667,11 @@
           respuesta: null, respondidoPor: null, fechaRespuesta: null
         };
 
-        // 1. Guardar en colección del bien (para gestión de reservas)
+        // DATO ÚNICO: solo en bienes/{bienId}/reservas/{id}
+        // Otras páginas (mis-reservas, CGI) leen con collectionGroup('reservas')
         solicitudData.origen = 'solicitud';
         const solicitudRef = await db.collection('bienes').doc(bienId).collection('reservas').add(solicitudData);
-        console.log('✅ Solicitud creada en bien:', solicitudRef.id);
-        
-        // 1b. Guardar TAMBIÉN en colección raíz solicitudes (para tablón CGI)
-        const solicitudRaizData = {
-          ...solicitudData,
-          reservaId: solicitudRef.id,  // Referencia a la reserva original
-          tipo: 'reserva',  // Para el tablón
-        };
-        const solicitudRaizRef = await db.collection('solicitudes').add(solicitudRaizData);
-        console.log('✅ Solicitud creada en raíz:', solicitudRaizRef.id);
+        console.log('✅ Reserva creada en bien:', solicitudRef.id);
 
         // 2. Notificar a admins
         const admins = await cargarAdminsParaNotificacion();
