@@ -341,14 +341,12 @@
         if (bienData.gerenteActivo) header.classList.add('gerente');
         else if (bienData.capatazActivo) header.classList.add('capataz');
 
-        // Cargar estancias
-        await cargarEstancias();
-
+        // Mostrar contenido
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
 
-        renderCalendario();
-        renderProximas();
+        // Cargar estancias (incluye render)
+        await cargarEstancias();
       } catch (e) {
         console.error('Error cargando datos:', e);
         alert('Error al cargar datos');
@@ -357,20 +355,15 @@
 
     async function cargarEstancias() {
       try {
-        console.log('🔄 Cargando reservas+estancias para bien:', bienId);
+        console.log('🔄 Cargando reservas para bien:', bienId);
         
-        // Leer AMBAS colecciones y fusionar
         let todas = [];
         
-        // 1. Colección nueva: reservas
+        // Cargar todas las reservas
         try {
-          // Cargar todas las reservas y filtrar en JS (addon puede ser undefined)
-          const snap = await db.collection('bienes').doc(bienId).collection('reservas')
-            .orderBy('fechaInicio', 'asc')
-            .get();
+          const snap = await db.collection('bienes').doc(bienId).collection('reservas').get();
           const reservas = snap.docs.map(d => ({ id: d.id, src: 'reservas', ...d.data() }))
             .filter(r => {
-              // Aceptar si addon o addonActivo es mayordomo, o si no tiene addon definido
               const addon = r.addonActivo;
               return !addon || addon === 'mayordomo';
             });
@@ -378,10 +371,15 @@
           console.log('📦 De reservas:', reservas.length);
         } catch (e) { console.warn('Error leyendo reservas:', e); }
         
-        // 2. Colección vieja estancias: YA MIGRADA - no leer
+        // Ordenar por fechaInicio
+        todas.sort((a, b) => (a.fechaInicio || '').localeCompare(b.fechaInicio || ''));
         
         estancias = todas;
         console.log('✅ Total reservas:', estancias.length);
+        
+        // Renderizar inmediatamente
+        renderCalendario();
+        renderProximas();
       } catch (e) {
         console.error('❌ Error cargando:', e);
         estancias = [];
