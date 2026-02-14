@@ -4539,19 +4539,26 @@
       
       if (solicitudId) {
         console.log('Abriendo solicitud desde URL:', solicitudId);
-        // Cargar la solicitud y abrir modal
+        const bienIdParam = params.get('bienId');
         try {
-          const doc = await db.collection('solicitudes').doc(solicitudId).get();
+          let doc;
+          // DATO ÚNICO: si viene bienId, leer de bienes/{bienId}/reservas/{id}
+          if (bienIdParam) {
+            doc = await db.collection('bienes').doc(bienIdParam).collection('reservas').doc(solicitudId).get();
+          }
+          // Fallback: leer de solicitudes
+          if (!doc || !doc.exists) {
+            doc = await db.collection('solicitudes').doc(solicitudId).get();
+          }
           if (doc.exists) {
             const notifData = {
               id: solicitudId,
-              notifId: null, // Viene de URL, no de notificación
-              categoria: doc.data().tipo,
+              notifId: null,
+              categoria: doc.data().tipo || 'reserva',
               titulo: getTituloSolicitud(doc.data()),
-              origen: { tipo: 'solicitud', id: solicitudId },
+              origen: { tipo: 'solicitud', id: solicitudId, bienId: bienIdParam || doc.data().bienId },
               ...doc.data()
             };
-            // Dar tiempo a que se renderice todo
             setTimeout(() => abrirModalRespuesta(notifData), 500);
           }
         } catch (e) {
@@ -6069,6 +6076,7 @@
         // ========== PARA ADMINS: Solicitudes pendientes ==========
         if (soyAdmin) {
           try {
+            // Solicitudes genéricas (iniciativas, averías, encargos, eventos)
             const solicitudesSnap = await db.collection('solicitudes')
               .where('familiaId', '==', familiaId)
               .where('estado', '==', 'pendiente')
@@ -6101,6 +6109,38 @@
                 data: data
               });
             });
+
+            // DATO ÚNICO: Reservas pendientes desde bienes (collectionGroup)
+            try {
+              const reservasPendSnap = await db.collectionGroup('reservas')
+                .where('familiaId', '==', familiaId)
+                .where('estado', '==', 'pendiente')
+                .get();
+              
+              console.log('✅ Reservas pendientes (collectionGroup):', reservasPendSnap.size);
+              
+              reservasPendSnap.docs.forEach(doc => {
+                const data = doc.data();
+                const pathParts = doc.ref.path.split('/');
+                const bienId = pathParts.length >= 2 ? pathParts[1] : null;
+                
+                itemsAccion.push({
+                  id: doc.id,
+                  source: 'reserva-bien',
+                  tipo: 'accion',
+                  categoria: 'reserva',
+                  icono: '📅',
+                  titulo: getTituloSolicitud({ ...data, tipo: 'reserva' }),
+                  mensaje: `${data.solicitadoPorNombre || 'Usuario'} · ${data.solicitadoPorNido || ''}`,
+                  fecha: data.fechaCreacion,
+                  enlace: `reservas-mayordomo.html?id=${bienId}`,
+                  data: { ...data, bienId: bienId },
+                  bienId: bienId
+                });
+              });
+            } catch (e) {
+              console.warn('Error leyendo reservas pendientes (collectionGroup):', e);
+            }
           } catch (e) {
             console.error('Error cargando solicitudes:', e);
           }
@@ -6108,6 +6148,7 @@
         
         // ========== PARA TODOS: Mis solicitudes pendientes (las que yo envié) ==========
         try {
+          // Solicitudes genéricas (no reservas)
           const misPendientes = await db.collection('solicitudes')
             .where('solicitadoPor', '==', miUid)
             .where('estado', '==', 'pendiente')
@@ -6134,6 +6175,35 @@
               solicitadoPor: miUid
             });
           });
+
+          // DATO ÚNICO: Mis reservas pendientes desde bienes (collectionGroup)
+          try {
+            const misReservasPend = await db.collectionGroup('reservas')
+              .where('solicitadoPor', '==', miUid)
+              .where('estado', '==', 'pendiente')
+              .get();
+            
+            misReservasPend.docs.forEach(doc => {
+              const data = doc.data();
+              const pathParts = doc.ref.path.split('/');
+              const bienId = pathParts.length >= 2 ? pathParts[1] : null;
+              
+              itemsInfo.push({
+                id: doc.id,
+                source: 'mi-reserva-bien',
+                tipo: 'info',
+                categoria: 'reserva',
+                icono: '⏳',
+                titulo: `Pendiente: ${data.nombre || data.bienNombre || 'Reserva'}`,
+                mensaje: `Enviada el ${data.fechaCreacion?.toDate?.().toLocaleDateString('es-ES') || 'recientemente'}`,
+                fecha: data.fechaCreacion,
+                enlace: `reservas-mayordomo.html?id=${bienId}`,
+                data: { ...data, bienId: bienId },
+                bienId: bienId,
+                solicitadoPor: miUid
+              });
+            });
+          } catch (e) { console.warn('Error mis reservas pendientes:', e); }
         } catch (e) {
           console.error('Error cargando mis solicitudes pendientes:', e);
         }
@@ -6165,6 +6235,34 @@
               data: data
             });
           });
+
+          // DATO ÚNICO: Mis reservas respondidas desde bienes (collectionGroup)
+          try {
+            const misReservasResp = await db.collectionGroup('reservas')
+              .where('solicitadoPor', '==', miUid)
+              .where('estado', 'in', ['aprobada', 'rechazada', 'confirmada', 'en_estudio'])
+              .get();
+            
+            misReservasResp.docs.forEach(doc => {
+              const data = doc.data();
+              const esAprobada = ['aprobada', 'confirmada'].includes(data.estado);
+              const pathParts = doc.ref.path.split('/');
+              const bienId = pathParts.length >= 2 ? pathParts[1] : null;
+              
+              itemsInfo.push({
+                id: doc.id,
+                source: 'reserva-respuesta',
+                tipo: 'info',
+                categoria: 'reserva',
+                icono: esAprobada ? '✅' : '❌',
+                titulo: `${esAprobada ? 'Aprobada' : 'Rechazada'}: ${data.nombre || data.bienNombre || 'Reserva'}`,
+                mensaje: data.respuesta || 'Sin comentarios',
+                fecha: data.fechaRespuesta || data.fechaCreacion,
+                data: { ...data, bienId: bienId },
+                bienId: bienId
+              });
+            });
+          } catch (e) { console.warn('Error mis reservas respondidas:', e); }
         } catch (e) {
           console.error('Error cargando mis solicitudes:', e);
         }
@@ -6616,6 +6714,12 @@
           console.log('Eliminando solicitud:', notifId);
           await db.collection('solicitudes').doc(notifId).delete();
           deleted = true;
+        } else if (sourceType === 'reserva-bien' || sourceType === 'mi-reserva-bien' || sourceType === 'reserva-respuesta') {
+          // DATO ÚNICO: eliminar reserva del bien
+          console.log('Eliminando reserva (necesita bienId - se marca como eliminada)');
+          // No podemos borrar sin bienId, marcar en notificaciones como completada
+          await db.collection('notificaciones').doc(notifId).delete().catch(() => {});
+          deleted = true;
         } else {
           // Por defecto, eliminar de notificaciones
           console.log('Eliminando de notificaciones:', notifId);
@@ -6681,11 +6785,26 @@
       
       // Obtener datos de la solicitud original
       try {
-        const solicitudDoc = await db.collection('solicitudes').doc(solicitudId).get();
+        let solicitudDoc;
+        const bienIdOrigen = notifData.origen?.bienId;
+        
+        // DATO ÚNICO: si hay bienId en origen, leer de bienes/{bienId}/reservas/{id}
+        if (bienIdOrigen) {
+          solicitudDoc = await db.collection('bienes').doc(bienIdOrigen).collection('reservas').doc(solicitudId).get();
+          console.log('📦 Leyendo reserva de bien:', bienIdOrigen, solicitudId, 'existe:', solicitudDoc.exists);
+        }
+        
+        // Fallback: leer de solicitudes (para tipos no-reserva o datos legacy)
+        if (!solicitudDoc || !solicitudDoc.exists) {
+          solicitudDoc = await db.collection('solicitudes').doc(solicitudId).get();
+          console.log('📦 Leyendo de solicitudes (fallback):', solicitudId, 'existe:', solicitudDoc.exists);
+        }
+        
         if (solicitudDoc.exists) {
           const sol = solicitudDoc.data();
           solicitudActual.solicitudData = sol;
           solicitudActual.solicitudId = solicitudId;
+          solicitudActual.bienId = bienIdOrigen || sol.bienId || null; // Guardar para aprobación
           
           // --- CABECERA BÁSICA ---
           let html = '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">';
@@ -7005,19 +7124,36 @@
         const solicitudId = solicitudActual.solicitudId || solicitudActual.origen?.id;
         const solData = solicitudActual.solicitudData || {};
         
-        // 1. Actualizar estado de la solicitud (solo si existe)
+        // 1. Actualizar estado — DATO ÚNICO según tipo
         if (solicitudId) {
           try {
-            await db.collection('solicitudes').doc(solicitudId).update({
+            const updatePayload = {
               estado: estadoSeleccionado,
               respuesta: comentarios,
               respondidoPor: currentUser.uid,
               respondidoPorNombre: userData?.nombre || currentUser.email,
               fechaRespuesta: fechaActual
-            });
+            };
+
+            const bienIdActual = solicitudActual.bienId || solData.bienId;
+            
+            if (bienIdActual) {
+              // RESERVA: actualizar el doc existente en bienes/{bienId}/reservas/{id}
+              // NO crear duplicado — ya está ahí
+              if (estadoSeleccionado === 'aprobada') {
+                updatePayload.aprobadoPor = currentUser.uid;
+                updatePayload.aprobadoPorNombre = userData?.nombre || '';
+                updatePayload.fechaAprobacion = fechaActual;
+              }
+              await db.collection('bienes').doc(bienIdActual).collection('reservas').doc(solicitudId).update(updatePayload);
+              console.log('✅ Reserva actualizada en bien:', bienIdActual);
+            } else {
+              // SOLICITUD GENÉRICA: actualizar en solicitudes (iniciativas, averías, etc.)
+              await db.collection('solicitudes').doc(solicitudId).update(updatePayload);
+              console.log('✅ Solicitud actualizada en raíz');
+            }
           } catch (solError) {
             console.warn('No se pudo actualizar la solicitud:', solError);
-            // Continuar de todas formas
           }
         }
         
@@ -7061,10 +7197,13 @@
           });
         }
         
-        // 4. Si es APROBADA, añadir al calendario
+        // 4. Si es APROBADA, añadir al calendario (solo para tipos sin reserva ya existente)
         if (estadoSeleccionado === 'aprobada' && solicitudId) {
-          if (solicitudActual.categoria === 'reserva' && solData.bienId) {
-            // Crear reserva en el bien con todos los campos
+          const bienIdActual = solicitudActual.bienId || solData.bienId;
+          
+          // Para reservas: ya se actualizó el estado arriba, NO crear duplicado
+          // Para solicitudes genéricas de tipo reserva sin bienId (legacy): crear reserva
+          if (solicitudActual.categoria === 'reserva' && solData.bienId && !bienIdActual) {
             await db.collection('bienes').doc(solData.bienId).collection('reservas').add({
               tipo: solData.tipoReserva || 'estancia',
               tipoNombre: solData.tipoReservaNombre || 'Estancia',
@@ -7083,6 +7222,7 @@
               aprobadoPor: currentUser.uid,
               aprobadoPorNombre: userData?.nombre || '',
               estado: 'confirmada',
+              familiaId: currentFamilia.id,
               fechaAprobacion: fechaActual,
               origenSolicitud: solicitudId
             });
@@ -9156,30 +9296,64 @@
       else if (bien?.capatazActivo) addonActivo = 'capataz';
 
       try {
-        await enviarNotificacionAdmins('reserva', {
+        // DATO ÚNICO: escribir directo en bienes/{bienId}/reservas/{id}
+        const remitente = userData?.nombre || userData?.email || 'Usuario';
+        const reservaData = {
+          tipo: 'solicitud',
+          categoria: 'familiar',
+          esReserva: true,
           tipoSolicitud: 'reserva',
           tipoReserva: tipoReservaId,
           tipoReservaNombre: tipoReservaNombre,
           esFamiliar: esFamiliar,
-          nidoReservaId: nidoReservaId,
-          nidoReservaNombre: nidoReservaNombre,
-          otroGrupoId: otroGrupoId,
-          otroGrupoNombre: otroGrupoNombre,
+          nidoReservaId, nidoReservaNombre,
+          otroGrupoId, otroGrupoNombre,
           bienId,
           bienNombre: bien?.nombre || '',
           addonActivo: addonActivo,
-          fechaInicio,
-          fechaFin,
-          numFamiliares,
-          numInvitados,
+          nombre: tipoReservaNombre + ' — ' + (bien?.nombre || 'Bien'),
+          fechaInicio, fechaFin,
+          numFamiliares, numInvitados,
           totalAsistentes: numFamiliares + numInvitados,
-          numDesayunos,
-          numComidas,
-          numCenas,
-          motivo,
-          visibilidad,
-          nidoId: miNidoPrincipal?.id || null
-        });
+          numDesayunos, numComidas, numCenas,
+          motivo, visibilidad,
+          nidoId: miNidoPrincipal?.id || null,
+          estado: 'pendiente',
+          origen: 'cgi',
+          solicitadoPor: currentUser.uid,
+          solicitadoPorNombre: remitente,
+          solicitadoPorNido: miNidoPrincipal?.nombre || '',
+          solicitadoPorNidoId: miNidoPrincipal?.id || null,
+          familiaId: currentFamilia.id,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+          respuesta: null, respondidoPor: null, fechaRespuesta: null
+        };
+
+        const reservaRef = await db.collection('bienes').doc(bienId).collection('reservas').add(reservaData);
+        console.log('✅ Reserva creada en bien:', reservaRef.id);
+
+        // Crear notificación para admins
+        const admins = await cargarAdminsEstirpe();
+        const destinatarios = admins.filter(a => a.uid !== currentUser.uid).map(a => a.uid);
+        const destinatariosFinales = destinatarios.length > 0 ? destinatarios : admins.map(a => a.uid);
+
+        if (destinatariosFinales.length > 0) {
+          await db.collection('notificaciones').add({
+            tipo: 'accion',
+            categoria: 'reserva',
+            titulo: getTituloNotificacion('reserva', reservaData),
+            mensaje: `${remitente} ha enviado una solicitud de reserva`,
+            familiaId: currentFamilia.id,
+            nidoId: miNidoPrincipal?.id || null,
+            destinatarios: destinatariosFinales,
+            leidoPor: [], completadoPor: [],
+            fechaCreacion: firebase.firestore.FieldValue.serverTimestamp(),
+            fechaExpiracion: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            enlace: `reservas-mayordomo.html?id=${bienId}`,
+            origen: { tipo: 'solicitud', subtipo: 'reserva', id: reservaRef.id, bienId: bienId, solicitadoPor: currentUser.uid },
+            estado: 'activa'
+          });
+        }
 
         track.completar('reserva');
         cerrarModales();
@@ -9308,68 +9482,93 @@
       if (!container) return;
       
       try {
-        // Determinar si es admin
         const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
         const familiaId = currentFamilia?.id || familiaData?.id;
         
-        console.log('Cargando respondidas tablón - esAdmin:', esAdmin, 'familiaId:', familiaId);
-        
+        let allDocs = []; // {id, data, source, bienId}
+
+        // Solicitudes genéricas
         let snap;
         if (esAdmin && familiaId) {
-          // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
             .where('familiaId', '==', familiaId)
             .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
-            .limit(30)
-            .get();
+            .limit(30).get();
         } else {
-          // Usuario normal: mostrar MIS solicitudes respondidas
           snap = await db.collection('solicitudes')
             .where('solicitadoPor', '==', currentUser.uid)
             .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
-            .limit(30)
-            .get();
+            .limit(30).get();
         }
+        snap.docs.forEach(doc => allDocs.push({ id: doc.id, data: doc.data(), source: 'solicitudes', bienId: null }));
+
+        // DATO ÚNICO: Reservas respondidas (collectionGroup)
+        try {
+          let reservasSnap;
+          if (esAdmin && familiaId) {
+            reservasSnap = await db.collectionGroup('reservas')
+              .where('familiaId', '==', familiaId)
+              .where('estado', 'in', ['aprobada', 'rechazada', 'confirmada', 'en_estudio'])
+              .get();
+          } else {
+            reservasSnap = await db.collectionGroup('reservas')
+              .where('solicitadoPor', '==', currentUser.uid)
+              .where('estado', 'in', ['aprobada', 'rechazada', 'confirmada', 'en_estudio'])
+              .get();
+          }
+          reservasSnap.docs.forEach(doc => {
+            const pathParts = doc.ref.path.split('/');
+            const bienId = pathParts.length >= 2 ? pathParts[1] : null;
+            allDocs.push({ id: doc.id, data: doc.data(), source: 'reserva-bien', bienId });
+          });
+        } catch (e) { console.warn('Error reservas respondidas:', e); }
         
-        if (snap.empty) {
+        if (allDocs.length === 0) {
           container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin gestiones</div>';
           if (badge) badge.style.display = 'none';
           return;
         }
         
-        // Ordenar en cliente por fecha de respuesta
-        const docs = snap.docs.sort((a, b) => {
-          const fechaA = a.data().fechaRespuesta?.toDate?.() || a.data().fechaCreacion?.toDate?.() || new Date(0);
-          const fechaB = b.data().fechaRespuesta?.toDate?.() || b.data().fechaCreacion?.toDate?.() || new Date(0);
+        // Ordenar por fecha más reciente
+        allDocs.sort((a, b) => {
+          const fechaA = a.data.fechaRespuesta?.toDate?.() || a.data.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.data.fechaRespuesta?.toDate?.() || b.data.fechaCreacion?.toDate?.() || new Date(0);
           return fechaB - fechaA;
-        }).slice(0, 20);
+        });
+        allDocs = allDocs.slice(0, 20);
         
         const iconos = { 'reserva': '📅', 'evento': '🎉', 'iniciativa': '💡', 'averia': '🔧', 'encargo': '🛒' };
         
-        container.innerHTML = docs.map(doc => {
-          const data = doc.data();
-          const esAceptada = data.estado === 'aprobada';
+        container.innerHTML = allDocs.map(item => {
+          const data = item.data;
+          const tipo = item.source === 'reserva-bien' ? 'reserva' : (data.tipo || 'solicitud');
+          const esAceptada = ['aprobada', 'confirmada'].includes(data.estado);
           const esRechazada = data.estado === 'rechazada';
           const fechaResp = data.fechaRespuesta?.toDate?.() || data.fechaCreacion?.toDate?.() || new Date();
           const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
           
           let titulo = '';
-          switch(data.tipo) {
-            case 'reserva': titulo = `Reserva: ${data.bienNombre || 'Bien'}`; break;
-            case 'evento': titulo = `Evento: ${data.nombre || 'Sin nombre'}`; break;
-            case 'iniciativa': titulo = `Propuesta: ${data.titulo || 'Sin título'}`; break;
-            default: titulo = data.titulo || 'Solicitud';
+          if (item.source === 'reserva-bien') {
+            titulo = `Reserva: ${data.nombre || data.bienNombre || 'Bien'}`;
+          } else {
+            switch(data.tipo) {
+              case 'reserva': titulo = `Reserva: ${data.bienNombre || 'Bien'}`; break;
+              case 'evento': titulo = `Evento: ${data.nombre || 'Sin nombre'}`; break;
+              case 'iniciativa': titulo = `Propuesta: ${data.titulo || 'Sin título'}`; break;
+              default: titulo = data.titulo || 'Solicitud';
+            }
           }
           
           const estadoColor = esAceptada ? '#22c55e' : esRechazada ? '#ef4444' : '#f59e0b';
           const estadoIcono = esAceptada ? '✅' : esRechazada ? '❌' : '🔄';
-          
-          // Si es admin, mostrar quién solicitó
           const solicitante = esAdmin && data.solicitadoPorNombre ? `De: ${data.solicitadoPorNombre}` : '';
           
+          // onclick: pasar bienId para reservas
+          const clickData = item.bienId ? `verDetalleRespuesta('${item.id}','${item.bienId}')` : `verDetalleRespuesta('${item.id}')`;
+          
           return `
-            <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="verDetalleRespuesta('${doc.id}')">
-              <div class="mensaje-avatar">${iconos[data.tipo] || '📋'}</div>
+            <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="${clickData}">
+              <div class="mensaje-avatar">${iconos[tipo] || '📋'}</div>
               <div class="mensaje-content">
                 <div class="mensaje-header">
                   <span class="mensaje-autor">${titulo}</span>
@@ -9386,8 +9585,8 @@
         }).join('');
         
         if (badge) {
-          badge.textContent = docs.length;
-          badge.style.display = docs.length > 0 ? 'inline-block' : 'none';
+          badge.textContent = allDocs.length;
+          badge.style.display = allDocs.length > 0 ? 'inline-block' : 'none';
         }
         
       } catch (e) {
@@ -9454,85 +9653,99 @@
       if (!container) return;
       
       try {
-        // Determinar si es admin
         const esAdmin = userData?.credenciales === 'admin-rama' || userData?.credenciales === 'admin-nido';
         const familiaId = currentFamilia?.id || familiaData?.id;
         
-        console.log('Cargando respondidas - esAdmin:', esAdmin, 'familiaId:', familiaId, 'uid:', currentUser?.uid);
-        
         if (!familiaId && !currentUser?.uid) {
-          console.error('No hay familiaId ni uid para buscar respondidas');
           container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Error de datos</div>';
           return;
         }
         
+        let allDocs = [];
+
+        // Solicitudes genéricas
         let snap;
         if (esAdmin && familiaId) {
-          // Admin: mostrar todas las solicitudes ya gestionadas de la familia
           snap = await db.collection('solicitudes')
             .where('familiaId', '==', familiaId)
             .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
-            .limit(30)
-            .get();
-          console.log('Query admin - solicitudes encontradas:', snap.size);
+            .limit(30).get();
         } else {
-          // Usuario normal: mostrar MIS solicitudes respondidas
           snap = await db.collection('solicitudes')
             .where('solicitadoPor', '==', currentUser.uid)
             .where('estado', 'in', ['aprobada', 'rechazada', 'en_estudio', 'respondida'])
-            .limit(30)
-            .get();
-          console.log('Query usuario - solicitudes encontradas:', snap.size);
+            .limit(30).get();
         }
+        snap.docs.forEach(doc => allDocs.push({ id: doc.id, data: doc.data(), source: 'solicitudes', bienId: null }));
+
+        // DATO ÚNICO: Reservas respondidas (collectionGroup)
+        try {
+          let reservasSnap;
+          if (esAdmin && familiaId) {
+            reservasSnap = await db.collectionGroup('reservas')
+              .where('familiaId', '==', familiaId)
+              .where('estado', 'in', ['aprobada', 'rechazada', 'confirmada', 'en_estudio'])
+              .get();
+          } else {
+            reservasSnap = await db.collectionGroup('reservas')
+              .where('solicitadoPor', '==', currentUser.uid)
+              .where('estado', 'in', ['aprobada', 'rechazada', 'confirmada', 'en_estudio'])
+              .get();
+          }
+          reservasSnap.docs.forEach(doc => {
+            const pathParts = doc.ref.path.split('/');
+            const bienId = pathParts.length >= 2 ? pathParts[1] : null;
+            allDocs.push({ id: doc.id, data: doc.data(), source: 'reserva-bien', bienId });
+          });
+        } catch (e) { console.warn('Error reservas respondidas buzón:', e); }
         
-        if (snap.empty) {
+        if (allDocs.length === 0) {
           container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">✅</div>Sin gestiones</div>';
           if (badge) badge.style.display = 'none';
           return;
         }
         
-        // Ordenar en cliente por fecha de respuesta
-        const docs = snap.docs.sort((a, b) => {
-          const fechaA = a.data().fechaRespuesta?.toDate?.() || a.data().fechaCreacion?.toDate?.() || new Date(0);
-          const fechaB = b.data().fechaRespuesta?.toDate?.() || b.data().fechaCreacion?.toDate?.() || new Date(0);
+        allDocs.sort((a, b) => {
+          const fechaA = a.data.fechaRespuesta?.toDate?.() || a.data.fechaCreacion?.toDate?.() || new Date(0);
+          const fechaB = b.data.fechaRespuesta?.toDate?.() || b.data.fechaCreacion?.toDate?.() || new Date(0);
           return fechaB - fechaA;
-        }).slice(0, 20);
+        });
+        allDocs = allDocs.slice(0, 20);
         
-        const iconos = {
-          'reserva': '📅',
-          'evento': '🎉',
-          'iniciativa': '💡',
-          'averia': '🔧',
-          'encargo': '🛒'
-        };
+        const iconos = { 'reserva': '📅', 'evento': '🎉', 'iniciativa': '💡', 'averia': '🔧', 'encargo': '🛒' };
         
-        container.innerHTML = docs.map(doc => {
-          const data = doc.data();
-          const esAceptada = data.estado === 'aprobada';
+        container.innerHTML = allDocs.map(item => {
+          const data = item.data;
+          const tipo = item.source === 'reserva-bien' ? 'reserva' : (data.tipo || 'solicitud');
+          const esAceptada = ['aprobada', 'confirmada'].includes(data.estado);
           const esRechazada = data.estado === 'rechazada';
           const fechaResp = data.fechaRespuesta?.toDate?.() || data.fechaCreacion?.toDate?.() || new Date();
           const fechaStr = fechaResp.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
           
           let titulo = '';
-          switch(data.tipo) {
-            case 'reserva': titulo = `Reserva: ${data.bienNombre || 'Bien'}`; break;
-            case 'evento': titulo = `Evento: ${data.nombre || data.titulo || 'Sin nombre'}`; break;
-            case 'iniciativa': titulo = `Propuesta: ${data.titulo || 'Sin título'}`; break;
-            case 'averia': titulo = `Avería: ${data.bienNombre || 'Bien'}`; break;
-            case 'encargo': titulo = `Encargo: ${data.bienNombre || 'Bien'}`; break;
-            default: titulo = data.titulo || 'Solicitud';
+          if (item.source === 'reserva-bien') {
+            titulo = `Reserva: ${data.nombre || data.bienNombre || 'Bien'}`;
+          } else {
+            switch(data.tipo) {
+              case 'reserva': titulo = `Reserva: ${data.bienNombre || 'Bien'}`; break;
+              case 'evento': titulo = `Evento: ${data.nombre || data.titulo || 'Sin nombre'}`; break;
+              case 'iniciativa': titulo = `Propuesta: ${data.titulo || 'Sin título'}`; break;
+              case 'averia': titulo = `Avería: ${data.bienNombre || 'Bien'}`; break;
+              case 'encargo': titulo = `Encargo: ${data.bienNombre || 'Bien'}`; break;
+              default: titulo = data.titulo || 'Solicitud';
+            }
           }
           
           const estadoIcono = esAceptada ? '✅' : esRechazada ? '❌' : '🔄';
           const estadoTexto = esAceptada ? 'Aceptada' : esRechazada ? 'Rechazada' : 'En estudio';
           const estadoColor = esAceptada ? '#22c55e' : esRechazada ? '#ef4444' : '#f59e0b';
-          
-          // Si es admin, mostrar quién solicitó
           const solicitante = esAdmin && data.solicitadoPorNombre ? `De: ${data.solicitadoPorNombre}` : '';
           
+          const clickData = item.bienId ? `verDetalleRespuesta('${item.id}','${item.bienId}')` : `verDetalleRespuesta('${item.id}')`;
+          
           return `
-            <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="verDetalleRespuesta('${doc.id}')">
-              <div class="mensaje-avatar">${iconos[data.tipo] || '📋'}</div>
+            <div class="mensaje-item" style="border-left: 3px solid ${estadoColor};" onclick="${clickData}">
+              <div class="mensaje-avatar">${iconos[tipo] || '📋'}</div>
               <div class="mensaje-content">
                 <div class="mensaje-header">
                   <span class="mensaje-autor">${titulo}</span>
@@ -9548,10 +9761,9 @@
           `;
         }).join('');
         
-        // Badge con las no vistas
         if (badge) {
-          badge.textContent = docs.length;
-          badge.style.display = docs.length > 0 ? 'inline-block' : 'none';
+          badge.textContent = allDocs.length;
+          badge.style.display = allDocs.length > 0 ? 'inline-block' : 'none';
         }
         
       } catch (e) {
@@ -9560,9 +9772,13 @@
       }
     }
 
-    function verDetalleRespuesta(solicitudId) {
-      // Buscar en los datos cargados o cargar directamente
-      db.collection('solicitudes').doc(solicitudId).get().then(doc => {
+    function verDetalleRespuesta(solicitudId, bienId) {
+      // DATO ÚNICO: si hay bienId, leer de bienes/{bienId}/reservas/{id}
+      const docPromise = bienId
+        ? db.collection('bienes').doc(bienId).collection('reservas').doc(solicitudId).get()
+        : db.collection('solicitudes').doc(solicitudId).get();
+      
+      docPromise.then(doc => {
         if (!doc.exists) return;
         
         const data = doc.data();
