@@ -364,35 +364,24 @@
         
         // 1. Colección nueva: reservas
         try {
-          let snap;
-          try {
-            snap = await db.collection('bienes').doc(bienId).collection('reservas')
-              .where('addon', '==', 'mayordomo')
-              .orderBy('fechaInicio', 'asc')
-              .get();
-          } catch (indexError) {
-            snap = await db.collection('bienes').doc(bienId).collection('reservas')
-              .orderBy('fechaInicio', 'asc')
-              .get();
-          }
+          // Cargar todas las reservas y filtrar en JS (addon puede ser undefined)
+          const snap = await db.collection('bienes').doc(bienId).collection('reservas')
+            .orderBy('fechaInicio', 'asc')
+            .get();
           const reservas = snap.docs.map(d => ({ id: d.id, src: 'reservas', ...d.data() }))
-            .filter(r => !r.addon || r.addon === 'mayordomo');
+            .filter(r => {
+              // Aceptar si addon o addonActivo es mayordomo, o si no tiene addon definido
+              const addon = r.addon || r.addonActivo;
+              return !addon || addon === 'mayordomo';
+            });
           todas = todas.concat(reservas);
           console.log('📦 De reservas:', reservas.length);
         } catch (e) { console.warn('Error leyendo reservas:', e); }
         
-        // 2. Colección vieja: estancias
-        try {
-          const snapVieja = await db.collection('bienes').doc(bienId).collection('estancias')
-            .orderBy('fechaInicio', 'asc')
-            .get();
-          const viejas = snapVieja.docs.map(d => ({ id: d.id, src: 'estancias', ...d.data() }));
-          todas = todas.concat(viejas);
-          console.log('📦 De estancias:', viejas.length);
-        } catch (e) { console.warn('Error leyendo estancias:', e); }
+        // 2. Colección vieja estancias: YA MIGRADA - no leer
         
         estancias = todas;
-        console.log('✅ Total fusionadas:', estancias.length);
+        console.log('✅ Total reservas:', estancias.length);
       } catch (e) {
         console.error('❌ Error cargando:', e);
         estancias = [];
