@@ -19,7 +19,7 @@
       --hito: #E91E63;
       --cita: #FF9800;
       --evento: #2196F3;
-      --reserva: #7A9E7E;
+      --reserva: #9C27B0;
       
       /* Colores de subtipos de reserva: ahora dinámicos desde configCalendario */
     }
@@ -422,21 +422,40 @@
     // TIPOS FIJOS - Siempre usar estos, ignorar config de Firebase
     const TIPOS_FIJOS = {
       mayordomo: [
-        { id: 'estancia-familiar', nombre: 'Estancias familiares', emoji: '🏠', color: '#7A9E7E', visibleCGI: true, esFamiliar: true },
-        { id: 'evento', nombre: 'Eventos', emoji: '🎉', color: '#2196F3', visibleCGI: true, esFamiliar: false },
-        { id: 'otros', nombre: 'Otros', emoji: '📋', color: '#FF9800', visibleCGI: true, esFamiliar: false }
+        { id: 'estancia-familiar', nombre: 'Estancias familiares', emoji: '🏠', color: '#7A9E7E', esFamiliar: true },
+        { id: 'estancias', nombre: 'Estancias familiares', emoji: '🏠', color: '#7A9E7E', esFamiliar: true },
+        { id: 'familiar', nombre: 'Estancias familiares', emoji: '🏠', color: '#7A9E7E', esFamiliar: true },
+        { id: 'evento', nombre: 'Eventos', emoji: '🎉', color: '#2196F3', esFamiliar: false },
+        { id: 'celebraciones', nombre: 'Eventos', emoji: '🎉', color: '#2196F3', esFamiliar: false },
+        { id: 'otros', nombre: 'Otros', emoji: '📋', color: '#FF9800', esFamiliar: false }
       ],
       gerente: [
-        { id: 'reserva-familiar', nombre: 'Reservas familiares', emoji: '👨‍👩‍👧‍👦', color: '#FF9800', visibleCGI: true, esFamiliar: true },
-        { id: 'reserva-huespedes', nombre: 'Reservas huéspedes', emoji: '🏨', color: '#8D6E63', visibleCGI: true, esFamiliar: false },
-        { id: 'actividad', nombre: 'Actividad', emoji: '🎯', color: '#2196F3', visibleCGI: true, esFamiliar: false }
+        { id: 'reserva-familiar', nombre: 'Reservas familiares', emoji: '👨‍👩‍👧‍👦', color: '#FF9800', esFamiliar: true },
+        { id: 'reserva-huespedes', nombre: 'Reservas huéspedes', emoji: '🏨', color: '#8D6E63', esFamiliar: false },
+        { id: 'actividad', nombre: 'Actividad', emoji: '🎯', color: '#2196F3', esFamiliar: false }
       ],
       capataz: [
-        { id: 'caceria', nombre: 'Cacerías', emoji: '🦌', color: '#7A9E7E', visibleCGI: true, esFamiliar: false },
-        { id: 'recoleccion', nombre: 'Recolecciones', emoji: '🌾', color: '#FF9800', visibleCGI: true, esFamiliar: false },
-        { id: 'otras-actividades', nombre: 'Otras actividades', emoji: '🎯', color: '#2196F3', visibleCGI: true, esFamiliar: false }
+        { id: 'caceria', nombre: 'Cacerías', emoji: '🦌', color: '#7A9E7E', esFamiliar: false },
+        { id: 'recoleccion', nombre: 'Recolecciones', emoji: '🌾', color: '#FF9800', esFamiliar: false },
+        { id: 'otras-actividades', nombre: 'Otras actividades', emoji: '🎯', color: '#2196F3', esFamiliar: false }
       ]
     };
+
+    // Helper para obtener color según tipo
+    function getColorPorTipo(tipoId, addonActivo) {
+      const tipos = TIPOS_FIJOS[addonActivo] || TIPOS_FIJOS.mayordomo;
+      const tipo = tipos.find(t => t.id === tipoId);
+      return tipo ? tipo.color : '#7A9E7E';
+    }
+
+    // Helper para aclarar color (para borradores)
+    function aclararColor(hex, percent = 40) {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const r = Math.min(255, (num >> 16) + Math.round((255 - (num >> 16)) * percent / 100));
+      const g = Math.min(255, ((num >> 8) & 0x00FF) + Math.round((255 - ((num >> 8) & 0x00FF)) * percent / 100));
+      const b = Math.min(255, (num & 0x0000FF) + Math.round((255 - (num & 0x0000FF)) * percent / 100));
+      return '#' + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+    }
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -502,7 +521,7 @@
                   configCalendario.tiposAddon[addon].push({
                     id: tipoId,
                     visibleCGI: tipoData.visibleCGI || false,
-                    color: tipoData.color || '#7A9E7E',
+                    color: tipoData.color || '#9C27B0',
                     emoji: tipoData.emoji || '📋',
                     nombre: tipoData.nombre || tipoId,
                     familiar: tipoData.familiar || false
@@ -542,28 +561,36 @@
 
     function renderChipsSubtipos() {
       const container = document.getElementById('chips-subtipos');
+      if (!configCalendario?.tiposAddon) {
+        document.getElementById('filtros-subtipos').style.display = 'none';
+        return;
+      }
       
       let html = '';
+      let hayTipos = false;
       
-      // Usar TIPOS_FIJOS en lugar de config de Firebase
       ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
-        const tipos = TIPOS_FIJOS[addon] || [];
-        tipos.forEach(t => {
+        const tipos = configCalendario.tiposAddon[addon] || [];
+        tipos.filter(t => t.visibleCGI).forEach(t => {
+          hayTipos = true;
           const activo = subtiposFiltro[t.id] !== false;
           html += `
             <div class="filtro-chip ${activo ? 'active' : ''}" 
                  data-subtipo="${t.id}" 
                  onclick="toggleSubtipo(this)"
-                 style="color: ${t.color}">
-              <span class="chip-dot" style="background: ${t.color}"></span>
-              ${t.emoji} ${t.nombre}
+                 style="color: ${t.color || '#7A9E7E'}">
+              <span class="chip-dot" style="background: ${t.color || '#7A9E7E'}"></span>
+              ${t.emoji || ''} ${t.nombre}
             </div>
           `;
         });
       });
       
       container.innerHTML = html;
-      document.getElementById('filtros-subtipos').classList.add('visible');
+      
+      if (hayTipos) {
+        document.getElementById('filtros-subtipos').classList.add('visible');
+      }
     }
 
     function renderLeyendaDinamica() {
@@ -571,25 +598,41 @@
       
       let html = '';
       
-      // Hitos - siempre en rojo
-      html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>`;
-      html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 💒 Aniversarios</div>`;
+      // Hitos familiares (si están habilitados)
+      if (configCalendario?.hitos) {
+        if (configCalendario.hitos.cumpleanos?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.cumpleanos.color || '#E91E63'}"></div> 🎂 Cumpleaños</div>`;
+        }
+        if (configCalendario.hitos.uniones?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.uniones.color || '#E91E63'}"></div> 💒 Aniversarios</div>`;
+        }
+        if (configCalendario.hitos.fallecimientos?.visibleCGI) {
+          html += `<div class="leyenda-item"><div class="leyenda-dot" style="background: ${configCalendario.hitos.fallecimientos.color || '#607D8B'}"></div> 🕯️ Recordatorios</div>`;
+        }
+      } else {
+        // Fallback si no hay config
+        html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#E91E63"></div> 🎂 Cumpleaños</div>`;
+      }
       
-      // Tipos de reserva desde TIPOS_FIJOS
-      ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
-        const tipos = TIPOS_FIJOS[addon] || [];
-        tipos.forEach(t => {
-          html += `
-            <div class="leyenda-item">
-              <div class="leyenda-dot" style="background: ${t.color}"></div>
-              ${t.emoji} ${t.nombre}
-            </div>
-          `;
+      // Añadir tipos de reserva desde config
+      if (configCalendario?.tiposAddon) {
+        ['mayordomo', 'gerente', 'capataz'].forEach(addon => {
+          const tipos = configCalendario.tiposAddon[addon] || [];
+          tipos.filter(t => t.visibleCGI).forEach(t => {
+            html += `
+              <div class="leyenda-item">
+                <div class="leyenda-dot" style="background: ${t.color || '#7A9E7E'}"></div>
+                ${t.emoji || ''} ${t.nombre}
+              </div>
+            `;
+          });
         });
-      });
+      }
       
-      // Externos en gris
-      html += `<div class="leyenda-item"><div class="leyenda-dot" style="background:#607D8B"></div> 📅 Externos</div>`;
+      // Añadir externos si están habilitados
+      if (configCalendario?.externos?.mostrarLibranzas || configCalendario?.externos?.mostrarVacaciones) {
+        html += `<div class="leyenda-item"><div class="leyenda-dot externo"></div> 📅 Externos</div>`;
+      }
       
       leyenda.innerHTML = html;
     }
@@ -671,7 +714,7 @@
             const claveUnica = `aniv-${nido.nombre}-${mes}-${dia}`;
             if (!hitosUnicos.has(claveUnica)) {
               hitosUnicos.add(claveUnica);
-              const colorUniones = configCalendario?.hitos?.uniones?.color || '#E91E63';
+              const colorUniones = configCalendario?.hitos?.uniones?.color || '#9C27B0';
               todosEventos.push({
                 tipo: 'hito',
                 subtipo: 'aniversario',
@@ -769,11 +812,24 @@
           else if (bien.capatazActivo) addonActivo = 'capataz';
           
           try {
-            // SOLO leer de collection 'reservas' (eliminar estancias legacy para evitar duplicados)
-            const reservasSnap = await db.collection('bienes').doc(bienDoc.id)
-              .collection('reservas').get();
+            // Leer AMBAS colecciones y fusionar
+            let allReservaDocs = [];
             
-            reservasSnap.docs.forEach(resDoc => {
+            // Colección nueva: reservas
+            try {
+              const reservasSnap = await db.collection('bienes').doc(bienDoc.id)
+                .collection('reservas').get();
+              allReservaDocs = allReservaDocs.concat(reservasSnap.docs);
+            } catch (e) { console.warn('Error reservas:', e); }
+            
+            // Colección vieja: estancias
+            try {
+              const estanciasSnap = await db.collection('bienes').doc(bienDoc.id)
+                .collection('estancias').get();
+              allReservaDocs = allReservaDocs.concat(estanciasSnap.docs);
+            } catch (e) { console.warn('Error estancias:', e); }
+            
+            allReservaDocs.forEach(resDoc => {
               const r = resDoc.data();
               
               let fechaEntrada = r.entrada || r.fechaInicio;
@@ -789,34 +845,26 @@
               }
               
               const fecha = new Date(fechaEntrada);
-              const tipoReservaId = r.tipoId || r.tipo || 'estancia-familiar';
+              const tipoReservaId = r.tipoId || r.tipo || r.tipoReserva || 'estancia-familiar';
+              const estado = r.estado || 'borrador';
               
-              // Buscar color en TIPOS_FIJOS (no en Firebase)
-              let color = '#7A9E7E'; // Default verde
-              if (addonActivo && TIPOS_FIJOS[addonActivo]) {
-                const tipoConfig = TIPOS_FIJOS[addonActivo].find(t => t.id === tipoReservaId);
-                if (tipoConfig) {
-                  color = tipoConfig.color;
-                }
-              }
+              // Buscar color en TIPOS_FIJOS
+              let colorBase = getColorPorTipo(tipoReservaId, addonActivo || 'mayordomo');
               
-              // Texto descriptivo: PRIMERO quién reserva, LUEGO el bien
+              // Color claro para borrador/pendiente, oscuro para enviado/confirmada
+              const esBorrador = estado === 'borrador' || estado === 'pendiente';
+              const color = esBorrador ? aclararColor(colorBase, 40) : colorBase;
+              
+              // Texto descriptivo: priorizar nombre > titulo > quien > etc
+              const quienReserva = r.nombre || r.titulo || r.nidoReservaNombre || r.quienesNombre || r.otroGrupoNombre || r.nidoNombre || r.quien || r.motivo || r.solicitadoPorNombre || '';
+              
               let textoLargo = '';
               let textoCortoReserva = '';
               
-              // Buscar nombre de quién reserva
-              const quienReserva = r.nombre || r.titulo || r.nidoReservaNombre || r.quienesNombre || r.otroGrupoNombre || r.nidoNombre || r.quien || r.solicitadoPorNombre || '';
-              
-              if (r.titulo) {
-                // Si hay título explícito, usarlo
-                textoLargo = r.titulo;
-                textoCortoReserva = r.titulo.substring(0, 12);
-              } else if (quienReserva) {
-                // Si hay quién reserva, mostrar "Quién - Bien"
-                textoLargo = `${quienReserva} — ${bienNombre}`;
-                textoCortoReserva = quienReserva.substring(0, 12);
+              if (quienReserva) {
+                textoLargo = quienReserva;
+                textoCortoReserva = quienReserva.substring(0, 15);
               } else {
-                // Fallback: solo nombre del bien
                 textoLargo = bienNombre;
                 textoCortoReserva = bienNombre.substring(0, 12);
               }
@@ -836,7 +884,8 @@
                 anual: false,
                 origen: bienNombre,
                 bienId: bienDoc.id,
-                id: resDoc.id
+                id: resDoc.id,
+                estado: estado
               });
             });
             
