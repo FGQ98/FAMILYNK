@@ -457,6 +457,7 @@
     let userData = null;
     let familiaId = null;
     let familiaData = null;
+    let isAdmin = false;
     let encuestasData = [];
     let miembrosData = [];
     let bienesData = [];
@@ -494,6 +495,13 @@
       familiaData = familiaDoc.exists ? { id: familiaDoc.id, ...familiaDoc.data() } : { id: familiaId };
       const plan = familiaData.plan || 'gratuito';
       console.log('Plan de familia:', plan, 'familiaData.id:', familiaData.id);
+
+      // Detectar si es admin
+      isAdmin = userData.rol === 'adminRama' || userData.credenciales === 'adminRama'
+        || familiaData.adminsGenerales?.includes(user.uid)
+        || familiaData.fundador === user.uid
+        || familiaData.creador === user.uid;
+      console.log('isAdmin:', isAdmin);
 
       if (plan === 'gratuito') {
         document.getElementById('loading').classList.add('hidden');
@@ -685,21 +693,69 @@
     }
 
     // ========================================
+    // PERMISOS Y FILTRADO
+    // ========================================
+    function esDestinatario(enc) {
+      const dest = enc.destinatarios || {};
+      const alcance = dest.alcance || [];
+      // Rama = toda la familia
+      if (alcance.includes('rama')) return true;
+      // Específico = lista de UIDs
+      if (alcance.includes('especifico') && dest.miembrosIds?.includes(currentUser.uid)) return true;
+      // Nido = mismo nido que el usuario
+      if (alcance.includes('nido') && userData.nidoId && userData.nidoId === (enc.nidoCreador || '')) return true;
+      // Estirpe = misma estirpe
+      if (alcance.includes('estirpe') && userData.estirpeId && userData.estirpeId === (enc.estirpeCreador || '')) return true;
+      // El creador siempre puede ver sus propias encuestas
+      if (enc.creadoPor === currentUser.uid) return true;
+      return false;
+    }
+
+    function esMia(enc) {
+      return enc.creadoPor === currentUser.uid;
+    }
+
+    // ========================================
     // RENDER
     // ========================================
     function renderTodo() {
-      const borradores = encuestasData.filter(e => e.estado === 'borrador');
-      const activas = encuestasData.filter(e => e.estado === 'activa');
-      const realizadas = encuestasData.filter(e => e.estado === 'cerrada');
+      let borradores, activas, realizadas;
+
+      if (isAdmin) {
+        // Admin ve TODO
+        borradores = encuestasData.filter(e => e.estado === 'borrador');
+        activas = encuestasData.filter(e => e.estado === 'activa');
+        realizadas = encuestasData.filter(e => e.estado === 'cerrada');
+      } else {
+        // No-admin: solo sus borradores + encuestas donde es destinatario
+        borradores = encuestasData.filter(e => e.estado === 'borrador' && esMia(e));
+        activas = encuestasData.filter(e => e.estado === 'activa' && (esMia(e) || esDestinatario(e)));
+        realizadas = encuestasData.filter(e => e.estado === 'cerrada' && (esMia(e) || esDestinatario(e)));
+      }
 
       // Badges
       document.getElementById('badge-borradores').textContent = borradores.length;
       document.getElementById('badge-activas').textContent = activas.length;
       document.getElementById('badge-realizadas').textContent = realizadas.length;
 
+      // Para no-admins: contar pendientes de contestar
+      const pendientes = activas.filter(e => {
+        const resp = e.respuestas || {};
+        return !resp[currentUser.uid] && esDestinatario(e);
+      }).length;
+      const badgeActivas = document.getElementById('badge-activas');
+      if (pendientes > 0 && !isAdmin) {
+        badgeActivas.textContent = `${activas.length} · ${pendientes} 🔔`;
+      }
+
       renderBorradores(borradores);
       renderActivas(activas);
       renderRealizadas(realizadas);
+
+      // No-admin sin borradores: abrir en Activas por defecto
+      if (!isAdmin && borradores.length === 0 && activas.length > 0) {
+        cambiarTab('activas');
+      }
     }
 
     function renderBorradores(lista) {
@@ -812,7 +868,11 @@
                   <span>📝 ${enc.preguntas.length} pregunta${enc.preguntas.length > 1 ? 's' : ''}</span>
                 </div>
               </div>
-              <span class="encuesta-estado abierta">🟢 Abierta</span>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+                <span class="encuesta-estado abierta">🟢 Abierta</span>
+                ${!yaRespondi && esDestinatario(enc) ? '<span style="font-size:0.7rem;color:#C17757;font-weight:700;">🔔 Pendiente</span>' : ''}
+                ${yaRespondi ? '<span style="font-size:0.7rem;color:var(--sage-dark);font-weight:700;">✅ Respondida</span>' : ''}
+              </div>
             </div>
             <div class="encuesta-body">
               ${preguntasHTML}
@@ -824,10 +884,10 @@
             </div>
             <div class="encuesta-footer">
               <span class="participacion">${totalRespuestas} de ${miembrosData.length} han respondido</span>
-              ${enc.creadoPor === currentUser.uid ? `
+              ${(isAdmin || enc.creadoPor === currentUser.uid) ? `
                 <div style="display:flex;gap:8px;">
                   <button class="btn btn-sm btn-secondary" onclick="cerrarEncuesta('${enc.id}')">🔒 Cerrar</button>
-                  <button class="btn btn-sm btn-danger" onclick="eliminarEncuesta('${enc.id}')">🗑️</button>
+                  ${(isAdmin || enc.creadoPor === currentUser.uid) ? `<button class="btn btn-sm btn-danger" onclick="eliminarEncuesta('${enc.id}')">🗑️</button>` : ''}
                 </div>
               ` : ''}
             </div>
@@ -896,8 +956,6 @@
         html += '</div><div class="escala-labels"><span>Nada</span><span>Mucho</span></div>';
       } else if (preg.tipo === 'texto') {
         html += `<input type="text" class="respuesta-texto-input" placeholder="Escribe tu respuesta..." data-encuesta="${encuestaId}" data-pregunta="${pregIdx}" value="${miRespuesta || ''}" onchange="guardarTexto('${encuestaId}', ${pregIdx}, this.value)">`;
-      } else if (preg.tipo === 'fecha') {
-        html += `<input type="date" class="respuesta-texto-input" style="max-width:220px" data-encuesta="${encuestaId}" data-pregunta="${pregIdx}" value="${miRespuesta || ''}" onchange="guardarTexto('${encuestaId}', ${pregIdx}, this.value)">`;
       }
 
       html += '</div>';
@@ -932,19 +990,6 @@
         Object.entries(respuestas).filter(([_, r]) => r[pregIdx]).forEach(([uid, r]) => {
           const m = miembrosData.find(x => x.id === uid);
           html += `<div style="padding:8px;background:var(--cream);border-radius:var(--radius-sm);margin-bottom:6px"><strong>${m?.nombre || 'Anónimo'}:</strong> ${r[pregIdx]}</div>`;
-        });
-      } else if (preg.tipo === 'fecha') {
-        const fechas = {};
-        Object.entries(respuestas).filter(([_, r]) => r[pregIdx]).forEach(([uid, r]) => {
-          const f = r[pregIdx];
-          if (!fechas[f]) fechas[f] = [];
-          const m = miembrosData.find(x => x.id === uid);
-          fechas[f].push(m?.nombre || 'Anónimo');
-        });
-        Object.entries(fechas).sort(([a],[b]) => a.localeCompare(b)).forEach(([fecha, nombres]) => {
-          const fechaFmt = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-          const pct = total > 0 ? (nombres.length / total * 100) : 0;
-          html += `<div class="resultado-item"><span class="resultado-texto">📅 ${fechaFmt}</span><div class="resultado-barra"><div class="resultado-barra-fill" style="width:${pct}%"></div></div><span class="resultado-porcentaje">${nombres.length} (${Math.round(pct)}%)</span></div>`;
         });
       }
 
@@ -1453,7 +1498,6 @@
               <option value="opciones" ${p.tipo === 'opciones' ? 'selected' : ''}>Opción única</option>
               <option value="multiple" ${p.tipo === 'multiple' ? 'selected' : ''}>Opción múltiple</option>
               <option value="escala" ${p.tipo === 'escala' ? 'selected' : ''}>Escala 1-5</option>
-              <option value="fecha" ${p.tipo === 'fecha' ? 'selected' : ''}>📅 Seleccionar fecha</option>
               <option value="texto" ${p.tipo === 'texto' ? 'selected' : ''}>Texto libre</option>
             </select>
             ${(p.tipo === 'opciones' || p.tipo === 'multiple') ? `
@@ -1564,7 +1608,9 @@
         },
         estado: 'borrador',
         familiaId,
-        creadoPor: currentUser.uid
+        creadoPor: currentUser.uid,
+        nidoCreador: userData.nidoId || null,
+        estirpeCreador: userData.estirpeId || null
       };
 
       try {
