@@ -123,7 +123,6 @@
     .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
     .form-label-hint { font-weight: 400; color: var(--text-muted); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-row-4 { display: grid; grid-template-columns: 3fr 2fr 3fr 2fr; gap: 12px; }
     .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     .form-input, .form-select, .form-textarea {
       width: 100%; padding: 12px 14px; border: 2px solid var(--cream-dark);
@@ -332,10 +331,68 @@
     @media (max-width: 600px) {
       .main { padding: 16px; }
       .form-row, .form-row-3 { grid-template-columns: 1fr; }
-      .form-row-4 { grid-template-columns: 1fr 1fr; }
       .matriz table { min-width: 350px; }
       .page-title { font-size: 1rem; }
     }
+
+    /* ========== PESTAÑAS ========== */
+    .tabs-bar {
+      display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #E8E0D8;
+      padding-bottom: 0;
+    }
+    .tab-btn {
+      padding: 10px 20px; border: none; background: none; font-family: 'Quicksand', sans-serif;
+      font-size: 0.95rem; font-weight: 600; color: var(--text-muted); cursor: pointer;
+      border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--sage-dark); border-bottom-color: var(--sage); }
+    .tab-btn .tab-count {
+      display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 0.75rem;
+      background: var(--cream-dark); color: var(--text-muted); margin-left: 6px;
+    }
+    .tab-btn.active .tab-count { background: var(--sage); color: white; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ========== TARJETAS MIS SOLICITUDES ========== */
+    .sol-list { display: flex; flex-direction: column; gap: 12px; }
+    .sol-card {
+      background: white; border-radius: 12px; padding: 16px 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 16px;
+      transition: transform 0.2s; cursor: pointer;
+    }
+    .sol-card:hover { transform: translateY(-1px); }
+    .sol-indicator {
+      width: 5px; height: 48px; border-radius: 3px; flex-shrink: 0;
+    }
+    .sol-indicator.pendiente { background: #f59e0b; }
+    .sol-indicator.aprobada, .sol-indicator.confirmada { background: #22c55e; }
+    .sol-indicator.borrador { background: #9CA3AF; }
+    .sol-indicator.rechazada, .sol-indicator.cancelada { background: #ef4444; }
+    .sol-body { flex: 1; min-width: 0; }
+    .sol-nombre { font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sol-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    .sol-estado {
+      padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; flex-shrink: 0;
+    }
+    .sol-estado.pendiente { background: #FEF3C7; color: #92400E; }
+    .sol-estado.aprobada, .sol-estado.confirmada { background: #D1FAE5; color: #065F46; }
+    .sol-estado.borrador { background: #F3F4F6; color: #6B7280; }
+    .sol-estado.rechazada { background: #FEE2E2; color: #991B1B; }
+    .sol-estado.cancelada { background: #FEE2E2; color: #991B1B; }
+    .sol-empty {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .sol-empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+    .sol-filtros {
+      display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .sol-filtro {
+      padding: 6px 14px; border: 2px solid #E8E0D8; border-radius: 20px; background: white;
+      font-family: 'Nunito', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+    }
+    .sol-filtro.active { background: var(--sage); color: white; border-color: var(--sage); }
   </style>
 </head>
 <body>
@@ -343,7 +400,7 @@
   <header class="header">
     <div class="header-left">
       <a href="cgi.html" class="back-btn">← CGI</a>
-      <h1 class="page-title" id="page-title">📋 Solicitar Reserva y/o Evento</h1>
+      <h1 class="page-title" id="page-title">📋 Reservas y Solicitudes</h1>
     </div>
     <div class="header-right">
       <span class="header-badge" id="tipo-badge">Solicitud</span>
@@ -354,6 +411,35 @@
     <div id="loading" class="loading"><div class="spinner"></div></div>
 
     <div id="content" class="hidden">
+
+      <!-- PESTAÑAS -->
+      <div class="tabs-bar">
+        <button class="tab-btn active" onclick="cambiarPestana('mis')" id="tab-mis">
+          📅 Mis Solicitudes <span class="tab-count" id="count-mis">0</span>
+        </button>
+        <button class="tab-btn" onclick="cambiarPestana('nueva')" id="tab-nueva">
+          ➕ Nueva Solicitud
+        </button>
+      </div>
+
+      <!-- PANEL: MIS SOLICITUDES -->
+      <div class="tab-panel active" id="panel-mis">
+        <div class="sol-filtros">
+          <button class="sol-filtro active" data-filtro="todas" onclick="filtrarSolicitudes(this)">Todas</button>
+          <button class="sol-filtro" data-filtro="pendiente" onclick="filtrarSolicitudes(this)">⏳ Pendientes</button>
+          <button class="sol-filtro" data-filtro="aprobada" onclick="filtrarSolicitudes(this)">✅ Aprobadas</button>
+          <button class="sol-filtro" data-filtro="borrador" onclick="filtrarSolicitudes(this)">📝 Borradores</button>
+        </div>
+        <div id="mis-solicitudes-list" class="sol-list"></div>
+        <div id="mis-solicitudes-empty" class="sol-empty" style="display:none;">
+          <div class="sol-empty-icon">📅</div>
+          <div>No tienes solicitudes todavía</div>
+          <button class="btn-enviar" style="margin-top:16px;max-width:250px;" onclick="cambiarPestana('nueva')">➕ Crear primera solicitud</button>
+        </div>
+      </div>
+
+      <!-- PANEL: NUEVA SOLICITUD (formulario existente) -->
+      <div class="tab-panel" id="panel-nueva">
 
       <!-- ===== INFO BÁSICA ===== -->
       <div class="info-card">
@@ -390,23 +476,15 @@
           <p style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">Selecciona el nido o grupo que hace la reserva</p>
         </div>
 
-        <!-- Fechas y horas -->
-        <div class="form-row-4">
+        <!-- Fechas (siempre rango) -->
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Fecha inicio *</label>
             <input type="date" class="form-input" id="sol-fecha-inicio" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Hora llegada</label>
-            <input type="time" class="form-input" id="sol-hora-llegada" value="12:00">
-          </div>
-          <div class="form-group">
             <label class="form-label">Fecha fin *</label>
             <input type="date" class="form-input" id="sol-fecha-fin" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Hora salida</label>
-            <input type="time" class="form-input" id="sol-hora-salida" value="12:00">
           </div>
         </div>
 
@@ -616,6 +694,7 @@
           </div>
         </div>
       </div><!-- /preparacion-wrapper -->
+      </div><!-- /panel-nueva -->
     </div><!-- /content -->
   </main>
 
@@ -823,12 +902,132 @@
       }
 
       await cargarBienes();
+      await cargarMisSolicitudes();
       configurarEventosFormulario();
 
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('content').classList.remove('hidden');
-      document.getElementById('footer-actions').style.display = 'flex';
+      // Footer solo visible en pestaña Nueva
     });
+
+    // ========================================
+    // PESTAÑAS
+    // ========================================
+    function cambiarPestana(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.getElementById('panel-' + tab).classList.add('active');
+      // Footer solo en pestaña nueva
+      document.getElementById('footer-actions').style.display = tab === 'nueva' ? 'flex' : 'none';
+    }
+
+    // ========================================
+    // MIS SOLICITUDES
+    // ========================================
+    let misSolicitudes = [];
+    let filtroSolicitud = 'todas';
+
+    async function cargarMisSolicitudes() {
+      try {
+        const snap = await db.collectionGroup('reservas')
+          .where('solicitadoPor', '==', currentUser.uid)
+          .where('familiaId', '==', currentFamilia.id)
+          .get();
+
+        misSolicitudes = snap.docs.map(doc => {
+          const data = doc.data();
+          const pathParts = doc.ref.path.split('/');
+          return { id: doc.id, bienId: pathParts[1] || null, ...data };
+        }).sort((a, b) => {
+          // Más recientes primero
+          const fa = a.fechaCreacion?.toDate?.() || new Date(0);
+          const fb = b.fechaCreacion?.toDate?.() || new Date(0);
+          return fb - fa;
+        });
+
+        document.getElementById('count-mis').textContent = misSolicitudes.length;
+        renderMisSolicitudes();
+      } catch (error) {
+        console.error('Error cargando solicitudes:', error);
+        document.getElementById('mis-solicitudes-list').innerHTML =
+          '<div class="sol-empty"><div class="sol-empty-icon">⚠️</div>Error al cargar solicitudes</div>';
+      }
+    }
+
+    function renderMisSolicitudes() {
+      const list = document.getElementById('mis-solicitudes-list');
+      const empty = document.getElementById('mis-solicitudes-empty');
+
+      let filtradas = misSolicitudes;
+      if (filtroSolicitud !== 'todas') {
+        filtradas = filtradas.filter(r => {
+          if (filtroSolicitud === 'aprobada') return ['aprobada', 'confirmada'].includes(r.estado);
+          return r.estado === filtroSolicitud;
+        });
+      }
+
+      if (filtradas.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      const estadoLabel = {
+        pendiente: '⏳ Pendiente', aprobada: '✅ Aprobada', confirmada: '✅ Confirmada',
+        borrador: '📝 Borrador', rechazada: '❌ Rechazada', cancelada: '🚫 Cancelada'
+      };
+
+      list.innerHTML = filtradas.map(r => {
+        const estado = r.estado || 'borrador';
+        const estadoClass = ['aprobada', 'confirmada'].includes(estado) ? 'aprobada' : estado;
+        const nombre = r.nombre || r.bienNombre || r.tipoReservaNombre || 'Solicitud';
+        const fechas = r.fechaInicio ? `📅 ${formatFechaCorta(r.fechaInicio)} → ${formatFechaCorta(r.fechaFin)}` : '';
+        const bien = r.bienNombre || '';
+        const horaInfo = r.horaLlegada ? ` · 🕐 ${r.horaLlegada}–${r.horaSalida || ''}` : '';
+
+        return `
+          <div class="sol-card" onclick="verSolicitud('${r.id}', '${r.bienId}', '${estado}')">
+            <div class="sol-indicator ${estadoClass}"></div>
+            <div class="sol-body">
+              <div class="sol-nombre">${nombre}</div>
+              <div class="sol-meta">
+                ${bien ? `<span>🏠 ${bien}</span>` : ''}
+                ${fechas ? `<span>${fechas}${horaInfo}</span>` : ''}
+              </div>
+            </div>
+            <span class="sol-estado ${estadoClass}">${estadoLabel[estado] || estado}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filtrarSolicitudes(btn) {
+      document.querySelectorAll('.sol-filtro').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filtroSolicitud = btn.dataset.filtro;
+      renderMisSolicitudes();
+    }
+
+    function formatFechaCorta(fecha) {
+      if (!fecha) return '—';
+      const f = typeof fecha === 'string' ? fecha : (fecha.toDate ? fecha.toDate().toISOString().split('T')[0] : '');
+      if (!f) return '—';
+      const [y, m, d] = f.split('-');
+      const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      return `${parseInt(d)} ${meses[parseInt(m)-1]}`;
+    }
+
+    function verSolicitud(id, bienId, estado) {
+      if (estado === 'borrador') {
+        // Borrador: abrir en estancia-form para editar
+        window.location.href = `estancia-form.html?bienId=${bienId}&id=${id}&src=reservas`;
+      } else {
+        // Pendiente/Aprobada: ir a la vista de reservas del bien
+        window.location.href = `reservas-mayordomo.html?id=${bienId}`;
+      }
+    }
 
     // ========================================
     // CARGA DE DATOS
@@ -1659,8 +1858,6 @@
           otroGrupoId, otroGrupoNombre,
           fechaInicio: inicio,
           fechaFin: fin,
-          horaLlegada: document.getElementById('sol-hora-llegada').value || '12:00',
-          horaSalida: document.getElementById('sol-hora-salida').value || '12:00',
           descripcion: document.getElementById('sol-motivo').value || '',
           motivo: document.getElementById('sol-motivo').value || '',
           visibilidad,
@@ -1718,7 +1915,8 @@
         console.log('✅ Notificación creada');
 
         alert('✅ Solicitud enviada correctamente.\nLos administradores la revisarán y recibirás notificación.');
-        window.location.href = 'cgi.html';
+        await cargarMisSolicitudes();
+        cambiarPestana('mis');
 
       } catch (error) {
         console.error('Error enviando solicitud:', error);
