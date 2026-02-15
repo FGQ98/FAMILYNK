@@ -896,6 +896,8 @@
         html += '</div><div class="escala-labels"><span>Nada</span><span>Mucho</span></div>';
       } else if (preg.tipo === 'texto') {
         html += `<input type="text" class="respuesta-texto-input" placeholder="Escribe tu respuesta..." data-encuesta="${encuestaId}" data-pregunta="${pregIdx}" value="${miRespuesta || ''}" onchange="guardarTexto('${encuestaId}', ${pregIdx}, this.value)">`;
+      } else if (preg.tipo === 'fecha') {
+        html += `<input type="date" class="respuesta-texto-input" style="max-width:220px" data-encuesta="${encuestaId}" data-pregunta="${pregIdx}" value="${miRespuesta || ''}" onchange="guardarTexto('${encuestaId}', ${pregIdx}, this.value)">`;
       }
 
       html += '</div>';
@@ -930,6 +932,19 @@
         Object.entries(respuestas).filter(([_, r]) => r[pregIdx]).forEach(([uid, r]) => {
           const m = miembrosData.find(x => x.id === uid);
           html += `<div style="padding:8px;background:var(--cream);border-radius:var(--radius-sm);margin-bottom:6px"><strong>${m?.nombre || 'Anónimo'}:</strong> ${r[pregIdx]}</div>`;
+        });
+      } else if (preg.tipo === 'fecha') {
+        const fechas = {};
+        Object.entries(respuestas).filter(([_, r]) => r[pregIdx]).forEach(([uid, r]) => {
+          const f = r[pregIdx];
+          if (!fechas[f]) fechas[f] = [];
+          const m = miembrosData.find(x => x.id === uid);
+          fechas[f].push(m?.nombre || 'Anónimo');
+        });
+        Object.entries(fechas).sort(([a],[b]) => a.localeCompare(b)).forEach(([fecha, nombres]) => {
+          const fechaFmt = new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+          const pct = total > 0 ? (nombres.length / total * 100) : 0;
+          html += `<div class="resultado-item"><span class="resultado-texto">📅 ${fechaFmt}</span><div class="resultado-barra"><div class="resultado-barra-fill" style="width:${pct}%"></div></div><span class="resultado-porcentaje">${nombres.length} (${Math.round(pct)}%)</span></div>`;
         });
       }
 
@@ -1438,6 +1453,7 @@
               <option value="opciones" ${p.tipo === 'opciones' ? 'selected' : ''}>Opción única</option>
               <option value="multiple" ${p.tipo === 'multiple' ? 'selected' : ''}>Opción múltiple</option>
               <option value="escala" ${p.tipo === 'escala' ? 'selected' : ''}>Escala 1-5</option>
+              <option value="fecha" ${p.tipo === 'fecha' ? 'selected' : ''}>📅 Seleccionar fecha</option>
               <option value="texto" ${p.tipo === 'texto' ? 'selected' : ''}>Texto libre</option>
             </select>
             ${(p.tipo === 'opciones' || p.tipo === 'multiple') ? `
