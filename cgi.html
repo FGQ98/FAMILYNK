@@ -5435,7 +5435,7 @@
                   (fechaSalida.toDate ? fechaSalida.toDate().toISOString().split('T')[0] : fechaSalida) : null;
                 
                 // Usar TIPOS_FIJOS para color y emoji
-                const tipoId = r.tipo || r.tipoReserva || 'estancia-familiar';
+                const tipoId = r.tipoReserva || (r.tipo !== 'solicitud' ? r.tipo : null) || 'estancia-familiar';
                 const estado = r.estado || 'borrador';
                 
                 let colorBase = getColorPorTipo(tipoId, addonActivo || 'mayordomo');
@@ -6066,7 +6066,11 @@
     // ============ CARD MIS RESERVAS (resumen) ============
     async function cargarMisReservasResumen() {
       const container = document.getElementById('mis-reservas-resumen');
-      if (!container || !currentUser || !currentFamilia) return;
+      if (!container) { console.warn('❌ Mis Reservas: container no encontrado'); return; }
+      if (!currentUser) { console.warn('❌ Mis Reservas: currentUser no disponible'); return; }
+      if (!currentFamilia) { console.warn('❌ Mis Reservas: currentFamilia no disponible'); return; }
+
+      console.log('🔍 Mis Reservas: buscando para uid:', currentUser.uid, 'familia:', currentFamilia.id);
 
       try {
         // DATO ÚNICO: collectionGroup para mis reservas activas
@@ -6074,6 +6078,12 @@
           .where('solicitadoPor', '==', currentUser.uid)
           .where('familiaId', '==', currentFamilia.id)
           .get();
+
+        console.log('✅ Mis Reservas: encontradas', snap.size, 'docs');
+        snap.docs.forEach(doc => {
+          const d = doc.data();
+          console.log('  📄', doc.id, '| estado:', d.estado, '| tipo:', d.tipo, '| tipoReserva:', d.tipoReserva, '| path:', doc.ref.path);
+        });
 
         // Filtrar solo activas (no canceladas)
         const activas = snap.docs
@@ -6129,9 +6139,12 @@
         container.innerHTML = html;
 
       } catch (error) {
-        console.warn('Error cargando resumen reservas:', error);
-        if (error.code === 'failed-precondition') {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Índice pendiente</div>';
+        console.error('❌ Error cargando resumen reservas:', error);
+        if (error.code === 'failed-precondition' || error.message?.includes('index')) {
+          // Firebase incluye URL para crear el índice en el mensaje de error
+          const urlMatch = error.message?.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
+          const enlace = urlMatch ? `<br><a href="${urlMatch[1]}" target="_blank" style="color:var(--sage-dark);font-size:0.7rem;">Crear índice →</a>` : '';
+          container.innerHTML = `<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Índice pendiente${enlace}</div>`;
         } else {
           container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📅</div>Sin reservas</div>';
         }
@@ -8705,24 +8718,7 @@
     }
 
     async function abrirModalSolicitarReserva() {
-      await cargarBienesConGestion();
-      
-      // Verificar si hay bienes con gestión
-      if (bienesConGestion.length === 0) {
-        alert('No hay bienes con gestión activa.\n\nPara solicitar reservas, primero debe activarse Mayordomo, Gerente o Capataz en algún bien desde su ficha.');
-        return;
-      }
-      
-      popularSelectBienesConGestion('reserva-bien');
-      document.getElementById('form-reserva').reset();
-      resetVisibilidad('modal-reserva');
-      // Ocultar selector de tipo hasta que se elija bien
-      document.getElementById('reserva-tipo-container').style.display = 'none';
-      const hoy = new Date().toISOString().split('T')[0];
-      document.getElementById('reserva-inicio').min = hoy;
-      document.getElementById('reserva-fin').min = hoy;
-      document.getElementById('modal-reserva').classList.add('active');
-      track.iniciar('reserva');
+      window.location.href = 'solicitud-preparacion.html';
     }
 
     // ============ SOLICITAR — REDIRIGIR DIRECTO ============
@@ -9402,7 +9398,7 @@
         // DATO ÚNICO: escribir directo en bienes/{bienId}/reservas/{id}
         const remitente = userData?.nombre || userData?.email || 'Usuario';
         const reservaData = {
-          tipo: 'solicitud',
+          tipo: tipoReservaId,
           categoria: 'familiar',
           esReserva: true,
           tipoSolicitud: 'reserva',
