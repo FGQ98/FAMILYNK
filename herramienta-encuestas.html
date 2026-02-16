@@ -514,11 +514,81 @@
       await loadEncuestas();
     });
 
+    let todosLosFamiliares = []; // Todos los miembros de nidos (con y sin cuenta)
+
     async function cargarMiembros() {
       console.log('Cargando miembros para familiaData.id:', familiaData.id);
+      // Usuarios con cuenta
       const snap = await db.collection('usuarios').where('familiaId', '==', familiaData.id).get();
       miembrosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      console.log('Miembros cargados:', miembrosData.length, miembrosData.map(m => m.nombre || m.email));
+      console.log('Miembros con cuenta:', miembrosData.length);
+
+      // TODOS los familiares desde nidos (incluye sin cuenta)
+      try {
+        const nidosSnap = await db.collection('nidos').where('familiaId', '==', familiaData.id).get();
+        const familiaresMap = new Map(); // deduplicar por email/userId
+
+        // Primero meter usuarios con cuenta (tienen UID)
+        miembrosData.forEach(m => {
+          const key = m.email || m.id;
+          familiaresMap.set(key, {
+            id: m.id,
+            nombre: m.nombre || m.email || 'Sin nombre',
+            email: m.email || '',
+            fechaNacimiento: m.fechaNacimiento || null,
+            credenciales: m.credenciales || m.rol || 'adulto',
+            tieneCuenta: true
+          });
+        });
+
+        // Luego miembros de nidos (pueden no tener cuenta)
+        nidosSnap.docs.forEach(nDoc => {
+          const nido = nDoc.data();
+          (nido.miembrosData || []).forEach(m => {
+            const key = m.email || m.userId || m.nombre || JSON.stringify(m);
+            if (!familiaresMap.has(key)) {
+              familiaresMap.set(key, {
+                id: m.userId || null,
+                nombre: m.nombre || m.email || 'Sin nombre',
+                email: m.email || '',
+                fechaNacimiento: m.fechaNacimiento || null,
+                credenciales: m.credenciales || m.rol || 'adulto',
+                tieneCuenta: false
+              });
+            } else if (m.fechaNacimiento && !familiaresMap.get(key).fechaNacimiento) {
+              // Enriquecer con fecha si no la tenía
+              familiaresMap.get(key).fechaNacimiento = m.fechaNacimiento;
+            }
+          });
+        });
+
+        // Ordenar por fecha de nacimiento y asignar #N
+        todosLosFamiliares = Array.from(familiaresMap.values())
+          .sort((a, b) => {
+            const fa = a.fechaNacimiento ? new Date(a.fechaNacimiento) : new Date('2100-01-01');
+            const fb = b.fechaNacimiento ? new Date(b.fechaNacimiento) : new Date('2100-01-01');
+            return fa - fb;
+          });
+        
+        // Asignar número correlativo
+        todosLosFamiliares.forEach((m, idx) => {
+          m.numeroMiembro = idx + 1;
+        });
+
+        console.log('Total familiares (incluidos sin cuenta):', todosLosFamiliares.length);
+      } catch (e) {
+        console.warn('Error cargando nidos para familiares:', e);
+        // Fallback: usar solo miembrosData
+        todosLosFamiliares = miembrosData.map((m, idx) => ({
+          id: m.id,
+          nombre: m.nombre || m.email,
+          email: m.email || '',
+          fechaNacimiento: m.fechaNacimiento || null,
+          credenciales: m.credenciales || m.rol || 'adulto',
+          tieneCuenta: true,
+          numeroMiembro: idx + 1
+        }));
+      }
     }
 
     async function cargarBienes() {
@@ -615,32 +685,17 @@
                 reservasEnviadas: firebase.firestore.FieldValue.arrayUnion(resultado.reservaId)
               };
 
-              // Resolver __solicitante__ al UID real
+              // Resolver solicitante al UID real en campo dedicado
               if (enc.destinatarios?.incluirSolicitante && resultado.solicitadoPor) {
-                const destActual = enc.destinatarios || {};
-                const miembrosActuales = destActual.miembrosIds || [];
-                // Añadir UID del solicitante si no está ya
-                if (!miembrosActuales.includes(resultado.solicitadoPor)) {
-                  updateData['destinatarios.miembrosIds'] = [...miembrosActuales, resultado.solicitadoPor];
-                }
-                // Asegurar que alcance incluye 'especifico'
-                const alcanceActual = destActual.alcance || [];
-                if (!alcanceActual.includes('especifico')) {
-                  updateData['destinatarios.alcance'] = [...alcanceActual, 'especifico'];
-                }
+                updateData['destinatarios.solicitanteUid'] = resultado.solicitadoPor;
                 console.log('🎯 Solicitante resuelto:', resultado.solicitadoPor, 'para encuesta:', enc.titulo);
               }
 
               await db.collection('encuestas').doc(enc.id).update(updateData);
               enc.estado = 'activa';
-              // Actualizar datos locales
-              if (updateData['destinatarios.miembrosIds']) {
+              if (resultado.solicitadoPor) {
                 enc.destinatarios = enc.destinatarios || {};
-                enc.destinatarios.miembrosIds = updateData['destinatarios.miembrosIds'];
-              }
-              if (updateData['destinatarios.alcance']) {
-                enc.destinatarios = enc.destinatarios || {};
-                enc.destinatarios.alcance = updateData['destinatarios.alcance'];
+                enc.destinatarios.solicitanteUid = resultado.solicitadoPor;
               }
             } catch (e) { console.error('Error auto-publicar automática:', e); }
           }
@@ -750,58 +805,40 @@
       }
     }
 
-    // Fix retroactivo: encuestas activas con incluirSolicitante pero sin UIDs reales en miembrosIds
+    // Fix retroactivo: encuestas con incluirSolicitante sin solicitanteUid resuelto
+    // También limpia miembrosIds contaminados por la versión anterior
     async function resolverSolicitantesPendientes() {
       for (const enc of encuestasData) {
-        if (enc.estado !== 'activa') continue;
+        if (enc.estado !== 'activa' && enc.estado !== 'cerrada') continue;
         if (!enc.destinatarios?.incluirSolicitante) continue;
-        
-        const miembros = enc.destinatarios.miembrosIds || [];
-        // Si ya tiene UIDs reales (no vacío), skip
-        if (miembros.length > 0) continue;
+        // Si ya tiene solicitanteUid resuelto, skip
+        if (enc.destinatarios.solicitanteUid) continue;
         
         const bienIdVinculado = enc.vinculacion?.bienId;
         if (!bienIdVinculado) continue;
 
-        console.log('🔄 Resolviendo solicitante pendiente para:', enc.titulo);
+        console.log('🔄 Resolviendo solicitante para:', enc.titulo);
         
         try {
-          // Buscar reservas finalizadas del bien
-          const reservasSnap = await db.collection('bienes').doc(bienIdVinculado)
-            .collection('reservas').get();
-          
-          const uidsResueltos = [];
-          const ahora = new Date();
-          
-          for (const doc of reservasSnap.docs) {
-            const r = doc.data();
-            const uid = r.solicitadoPor || r.creadoPor;
-            if (!uid) continue;
-            
-            let fechaFin = r.fechaFin;
-            if (fechaFin) {
-              fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
-              if (fechaFin <= ahora && !uidsResueltos.includes(uid)) {
-                uidsResueltos.push(uid);
-              }
-            }
-          }
-
-          if (uidsResueltos.length > 0) {
-            const alcanceActual = enc.destinatarios.alcance || [];
+          const resultado = await verificarReservaFinalizada(enc);
+          if (resultado && resultado.found && resultado.solicitadoPor) {
             const updateData = {
-              'destinatarios.miembrosIds': uidsResueltos
+              'destinatarios.solicitanteUid': resultado.solicitadoPor
             };
-            if (!alcanceActual.includes('especifico')) {
-              updateData['destinatarios.alcance'] = [...alcanceActual, 'especifico'];
+            
+            // Limpiar miembrosIds contaminados: si SOLO tenía solicitante
+            // (sin miembros manuales), vaciar miembrosIds
+            const alcance = enc.destinatarios.alcance || [];
+            const soloSolicitante = alcance.length === 1 && alcance[0] === 'especifico' 
+              && enc.destinatarios.incluirSolicitante;
+            if (soloSolicitante) {
+              updateData['destinatarios.miembrosIds'] = [];
             }
             
             await db.collection('encuestas').doc(enc.id).update(updateData);
-            enc.destinatarios.miembrosIds = uidsResueltos;
-            if (!alcanceActual.includes('especifico')) {
-              enc.destinatarios.alcance = [...alcanceActual, 'especifico'];
-            }
-            console.log('✅ Solicitantes resueltos:', uidsResueltos, 'para:', enc.titulo);
+            enc.destinatarios.solicitanteUid = resultado.solicitadoPor;
+            if (soloSolicitante) enc.destinatarios.miembrosIds = [];
+            console.log('✅ Solicitante resuelto:', resultado.solicitadoPor);
           }
         } catch (e) {
           console.error('Error resolviendo solicitante:', e);
@@ -825,9 +862,11 @@
     function esDestinatario(enc) {
       const dest = enc.destinatarios || {};
       const alcance = dest.alcance || [];
+      // Solicitante resuelto = match directo por UID
+      if (dest.incluirSolicitante && dest.solicitanteUid === currentUser.uid) return true;
       // Rama = toda la familia
       if (alcance.includes('rama')) return true;
-      // Específico = lista de UIDs
+      // Específico = lista de UIDs (solo miembros manuales, no solicitante)
       if (alcance.includes('especifico') && dest.miembrosIds?.includes(currentUser.uid)) return true;
       // Nido = mismo nido que el usuario
       if (alcance.includes('nido') && userData.nidoId && userData.nidoId === (enc.nidoCreador || '')) return true;
@@ -1354,7 +1393,6 @@
     function renderMiembrosSelector() {
       const container = document.getElementById('miembros-especificos');
       
-      
       // Opción especial "Quien solicitó" - siempre visible
       const checkedSolicitante = miembrosSeleccionados.includes('__solicitante__');
       const opcionSolicitante = `
@@ -1365,18 +1403,25 @@
         <div class="miembros-separador">— o miembros específicos —</div>
       `;
       
-      const miembrosHTML = miembrosData
-        .filter(m => m.id !== currentUser.uid)
-        .map(m => {
-          const checked = miembrosSeleccionados.includes(m.id);
-          return `<label class="miembro-check">
-            <input type="checkbox" value="${m.id}" ${checked ? 'checked' : ''} onchange="toggleMiembro('${m.id}', this.checked)">
-            ${m.nombre || m.email || m.id}
+      // Usar todosLosFamiliares: excluir especiales y al propio usuario
+      const familiares = todosLosFamiliares.filter(m => {
+        if (m.credenciales === 'especial') return false;
+        if (m.id === currentUser.uid) return false;
+        return true;
+      });
+
+      const miembrosHTML = familiares.map(m => {
+          const checked = m.id ? miembrosSeleccionados.includes(m.id) : false;
+          const numTag = `<span style="color:var(--text-muted);font-size:0.75rem;font-weight:700;margin-right:4px;">#${m.numeroMiembro}</span>`;
+          const cuentaTag = m.tieneCuenta ? '' : '<span style="color:#9CA3AF;font-size:0.7rem;margin-left:4px;">(sin cuenta)</span>';
+          const isDisabled = !m.id;
+          return `<label class="miembro-check" style="${isDisabled ? 'opacity:0.5;' : ''}">
+            <input type="checkbox" value="${m.id || ''}" ${checked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} onchange="toggleMiembro('${m.id}', this.checked)">
+            ${numTag}${m.nombre}${cuentaTag}
           </label>`;
         }).join('');
       
       container.innerHTML = opcionSolicitante + miembrosHTML;
-      
     }
 
     function toggleMiembro(id, checked) {
