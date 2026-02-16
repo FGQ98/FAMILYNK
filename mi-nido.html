@@ -271,6 +271,23 @@
     .casa-nombre { font-weight: 600; }
     .casa-tipo { font-size: 0.8rem; color: var(--text-muted); }
 
+    .viv-editor-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px; background: var(--cream); border-radius: var(--radius-md);
+    }
+    .viv-editor-item .viv-info { flex: 1; }
+    .viv-editor-item .viv-nombre { font-weight: 600; font-size: 0.9rem; }
+    .viv-editor-item .viv-detalle { font-size: 0.78rem; color: var(--text-muted); }
+    .viv-editor-item .viv-actions { display: flex; gap: 6px; }
+    .viv-editor-item .viv-actions button {
+      width: 32px; height: 32px; border: none; border-radius: 50%;
+      cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+    }
+    .viv-btn-edit { background: var(--sage-muted); color: var(--sage-dark); }
+    .viv-btn-edit:hover { background: var(--sage-light); color: white; }
+    .viv-btn-del { background: rgba(229,115,115,0.15); color: #E57373; }
+    .viv-btn-del:hover { background: #E57373; color: white; }
+
     /* Loading & Empty */
     .loading, .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
     .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
@@ -402,6 +419,7 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">🏠 Viviendas</div>
+          <button class="btn btn-sage btn-sm hidden" id="btn-editar-viviendas" onclick="abrirModalViviendas()">✏️ Editar</button>
         </div>
         <div class="card-body">
           <div class="casas-list" id="casas-list">
@@ -530,6 +548,45 @@
           <button type="submit" class="btn btn-sage">Guardar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Gestionar viviendas (admin-nido) -->
+  <div class="modal-overlay" id="modal-viviendas">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">🏠 Gestionar viviendas</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Lista editable de viviendas -->
+        <div id="viviendas-editor-list" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;"></div>
+
+        <!-- Formulario para añadir nueva -->
+        <div style="border-top: 1px solid var(--cream-dark); padding-top: 16px;">
+          <div style="font-weight: 600; font-size: 0.9rem; margin-bottom: 12px; color: var(--sage-dark);">+ Añadir vivienda</div>
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input type="text" class="form-input" id="viv-nuevo-nombre" placeholder="Ej: Casa de la playa">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" id="viv-nuevo-tipo">
+              <option value="principal">🏠 Principal</option>
+              <option value="segunda">🏡 2ª Vivienda</option>
+              <option value="otra">🏢 Otra</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Dirección <span style="font-size:0.75rem; color:var(--text-muted);">(opcional)</span></label>
+            <input type="text" class="form-input" id="viv-nuevo-direccion" placeholder="Calle, ciudad...">
+          </div>
+          <button class="btn btn-sage" onclick="añadirVivienda()" style="width:100%;">Añadir vivienda</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+      </div>
     </div>
   </div>
 
@@ -672,6 +729,8 @@
           const btnAñadir = document.getElementById('btn-añadir-miembro');
           btnAñadir.href = `nido.html?id=${nidoData.id}`;
           btnAñadir.classList.remove('hidden');
+
+          document.getElementById('btn-editar-viviendas').classList.remove('hidden');
         }
 
         document.getElementById('content').classList.remove('hidden');
@@ -961,6 +1020,114 @@
         console.error('Error:', error);
         alert('Error al guardar');
       }
+    }
+
+    // ============================================
+    // ADMIN: GESTIONAR VIVIENDAS
+    // ============================================
+    function abrirModalViviendas() {
+      if (!esAdminNido) return;
+      renderViviendasEditor();
+      document.getElementById('modal-viviendas').classList.add('active');
+    }
+
+    function renderViviendasEditor() {
+      const casas = nidoData.casas || [];
+      const container = document.getElementById('viviendas-editor-list');
+      const tipoIconos = { principal: '🏠', segunda: '🏡', otra: '🏢' };
+      const tipoLabels = { principal: 'Principal', segunda: '2ª Vivienda', otra: 'Otra' };
+
+      if (casas.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:8px;">Sin viviendas registradas</p>';
+        return;
+      }
+
+      container.innerHTML = casas.map((casa, idx) => `
+        <div class="viv-editor-item">
+          <span style="font-size:1.3rem;">${tipoIconos[casa.tipo] || '🏠'}</span>
+          <div class="viv-info">
+            <div class="viv-nombre">${casa.nombre || 'Sin nombre'}</div>
+            <div class="viv-detalle">${tipoLabels[casa.tipo] || 'Otra'}${casa.direccion ? ' · ' + casa.direccion : ''}</div>
+          </div>
+          <div class="viv-actions">
+            <button class="viv-btn-edit" onclick="editarVivienda(${idx})" title="Editar">✏️</button>
+            <button class="viv-btn-del" onclick="eliminarVivienda(${idx})" title="Eliminar">🗑️</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function añadirVivienda() {
+      const nombre = document.getElementById('viv-nuevo-nombre').value.trim();
+      const tipo = document.getElementById('viv-nuevo-tipo').value;
+      const direccion = document.getElementById('viv-nuevo-direccion').value.trim();
+
+      if (!nombre) { alert('El nombre es obligatorio'); return; }
+
+      try {
+        const casas = nidoData.casas || [];
+        casas.push({ nombre, tipo, direccion: direccion || null });
+        
+        await db.collection('nidos').doc(nidoData.id).update({ casas });
+        nidoData.casas = casas;
+
+        // Limpiar formulario
+        document.getElementById('viv-nuevo-nombre').value = '';
+        document.getElementById('viv-nuevo-tipo').value = 'principal';
+        document.getElementById('viv-nuevo-direccion').value = '';
+
+        renderViviendasEditor();
+        renderCasas();
+        alert('✅ Vivienda añadida');
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al añadir vivienda');
+      }
+    }
+
+    function editarVivienda(idx) {
+      const casas = nidoData.casas || [];
+      const casa = casas[idx];
+      if (!casa) return;
+
+      const nuevoNombre = prompt('Nombre de la vivienda:', casa.nombre || '');
+      if (nuevoNombre === null) return; // Canceló
+      if (!nuevoNombre.trim()) { alert('El nombre no puede estar vacío'); return; }
+
+      const nuevaDireccion = prompt('Dirección (dejar vacío si no aplica):', casa.direccion || '');
+      if (nuevaDireccion === null) return; // Canceló
+
+      casas[idx].nombre = nuevoNombre.trim();
+      casas[idx].direccion = nuevaDireccion.trim() || null;
+
+      db.collection('nidos').doc(nidoData.id).update({ casas }).then(() => {
+        nidoData.casas = casas;
+        renderViviendasEditor();
+        renderCasas();
+        alert('✅ Vivienda actualizada');
+      }).catch(err => {
+        console.error('Error:', err);
+        alert('Error al actualizar');
+      });
+    }
+
+    function eliminarVivienda(idx) {
+      const casas = nidoData.casas || [];
+      const casa = casas[idx];
+      if (!casa) return;
+
+      if (!confirm(`¿Eliminar "${casa.nombre}"? Esta acción no se puede deshacer.`)) return;
+
+      casas.splice(idx, 1);
+      db.collection('nidos').doc(nidoData.id).update({ casas }).then(() => {
+        nidoData.casas = casas;
+        renderViviendasEditor();
+        renderCasas();
+        alert('✅ Vivienda eliminada');
+      }).catch(err => {
+        console.error('Error:', err);
+        alert('Error al eliminar');
+      });
     }
 
     // ============================================
