@@ -567,6 +567,9 @@
         // Auto-publicar las programadas que hayan vencido
         await autoPublicarProgramadas();
 
+        // Fix retroactivo: resolver solicitantes en encuestas ya activas
+        await resolverSolicitantesPendientes();
+
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('contenido-principal').classList.remove('hidden');
         renderTodo();
@@ -603,14 +606,42 @@
         
         // Tipo AUTOMÁTICO: cualquier reserva/solicitud finalizada
         if (pubTipo === 'automatico') {
-          const tieneReservaFinalizada = await verificarReservaFinalizada(enc);
-          if (tieneReservaFinalizada) {
+          const resultado = await verificarReservaFinalizada(enc);
+          if (resultado && resultado.found) {
             try {
-              await db.collection('encuestas').doc(enc.id).update({
+              const updateData = {
                 estado: 'activa',
-                fechaPublicacion: firebase.firestore.FieldValue.serverTimestamp()
-              });
+                fechaPublicacion: firebase.firestore.FieldValue.serverTimestamp(),
+                reservasEnviadas: firebase.firestore.FieldValue.arrayUnion(resultado.reservaId)
+              };
+
+              // Resolver __solicitante__ al UID real
+              if (enc.destinatarios?.incluirSolicitante && resultado.solicitadoPor) {
+                const destActual = enc.destinatarios || {};
+                const miembrosActuales = destActual.miembrosIds || [];
+                // Añadir UID del solicitante si no está ya
+                if (!miembrosActuales.includes(resultado.solicitadoPor)) {
+                  updateData['destinatarios.miembrosIds'] = [...miembrosActuales, resultado.solicitadoPor];
+                }
+                // Asegurar que alcance incluye 'especifico'
+                const alcanceActual = destActual.alcance || [];
+                if (!alcanceActual.includes('especifico')) {
+                  updateData['destinatarios.alcance'] = [...alcanceActual, 'especifico'];
+                }
+                console.log('🎯 Solicitante resuelto:', resultado.solicitadoPor, 'para encuesta:', enc.titulo);
+              }
+
+              await db.collection('encuestas').doc(enc.id).update(updateData);
               enc.estado = 'activa';
+              // Actualizar datos locales
+              if (updateData['destinatarios.miembrosIds']) {
+                enc.destinatarios = enc.destinatarios || {};
+                enc.destinatarios.miembrosIds = updateData['destinatarios.miembrosIds'];
+              }
+              if (updateData['destinatarios.alcance']) {
+                enc.destinatarios = enc.destinatarios || {};
+                enc.destinatarios.alcance = updateData['destinatarios.alcance'];
+              }
             } catch (e) { console.error('Error auto-publicar automática:', e); }
           }
         }
@@ -618,6 +649,7 @@
     }
 
     // Verifica si hay reservas/solicitudes finalizadas del BIEN VINCULADO que aún no tienen encuesta enviada
+    // Devuelve { found: true, solicitadoPor, reservaId } o false
     async function verificarReservaFinalizada(encuesta) {
       const ahora = new Date();
       const encuestaCreacion = encuesta.fechaCreacion?.toDate?.() || new Date(0);
@@ -646,12 +678,44 @@
             if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
               const reservasEnviadas = encuesta.reservasEnviadas || [];
               if (!reservasEnviadas.includes(doc.id)) {
-                return true;
+                return {
+                  found: true,
+                  solicitadoPor: sol.solicitadoPor || sol.creadoPor || null,
+                  reservaId: doc.id
+                };
               }
             }
           }
         }
         
+        // Buscar en reservas del bien vinculado (subcolección)
+        try {
+          const reservasSnap = await db.collection('bienes').doc(bienIdVinculado)
+            .collection('reservas')
+            .get();
+          
+          for (const doc of reservasSnap.docs) {
+            const res = doc.data();
+            if (res.estado === 'cancelada' || res.estado === 'rechazada') continue;
+            let fechaFin = res.fechaFin || res.fechaHasta || res.checkout;
+            if (fechaFin) {
+              fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
+              if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
+                const reservasEnviadas = encuesta.reservasEnviadas || [];
+                if (!reservasEnviadas.includes(doc.id)) {
+                  return {
+                    found: true,
+                    solicitadoPor: res.solicitadoPor || res.creadoPor || null,
+                    reservaId: doc.id
+                  };
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // Subcolección puede no existir
+        }
+
         // Buscar en estancias del bien vinculado
         try {
           const estanciasSnap = await db.collection('bienes').doc(bienIdVinculado)
@@ -666,7 +730,11 @@
               if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
                 const reservasEnviadas = encuesta.reservasEnviadas || [];
                 if (!reservasEnviadas.includes(doc.id)) {
-                  return true;
+                  return {
+                    found: true,
+                    solicitadoPor: est.solicitadoPor || est.creadoPor || est.actualizadoPor || null,
+                    reservaId: doc.id
+                  };
                 }
               }
             }
@@ -679,6 +747,65 @@
       } catch (e) {
         console.error('Error verificando reservas finalizadas:', e);
         return false;
+      }
+    }
+
+    // Fix retroactivo: encuestas activas con incluirSolicitante pero sin UIDs reales en miembrosIds
+    async function resolverSolicitantesPendientes() {
+      for (const enc of encuestasData) {
+        if (enc.estado !== 'activa') continue;
+        if (!enc.destinatarios?.incluirSolicitante) continue;
+        
+        const miembros = enc.destinatarios.miembrosIds || [];
+        // Si ya tiene UIDs reales (no vacío), skip
+        if (miembros.length > 0) continue;
+        
+        const bienIdVinculado = enc.vinculacion?.bienId;
+        if (!bienIdVinculado) continue;
+
+        console.log('🔄 Resolviendo solicitante pendiente para:', enc.titulo);
+        
+        try {
+          // Buscar reservas finalizadas del bien
+          const reservasSnap = await db.collection('bienes').doc(bienIdVinculado)
+            .collection('reservas').get();
+          
+          const uidsResueltos = [];
+          const ahora = new Date();
+          
+          for (const doc of reservasSnap.docs) {
+            const r = doc.data();
+            const uid = r.solicitadoPor || r.creadoPor;
+            if (!uid) continue;
+            
+            let fechaFin = r.fechaFin;
+            if (fechaFin) {
+              fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
+              if (fechaFin <= ahora && !uidsResueltos.includes(uid)) {
+                uidsResueltos.push(uid);
+              }
+            }
+          }
+
+          if (uidsResueltos.length > 0) {
+            const alcanceActual = enc.destinatarios.alcance || [];
+            const updateData = {
+              'destinatarios.miembrosIds': uidsResueltos
+            };
+            if (!alcanceActual.includes('especifico')) {
+              updateData['destinatarios.alcance'] = [...alcanceActual, 'especifico'];
+            }
+            
+            await db.collection('encuestas').doc(enc.id).update(updateData);
+            enc.destinatarios.miembrosIds = uidsResueltos;
+            if (!alcanceActual.includes('especifico')) {
+              enc.destinatarios.alcance = [...alcanceActual, 'especifico'];
+            }
+            console.log('✅ Solicitantes resueltos:', uidsResueltos, 'para:', enc.titulo);
+          }
+        } catch (e) {
+          console.error('Error resolviendo solicitante:', e);
+        }
       }
     }
 
