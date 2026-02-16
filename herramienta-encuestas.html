@@ -634,15 +634,20 @@
           return fb - fa;
         });
 
-        // Auto-publicar las programadas que hayan vencido
-        await autoPublicarProgramadas();
-
-        // Fix retroactivo: resolver solicitantes en encuestas ya activas
-        await resolverSolicitantesPendientes();
-
+        // RENDERIZAR PRIMERO — no bloquear la interfaz
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('contenido-principal').classList.remove('hidden');
         renderTodo();
+
+        // Migraciones en background (no bloquean)
+        try {
+          await autoPublicarProgramadas();
+          await resolverSolicitantesPendientes();
+          // Re-renderizar si hubo cambios
+          renderTodo();
+        } catch (migErr) {
+          console.warn('⚠️ Error en migraciones (no bloquea):', migErr);
+        }
       } catch (error) {
         console.error('Error:', error);
         document.getElementById('loading').classList.add('hidden');
@@ -717,32 +722,6 @@
       }
       
       try {
-        // Buscar en solicitudes aprobadas del bien vinculado
-        const solicitudesSnap = await db.collection('solicitudes')
-          .where('familiaId', '==', familiaId)
-          .where('bienId', '==', bienIdVinculado)
-          .where('estado', '==', 'aprobada')
-          .get();
-        
-        for (const doc of solicitudesSnap.docs) {
-          const sol = doc.data();
-          let fechaFin = sol.fechaFin || sol.fechaHasta || sol.fin;
-          if (fechaFin) {
-            fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
-            // La reserva finalizó Y fue después de crear la encuesta
-            if (fechaFin <= ahora && fechaFin >= encuestaCreacion) {
-              const reservasEnviadas = encuesta.reservasEnviadas || [];
-              if (!reservasEnviadas.includes(doc.id)) {
-                return {
-                  found: true,
-                  solicitadoPor: sol.solicitadoPor || sol.creadoPor || null,
-                  reservaId: doc.id
-                };
-              }
-            }
-          }
-        }
-        
         // Buscar en reservas del bien vinculado (subcolección)
         try {
           const reservasSnap = await db.collection('bienes').doc(bienIdVinculado)
@@ -806,12 +785,10 @@
     }
 
     // Fix retroactivo: encuestas con incluirSolicitante sin solicitanteUid resuelto
-    // También limpia miembrosIds contaminados por la versión anterior
     async function resolverSolicitantesPendientes() {
       for (const enc of encuestasData) {
         if (enc.estado !== 'activa' && enc.estado !== 'cerrada') continue;
         if (!enc.destinatarios?.incluirSolicitante) continue;
-        // Si ya tiene solicitanteUid resuelto, skip
         if (enc.destinatarios.solicitanteUid) continue;
         
         const bienIdVinculado = enc.vinculacion?.bienId;
@@ -820,28 +797,61 @@
         console.log('🔄 Resolviendo solicitante para:', enc.titulo);
         
         try {
-          const resultado = await verificarReservaFinalizada(enc);
-          if (resultado && resultado.found && resultado.solicitadoPor) {
-            const updateData = {
-              'destinatarios.solicitanteUid': resultado.solicitadoPor
-            };
+          // Buscar SOLO en subcolección reservas del bien (evitar solicitudes que necesita índice)
+          const reservasSnap = await db.collection('bienes').doc(bienIdVinculado)
+            .collection('reservas').get();
+          
+          let solicitanteUid = null;
+          const ahora = new Date();
+          const encCreacion = enc.fechaCreacion?.toDate?.() || new Date(0);
+          
+          for (const doc of reservasSnap.docs) {
+            const r = doc.data();
+            const uid = r.solicitadoPor || r.creadoPor;
+            if (!uid) continue;
             
-            // Limpiar miembrosIds contaminados: si SOLO tenía solicitante
-            // (sin miembros manuales), vaciar miembrosIds
-            const alcance = enc.destinatarios.alcance || [];
-            const soloSolicitante = alcance.length === 1 && alcance[0] === 'especifico' 
-              && enc.destinatarios.incluirSolicitante;
-            if (soloSolicitante) {
-              updateData['destinatarios.miembrosIds'] = [];
+            let fechaFin = r.fechaFin;
+            if (fechaFin) {
+              fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
+              if (fechaFin <= ahora && fechaFin >= encCreacion) {
+                solicitanteUid = uid;
+                break;
+              }
             }
-            
-            await db.collection('encuestas').doc(enc.id).update(updateData);
-            enc.destinatarios.solicitanteUid = resultado.solicitadoPor;
-            if (soloSolicitante) enc.destinatarios.miembrosIds = [];
-            console.log('✅ Solicitante resuelto:', resultado.solicitadoPor);
+          }
+
+          // Si no encontramos en reservas, buscar en estancias
+          if (!solicitanteUid) {
+            try {
+              const estanciasSnap = await db.collection('bienes').doc(bienIdVinculado)
+                .collection('estancias').get();
+              for (const doc of estanciasSnap.docs) {
+                const e = doc.data();
+                const uid = e.solicitadoPor || e.creadoPor || e.actualizadoPor;
+                if (!uid) continue;
+                let fechaFin = e.fechaFin;
+                if (fechaFin) {
+                  fechaFin = typeof fechaFin === 'string' ? new Date(fechaFin) : fechaFin.toDate?.() || new Date(fechaFin);
+                  if (fechaFin <= ahora && fechaFin >= encCreacion) {
+                    solicitanteUid = uid;
+                    break;
+                  }
+                }
+              }
+            } catch (e) { /* estancias puede no existir */ }
+          }
+
+          if (solicitanteUid) {
+            await db.collection('encuestas').doc(enc.id).update({
+              'destinatarios.solicitanteUid': solicitanteUid
+            });
+            enc.destinatarios.solicitanteUid = solicitanteUid;
+            console.log('✅ Solicitante resuelto:', solicitanteUid);
+          } else {
+            console.warn('⚠️ No se encontró solicitante para:', enc.titulo);
           }
         } catch (e) {
-          console.error('Error resolviendo solicitante:', e);
+          console.error('❌ Error resolviendo solicitante:', e);
         }
       }
     }
