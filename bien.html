@@ -502,6 +502,24 @@
       background: var(--capataz);
     }
 
+    .modulo-config-card.bloqueado {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .modulo-config-card.bloqueado .modulo-config-check {
+      background: var(--cream-dark);
+      color: transparent;
+    }
+    .modulo-config-card.bloqueado::after {
+      content: '🔒';
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 0.9rem;
+    }
+    .modulo-config-card.bloqueado .modulo-config-check { display: none; }
+
     .btn-desactivar-gestion {
       padding: 8px 14px;
       background: transparent;
@@ -3293,6 +3311,7 @@
     let gastosPeriodo = 'mes';
     let gastosTab = 'registro';
     let inventarioFiltro = 'todos';
+    let configAddons = {}; // Catálogo de módulos disponibles definido por admin-rama
     let calendarioMes = new Date();
     let editingReservaId = null;
     let editingInventarioId = null;
@@ -3335,6 +3354,15 @@
 
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         familiaId = bienData.familiaId;
+
+        // Cargar catálogo de módulos disponibles (definido por admin-rama)
+        try {
+          const familiaDoc = await db.collection('familias').doc(familiaId).get();
+          if (familiaDoc.exists && familiaDoc.data().configAddons) {
+            configAddons = familiaDoc.data().configAddons;
+            console.log('📋 Catálogo addons cargado:', configAddons);
+          }
+        } catch (e) { console.log('Config addons no encontrada, se mostrarán todos'); }
         
         // Verificar rol del usuario
         let esAdminNido = false;
@@ -4176,17 +4204,36 @@
         return;
       }
 
+      // Catálogo definido por admin-rama (si existe)
+      const catalogoDisponibles = configAddons[tipoGestion]?.modulosDisponibles || null;
+      const hayCatalogo = catalogoDisponibles && Object.keys(catalogoDisponibles).length > 0;
+      console.log('📋 Catálogo para', tipoGestion, ':', hayCatalogo ? catalogoDisponibles : 'sin configurar → todos visibles');
+
       Object.keys(descripciones).forEach(key => {
         const mod = descripciones[key];
         const activo = modulos[key] === true;
-        html += `
-          <div class="modulo-config-card ${activo ? 'activo' : ''} ${tipoGestion}" onclick="toggleModuloConfig('${key}', '${tipoGestion}')">
-            <div class="modulo-config-check">✓</div>
-            <div class="modulo-config-icon">${mod.icon}</div>
-            <div class="modulo-config-nombre">${mod.nombre}</div>
-            <div class="modulo-config-desc">${mod.desc}</div>
-          </div>
-        `;
+        // Si admin-rama configuró catálogo, respetar. Si no, todo disponible.
+        const disponible = !hayCatalogo || catalogoDisponibles[key] === true;
+        
+        if (disponible) {
+          html += `
+            <div class="modulo-config-card ${activo ? 'activo' : ''} ${tipoGestion}" onclick="toggleModuloConfig('${key}', '${tipoGestion}')">
+              <div class="modulo-config-check">✓</div>
+              <div class="modulo-config-icon">${mod.icon}</div>
+              <div class="modulo-config-nombre">${mod.nombre}</div>
+              <div class="modulo-config-desc">${mod.desc}</div>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="modulo-config-card bloqueado ${tipoGestion}">
+              <div class="modulo-config-check">✓</div>
+              <div class="modulo-config-icon">${mod.icon}</div>
+              <div class="modulo-config-nombre">${mod.nombre}</div>
+              <div class="modulo-config-desc">No disponible en tu plan</div>
+            </div>
+          `;
+        }
       });
 
       grid.innerHTML = html;
@@ -4199,6 +4246,13 @@
 
     async function toggleModuloConfig(modulo, tipo) {
       try {
+        // Guard: verificar que el módulo está disponible en el catálogo
+        const catalogoDisponibles = configAddons[tipo]?.modulosDisponibles || null;
+        if (catalogoDisponibles && catalogoDisponibles[modulo] !== true) {
+          console.log('🔒 Módulo bloqueado por catálogo:', modulo);
+          return;
+        }
+
         let modulos, field;
         if (tipo === 'mayordomo') {
           modulos = bienData.mayordomoModulos || {};
