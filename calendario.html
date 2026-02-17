@@ -402,6 +402,7 @@
     let userData = null;
     let currentFamilia = null;
     let miNidoPrincipal = null;
+    let nidosMap = {}; // Para calcular estirpe
     let todosEventos = [];
     let eventosFiltrados = [];
     let fechaActual = new Date();
@@ -475,6 +476,12 @@
         if (userData.nidoId) {
           const nidoDoc = await db.collection('nidos').doc(userData.nidoId).get();
           if (nidoDoc.exists) miNidoPrincipal = { id: nidoDoc.id, ...nidoDoc.data() };
+        }
+
+        // Cargar todos los nidos para visibilidad estirpe
+        if (currentFamilia) {
+          const nidosSnap = await db.collection('nidos').where('familiaId', '==', currentFamilia.id).get();
+          nidosSnap.docs.forEach(d => { nidosMap[d.id] = { id: d.id, ...d.data() }; });
         }
 
         // Cargar config del calendario
@@ -681,6 +688,23 @@
       if (!item.visibilidad || item.visibilidad === 'rama') return true;
       if (item.visibilidad === 'nido') {
         return item.nidoId === miNidoPrincipal?.id;
+      }
+      if (item.visibilidad === 'estirpe') {
+        if (!miNidoPrincipal) return false;
+        // Ancestros: subir por nidoOrigen
+        const misAncestros = new Set();
+        let nidoActual = miNidoPrincipal.id;
+        misAncestros.add(nidoActual);
+        while (nidoActual && nidosMap[nidoActual]?.nidoOrigen) {
+          nidoActual = nidosMap[nidoActual].nidoOrigen;
+          misAncestros.add(nidoActual);
+        }
+        // Descendientes directos
+        const misDescendientes = new Set([miNidoPrincipal.id]);
+        Object.values(nidosMap).forEach(n => {
+          if (n.nidoOrigen === miNidoPrincipal.id) misDescendientes.add(n.id);
+        });
+        return misAncestros.has(item.nidoId) || misDescendientes.has(item.nidoId);
       }
       return true;
     }
