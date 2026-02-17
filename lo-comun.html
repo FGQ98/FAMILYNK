@@ -166,6 +166,38 @@
       box-shadow: var(--shadow-float);
     }
 
+    /* Botones acceso directo add-ons */
+    .header-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .addon-shortcuts {
+      display: flex;
+      gap: 6px;
+    }
+    .addon-shortcut {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: white;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      opacity: 0.9;
+    }
+    .addon-shortcut:hover { opacity: 1; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .addon-shortcut.mayordomo { background: var(--sage); }
+    .addon-shortcut.gerente { background: #2D4A5C; }
+    .addon-shortcut.capataz { background: #C17757; }
+    .addon-shortcut.disabled { opacity: 0.35; cursor: default; transform: none !important; box-shadow: none !important; }
+
     .btn-secondary {
       background: var(--cream);
       color: var(--text);
@@ -792,9 +824,16 @@
         <h1 class="page-title">🏠 Lo Común</h1>
         <p class="page-subtitle">Bienes de disfrute compartido de la familia</p>
       </div>
-      <button class="btn btn-primary" id="btn-nuevo-bien" onclick="abrirModalBien()">
-        <span>+</span> Nuevo bien
-      </button>
+      <div class="header-actions">
+        <button class="btn btn-primary" id="btn-nuevo-bien" onclick="abrirModalBien()">
+          <span>+</span> Nuevo bien
+        </button>
+        <div class="addon-shortcuts" id="addon-shortcuts" style="display:none;">
+          <button class="addon-shortcut mayordomo disabled" id="btn-addon-mayordomo" onclick="irAPanelAddon('mayordomo')">🎩 Mayordomo</button>
+          <button class="addon-shortcut gerente disabled" id="btn-addon-gerente" onclick="irAPanelAddon('gerente')">👔 Gerente</button>
+          <button class="addon-shortcut capataz disabled" id="btn-addon-capataz" onclick="irAPanelAddon('capataz')">🌾 Capataz</button>
+        </div>
+      </div>
     </div>
 
     <!-- Filtros -->
@@ -1388,6 +1427,7 @@
         
         document.getElementById('loading').classList.add('hidden');
         renderBienes();
+        actualizarBotonesAddon();
       } catch (error) {
         console.error('Error cargando bienes:', error);
         document.getElementById('loading').classList.add('hidden');
@@ -1486,6 +1526,53 @@
           </div>
         `;
       }).join('');
+    }
+
+    // ========== BOTONES ADDON ==========
+    function actualizarBotonesAddon() {
+      const shortcuts = document.getElementById('addon-shortcuts');
+      if (!esAdmin && !esAdminNido) { shortcuts.style.display = 'none'; return; }
+      
+      const hayMayordomo = bienesData.some(b => b.mayordomoActivo || b.mayordomo?.activo);
+      const hayGerente = bienesData.some(b => b.gerenteActivo || b.gerente?.activo);
+      const hayCapataz = bienesData.some(b => b.capatazActivo || b.capataz?.activo);
+      
+      const btnM = document.getElementById('btn-addon-mayordomo');
+      const btnG = document.getElementById('btn-addon-gerente');
+      const btnC = document.getElementById('btn-addon-capataz');
+      
+      btnM.classList.toggle('disabled', !hayMayordomo);
+      btnG.classList.toggle('disabled', !hayGerente);
+      btnC.classList.toggle('disabled', !hayCapataz);
+      
+      shortcuts.style.display = 'flex';
+    }
+
+    function irAPanelAddon(tipo) {
+      const keys = {
+        mayordomo: { activo: b => b.mayordomoActivo || b.mayordomo?.activo, panel: 'mayordomo.html' },
+        gerente: { activo: b => b.gerenteActivo || b.gerente?.activo, panel: 'gerente.html' },
+        capataz: { activo: b => b.capatazActivo || b.capataz?.activo, panel: 'capataz.html' }
+      };
+      const k = keys[tipo];
+      if (!k) return;
+      
+      const bienesConAddon = bienesData.filter(k.activo);
+      if (bienesConAddon.length === 0) {
+        alert(`No hay bienes con ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} activo.\nActívalo primero en la ficha de un bien.`);
+        return;
+      }
+      if (bienesConAddon.length === 1) {
+        window.location.href = `${k.panel}?id=${bienesConAddon[0].id}`;
+      } else {
+        // Más de 1 bien → dejar elegir
+        const opciones = bienesConAddon.map((b, i) => `${i + 1}. ${b.nombre}`).join('\n');
+        const eleccion = prompt(`¿Qué bien quieres gestionar?\n\n${opciones}\n\nEscribe el número:`);
+        const idx = parseInt(eleccion) - 1;
+        if (idx >= 0 && idx < bienesConAddon.length) {
+          window.location.href = `${k.panel}?id=${bienesConAddon[idx].id}`;
+        }
+      }
     }
 
     // ========== FILTRAR ==========
