@@ -1496,6 +1496,65 @@
     </div>
   </div>
 
+  <!-- Modal Herramienta -->
+  <div class="modal-overlay" id="modal-herramienta">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-herr-titulo">🛠️ Nueva Herramienta</h3>
+        <button class="modal-close" onclick="cerrarModalHerramienta()">×</button>
+      </div>
+      <form id="form-herramienta">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Nombre *</label>
+            <input type="text" class="form-input" id="herr-nombre" placeholder="Ej: Taladro Bosch" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Categoría</label>
+              <select class="form-input" id="herr-categoria">
+                <option value="manual">🔧 Manual</option>
+                <option value="electrica">⚡ Eléctrica</option>
+                <option value="jardin">🌱 Jardín</option>
+                <option value="limpieza">🧹 Limpieza</option>
+                <option value="medicion">📏 Medición</option>
+                <option value="seguridad">🦺 Seguridad</option>
+                <option value="otro">🔨 Otro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Cantidad</label>
+              <input type="number" class="form-input" id="herr-cantidad" value="1" min="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Ubicación</label>
+            <input type="text" class="form-input" id="herr-ubicacion" placeholder="Ej: Garaje, Trastero...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estado</label>
+            <select class="form-input" id="herr-estado">
+              <option value="bueno">✅ Bueno</option>
+              <option value="revisar">⚠️ Revisar</option>
+              <option value="roto">❌ Roto / Inutilizable</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-input" id="herr-notas" rows="2" placeholder="Observaciones..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-danger hidden" id="btn-eliminar-herr" onclick="eliminarHerramienta()">Eliminar</button>
+          <div style="display:flex;gap:12px;">
+            <button type="button" class="btn btn-secondary" onclick="cerrarModalHerramienta()">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal Ver Todos -->
   <div class="modal-overlay" id="modal-ver-todos">
     <div class="modal" style="max-width: 600px; max-height: 80vh;">
@@ -1991,7 +2050,8 @@
               if (!grupo?.articulos) continue;
               for (const [articuloKey, articulo] of Object.entries(grupo.articulos)) {
                 itemsArray.push({
-                  id: articuloKey,
+                  id: `${lugarKey}_${grupoKey}_${articuloKey}`,
+                  articuloIdx: parseInt(articuloKey),
                   lugarKey,
                   lugarNombre: lugar.nombre || lugarKey,
                   grupoKey,
@@ -2739,7 +2799,7 @@
     }
 
     async function ajustarInventario(itemId, delta) {
-      const item = datosModulos.inventario.find(i => i.id == itemId);
+      const item = datosModulos.inventario.find(i => i.id === itemId);
       if (!item) return;
 
       const nuevoStock = Math.max(0, item.stockActual + delta);
@@ -2757,13 +2817,10 @@
           inventarioActual = bienDoc.data()?.inventario || {};
         }
         
-        // Actualizar en la estructura anidada
+        // Actualizar en la estructura anidada usando índice directo
         const lugar = inventarioActual[item.lugarKey];
-        if (lugar?.grupos?.[item.grupoKey]?.articulos) {
-          const artIdx = lugar.grupos[item.grupoKey].articulos.findIndex(a => a.nombre === item.nombre);
-          if (artIdx >= 0) {
-            lugar.grupos[item.grupoKey].articulos[artIdx].actual = nuevoStock;
-          }
+        if (lugar?.grupos?.[item.grupoKey]?.articulos?.[item.articuloIdx]) {
+          lugar.grupos[item.grupoKey].articulos[item.articuloIdx].actual = nuevoStock;
         }
         
         // Guardar en subcolección
@@ -3268,7 +3325,14 @@
 
     // ========== HERRAMIENTAS ==========
     function renderModuloHerramientas() {
-      const p = permisosActuales.herramientas || permisosActuales.inventario;
+      const pHerr = permisosActuales.herramientas || {};
+      const pInv = permisosActuales.inventario || {};
+      const p = {
+        ver: pHerr.ver || pInv.ver || false,
+        crear: pHerr.crear || pInv.crear || false,
+        editar: pHerr.editar || pInv.editar || false,
+        borrar: pHerr.borrar || pInv.borrar || false
+      };
       const catIcons = { manual: '🔧', electrica: '⚡', jardin: '🌱', limpieza: '🧹', medicion: '📏', seguridad: '🦺', otro: '🔨' };
       const total = datosModulos.herramientas.length;
 
@@ -3280,7 +3344,7 @@
         itemsHtml = '<div class="item-list">' + items.map(h => {
           const estadoClass = h.estado === 'bueno' ? 'success' : h.estado === 'revisar' ? 'warning' : '';
           return `
-            <div class="item-row no-hover">
+            <div class="item-row ${p.editar ? '' : 'no-hover'}" ${p.editar ? `onclick="abrirModalHerramienta('${h.id}')" style="cursor:pointer"` : ''}>
               <span class="item-icon">${catIcons[h.categoria] || '🔨'}</span>
               <div class="item-content">
                 <div class="item-title">${h.nombre}</div>
@@ -3292,6 +3356,14 @@
         }).join('') + '</div>';
       }
 
+      let footerHtml = '';
+      if (total > 6 || p.crear) {
+        footerHtml = `<div class="modulo-card-footer">
+          ${total > 6 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas</button>` : ''}
+          ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalHerramienta()">+ Nueva</button>` : ''}
+        </div>`;
+      }
+
       return `
         <div class="modulo-card">
           <div class="modulo-card-header">
@@ -3299,11 +3371,7 @@
             <div class="modulo-card-permisos">${renderPermisosBadges('herramientas')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
-          ${total > 6 ? `
-            <div class="modulo-card-footer">
-              <button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas</button>
-            </div>
-          ` : ''}
+          ${footerHtml}
         </div>
       `;
     }
@@ -3833,6 +3901,88 @@
       }
     });
 
+    // ========== HERRAMIENTAS ==========
+    let editingHerramientaId = null;
+
+    function abrirModalHerramienta(id = null) {
+      editingHerramientaId = id;
+      
+      if (id) {
+        const herr = datosModulos.herramientas.find(h => h.id === id);
+        if (herr) {
+          document.getElementById('modal-herr-titulo').textContent = '🛠️ Editar Herramienta';
+          document.getElementById('herr-nombre').value = herr.nombre || '';
+          document.getElementById('herr-categoria').value = herr.categoria || 'otro';
+          document.getElementById('herr-cantidad').value = herr.cantidad || 1;
+          document.getElementById('herr-ubicacion').value = herr.ubicacion || '';
+          document.getElementById('herr-estado').value = herr.estado || 'bueno';
+          document.getElementById('herr-notas').value = herr.notas || '';
+          document.getElementById('btn-eliminar-herr').classList.remove('hidden');
+        }
+      } else {
+        document.getElementById('modal-herr-titulo').textContent = '🛠️ Nueva Herramienta';
+        document.getElementById('form-herramienta').reset();
+        document.getElementById('herr-cantidad').value = 1;
+        document.getElementById('btn-eliminar-herr').classList.add('hidden');
+      }
+      
+      document.getElementById('modal-herramienta').classList.add('active');
+    }
+
+    function cerrarModalHerramienta() {
+      document.getElementById('modal-herramienta').classList.remove('active');
+      editingHerramientaId = null;
+    }
+
+    document.getElementById('form-herramienta').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const data = {
+        nombre: document.getElementById('herr-nombre').value.trim(),
+        categoria: document.getElementById('herr-categoria').value,
+        cantidad: parseInt(document.getElementById('herr-cantidad').value) || 1,
+        ubicacion: document.getElementById('herr-ubicacion').value.trim(),
+        estado: document.getElementById('herr-estado').value,
+        notas: document.getElementById('herr-notas').value.trim(),
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        const ref = db.collection('bienes').doc(bienActual.bienId).collection('herramientas');
+        
+        if (editingHerramientaId) {
+          await ref.doc(editingHerramientaId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+
+        cerrarModalHerramienta();
+        await cargarDatosModulos();
+        renderModulos();
+        
+      } catch (error) {
+        console.error('Error guardando herramienta:', error);
+        alert('Error al guardar: ' + error.message);
+      }
+    });
+
+    async function eliminarHerramienta() {
+      if (!editingHerramientaId || !confirm('¿Eliminar esta herramienta?')) return;
+      
+      try {
+        await db.collection('bienes').doc(bienActual.bienId)
+          .collection('herramientas').doc(editingHerramientaId).delete();
+        cerrarModalHerramienta();
+        await cargarDatosModulos();
+        renderModulos();
+      } catch (error) {
+        console.error('Error eliminando herramienta:', error);
+        alert('Error al eliminar: ' + error.message);
+      }
+    }
+
     // ========== VER TODOS ==========
     function verTodos(tipo) {
       const modal = document.getElementById('modal-ver-todos');
@@ -3885,11 +4035,14 @@
       }
       
       else if (tipo === 'herramientas') {
+        const pHerr = permisosActuales.herramientas || {};
+        const pInv = permisosActuales.inventario || {};
+        const pEdit = pHerr.editar || pInv.editar || false;
         titulo.textContent = `🛠️ Todas las Herramientas (${datosModulos.herramientas.length})`;
         html = '<div class="item-list">' + datosModulos.herramientas.map(h => {
           const estadoClass = h.estado === 'bueno' ? 'success' : h.estado === 'revisar' ? 'warning' : '';
           return `
-            <div class="item-row no-hover">
+            <div class="item-row ${pEdit ? '' : 'no-hover'}" ${pEdit ? `onclick="cerrarModalTodos(); abrirModalHerramienta('${h.id}')" style="cursor:pointer"` : ''}>
               <span class="item-icon">${catIconsHerr[h.categoria] || '🔨'}</span>
               <div class="item-content">
                 <div class="item-title">${h.nombre}</div>
@@ -3988,15 +4141,14 @@
         // Actualizar valores según los inputs
         inputs.forEach(input => {
           const nuevoValor = parseInt(input.value) || 0;
-          const item = datosModulos.inventario.find(i => i.id == input.dataset.itemId);
+          const item = datosModulos.inventario.find(i => i.id === input.dataset.itemId);
           
           if (item && item.stockActual !== nuevoValor) {
-            // Actualizar en la estructura anidada
             const lugar = inventarioActual[item.lugarKey];
             if (lugar?.grupos?.[item.grupoKey]?.articulos) {
-              const artIdx = lugar.grupos[item.grupoKey].articulos.findIndex(a => a.nombre === item.nombre);
-              if (artIdx >= 0) {
-                lugar.grupos[item.grupoKey].articulos[artIdx].actual = nuevoValor;
+              const art = lugar.grupos[item.grupoKey].articulos[item.articuloIdx];
+              if (art) {
+                art.actual = nuevoValor;
                 item.stockActual = nuevoValor;
                 cambios++;
               }
