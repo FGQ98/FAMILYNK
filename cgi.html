@@ -755,13 +755,6 @@
     .cta-convocar { border-color: #00897B; }
     .cta-convocar:hover { background: rgba(0, 137, 123, 0.1); border-color: #00695C; }
 
-    .cta-mercadear { border-color: #8D6E63; }
-    .cta-mercadear:hover { background: rgba(141, 110, 99, 0.12); border-color: #6D4C41; }
-    .cta-listar { border-color: #26A69A; }
-    .cta-listar:hover { background: rgba(38, 166, 154, 0.12); border-color: #00897B; }
-    .cta-votar { border-color: #5C6BC0; }
-    .cta-votar:hover { background: rgba(92, 107, 192, 0.12); border-color: #3949AB; }
-
     /* ============ MODALES ============ */
     .modal-overlay {
       position: fixed;
@@ -1005,8 +998,7 @@
     .nido-col { grid-column: 1; grid-row: 1; }
     .plan-col { grid-column: 1; grid-row: 2; align-self: start; }
     .calendario-col { grid-column: 2; grid-row: 1 / 3; }
-    .reservas-col { grid-column: 3; grid-row: 1; align-self: start; }
-    .mensajes-col { grid-column: 3; grid-row: 2; }
+    .mensajes-col { grid-column: 3; grid-row: 1; }
     .tablon-col { grid-column: 4; grid-row: 1 / 3; }
     
     /* Limitar altura de cards grandes en desktop */
@@ -2521,7 +2513,7 @@
         max-height: none;
       }
       /* Reset posiciones desktop */
-      .nido-col, .plan-col, .calendario-col, .reservas-col,
+      .nido-col, .plan-col, .calendario-col,
       .mensajes-col, .tablon-col, .mis-bienes-col, .buzon-col {
         grid-column: auto;
         grid-row: auto;
@@ -2579,8 +2571,7 @@
         grid-row: auto !important;
       }
 
-      /* Orden móvil: CTAs (fuera del grid) → Mis Reservas → Calendario → Tablón → Bienes → resto */
-      .reservas-col { order: 0; }
+      /* Orden móvil: CTAs (fuera del grid) → Calendario → Tablón → Bienes → resto */
       .calendario-col { order: 1; }
       .tablon-col { display: block; order: 2; }
       .mis-bienes-col { order: 3; }
@@ -2594,7 +2585,6 @@
         max-height: 260px;
         overflow-y: auto;
       }
-      .reservas-col .card-body { max-height: 180px; }
       .calendario-col .card-body { max-height: 300px; }
       .tablon-col .card-body { max-height: 260px; }
       .buzon-col .card-body { max-height: 260px; }
@@ -3224,18 +3214,6 @@
           <span class="cta-icon">⭐</span>
           <span class="cta-label">Encuestar</span>
         </button>
-        <button class="cta-btn cta-mercadear" id="cta-mercadear" onclick="window.location.href='mercadillo.html'">
-          <span class="cta-icon">🏪</span>
-          <span class="cta-label">Mercadear</span>
-        </button>
-        <button class="cta-btn cta-listar" id="cta-listar" onclick="window.location.href='herramienta-listas.html'">
-          <span class="cta-icon">✅</span>
-          <span class="cta-label">Listar</span>
-        </button>
-        <button class="cta-btn cta-votar" id="cta-votar" onclick="window.location.href='herramienta-votaciones.html'">
-          <span class="cta-icon">🗳️</span>
-          <span class="cta-label">Votar</span>
-        </button>
       </div>
 
       <!-- Card Alertas de Gestión (solo admin-rama) -->
@@ -3311,21 +3289,6 @@
                 <button class="btn-toggle-calendario" onclick="window.location.href='calendario.html'">
                   <span>📆</span> <span>Ver calendario completo</span>
                 </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mis Reservas -->
-        <div class="reservas-col">
-          <div class="card">
-            <div class="card-header">
-              <span class="card-title">📅 Mis Reservas</span>
-              <a href="solicitud-preparacion.html" class="card-action">Ver todas →</a>
-            </div>
-            <div class="card-body">
-              <div id="mis-reservas-resumen">
-                <div class="empty-mini"><div class="empty-mini-icon">⏳</div>Cargando...</div>
               </div>
             </div>
           </div>
@@ -4576,7 +4539,7 @@
       await verificarTiendaDisponible();
       
       await cargarEventosCalendario();
-      cargarMisReservasResumen(); // Cargar card Mis Reservas (no bloquea)
+      // Card Mis Reservas eliminada — se accede desde CTA Solicitar
       renderCalendario();
       await renderMensajes();
       await renderTablon();
@@ -6094,92 +6057,7 @@
     }
 
     // ============ CARD MIS RESERVAS (resumen) ============
-    async function cargarMisReservasResumen() {
-      const container = document.getElementById('mis-reservas-resumen');
-      if (!container) { console.warn('❌ Mis Reservas: container no encontrado'); return; }
-      if (!currentUser) { console.warn('❌ Mis Reservas: currentUser no disponible'); return; }
-      if (!currentFamilia) { console.warn('❌ Mis Reservas: currentFamilia no disponible'); return; }
-
-      console.log('🔍 Mis Reservas: buscando para uid:', currentUser.uid, 'familia:', currentFamilia.id);
-
-      try {
-        // DATO ÚNICO: collectionGroup para mis reservas activas
-        const snap = await db.collectionGroup('reservas')
-          .where('solicitadoPor', '==', currentUser.uid)
-          .where('familiaId', '==', currentFamilia.id)
-          .get();
-
-        console.log('✅ Mis Reservas: encontradas', snap.size, 'docs');
-        snap.docs.forEach(doc => {
-          const d = doc.data();
-          console.log('  📄', doc.id, '| estado:', d.estado, '| tipo:', d.tipo, '| tipoReserva:', d.tipoReserva, '| path:', doc.ref.path);
-        });
-
-        // Filtrar solo activas (no canceladas)
-        const activas = snap.docs
-          .map(doc => {
-            const data = doc.data();
-            const pathParts = doc.ref.path.split('/');
-            return { id: doc.id, bienId: pathParts[1] || null, ...data };
-          })
-          .filter(r => r.estado !== 'cancelada')
-          .sort((a, b) => {
-            // Futuras primero, luego por fecha
-            const fa = a.fechaInicio || '';
-            const fb = b.fechaInicio || '';
-            return fa > fb ? 1 : -1;
-          });
-
-        if (activas.length === 0) {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📅</div>Sin reservas activas</div>';
-          return;
-        }
-
-        // Contar por estado
-        const pendientes = activas.filter(r => r.estado === 'pendiente').length;
-        const aprobadas = activas.filter(r => ['aprobada', 'confirmada'].includes(r.estado)).length;
-        const borradores = activas.filter(r => r.estado === 'borrador').length;
-
-        // Mostrar resumen + últimas 3
-        let html = '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">';
-        if (pendientes > 0) html += `<span style="background:#FEF3C7;color:#92400E;padding:2px 10px;border-radius:12px;font-size:0.8rem;font-weight:600;">⏳ ${pendientes} pendiente${pendientes > 1 ? 's' : ''}</span>`;
-        if (aprobadas > 0) html += `<span style="background:#D1FAE5;color:#065F46;padding:2px 10px;border-radius:12px;font-size:0.8rem;font-weight:600;">✅ ${aprobadas} aprobada${aprobadas > 1 ? 's' : ''}</span>`;
-        if (borradores > 0) html += `<span style="background:#F3F4F6;color:#6B7280;padding:2px 10px;border-radius:12px;font-size:0.8rem;font-weight:600;">📝 ${borradores} borrador${borradores > 1 ? 'es' : ''}</span>`;
-        html += '</div>';
-
-        // Últimas 3 reservas
-        const ultimas = activas.slice(0, 3);
-        ultimas.forEach(r => {
-          const estadoColor = r.estado === 'pendiente' ? '#f59e0b' : ['aprobada', 'confirmada'].includes(r.estado) ? '#22c55e' : '#9CA3AF';
-          const fechas = r.fechaInicio ? `${r.fechaInicio} → ${r.fechaFin || '?'}` : 'Sin fechas';
-          html += `
-            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cream-dark);">
-              <div style="width:4px;height:32px;border-radius:2px;background:${estadoColor};flex-shrink:0;"></div>
-              <div style="flex:1;min-width:0;">
-                <div style="font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.nombre || r.bienNombre || 'Reserva'}</div>
-                <div style="font-size:0.75rem;color:var(--text-muted);">${fechas}</div>
-              </div>
-            </div>`;
-        });
-
-        if (activas.length > 3) {
-          html += `<div style="text-align:center;padding-top:6px;font-size:0.8rem;color:var(--sage-dark);">+ ${activas.length - 3} más</div>`;
-        }
-
-        container.innerHTML = html;
-
-      } catch (error) {
-        console.error('❌ Error cargando resumen reservas:', error);
-        if (error.code === 'failed-precondition' || error.message?.includes('index')) {
-          // Firebase incluye URL para crear el índice en el mensaje de error
-          const urlMatch = error.message?.match(/(https:\/\/console\.firebase\.google\.com[^\s]+)/);
-          const enlace = urlMatch ? `<br><a href="${urlMatch[1]}" target="_blank" style="color:var(--sage-dark);font-size:0.7rem;">Crear índice →</a>` : '';
-          container.innerHTML = `<div class="empty-mini"><div class="empty-mini-icon">⚠️</div>Índice pendiente${enlace}</div>`;
-        } else {
-          container.innerHTML = '<div class="empty-mini"><div class="empty-mini-icon">📅</div>Sin reservas</div>';
-        }
-      }
-    }
+    // Card Mis Reservas eliminada — se accede desde CTA Solicitar → solicitud-preparacion.html
 
     // ============ TABLÓN (REAL) ============
     let notificacionesData = [];
