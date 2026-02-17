@@ -35,6 +35,12 @@
     .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
     .btn-danger { background: #D4695A; color: white; }
 
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab { flex: 1; padding: 10px; background: var(--white); border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
+    .tab:hover { border-color: var(--sage-light); }
+    .tab.active { background: var(--sage); color: white; border-color: var(--sage); }
+
     /* Cards de votaciones */
     .votaciones-grid {
       display: flex;
@@ -280,7 +286,7 @@
 </head>
 <body>
   <header class="header">
-    <a href="activacion.html" class="back-btn">← Activación</a>
+    <a href="cgi.html" class="back-btn">← Volver</a>
   </header>
 
   <main class="main">
@@ -290,6 +296,12 @@
         <p class="page-subtitle">Decide cuestiones con la familia</p>
       </div>
       <button class="btn btn-primary" onclick="abrirModal()">+ Nueva votación</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" id="tab-activas" onclick="cambiarTab('activas')">🔥 Activas <span id="count-activas"></span></button>
+      <button class="tab" id="tab-cerradas" onclick="cambiarTab('cerradas')">📊 Cerradas <span id="count-cerradas"></span></button>
     </div>
 
     <div id="loading" class="loading"><div class="spinner"></div></div>
@@ -352,6 +364,18 @@
               Votación anónima (no mostrar quién votó qué)
             </label>
           </div>
+
+          <div class="form-group">
+            <label class="form-label">⏰ Cierre automático</label>
+            <select class="form-input" id="votacion-cierre" style="padding:10px 14px;">
+              <option value="0">Sin límite</option>
+              <option value="1">En 1 día</option>
+              <option value="3">En 3 días</option>
+              <option value="7" selected>En 1 semana</option>
+              <option value="14">En 2 semanas</option>
+              <option value="30">En 1 mes</option>
+            </select>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
@@ -372,6 +396,7 @@
     let ramaId = null;
     let votacionesData = [];
     let miembrosData = [];
+    let tabActual = 'activas';
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -412,86 +437,101 @@
           .get();
 
         votacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        document.getElementById('loading').classList.add('hidden');
-        renderVotaciones();
       } catch (error) {
-        console.error('Error:', error);
-        // Fallback
+        console.error('Error con orderBy, fallback:', error);
         try {
           const snap = await db.collection('votaciones')
             .where('ramaId', '==', ramaId)
             .get();
           votacionesData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          document.getElementById('loading').classList.add('hidden');
-          renderVotaciones();
         } catch (e) {
           document.getElementById('loading').classList.add('hidden');
           document.getElementById('empty-state').classList.remove('hidden');
+          return;
         }
       }
+
+      // Cierre automático: cerrar votaciones cuya fechaCierre haya pasado
+      const ahora = new Date();
+      for (let v of votacionesData) {
+        if (!v.cerrada && v.fechaCierre) {
+          const fechaCierre = v.fechaCierre.toDate ? v.fechaCierre.toDate() : new Date(v.fechaCierre);
+          if (fechaCierre < ahora) {
+            try {
+              await db.collection('votaciones').doc(v.id).update({ cerrada: true });
+              v.cerrada = true;
+            } catch (e) { console.error('Error cerrando votación:', e); }
+          }
+        }
+      }
+
+      document.getElementById('loading').classList.add('hidden');
+      renderVotaciones();
+    }
+
+    function cambiarTab(tab) {
+      tabActual = tab;
+      document.getElementById('tab-activas').classList.toggle('active', tab === 'activas');
+      document.getElementById('tab-cerradas').classList.toggle('active', tab === 'cerradas');
+      renderVotaciones();
     }
 
     function renderVotaciones() {
       const container = document.getElementById('votaciones-grid');
       const empty = document.getElementById('empty-state');
 
-      if (votacionesData.length === 0) {
+      // Contar para badges
+      const activas = votacionesData.filter(v => !v.cerrada);
+      const cerradas = votacionesData.filter(v => v.cerrada);
+      document.getElementById('count-activas').textContent = activas.length > 0 ? `(${activas.length})` : '';
+      document.getElementById('count-cerradas').textContent = cerradas.length > 0 ? `(${cerradas.length})` : '';
+
+      // Filtrar por tab
+      const filtradas = tabActual === 'activas' ? activas : cerradas;
+
+      if (filtradas.length === 0) {
         container.classList.add('hidden');
         empty.classList.remove('hidden');
+        document.querySelector('#empty-state .empty-text').innerHTML = 
+          tabActual === 'activas' 
+            ? 'No hay votaciones activas.<br>¡Crea una para decidir algo en familia!' 
+            : 'No hay votaciones cerradas todavía.';
         return;
       }
 
       empty.classList.add('hidden');
       container.classList.remove('hidden');
 
-      container.innerHTML = votacionesData.map(v => {
+      container.innerHTML = filtradas.map(v => {
         const creador = miembrosData.find(m => m.id === v.creadoPor);
         const votos = v.votos || {};
         const totalVotantes = Object.keys(votos).length;
-        const yaVote = votos[currentUser.uid] !== undefined;
 
-        // Contar votos por opción
+        // Contar votos por opción (limpio, sin duplicados)
         const conteoOpciones = {};
         v.opciones.forEach((_, i) => conteoOpciones[i] = { count: 0, votantes: [] });
         
-        Object.entries(votos).forEach(([odId, selecciones]) => {
+        Object.entries(votos).forEach(([uid, selecciones]) => {
           const sels = Array.isArray(selecciones) ? selecciones : [selecciones];
+          const votante = miembrosData.find(m => m.id === uid);
           sels.forEach(s => {
             if (conteoOpciones[s]) {
               conteoOpciones[s].count++;
-              const votante = miembrosData.find(m => m.id === odId);
               if (votante) conteoOpciones[s].votantes.push(votante.nombre || 'Anónimo');
             }
           });
         });
 
-        // Corregir: obtener votantes correctamente
-        Object.entries(votos).forEach(([odId, selecciones]) => {
-          const sels = Array.isArray(selecciones) ? selecciones : [selecciones];
-          sels.forEach(s => {
-            const votante = miembrosData.find(m => m.id === odId);
-            if (votante && conteoOpciones[s]) {
-              // Ya contado arriba, pero necesitamos los nombres
-            }
-          });
-        });
-
-        // Recalcular votantes
-        v.opciones.forEach((_, i) => conteoOpciones[i].votantes = []);
-        Object.entries(votos).forEach(([odId, selecciones]) => {
-          const sels = Array.isArray(selecciones) ? selecciones : [selecciones];
-          const votante = miembrosData.find(m => m.id === odId);
-          sels.forEach(s => {
-            if (conteoOpciones[s] && votante) {
-              conteoOpciones[s].votantes.push(votante.nombre || 'Anónimo');
-            }
-          });
-        });
-
-        const maxVotos = Math.max(...Object.values(conteoOpciones).map(c => c.count), 1);
         const misVotos = votos[currentUser.uid] || [];
         const misVotosArray = Array.isArray(misVotos) ? misVotos : [misVotos];
+
+        // Info de cierre
+        let cierreInfo = '';
+        if (!v.cerrada && v.fechaCierre) {
+          const fc = v.fechaCierre.toDate ? v.fechaCierre.toDate() : new Date(v.fechaCierre);
+          const dias = Math.ceil((fc - new Date()) / (1000 * 60 * 60 * 24));
+          cierreInfo = dias > 0 ? `<span>⏰ Cierra en ${dias}d</span>` : '';
+        }
 
         return `
           <div class="votacion-card">
@@ -530,7 +570,7 @@
               </div>
             </div>
             <div class="votacion-footer">
-              <span class="total-votos">${totalVotantes} de ${miembrosData.length} han votado</span>
+              <span class="total-votos">${totalVotantes} de ${miembrosData.length} han votado ${cierreInfo}</span>
               ${v.creadoPor === currentUser.uid ? `
                 <div style="display:flex;gap:8px;">
                   ${!v.cerrada ? `<button class="btn btn-sm btn-secondary" onclick="cerrarVotacion('${v.id}')">🔒 Cerrar</button>` : ''}
@@ -656,6 +696,7 @@
       const pregunta = document.getElementById('votacion-pregunta').value.trim();
       const multiple = document.getElementById('votacion-multiple').checked;
       const anonima = document.getElementById('votacion-anonima').checked;
+      const diasCierre = parseInt(document.getElementById('votacion-cierre').value) || 0;
       
       const opcionesInputs = document.querySelectorAll('.opcion-input-item input');
       const opciones = [];
@@ -668,6 +709,14 @@
         return;
       }
 
+      // Calcular fecha de cierre
+      let fechaCierre = null;
+      if (diasCierre > 0) {
+        const fc = new Date();
+        fc.setDate(fc.getDate() + diasCierre);
+        fechaCierre = firebase.firestore.Timestamp.fromDate(fc);
+      }
+
       try {
         await db.collection('votaciones').add({
           pregunta,
@@ -676,6 +725,7 @@
           anonima,
           votos: {},
           cerrada: false,
+          fechaCierre,
           ramaId,
           creadoPor: currentUser.uid,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
