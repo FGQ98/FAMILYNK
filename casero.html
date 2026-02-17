@@ -1800,8 +1800,8 @@
       const acceso = bienesAcceso[index];
       bienActual = acceso;
       
-      // Cargar permisos globales desde la familia (prioridad) o usar los del casero individual
-      permisosActuales = await cargarPermisosGlobales(acceso.bien.familiaId, 'casero', acceso.permisos);
+      // Cargar permisos del bien (fuente única de verdad)
+      permisosActuales = procesarPermisosBien(acceso.permisos);
 
       // Verificar que Mayordomo esté activo
       const mayordomoActivo = acceso.bien.mayordomoActivo === true;
@@ -1831,74 +1831,52 @@
       await cargarNormasYConfig();
     }
 
-    // Cargar permisos globales desde familias/{id}/permisosExternos
-    async function cargarPermisosGlobales(familiaId, tipoExterno, permisosFallback) {
-      console.log('=== cargarPermisosGlobales ===');
-      console.log('familiaId:', familiaId);
-      console.log('tipoExterno:', tipoExterno);
-      
-      try {
-        const familiaDoc = await db.collection('familias').doc(familiaId).get();
-        
-        if (familiaDoc.exists) {
-          const data = familiaDoc.data();
-          console.log('Familia data.permisosExternos:', data.permisosExternos);
-          const permisosGlobales = data.permisosExternos?.[tipoExterno];
-          console.log('Permisos para', tipoExterno, ':', permisosGlobales);
-          
-          if (permisosGlobales && Object.keys(permisosGlobales).length > 0) {
-            // Mapear cards a bloques según nueva estructura
-            const mapeoCardABloque = {
-              // RESERVAS
-              calendario: 'reservas',
-              // INVENTARIO
-              tomaInventario: 'inventario',
-              reparaciones: 'inventario',
-              herramientas: 'inventario',
-              // PLANES SEMANALES
-              planSemanalMto: 'planesSem',
-              manualMto: 'planesSem',
-              mtoProgramado: 'planesSem',
-              planSemanalLimp: 'planesSem',
-              zonasTareas: 'planesSem',
-              limpiezaProg: 'planesSem',
-              instalaciones: 'planesSem',
-              informeEstancia: 'planesSem',
-              // GASTOS
-              registro: 'gastos'
-            };
-            
-            const permisosMapeados = {};
-            
-            // Primero pasar todas las cards individuales
-            for (const [cardId, vceb] of Object.entries(permisosGlobales)) {
-              permisosMapeados[cardId] = {
-                ver: vceb.v === true,
-                crear: vceb.c === true,
-                editar: vceb.e === true,
-                borrar: vceb.b === true
-              };
-              
-              // Además, activar el bloque padre si alguna card tiene "ver"
-              const bloque = mapeoCardABloque[cardId];
-              if (bloque && vceb.v) {
-                if (!permisosMapeados[bloque]) {
-                  permisosMapeados[bloque] = { ver: false, crear: false, editar: false, borrar: false };
-                }
-                permisosMapeados[bloque].ver = true;
-              }
-            }
-            
-            console.log('Permisos mapeados final:', permisosMapeados);
-            return permisosMapeados;
-          }
-        }
-      } catch (error) {
-        console.error('Error cargando permisos globales:', error);
+    // Procesar permisos del bien (fuente única — ya no se lee de familia)
+    function procesarPermisosBien(permisosBien) {
+      if (!permisosBien || Object.keys(permisosBien).length === 0) {
+        console.log('Sin permisos en el bien, usando vacío');
+        return {};
       }
-      
-      console.log('Usando fallback:', permisosFallback);
-      return permisosFallback || {};
+
+      const mapeoCardABloque = {
+        calendario: 'reservas',
+        tomaInventario: 'inventario',
+        reparaciones: 'inventario',
+        herramientas: 'inventario',
+        planSemanalMto: 'planesSem',
+        manualMto: 'planesSem',
+        mtoProgramado: 'planesSem',
+        planSemanalLimp: 'planesSem',
+        zonasTareas: 'planesSem',
+        limpiezaProg: 'planesSem',
+        instalaciones: 'planesSem',
+        informeEstancia: 'planesSem',
+        registro: 'gastos'
+      };
+
+      const resultado = {};
+
+      for (const [cardId, vceb] of Object.entries(permisosBien)) {
+        // Soportar ambos formatos: {v:true, c:false} y {ver:true, crear:false}
+        resultado[cardId] = {
+          ver: vceb.v === true || vceb.ver === true,
+          crear: vceb.c === true || vceb.crear === true,
+          editar: vceb.e === true || vceb.editar === true,
+          borrar: vceb.b === true || vceb.borrar === true
+        };
+
+        // Activar bloque padre si alguna card tiene "ver"
+        const bloque = mapeoCardABloque[cardId];
+        if (bloque && resultado[cardId].ver) {
+          if (!resultado[bloque]) {
+            resultado[bloque] = { ver: false, crear: false, editar: false, borrar: false };
+          }
+          resultado[bloque].ver = true;
+        }
+      }
+
+      console.log('Permisos del bien procesados:', resultado);
+      return resultado;
     }
 
     // ========== FUNCIONES AUXILIARES PLAN SEMANAL ==========
