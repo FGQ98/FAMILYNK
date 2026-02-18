@@ -1103,12 +1103,22 @@
         
         <!-- Catálogo de módulos -->
         <div class="card">
-          <div class="card-title">📋 Módulos disponibles</div>
+          <div class="card-title">📦 Módulos de gestión</div>
           <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
-            Define qué módulos están disponibles para los bienes con Mayordomo activo
+            Activa o desactiva los módulos que estarán disponibles en los bienes con Mayordomo
           </p>
           <div class="addon-modulos-grid" id="modulos-mayordomo"></div>
-          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('mayordomo')" style="margin-top:8px;">💾 Guardar catálogo</button>
+          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('mayordomo')" style="margin-top:8px;">💾 Guardar</button>
+        </div>
+
+        <!-- Parámetros -->
+        <div class="card">
+          <div class="card-title">⚙️ Otros parámetros</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+            Funcionalidades extra opcionales para bienes con Mayordomo
+          </p>
+          <div class="addon-modulos-grid" id="params-mayordomo"></div>
+          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('mayordomo')" style="margin-top:8px;">💾 Guardar</button>
         </div>
         
         <!-- Bienes con este add-on -->
@@ -1129,12 +1139,21 @@
         </div>
         
         <div class="card">
-          <div class="card-title">📋 Módulos disponibles</div>
+          <div class="card-title">📦 Módulos de gestión</div>
           <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
-            Define qué módulos están disponibles para los bienes con Gerente activo
+            Activa o desactiva los módulos que estarán disponibles en los bienes con Gerente
           </p>
           <div class="addon-modulos-grid" id="modulos-gerente"></div>
-          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('gerente')" style="margin-top:8px;">💾 Guardar catálogo</button>
+          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('gerente')" style="margin-top:8px;">💾 Guardar</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">⚙️ Otros parámetros</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+            Funcionalidades extra opcionales para bienes con Gerente
+          </p>
+          <div class="addon-modulos-grid" id="params-gerente"></div>
+          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('gerente')" style="margin-top:8px;">💾 Guardar</button>
         </div>
         
         <div class="card">
@@ -1154,12 +1173,21 @@
         </div>
         
         <div class="card">
-          <div class="card-title">📋 Módulos disponibles</div>
+          <div class="card-title">📦 Módulos de gestión</div>
           <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
-            Define qué módulos están disponibles para los bienes con Capataz activo
+            Activa o desactiva los módulos que estarán disponibles en los bienes con Capataz
           </p>
           <div class="addon-modulos-grid" id="modulos-capataz"></div>
-          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('capataz')" style="margin-top:8px;">💾 Guardar catálogo</button>
+          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('capataz')" style="margin-top:8px;">💾 Guardar</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">⚙️ Otros parámetros</div>
+          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:16px;">
+            Funcionalidades extra opcionales para bienes con Capataz
+          </p>
+          <div class="addon-modulos-grid" id="params-capataz"></div>
+          <button class="btn btn-primary btn-sm" onclick="guardarCatalogoAddon('capataz')" style="margin-top:8px;">💾 Guardar</button>
         </div>
         
         <div class="card">
@@ -2255,53 +2283,88 @@
 
     // ============ ADD-ONS ============
     let addonActual = 'mayordomo';
-    let configAddons = {}; // Config global de la familia
+    let configAddons = {}; // Config de esta familia (qué ha activado admin-rama)
+    let catalogoSistema = {}; // Lo que define admin-sistema (fuente de verdad)
 
-    // Definición de módulos por add-on (catálogo máximo)
-    const CATALOGO_MODULOS = {
+    // Fallback local si config/addons no existe aún en Firebase
+    const CATALOGO_FALLBACK = {
       mayordomo: {
-        reservas: { icon: '📅', nombre: 'Reservas' },
-        inventario: { icon: '📦', nombre: 'Inventario' },
-        ajuar: { icon: '🪑', nombre: 'Ajuar' },
-        menus: { icon: '🍽️', nombre: 'Menús' },
-        gastos: { icon: '💰', nombre: 'Gastos' },
-        mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' },
-        limpieza: { icon: '🧹', nombre: 'Limpieza' },
-        eventos: { icon: '🎉', nombre: 'Eventos' },
-        planLimpieza: { icon: '📋', nombre: 'Plan Limpieza' },
-        prepararSemana: { icon: '📝', nombre: 'Preparar Semana' },
-        especiales: { icon: '⭐', nombre: 'Especiales' },
-        informes: { icon: '📄', nombre: 'Informes' }
+        modulos: {
+          reservas: { icon: '📅', nombre: 'Reservas' }, inventario: { icon: '📦', nombre: 'Inventario' },
+          ajuar: { icon: '🪑', nombre: 'Ajuar' }, menus: { icon: '🍽️', nombre: 'Menús' },
+          gastos: { icon: '💰', nombre: 'Gastos' }, mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' },
+          limpieza: { icon: '🧹', nombre: 'Limpieza' }, eventos: { icon: '🎉', nombre: 'Eventos' },
+          planLimpieza: { icon: '📋', nombre: 'Plan Limpieza' }, prepararSemana: { icon: '📝', nombre: 'Preparar Semana' },
+          especiales: { icon: '⭐', nombre: 'Especiales' }, informes: { icon: '📄', nombre: 'Informes' }
+        },
+        params: {
+          mascota: { icon: '🐾', nombre: 'Mascota' }, reglas: { icon: '📏', nombre: 'Reglas de la casa' },
+          externos: { icon: '👷', nombre: 'Externos (caseros)' }, documentos: { icon: '📑', nombre: 'Documentos' },
+          contactos: { icon: '📇', nombre: 'Contactos útiles' }, seguros: { icon: '🛡️', nombre: 'Seguros' },
+          suministros: { icon: '💡', nombre: 'Suministros' }
+        }
       },
       gerente: {
-        reservas: { icon: '📅', nombre: 'Reservas' },
-        zonas: { icon: '🏠', nombre: 'Zonas' },
-        huespedes: { icon: '👥', nombre: 'Huéspedes' },
-        tarifas: { icon: '💶', nombre: 'Tarifas' },
-        ventas: { icon: '💰', nombre: 'Ventas' },
-        inventario: { icon: '📦', nombre: 'Inventario' },
-        ajuar: { icon: '🪑', nombre: 'Ajuar' },
-        contratos: { icon: '📝', nombre: 'Contratos' },
-        servicios: { icon: '🚐', nombre: 'Otros Servicios' },
-        menus: { icon: '🍽️', nombre: 'Menús' },
-        mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' },
-        limpieza: { icon: '🧹', nombre: 'Limpieza' },
-        gastos: { icon: '💸', nombre: 'Gastos' },
-        informes: { icon: '📄', nombre: 'Informes' }
+        modulos: {
+          reservas: { icon: '📅', nombre: 'Reservas' }, zonas: { icon: '🏠', nombre: 'Zonas' },
+          huespedes: { icon: '👥', nombre: 'Huéspedes' }, tarifas: { icon: '💶', nombre: 'Tarifas' },
+          ventas: { icon: '💰', nombre: 'Ventas' }, inventario: { icon: '📦', nombre: 'Inventario' },
+          ajuar: { icon: '🪑', nombre: 'Ajuar' }, contratos: { icon: '📝', nombre: 'Contratos' },
+          servicios: { icon: '🚐', nombre: 'Otros Servicios' }, menus: { icon: '🍽️', nombre: 'Menús' },
+          mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' }, limpieza: { icon: '🧹', nombre: 'Limpieza' },
+          gastos: { icon: '💸', nombre: 'Gastos' }, informes: { icon: '📄', nombre: 'Informes' }
+        },
+        params: {
+          mascota: { icon: '🐾', nombre: 'Mascota' }, reglas: { icon: '📏', nombre: 'Reglas del alojamiento' },
+          externos: { icon: '👷', nombre: 'Externos (hoster)' }, documentos: { icon: '📑', nombre: 'Documentos' },
+          checkInOut: { icon: '🔑', nombre: 'Check-in/out' }, seguros: { icon: '🛡️', nombre: 'Seguros' },
+          suministros: { icon: '💡', nombre: 'Suministros' }, plataformas: { icon: '🌐', nombre: 'Plataformas' }
+        }
       },
       capataz: {
-        parcelas: { icon: '🌾', nombre: 'Parcelas' },
-        cultivos: { icon: '🌱', nombre: 'Cultivos' },
-        maquinaria: { icon: '🚜', nombre: 'Maquinaria' },
-        personal: { icon: '👷', nombre: 'Personal' },
-        riego: { icon: '💧', nombre: 'Riego' },
-        almacen: { icon: '🏚️', nombre: 'Almacén' },
-        ganado: { icon: '🐄', nombre: 'Ganado' },
-        mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' },
-        gastos: { icon: '💸', nombre: 'Gastos' },
-        informes: { icon: '📄', nombre: 'Informes' }
+        modulos: {
+          parcelas: { icon: '🌾', nombre: 'Parcelas' }, cultivos: { icon: '🌱', nombre: 'Cultivos' },
+          maquinaria: { icon: '🚜', nombre: 'Maquinaria' }, personal: { icon: '👷', nombre: 'Personal' },
+          riego: { icon: '💧', nombre: 'Riego' }, almacen: { icon: '🏚️', nombre: 'Almacén' },
+          ganado: { icon: '🐄', nombre: 'Ganado' }, mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' },
+          gastos: { icon: '💸', nombre: 'Gastos' }, informes: { icon: '📄', nombre: 'Informes' }
+        },
+        params: {
+          externos: { icon: '👷', nombre: 'Externos (guardas)' }, documentos: { icon: '📑', nombre: 'Documentos' },
+          meteorologia: { icon: '🌦️', nombre: 'Meteorología' }, seguros: { icon: '🛡️', nombre: 'Seguros' },
+          suministros: { icon: '💡', nombre: 'Suministros' }, permisos: { icon: '📋', nombre: 'Permisos y licencias' }
+        }
       }
     };
+
+    // Helper: obtener catálogo de módulos para un tipo
+    function getCatalogoModulos(tipo) {
+      // Si admin-sistema definió modulosDisponibles, usamos solo los habilitados
+      const sysConfig = catalogoSistema[tipo];
+      const fallback = CATALOGO_FALLBACK[tipo]?.modulos || {};
+      if (!sysConfig || !sysConfig.modulosDisponibles) return fallback;
+      // Filtrar: solo módulos habilitados por admin-sistema
+      const result = {};
+      for (const [key, enabled] of Object.entries(sysConfig.modulosDisponibles)) {
+        if (enabled && fallback[key]) result[key] = fallback[key];
+      }
+      return Object.keys(result).length > 0 ? result : fallback;
+    }
+
+    // Helper: obtener catálogo de parámetros para un tipo
+    function getCatalogoParams(tipo) {
+      const sysConfig = catalogoSistema[tipo];
+      const fallback = CATALOGO_FALLBACK[tipo]?.params || {};
+      if (!sysConfig || !sysConfig.parametrosDisponibles) return fallback;
+      const result = {};
+      for (const [key, enabled] of Object.entries(sysConfig.parametrosDisponibles)) {
+        if (enabled && fallback[key]) result[key] = fallback[key];
+      }
+      return Object.keys(result).length > 0 ? result : fallback;
+    }
+
+    // Compatibilidad: CATALOGO_MODULOS dinámico (para renderBienesAddon)
+    function getCatalogoModulosTipo(tipo) { return getCatalogoModulos(tipo); }
 
     const ADDON_KEYS = {
       mayordomo: { activo: 'mayordomoActivo', modulos: 'mayordomoModulos', badge: 'activo-m', panel: 'mayordomo.html' },
@@ -2319,6 +2382,12 @@
 
     async function cargarConfigAddons() {
       try {
+        // 1) Cargar catálogo del sistema (config/addons — fuente de verdad de admin-sistema)
+        const sysDoc = await db.collection('config').doc('addons').get();
+        if (sysDoc.exists) {
+          catalogoSistema = sysDoc.data();
+        }
+        // 2) Cargar config de esta familia (qué ha activado admin-rama)
         const familiaDoc = await db.collection('familias').doc(familiaId).get();
         if (familiaDoc.exists && familiaDoc.data().configAddons) {
           configAddons = familiaDoc.data().configAddons;
@@ -2329,10 +2398,10 @@
     }
 
     function renderAddons() {
-      // Cargar config global y luego renderizar cada panel
       cargarConfigAddons().then(() => {
         ['mayordomo', 'gerente', 'capataz'].forEach(tipo => {
           renderCatalogoModulos(tipo);
+          renderCatalogoParams(tipo);
           renderBienesAddon(tipo);
         });
         actualizarContadores();
@@ -2341,17 +2410,47 @@
 
     function renderCatalogoModulos(tipo) {
       const container = document.getElementById(`modulos-${tipo}`);
-      const catalogo = CATALOGO_MODULOS[tipo];
+      if (!container) return;
+      const catalogo = getCatalogoModulos(tipo);
       const configTipo = configAddons[tipo]?.modulosDisponibles || {};
       const claseItem = tipo === 'mayordomo' ? '' : tipo;
 
+      if (Object.keys(catalogo).length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px;">Admin Sistema no ha habilitado módulos para este add-on</p>';
+        return;
+      }
+
       container.innerHTML = Object.entries(catalogo).map(([key, mod]) => {
-        const activo = configTipo[key] !== false; // activo por defecto
+        const activo = configTipo[key] !== false; // activo por defecto si admin-sistema lo habilitó
         return `
           <label class="addon-modulo-item ${claseItem}">
-            <input type="checkbox" data-addon="${tipo}" data-modulo="${key}" ${activo ? 'checked' : ''}>
+            <input type="checkbox" data-addon="${tipo}" data-modulo="${key}" data-kind="modulo" ${activo ? 'checked' : ''}>
             <span class="addon-modulo-icono">${mod.icon}</span>
             <span class="addon-modulo-nombre">${mod.nombre}</span>
+          </label>
+        `;
+      }).join('');
+    }
+
+    function renderCatalogoParams(tipo) {
+      const container = document.getElementById(`params-${tipo}`);
+      if (!container) return;
+      const catalogo = getCatalogoParams(tipo);
+      const configTipo = configAddons[tipo]?.parametrosDisponibles || {};
+      const claseItem = tipo === 'mayordomo' ? '' : tipo;
+
+      if (Object.keys(catalogo).length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px;">Admin Sistema no ha habilitado parámetros para este add-on</p>';
+        return;
+      }
+
+      container.innerHTML = Object.entries(catalogo).map(([key, param]) => {
+        const activo = configTipo[key] !== false;
+        return `
+          <label class="addon-modulo-item ${claseItem}">
+            <input type="checkbox" data-addon="${tipo}" data-modulo="${key}" data-kind="param" ${activo ? 'checked' : ''}>
+            <span class="addon-modulo-icono">${param.icon}</span>
+            <span class="addon-modulo-nombre">${param.nombre}</span>
           </label>
         `;
       }).join('');
@@ -2361,7 +2460,7 @@
       const container = document.getElementById(`bienes-${tipo}`);
       const keys = ADDON_KEYS[tipo];
       const bienesConAddon = bienesData.filter(b => b[keys.activo]);
-      const catalogo = CATALOGO_MODULOS[tipo];
+      const catalogo = getCatalogoModulos(tipo);
 
       if (bienesConAddon.length === 0) {
         container.innerHTML = `
@@ -2408,24 +2507,33 @@
     }
 
     async function guardarCatalogoAddon(tipo) {
-      const checkboxes = document.querySelectorAll(`input[data-addon="${tipo}"]`);
+      // Recoger módulos
+      const modulosCheckboxes = document.querySelectorAll(`input[data-addon="${tipo}"][data-kind="modulo"]`);
       const modulosDisponibles = {};
-      checkboxes.forEach(cb => {
+      modulosCheckboxes.forEach(cb => {
         modulosDisponibles[cb.dataset.modulo] = cb.checked;
       });
 
+      // Recoger parámetros
+      const paramsCheckboxes = document.querySelectorAll(`input[data-addon="${tipo}"][data-kind="param"]`);
+      const parametrosDisponibles = {};
+      paramsCheckboxes.forEach(cb => {
+        parametrosDisponibles[cb.dataset.modulo] = cb.checked;
+      });
+
       try {
-        // Guardar en configAddons de la familia
-        const updateKey = `configAddons.${tipo}.modulosDisponibles`;
+        // Guardar ambos en configAddons de la familia
         await db.collection('familias').doc(familiaId).update({
-          [updateKey]: modulosDisponibles
+          [`configAddons.${tipo}.modulosDisponibles`]: modulosDisponibles,
+          [`configAddons.${tipo}.parametrosDisponibles`]: parametrosDisponibles
         });
 
         // Actualizar local
         if (!configAddons[tipo]) configAddons[tipo] = {};
         configAddons[tipo].modulosDisponibles = modulosDisponibles;
+        configAddons[tipo].parametrosDisponibles = parametrosDisponibles;
 
-        alert(`Catálogo de ${tipo.charAt(0).toUpperCase() + tipo.slice(1)} guardado correctamente`);
+        alert(`✅ ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}: módulos y parámetros guardados`);
       } catch (error) {
         console.error('Error guardando catálogo:', error);
         alert('Error al guardar. Revisa la consola.');
