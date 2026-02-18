@@ -18,6 +18,10 @@
       --gerente-light: #4A6B7C;
       --gerente-dark: #1D3544;
       --gerente-muted: rgba(45, 74, 92, 0.15);
+      --capataz: #2D5A3F;
+      --capataz-light: #4A7A5F;
+      --capataz-dark: #1D4A2F;
+      --capataz-muted: rgba(45, 90, 63, 0.15);
       --text: #3D3D3D;
       --text-light: #6B6B6B;
       --text-muted: #9A9A9A;
@@ -249,14 +253,18 @@
             <input type="text" class="form-input" id="ent-epigrafeIAE" placeholder="Ej: 861.1 — Alquiler viviendas">
           </div>
         </div>
-        <div class="form-row">
+        <div class="form-row-3">
           <div class="form-group">
             <label class="form-label">Nº Licencia turística</label>
             <input type="text" class="form-input" id="ent-licenciaTuristica" placeholder="Si aplica">
           </div>
           <div class="form-group">
             <label class="form-label">Nº Registro explotación</label>
-            <input type="text" class="form-input" id="ent-registroExplotacion" placeholder="Si aplica (agrícola, ganadera...)">
+            <input type="text" class="form-input" id="ent-registroExplotacion" placeholder="Agrícola, ganadera...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nº Coto</label>
+            <input type="text" class="form-input" id="ent-numCoto" placeholder="Coto de caza, si aplica">
           </div>
         </div>
         <div class="form-group">
@@ -398,7 +406,22 @@
         return;
       }
 
-      document.getElementById('btn-volver').href = `gerente.html?id=${bienId}`;
+      const origen = params.get('origen') || 'gerente';
+      const panelVolver = origen === 'capataz' ? 'capataz.html' : 'gerente.html';
+
+      document.getElementById('btn-volver').href = `${panelVolver}?id=${bienId}`;
+      document.getElementById('btn-volver').textContent = `← ${origen === 'capataz' ? 'Capataz' : 'Gerente'}`;
+
+      // Adaptar colores según origen
+      if (origen === 'capataz') {
+        document.querySelector('.header').style.background = 'linear-gradient(135deg, var(--capataz), var(--capataz-dark))';
+        document.querySelectorAll('.section-card-header').forEach(h => {
+          h.style.background = 'linear-gradient(135deg, var(--capataz), var(--capataz-dark))';
+        });
+        document.querySelectorAll('.btn-primary').forEach(b => {
+          b.style.background = 'var(--capataz)';
+        });
+      }
 
       auth.onAuthStateChanged(async (user) => {
         if (user) {
@@ -443,6 +466,7 @@
           document.getElementById('ent-epigrafeIAE').value = d.epigrafeIAE || '';
           document.getElementById('ent-licenciaTuristica').value = d.licenciaTuristica || '';
           document.getElementById('ent-registroExplotacion').value = d.registroExplotacion || '';
+          document.getElementById('ent-numCoto').value = d.numCoto || '';
           document.getElementById('ent-notasFiscales').value = d.notasFiscales || '';
 
           // Título de propiedad
@@ -528,6 +552,7 @@
         epigrafeIAE: document.getElementById('ent-epigrafeIAE').value.trim(),
         licenciaTuristica: document.getElementById('ent-licenciaTuristica').value.trim(),
         registroExplotacion: document.getElementById('ent-registroExplotacion').value.trim(),
+        numCoto: document.getElementById('ent-numCoto').value.trim(),
         notasFiscales: document.getElementById('ent-notasFiscales').value.trim(),
 
         // Título
