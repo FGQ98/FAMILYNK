@@ -1870,13 +1870,17 @@
           borrar: vceb.b === true || vceb.borrar === true
         };
 
-        // Activar bloque padre si alguna card tiene "ver"
+        // Activar bloque padre si alguna card tiene permisos
         const bloque = mapeoCardABloque[cardId];
-        if (bloque && resultado[cardId].ver) {
+        if (bloque && (resultado[cardId].ver || resultado[cardId].editar || resultado[cardId].crear || resultado[cardId].borrar)) {
           if (!resultado[bloque]) {
             resultado[bloque] = { ver: false, crear: false, editar: false, borrar: false };
           }
-          resultado[bloque].ver = true;
+          // Propagar todos los permisos activos al bloque padre
+          if (resultado[cardId].ver) resultado[bloque].ver = true;
+          if (resultado[cardId].crear) resultado[bloque].crear = true;
+          if (resultado[cardId].editar) resultado[bloque].editar = true;
+          if (resultado[cardId].borrar) resultado[bloque].borrar = true;
         }
       }
 
@@ -3218,7 +3222,7 @@
         const items = datosModulos.gastos.slice(0, 6);
         itemsHtml = '<div class="item-list">' + items.map(g => {
           const fecha = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
-          const clickable = p.editar ? `onclick="abrirModalGasto(${JSON.stringify(g).replace(/"/g, '&quot;')})" style="cursor:pointer"` : 'class="no-hover"';
+          const clickable = p.editar ? `onclick="editarGasto('${g.id}')" style="cursor:pointer"` : 'class="no-hover"';
           const medioPago = g.medioPago ? medioPagoIcons[g.medioPago] || '' : '';
           return `
             <div class="item-row" ${clickable}>
@@ -3241,7 +3245,7 @@
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
           <div class="modulo-card-footer">
-            ${total > 6 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('gastos')">Ver todos</button>` : ''}
+            ${total > 0 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('gastos')">Ver todos (${total})</button>` : ''}
             ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalGasto()">+ Añadir</button>` : ''}
           </div>
         </div>
@@ -3299,7 +3303,7 @@
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
           <div class="modulo-card-footer">
-            ${totalAll > 5 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('reparaciones')">Ver todas</button>` : ''}
+            ${totalAll > 0 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('reparaciones')">Ver todas (${totalAll})</button>` : ''}
             ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalReparacion()">+ Nueva</button>` : ''}
           </div>
         </div>
@@ -3342,7 +3346,7 @@
       let footerHtml = '';
       if (total > 6 || p.crear) {
         footerHtml = `<div class="modulo-card-footer">
-          ${total > 6 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas</button>` : ''}
+          ${total > 0 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas (${total})</button>` : ''}
           ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalHerramienta()">+ Nueva</button>` : ''}
         </div>`;
       }
@@ -3966,6 +3970,12 @@
       }
     }
 
+    // ========== EDITORES POR ID ==========
+    function editarGasto(id) {
+      const g = datosModulos.gastos.find(x => x.id === id);
+      if (g) abrirModalGasto(g);
+    }
+
     // ========== VER TODOS ==========
     function verTodos(tipo) {
       const modal = document.getElementById('modal-ver-todos');
@@ -3984,7 +3994,7 @@
         titulo.textContent = `💶 Todos los Gastos (${datosModulos.gastos.length})`;
         html = '<div class="item-list">' + datosModulos.gastos.map(g => {
           const fecha = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-          const clickable = p.gastos?.editar ? `onclick="cerrarModalTodos(); abrirModalGasto(${JSON.stringify(g).replace(/"/g, '&quot;')})" style="cursor:pointer"` : '';
+          const clickable = (p.registro?.editar || p.gastos?.editar) ? `onclick="cerrarModalTodos(); editarGasto('${g.id}')" style="cursor:pointer"` : '';
           return `
             <div class="item-row" ${clickable}>
               <span class="item-icon">${catIconsGastos[g.categoria] || '📦'}</span>
@@ -4003,7 +4013,7 @@
         html = '<div class="item-list">' + datosModulos.reparaciones.map(r => {
           const fecha = r.fecha?.toDate?.() ? r.fecha.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : (r.fecha || '');
           const estado = r.estado || 'pendiente';
-          const clickable = p.mantenimiento?.editar ? `onclick="cerrarModalTodos(); abrirModalReparacion('${r.id}')" style="cursor:pointer"` : '';
+          const clickable = (p.reparaciones?.editar || p.inventario?.editar) ? `onclick="cerrarModalTodos(); abrirModalReparacion('${r.id}')" style="cursor:pointer"` : '';
           return `
             <div class="item-row" ${clickable}>
               <span class="item-icon">${estadoIcons[estado] || '🔴'}</span>
