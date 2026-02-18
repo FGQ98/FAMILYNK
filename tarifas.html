@@ -385,6 +385,35 @@
     .selector-base-btn:hover { border-color: var(--gerente-light); }
     .selector-base-btn.active { border-color: var(--gerente); background: var(--gerente-muted); }
 
+    /* ===== HISTÓRICO ===== */
+    .hist-filtros {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .hist-filtros .form-group { flex: 1; min-width: 120px; margin-bottom: 0; }
+    .hist-resumen {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px;
+      padding: 12px 16px; background: var(--gerente-muted); border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+    }
+    .hist-resumen:empty { display: none; }
+    .hist-resumen .stat { display: flex; flex-direction: column; align-items: center; }
+    .hist-resumen .stat-valor { font-weight: 700; font-size: 1.1rem; color: var(--gerente); }
+    .hist-resumen .stat-label { font-size: 0.72rem; color: var(--text-muted); }
+    .hist-tabla {
+      width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem;
+    }
+    .hist-tabla th {
+      padding: 8px 10px; font-size: 0.72rem; text-align: left;
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--cream-dark); font-weight: 600;
+    }
+    .hist-tabla th.right { text-align: right; }
+    .hist-tabla td { padding: 10px; border-bottom: 1px solid var(--cream-dark); }
+    .hist-tabla td.right { text-align: right; }
+    .hist-tabla tr:last-child td { border-bottom: none; }
+    .hist-tabla tr:hover td { background: var(--cream); }
+    .hist-tabla tr { cursor: pointer; }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 640px) {
       .tabs { flex-direction: column; }
@@ -394,6 +423,8 @@
       .form-row { flex-direction: column; gap: 0; }
       .linea-presup, .linea-presup-header { grid-template-columns: 1fr 50px 70px 70px 30px; font-size: 0.8rem; }
       .selector-base { flex-direction: column; }
+      .hist-filtros { flex-direction: column; }
+      .hist-filtros .form-group { min-width: 100%; }
     }
   </style>
 </head>
@@ -420,6 +451,7 @@
       <button class="tab" onclick="cambiarTab('tarifas')">💶 Tarifas</button>
       <button class="tab" onclick="cambiarTab('planes')">🎁 Planes y Descuentos</button>
       <button class="tab" onclick="cambiarTab('presupuestos')">📄 Presupuestos</button>
+      <button class="tab" onclick="cambiarTab('historico')">📚 Histórico</button>
     </div>
 
     <!-- ==================== TAB 1: SERVICIOS ==================== -->
@@ -522,6 +554,62 @@
             <div class="empty-state-title">Sin presupuestos</div>
             <div class="empty-state-text">Crea cotizaciones a partir de tus servicios o planes</div>
             <button class="btn btn-gerente" onclick="abrirModalPresupuesto()">+ Crear primer presupuesto</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 5: HISTÓRICO PRESUPUESTOS ==================== -->
+    <div class="tab-content" id="tab-historico">
+      <div class="card">
+        <div class="card-title">📚 Histórico de presupuestos</div>
+
+        <!-- Filtros -->
+        <div class="hist-filtros">
+          <div class="form-group">
+            <label class="form-label">Desde</label>
+            <input type="date" class="form-input" id="hist-desde" onchange="filtrarHistorico()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hasta</label>
+            <input type="date" class="form-input" id="hist-hasta" onchange="filtrarHistorico()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cliente</label>
+            <select class="form-select" id="hist-cliente" onchange="filtrarHistorico()">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estado</label>
+            <select class="form-select" id="hist-estado" onchange="filtrarHistorico()">
+              <option value="">Todos</option>
+              <option value="borrador">📝 Borrador</option>
+              <option value="enviado">📤 Enviado</option>
+              <option value="aceptado">✅ Aceptado</option>
+              <option value="rechazado">❌ Rechazado</option>
+              <option value="facturado">💶 Facturado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Importe mín.</label>
+            <input type="number" class="form-input" id="hist-min" min="0" step="0.01" placeholder="0" onchange="filtrarHistorico()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Importe máx.</label>
+            <input type="number" class="form-input" id="hist-max" min="0" step="0.01" placeholder="∞" onchange="filtrarHistorico()">
+          </div>
+        </div>
+
+        <!-- Resumen -->
+        <div class="hist-resumen" id="hist-resumen"></div>
+
+        <!-- Tabla resultados -->
+        <div id="hist-resultados">
+          <div class="empty-state">
+            <div class="empty-state-icon">📚</div>
+            <div class="empty-state-title">Selecciona filtros</div>
+            <div class="empty-state-text">El histórico se genera con los presupuestos existentes</div>
           </div>
         </div>
       </div>
@@ -925,6 +1013,7 @@
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       event.target.classList.add('active');
       document.getElementById('tab-' + tab).classList.add('active');
+      if (tab === 'historico') initHistorico();
     }
 
     // ========== RENDER SERVICIOS ==========
@@ -1809,6 +1898,94 @@
       const ventana = window.open('', '_blank');
       ventana.document.write(pdfHtml);
       ventana.document.close();
+    }
+
+    // ========== HISTÓRICO PRESUPUESTOS ==========
+    let historicoInited = false;
+
+    function initHistorico() {
+      // Popular selector de clientes
+      const selCli = document.getElementById('hist-cliente');
+      const clientes = new Set();
+      presupuestosData.forEach(p => { if (p.cliente) clientes.add(p.cliente); });
+      selCli.innerHTML = '<option value="">Todos</option>';
+      clientes.forEach(c => { selCli.innerHTML += `<option value="${c}">${c}</option>`; });
+
+      if (!historicoInited) {
+        historicoInited = true;
+        filtrarHistorico();
+      }
+    }
+
+    function filtrarHistorico() {
+      const desde = document.getElementById('hist-desde').value;
+      const hasta = document.getElementById('hist-hasta').value;
+      const cliente = document.getElementById('hist-cliente').value;
+      const estado = document.getElementById('hist-estado').value;
+      const minImp = parseFloat(document.getElementById('hist-min').value) || 0;
+      const maxImp = parseFloat(document.getElementById('hist-max').value) || Infinity;
+
+      const filtrados = presupuestosData.filter(p => {
+        if (desde && p.fecha < desde) return false;
+        if (hasta && p.fecha > hasta) return false;
+        if (cliente && p.cliente !== cliente) return false;
+        if (estado && p.estado !== estado) return false;
+        if ((p.total || 0) < minImp) return false;
+        if ((p.total || 0) > maxImp) return false;
+        return true;
+      });
+
+      // Resumen
+      const totalImporte = filtrados.reduce((s, p) => s + (p.total || 0), 0);
+      const aceptados = filtrados.filter(p => p.estado === 'aceptado' || p.estado === 'facturado').length;
+      const rechazados = filtrados.filter(p => p.estado === 'rechazado').length;
+      const tasaConversion = filtrados.length > 0 ? Math.round(aceptados / filtrados.length * 100) : 0;
+
+      const resumen = document.getElementById('hist-resumen');
+      resumen.innerHTML = `
+        <div class="stat"><span class="stat-valor">${filtrados.length}</span><span class="stat-label">Presupuestos</span></div>
+        <div class="stat"><span class="stat-valor">${totalImporte.toFixed(2)} €</span><span class="stat-label">Importe total</span></div>
+        <div class="stat"><span class="stat-valor">${aceptados}</span><span class="stat-label">Aceptados</span></div>
+        <div class="stat"><span class="stat-valor">${rechazados}</span><span class="stat-label">Rechazados</span></div>
+        <div class="stat"><span class="stat-valor">${tasaConversion}%</span><span class="stat-label">Tasa conversión</span></div>
+      `;
+
+      // Tabla
+      const container = document.getElementById('hist-resultados');
+      if (filtrados.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted);">Sin resultados para estos filtros</div>';
+        return;
+      }
+
+      // Ordenar por fecha desc
+      filtrados.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+      const ESTADOS_BADGE = {
+        borrador: '<span class="estado-badge borrador">BORRADOR</span>',
+        enviado: '<span class="estado-badge enviado">ENVIADO</span>',
+        aceptado: '<span class="estado-badge aceptado">ACEPTADO</span>',
+        rechazado: '<span class="estado-badge rechazado">RECHAZADO</span>',
+        facturado: '<span class="estado-badge facturado">FACTURADO</span>'
+      };
+
+      let html = `<table class="hist-tabla"><thead><tr>
+        <th>Fecha</th><th>Cliente</th><th>Estado</th>
+        <th>Versiones</th><th class="right">Total</th>
+      </tr></thead><tbody>`;
+
+      filtrados.forEach(p => {
+        const vCount = (p.versiones || []).length || 1;
+        html += `<tr onclick='abrirModalPresupuesto(${JSON.stringify(p).replace(/'/g, "&#39;")})'>
+          <td>${formatFechaLarga(p.fecha)}</td>
+          <td style="font-weight:600;">${p.cliente || '—'}</td>
+          <td>${ESTADOS_BADGE[p.estado] || p.estado}</td>
+          <td>v${vCount}</td>
+          <td class="right" style="font-weight:700;color:var(--gerente);">${(p.total || 0).toFixed(2)} €</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
     }
 
     // ========== HELPERS ==========
