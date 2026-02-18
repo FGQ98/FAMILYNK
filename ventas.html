@@ -740,14 +740,18 @@
       document.getElementById('fact-cliente').value = p.cliente || '';
 
       // Convertir líneas del presupuesto a líneas de factura (editables)
-      factLineas = (p.lineas || []).map(l => ({
-        servicioId: l.servicioId || '',
-        concepto: l.nombre || l.concepto || '',
-        grupo: l.grupo || '',
-        cantidad: l.cantidad || 1,
-        precio: l.precio || 0,
-        iva: 21 // IVA por defecto, el usuario ajusta por línea
-      }));
+      factLineas = (p.lineas || []).map(l => {
+        // Buscar IVA del catálogo de servicios
+        const servicio = l.servicioId ? serviciosData.find(s => s.id === l.servicioId) : null;
+        return {
+          servicioId: l.servicioId || '',
+          concepto: l.nombre || l.concepto || '',
+          grupo: l.grupo || '',
+          cantidad: l.cantidad || 1,
+          precio: l.precio || 0,
+          iva: servicio?.iva ?? 21
+        };
+      });
 
       // Si el presupuesto tenía descuento, añadir línea de descuento negativa
       if (p.descuentoValor && p.descuentoValor > 0) {
@@ -825,6 +829,7 @@
         factLineas[idx].servicioId = s.id;
         factLineas[idx].concepto = s.nombre;
         factLineas[idx].grupo = s.grupo;
+        factLineas[idx].iva = s.iva ?? 21;
       } else {
         factLineas[idx].servicioId = '';
         factLineas[idx].grupo = '';
