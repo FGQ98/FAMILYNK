@@ -461,6 +461,14 @@
           </div>
         </div>
 
+        <!-- Desde presupuesto -->
+        <div class="form-group" id="presup-selector-wrap">
+          <label class="form-label">📄 Importar desde presupuesto aprobado</label>
+          <select class="form-select" id="fact-desde-presup" onchange="cargarDesdePresupuesto(this.value)">
+            <option value="">— Factura nueva (sin presupuesto) —</option>
+          </select>
+        </div>
+
         <!-- Cliente -->
         <div class="form-group">
           <label class="form-label">Cliente</label>
@@ -529,6 +537,7 @@
     let editingFactId = null;
     let configSerie = { prefijo: 'FLK' };
     let condiciones = { forma: '', cuenta: '', notas: '' };
+    let presupuestosData = [];
 
     const GRUPOS = {
       alojamiento: { icon: '🏠', nombre: 'Alojamiento' },
@@ -551,6 +560,7 @@
         await cargarBien();
         await cargarServicios();
         await cargarFacturas();
+        await cargarPresupuestos();
         renderFacturas();
         initInforme();
       });
@@ -591,6 +601,13 @@
         const snap = await db.collection('bienes').doc(bienId).collection('facturas').orderBy('fecha', 'desc').get();
         facturasData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       } catch (e) { console.error('Error cargando facturas:', e); }
+    }
+
+    async function cargarPresupuestos() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('presupuestos').get();
+        presupuestosData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      } catch (e) { console.log('Sin presupuestos:', e.message); }
     }
 
     // ========== TABS ==========
@@ -672,6 +689,7 @@
             <span>👤 ${f.cliente || 'Sin cliente'}</span>
             <span>📅 ${formatFechaCorta(f.fecha)}</span>
             <span>Base: ${(f.baseImponible || 0).toFixed(2)}€ · IVA: ${(f.totalIva || 0).toFixed(2)}€</span>
+            ${f.presupuestoId ? '<span style="color:var(--sage);">📄 Desde presupuesto</span>' : ''}
           </div>
         </div>`;
       });
@@ -694,10 +712,57 @@
       document.getElementById('btn-eliminar-fact').style.display = factura ? '' : 'none';
       document.getElementById('btn-pdf-fact').style.display = factura ? '' : 'none';
 
+      // Selector de presupuestos aprobados
+      const selPresup = document.getElementById('fact-desde-presup');
+      selPresup.innerHTML = '<option value="">— Factura nueva (sin presupuesto) —</option>';
+      const aprobados = presupuestosData.filter(p => p.estado === 'aceptado' || p.estado === 'facturado');
+      aprobados.forEach(p => {
+        const fecha = p.fecha ? formatFechaCorta(p.fecha) : '';
+        selPresup.innerHTML += `<option value="${p.id}">${p.cliente} — ${(p.total || 0).toFixed(2)}€ (${fecha})</option>`;
+      });
+      // Si editamos y tiene presupuesto vinculado, seleccionarlo
+      if (factura?.presupuestoId) selPresup.value = factura.presupuestoId;
+      // Ocultar selector si estamos editando una factura existente sin presupuesto
+      document.getElementById('presup-selector-wrap').style.display = factura && !factura.presupuestoId ? 'none' : '';
+
       factLineas = factura?.lineas ? JSON.parse(JSON.stringify(factura.lineas)) : [];
       if (factLineas.length === 0) addLineaFactura();
       renderLineasFactura();
       document.getElementById('modal-factura').classList.add('active');
+    }
+
+    function cargarDesdePresupuesto(presupId) {
+      if (!presupId) return;
+      const p = presupuestosData.find(x => x.id === presupId);
+      if (!p) return;
+
+      // Rellenar datos del cliente
+      document.getElementById('fact-cliente').value = p.cliente || '';
+
+      // Convertir líneas del presupuesto a líneas de factura (editables)
+      factLineas = (p.lineas || []).map(l => ({
+        servicioId: l.servicioId || '',
+        concepto: l.nombre || l.concepto || '',
+        grupo: l.grupo || '',
+        cantidad: l.cantidad || 1,
+        precio: l.precio || 0,
+        iva: 21 // IVA por defecto, el usuario ajusta por línea
+      }));
+
+      // Si el presupuesto tenía descuento, añadir línea de descuento negativa
+      if (p.descuentoValor && p.descuentoValor > 0) {
+        factLineas.push({
+          servicioId: '',
+          concepto: `Descuento: ${p.descuentoNombre || 'Dto. aplicado'}`,
+          grupo: '',
+          cantidad: 1,
+          precio: -(p.descuentoValor),
+          iva: 21
+        });
+      }
+
+      if (factLineas.length === 0) addLineaFactura();
+      renderLineasFactura();
     }
 
     function cerrarModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -807,6 +872,8 @@
         totalIva += imp * (l.iva || 0) / 100;
       });
 
+      const presupId = document.getElementById('fact-desde-presup').value || null;
+
       const data = {
         numero: document.getElementById('fact-numero').value,
         fecha: document.getElementById('fact-fecha').value,
@@ -815,7 +882,8 @@
         direccion: document.getElementById('fact-direccion').value.trim(),
         lineas: factLineas,
         baseImponible: base, totalIva, total: base + totalIva,
-        observaciones: document.getElementById('fact-observaciones').value.trim()
+        observaciones: document.getElementById('fact-observaciones').value.trim(),
+        presupuestoId: presupId
       };
 
       try {
@@ -827,8 +895,17 @@
           data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
           await ref.add(data);
         }
+
+        // Marcar presupuesto como facturado
+        if (presupId && !editingFactId) {
+          try {
+            await db.collection('bienes').doc(bienId).collection('presupuestos').doc(presupId).update({ estado: 'facturado' });
+          } catch (pe) { console.log('No se pudo actualizar presupuesto:', pe.message); }
+        }
+
         cerrarModal('modal-factura');
         await cargarFacturas();
+        await cargarPresupuestos();
         renderFacturas();
         actualizarPreviewSerie();
       } catch (e) { console.error('Error:', e); alert('Error al guardar'); }
