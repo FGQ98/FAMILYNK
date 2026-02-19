@@ -221,6 +221,8 @@
         <select class="ejercicio-select" id="sel-ejercicio" onchange="seleccionarEjercicio()"></select>
         <button class="btn btn-addon btn-sm" onclick="abrirModalEjercicio()">+ Ejercicio</button>
         <button class="btn btn-secondary btn-sm" id="btn-config-ej" onclick="toggleConfig()" style="display:none;">⚙️</button>
+        <button class="btn btn-sm" id="btn-cerrar-ej" onclick="cerrarEjercicio()" style="display:none;background:var(--warning);color:white;">🔒 Cerrar</button>
+        <span id="badge-cerrado" style="display:none;background:var(--success-muted);color:var(--success);padding:4px 10px;border-radius:var(--radius-full);font-size:0.75rem;font-weight:700;">🔒 Cerrado</span>
       </div>
 
       <div class="card" id="card-config" style="display:none;">
@@ -461,10 +463,15 @@
       const id = document.getElementById('sel-ejercicio').value;
       ej = ejercicios.find(e => e.id === id) || null;
       const hay = !!ej;
-      document.getElementById('btn-config-ej').style.display = hay ? '' : 'none';
+      const cerrado = ej?.cerrado === true;
+      document.getElementById('btn-config-ej').style.display = hay && !cerrado ? '' : 'none';
+      document.getElementById('btn-cerrar-ej').style.display = hay && !cerrado ? '' : 'none';
+      document.getElementById('badge-cerrado').style.display = hay && cerrado ? '' : 'none';
       document.getElementById('tabs-fin').style.display = hay ? '' : 'none';
       ['tab-presupuesto', 'tab-realizado'].forEach(t => { if (!hay) document.getElementById(t).style.display = 'none'; });
       document.getElementById('card-config').style.display = 'none'; configVis = false;
+      // Ocultar botones de edición si cerrado
+      document.querySelectorAll('.btn-add-partida, .btn-add-registro').forEach(b => { b.style.display = cerrado ? 'none' : ''; });
       if (hay) {
         document.getElementById('ej-nombre').value = ej.nombre || '';
         document.getElementById('ej-inicio').value = ej.inicio || '';
@@ -719,6 +726,41 @@
       try { await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ej.id).delete(); ej = null; await cargarEjercicios(); } catch(e) { console.error(e); }
     }
 
+    async function cerrarEjercicio() {
+      if (!ej) return;
+      if (ej.cerrado) { alert('Este ejercicio ya está cerrado'); return; }
+
+      // Calcular snapshot de resultados
+      const snapshot = {};
+      GK.forEach(g => {
+        snapshot[g] = 0;
+        PP().filter(p => p.grupo === g).forEach(p => {
+          snapshot[g] += RR().filter(r => r.partidaId === p.id).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0);
+        });
+      });
+
+      const resumen = `Cerrar "${ej.nombre}":\n\n` +
+        `💚 Ventas: ${fN(snapshot.ventas)} €\n` +
+        `🟡 Costes: ${fN(snapshot.costes)} €\n` +
+        `🔵 Personal: ${fN(snapshot.personal)} €\n` +
+        `🔴 Otros: ${fN(snapshot.otros)} €\n` +
+        `📊 Resultado: ${fN(snapshot.ventas - snapshot.costes - snapshot.personal - snapshot.otros)} €\n\n` +
+        `⚠️ Una vez cerrado, no se podrán editar partidas ni registros.\n¿Confirmar cierre?`;
+
+      if (!confirm(resumen)) return;
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ej.id).update({
+          cerrado: true,
+          snapshot: snapshot,
+          fechaCierre: new Date().toISOString().split('T')[0]
+        });
+        ej.cerrado = true;
+        ej.snapshot = snapshot;
+        seleccionarEjercicio();
+      } catch(e) { console.error(e); alert('Error al cerrar'); }
+    }
+
     // ===== CRUD PARTIDAS =====
     function actualizarSubgrupos() {
       const g = document.getElementById('part-grupo').value;
@@ -763,6 +805,7 @@
     function editarPartida(id) { const p = PP().find(x => x.id === id); if (p) abrirModalPartida(p); }
 
     async function guardarPartida() {
+      if (ej?.cerrado) { alert("Ejercicio cerrado"); return; }
       if (!ej) return;
       const grupo = document.getElementById('part-grupo').value;
       const newSub = document.getElementById('part-subgrupo-new');
@@ -789,6 +832,7 @@
     }
 
     async function eliminarPartida() {
+      if (ej?.cerrado) { alert("Ejercicio cerrado"); return; }
       if (!editPartId || !ej) return;
       const regs = RR().filter(r => r.partidaId === editPartId);
       if (!confirm(regs.length ? `Tiene ${regs.length} registro(s). ¿Eliminar todo?` : '¿Eliminar partida?')) return;
@@ -965,6 +1009,7 @@
     }
 
     async function guardarRegistro() {
+      if (ej?.cerrado) { alert("Ejercicio cerrado"); return; }
       if (!ej) return;
       const partidaId = document.getElementById('reg-partida').value;
       const fecha = document.getElementById('reg-fecha').value;
@@ -1005,6 +1050,7 @@
     }
 
     async function eliminarRegistro() {
+      if (ej?.cerrado) { alert("Ejercicio cerrado"); return; }
       if (!editRegId || !ej || !confirm('¿Eliminar registro?')) return;
       const registros = RR().filter(r => r.id !== editRegId);
       try {
