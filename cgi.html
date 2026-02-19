@@ -3200,7 +3200,12 @@
     <div id="page-content" class="hidden">
       <div class="welcome">
         <h1 class="welcome-title" id="welcome-title">Buenos días 👋</h1>
-        <div class="admin-buttons" id="admin-buttons"></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <button class="btn-video-bienvenida" onclick="abrirVideoBienvenida()" title="Ver presentación de Familynk">
+            <span>📹</span> Presentación
+          </button>
+          <div class="admin-buttons" id="admin-buttons"></div>
+        </div>
       </div>
 
       <!-- Acciones Rápidas (CTAs) -->
@@ -10573,6 +10578,8 @@
     // ============ PRIMEROS PASOS ============
     function cerrarPrimerosPasos() {
       document.getElementById('modal-primeros-pasos').classList.remove('active');
+      const video = document.getElementById('video-bienvenida');
+      if (video) { video.pause(); video.currentTime = 0; }
     }
 
     function noMostrarPrimerosPasos() {
@@ -10580,9 +10587,36 @@
       cerrarPrimerosPasos();
     }
 
+    // URL del vídeo en Firebase Storage
+    const VIDEO_BIENVENIDA_URL = 'https://firebasestorage.googleapis.com/v0/b/PROYECTO_ID/o/videos%2Fbienvenida-familynk.mp4?alt=media';
+
+    function cargarVideoBienvenida() {
+      const src = document.getElementById('video-src-bienvenida');
+      const video = document.getElementById('video-bienvenida');
+      if (src && !src.getAttribute('src')) {
+        src.setAttribute('src', VIDEO_BIENVENIDA_URL);
+        video.load();
+      }
+    }
+
     function verVideoPrimerosPasos() {
-      // Abrir video en nueva ventana o modal de video
-      window.open('https://www.youtube.com/watch?v=VIDEO_ID', '_blank');
+      // Scroll al vídeo dentro del modal
+      const video = document.getElementById('video-bienvenida');
+      if (video) { video.scrollIntoView({ behavior: 'smooth' }); video.play(); }
+    }
+
+    function abrirVideoBienvenida() {
+      // Abrir modal de primeros pasos con el vídeo
+      cargarVideoBienvenida();
+      document.getElementById('modal-primeros-pasos').classList.add('active');
+      // Detectar rol como en mostrarPrimerosPasos
+      const esCreador = esAdminRama;
+      document.getElementById('pasos-creador').style.display = esCreador ? 'block' : 'none';
+      document.getElementById('pasos-invitado').style.display = esCreador ? 'none' : 'block';
+      document.getElementById('primeros-pasos-titulo').textContent = esCreador 
+        ? '👋 ¡Bienvenido, creador!' 
+        : '👋 ¡Bienvenido a la familia!';
+      setTimeout(() => { const v = document.getElementById('video-bienvenida'); if (v) v.play(); }, 300);
     }
 
     function mostrarPrimerosPasos() {
@@ -10597,6 +10631,9 @@
       document.getElementById('primeros-pasos-titulo').textContent = esCreador 
         ? '👋 ¡Bienvenido, creador!' 
         : '👋 ¡Bienvenido a la familia!';
+      
+      // Cargar vídeo de bienvenida
+      cargarVideoBienvenida();
       
       document.getElementById('modal-primeros-pasos').classList.add('active');
     }
@@ -10622,23 +10659,22 @@
           <div class="apostar-card" onclick="irApostar('porra')">
             <div class="apostar-card-icon">🎲</div>
             <div class="apostar-card-name">Porra</div>
-            <div class="apostar-card-desc">Apuesta sobre cualquier suceso o evento</div>
+            <div class="apostar-card-desc">Apuesta a resultados de competiciones externas</div>
           </div>
           <div class="apostar-card" onclick="irApostar('competicion')">
             <div class="apostar-card-icon">🏆</div>
             <div class="apostar-card-name">Competición</div>
-            <div class="apostar-card-desc">Equipos o individual, ¿quién gana?</div>
+            <div class="apostar-card-desc">Torneos entre familiares: normas, partidos y clasificación</div>
           </div>
           <div class="apostar-card" onclick="irApostar('precio-justo')">
             <div class="apostar-card-icon">💰</div>
             <div class="apostar-card-name">Precio justo</div>
             <div class="apostar-card-desc">Acércate al precio sin pasarte</div>
           </div>
-          <div class="apostar-card disabled">
+          <div class="apostar-card" onclick="irApostar('calcutas')">
             <div class="apostar-card-icon">🧮</div>
             <div class="apostar-card-name">Calcutas</div>
-            <div class="apostar-card-desc">Próximamente...</div>
-            <div class="apostar-card-badge">En desarrollo</div>
+            <div class="apostar-card-desc">Subasta de derechos sobre jugadores de una competición</div>
           </div>
         </div>
       </div>
@@ -10663,6 +10699,15 @@
       
       <div class="modal-body" style="padding: 20px;">
         
+        <!-- VÍDEO DE BIENVENIDA -->
+        <div class="video-bienvenida">
+          <video id="video-bienvenida" controls playsinline preload="metadata" poster="">
+            <source id="video-src-bienvenida" src="" type="video/mp4">
+            Tu navegador no soporta vídeo HTML5.
+          </video>
+          <p class="video-caption">📹 Presentación de Familynk · 5 min</p>
+        </div>
+
         <!-- GUÍA PARA CREADOR -->
         <div id="pasos-creador" style="display: none;">
           <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
@@ -10789,6 +10834,51 @@
       color: var(--text-muted);
     }
     .paso-tip strong { color: var(--terracotta); }
+
+    /* Vídeo de bienvenida */
+    .video-bienvenida {
+      margin-bottom: 20px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: #000;
+    }
+    .video-bienvenida video {
+      width: 100%;
+      display: block;
+      border-radius: var(--radius-md);
+      max-height: 280px;
+      object-fit: contain;
+      background: #000;
+    }
+    .video-caption {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding: 6px 0 2px;
+      background: var(--white);
+    }
+
+    /* Botón permanente presentación */
+    .btn-video-bienvenida {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 12px;
+      background: var(--cream);
+      border: 1.5px solid var(--cream-dark);
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-video-bienvenida:hover {
+      background: var(--sage-muted);
+      border-color: var(--sage);
+      color: var(--sage-dark);
+    }
   </style>
 </body>
 </html>
