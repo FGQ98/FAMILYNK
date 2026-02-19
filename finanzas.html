@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Finanzas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --cream: #FDF8F3; --cream-dark: #F5EDE4; --cream-medium: #FAF5EF;
+      --terracotta: #C17757; --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A; --white: #FFFFFF;
+      --capataz: #6B8E23; --capataz-light: #8FBC3C; --capataz-dark: #4A6B10; --capataz-muted: rgba(107,142,35,0.15);
+      --gerente: #2D4A5C; --gerente-light: #4A6B7C; --gerente-dark: #1D3544; --gerente-muted: rgba(45,74,92,0.15);
+      --success: #7DB59A; --success-muted: rgba(125,181,154,0.15);
+      --warning: #E8B44D; --warning-muted: rgba(232,180,77,0.15);
+      --error: #D4695A; --error-muted: rgba(212,105,90,0.15);
+      --info: #5B9BD5; --info-muted: rgba(91,155,213,0.15);
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      --addon-color: var(--capataz); --addon-light: var(--capataz-light);
+      --addon-dark: var(--capataz-dark); --addon-muted: var(--capataz-muted);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* ========== HEADER ========== */
+    .header {
+      background: linear-gradient(135deg, var(--addon-color) 0%, var(--addon-dark) 100%);
+      padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: var(--shadow-medium); position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.15); border: none; border-radius: var(--radius-md); color: white; font-family: 'Nunito'; font-size: 0.85rem; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+    .header-info h1 { color: white; font-family: 'Quicksand'; font-size: 1.2rem; font-weight: 700; }
+    .header-info p { color: rgba(255,255,255,0.7); font-size: 0.8rem; }
+    .header-actions { display: flex; gap: 8px; }
+
+    /* ========== LAYOUT ========== */
+    .main { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--white); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-soft); }
+    .card-title { font-family: 'Quicksand'; font-weight: 700; font-size: 1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* ========== TABS ========== */
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--white); padding: 4px; border-radius: var(--radius-full); box-shadow: var(--shadow-soft); }
+    .tab { flex: 1; padding: 12px 16px; border: none; background: none; border-radius: var(--radius-full); font-family: 'Nunito'; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
+    .tab:hover { color: var(--text); }
+    .tab.active { background: var(--addon-color); color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ========== EJERCICIO BAR ========== */
+    .ejercicio-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .ejercicio-select { flex: 1; min-width: 200px; padding: 12px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito'; font-size: 0.95rem; font-weight: 600; background: var(--white); }
+    .ejercicio-select:focus { outline: none; border-color: var(--addon-color); }
+
+    /* ========== BUTTONS ========== */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius-md); font-family: 'Nunito'; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; }
+    .btn-addon { background: var(--addon-color); color: white; }
+    .btn-addon:hover { background: var(--addon-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-sm { padding: 7px 12px; font-size: 0.8rem; }
+    .btn-ghost { background: none; color: var(--text-muted); padding: 6px 10px; border-radius: var(--radius-sm); }
+    .btn-ghost:hover { background: var(--cream); color: var(--text); }
+
+    /* ========== RESUMEN ========== */
+    .resumen-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+    .resumen-item { background: var(--white); border-radius: var(--radius-md); padding: 14px 10px; text-align: center; box-shadow: var(--shadow-soft); border-top: 3px solid var(--cream-dark); }
+    .resumen-item.ventas { border-top-color: var(--success); }
+    .resumen-item.costes { border-top-color: var(--warning); }
+    .resumen-item.personal { border-top-color: var(--info); }
+    .resumen-item.otros { border-top-color: var(--error); }
+    .resumen-item.resultado { border-top-color: var(--addon-color); }
+    .resumen-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .resumen-valor { font-family: 'Quicksand'; font-size: 1.15rem; font-weight: 700; }
+    .resumen-item.ventas .resumen-valor { color: var(--success); }
+    .resumen-item.costes .resumen-valor { color: var(--warning); }
+    .resumen-item.personal .resumen-valor { color: var(--info); }
+    .resumen-item.otros .resumen-valor { color: var(--error); }
+    .resumen-count { font-size: 0.68rem; color: var(--text-muted); }
+
+    /* ========== GRUPO SECTION ========== */
+    .grupo-section { margin-bottom: 16px; }
+    .grupo-header {
+      display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+      border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; margin-bottom: 2px;
+    }
+    .grupo-header:hover { filter: brightness(0.95); }
+    .grupo-header.ventas { background: var(--success-muted); }
+    .grupo-header.costes { background: var(--warning-muted); }
+    .grupo-header.personal { background: var(--info-muted); }
+    .grupo-header.otros { background: var(--error-muted); }
+    .grupo-header-left { display: flex; align-items: center; gap: 10px; }
+    .grupo-header-icon { font-size: 1.1rem; }
+    .grupo-header-name { font-family: 'Quicksand'; font-weight: 700; font-size: 0.95rem; }
+    .grupo-header-count { font-size: 0.78rem; color: var(--text-muted); }
+    .grupo-header-total { font-family: 'Quicksand'; font-weight: 700; font-size: 1.05rem; }
+    .grupo-header.ventas .grupo-header-total { color: var(--success); }
+    .grupo-header.costes .grupo-header-total { color: var(--warning); }
+    .grupo-header.personal .grupo-header-total { color: var(--info); }
+    .grupo-header.otros .grupo-header-total { color: var(--error); }
+    .grupo-body { padding: 0 8px; }
+    .grupo-body.collapsed { display: none; }
+
+    /* ========== PARTIDA ROW ========== */
+    .partida-row { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--cream-dark); gap: 12px; transition: background 0.15s; }
+    .partida-row:hover { background: var(--cream-medium); }
+    .partida-row:last-child { border-bottom: none; }
+    .partida-concepto { flex: 1; font-weight: 600; font-size: 0.9rem; }
+    .partida-notas { font-size: 0.75rem; color: var(--text-muted); }
+    .partida-importe { font-family: 'Quicksand'; font-weight: 700; font-size: 0.95rem; min-width: 100px; text-align: right; }
+
+    /* ========== REALIZADO: barra progreso ========== */
+    .partida-realizado { display: flex; align-items: center; gap: 10px; min-width: 280px; }
+    .progress-bar { flex: 1; height: 8px; background: var(--cream-dark); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .progress-fill.ok { background: var(--success); }
+    .progress-fill.warning { background: var(--warning); }
+    .progress-fill.over { background: var(--error); }
+    .partida-pct { font-size: 0.78rem; font-weight: 700; min-width: 45px; text-align: right; }
+    .partida-real-amount { font-family: 'Quicksand'; font-weight: 700; font-size: 0.85rem; min-width: 90px; text-align: right; }
+
+    /* ========== REGISTROS lista ========== */
+    .registros-list { margin-top: 8px; padding-left: 24px; }
+    .registro-item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; font-size: 0.82rem; border-left: 2px solid var(--cream-dark); margin-bottom: 2px; }
+    .registro-fecha { color: var(--text-muted); min-width: 75px; font-size: 0.78rem; }
+    .registro-concepto { flex: 1; }
+    .registro-importe { font-weight: 700; min-width: 80px; text-align: right; }
+    .registro-acciones { display: flex; gap: 4px; }
+
+    /* ========== RESULTADO ROW ========== */
+    .resultado-row {
+      display: flex; align-items: center; justify-content: space-between; padding: 16px 20px;
+      background: var(--addon-muted); border-radius: var(--radius-md); margin-top: 12px;
+    }
+    .resultado-label { font-family: 'Quicksand'; font-weight: 700; font-size: 1rem; }
+    .resultado-valor { font-family: 'Quicksand'; font-weight: 700; font-size: 1.3rem; }
+
+    /* ========== CONFIG EJERCICIO ========== */
+    .config-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .config-row .form-group { flex: 1; min-width: 140px; }
+
+    /* ========== FORMS ========== */
+    .form-group { margin-bottom: 12px; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-light); }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      font-family: 'Nunito'; font-size: 0.9rem; background: var(--white); transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--addon-color); }
+    .form-textarea { resize: vertical; min-height: 60px; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row > .form-group { flex: 1; }
+    .form-hint { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* ========== MODALS ========== */
+    .modal-overlay { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index: 1000; opacity:0; visibility:hidden; transition: all 0.3s; padding: 20px; }
+    .modal-overlay.active { opacity:1; visibility:visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+    .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand'; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: flex-end; gap: 10px; }
+
+    /* ========== EMPTY / LOADING ========== */
+    .empty-state { text-align: center; padding: 40px 20px; }
+    .empty-state-icon { font-size: 3rem; opacity: 0.3; margin-bottom: 12px; }
+    .empty-state-title { font-family: 'Quicksand'; font-weight: 700; margin-bottom: 8px; }
+    .empty-state-text { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; }
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--addon-color); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) {
+      .resumen-grid { grid-template-columns: repeat(3, 1fr); }
+      .partida-realizado { min-width: 180px; flex-direction: column; align-items: flex-end; gap: 4px; }
+      .form-row { flex-direction: column; gap: 0; }
+    }
+    @media (max-width: 480px) {
+      .resumen-grid { grid-template-columns: 1fr 1fr; }
+      .partida-row { flex-wrap: wrap; }
+      .partida-realizado { min-width: 100%; }
+      .registros-list { padding-left: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a id="btn-volver" class="back-btn">← Volver</a>
+      <div class="header-info">
+        <h1>💰 Finanzas</h1>
+        <p id="nombre-bien">Cargando...</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:white;" onclick="exportarPDF()">📄 PDF</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="contenido" style="display:none;">
+      <!-- Ejercicio -->
+      <div class="ejercicio-bar">
+        <select class="ejercicio-select" id="sel-ejercicio" onchange="seleccionarEjercicio()"></select>
+        <button class="btn btn-addon btn-sm" onclick="abrirModalEjercicio()">+ Ejercicio</button>
+        <button class="btn btn-secondary btn-sm" id="btn-config-ej" onclick="toggleConfig()" style="display:none;">⚙️</button>
+      </div>
+
+      <!-- Config (colapsable) -->
+      <div class="card" id="card-config" style="display:none;">
+        <div class="card-title">⚙️ Configuración del ejercicio
+          <span style="flex:1"></span>
+          <button class="btn btn-sm btn-addon" onclick="guardarConfigEjercicio()">💾 Guardar</button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarEjercicio()">🗑️</button>
+        </div>
+        <div class="config-row">
+          <div class="form-group"><label class="form-label">Nombre</label><input type="text" class="form-input" id="ej-nombre"></div>
+          <div class="form-group" style="max-width:155px;"><label class="form-label">Inicio</label><input type="date" class="form-input" id="ej-inicio"></div>
+          <div class="form-group" style="max-width:155px;"><label class="form-label">Fin</label><input type="date" class="form-input" id="ej-fin"></div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs" id="tabs-finanzas" style="display:none;">
+        <button class="tab active" onclick="cambiarTab('presupuesto')">📋 Presupuesto</button>
+        <button class="tab" onclick="cambiarTab('realizado')">📊 Realizado</button>
+      </div>
+
+      <!-- ==================== TAB PRESUPUESTO ==================== -->
+      <div class="tab-content active" id="tab-presupuesto">
+        <div class="resumen-grid" id="resumen-pto"></div>
+        <div class="card">
+          <div class="card-title">📋 Partidas presupuestadas
+            <span style="flex:1"></span>
+            <button class="btn btn-sm btn-addon" onclick="abrirModalPartida()">+ Partida</button>
+          </div>
+          <div id="partidas-pto-container"></div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB REALIZADO ==================== -->
+      <div class="tab-content" id="tab-realizado">
+        <div class="resumen-grid" id="resumen-real"></div>
+        <div class="card">
+          <div class="card-title">📊 Ejecución por partida
+            <span style="flex:1"></span>
+            <button class="btn btn-sm btn-addon" onclick="abrirModalRegistro()">+ Registro</button>
+          </div>
+          <div id="partidas-real-container"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Nuevo Ejercicio -->
+  <div class="modal-overlay" id="modal-ejercicio">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Nuevo ejercicio</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="new-ej-nombre" placeholder="Ej: Ejercicio 2025-2026"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Inicio *</label><input type="date" class="form-input" id="new-ej-inicio"></div>
+          <div class="form-group"><label class="form-label">Fin *</label><input type="date" class="form-input" id="new-ej-fin"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-addon" onclick="crearEjercicio()">Crear</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Partida (Presupuesto) -->
+  <div class="modal-overlay" id="modal-partida">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-partida-titulo">📝 Nueva partida</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Grupo *</label>
+          <select class="form-select" id="part-grupo">
+            <option value="ventas">💚 Ventas</option>
+            <option value="costes">🟡 Costes</option>
+            <option value="personal">🔵 Personal</option>
+            <option value="otros">🔴 Otros gastos</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Concepto *</label><input type="text" class="form-input" id="part-concepto" placeholder="Ej: Venta aceituna, Jornales poda, Seguros..."></div>
+        <div class="form-group"><label class="form-label">Importe previsto (€) *</label><input type="number" class="form-input" id="part-importe" min="0" step="0.01" placeholder="0.00"></div>
+        <div class="form-group"><label class="form-label">Notas</label><textarea class="form-textarea" id="part-notas" rows="2" placeholder="Detalles, proveedor, condiciones..."></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-danger btn-sm" id="btn-del-partida" onclick="eliminarPartida()" style="display:none;">Eliminar</button>
+        <button class="btn btn-addon" onclick="guardarPartida()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Registro (Realizado) -->
+  <div class="modal-overlay" id="modal-registro">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-registro-titulo">📊 Nuevo registro</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Partida *</label>
+          <select class="form-select" id="reg-partida"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-input" id="reg-fecha"></div>
+          <div class="form-group"><label class="form-label">Importe (€) *</label><input type="number" class="form-input" id="reg-importe" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Concepto / Descripción</label><input type="text" class="form-input" id="reg-concepto" placeholder="Ej: Pago jornales enero, Factura Endesa..."></div>
+        <div class="form-group"><label class="form-label">Notas</label><textarea class="form-textarea" id="reg-notas" rows="2" placeholder="Nº factura, proveedor, observaciones..."></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-danger btn-sm" id="btn-del-registro" onclick="eliminarRegistro()" style="display:none;">Eliminar</button>
+        <button class="btn btn-addon" onclick="guardarRegistro()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    // ========== CONFIG ==========
+    const GRUPOS = {
+      ventas:   { icon: '💚', nombre: 'Ventas',       color: 'var(--success)', sign: 1 },
+      costes:   { icon: '🟡', nombre: 'Costes',       color: 'var(--warning)', sign: -1 },
+      personal: { icon: '🔵', nombre: 'Personal',     color: 'var(--info)',    sign: -1 },
+      otros:    { icon: '🔴', nombre: 'Otros gastos',  color: 'var(--error)',   sign: -1 }
+    };
+    const GRUPO_KEYS = ['ventas', 'costes', 'personal', 'otros'];
+
+    // ========== INIT ==========
+    const params = new URLSearchParams(window.location.search);
+    const bienId = params.get('id');
+    const origen = params.get('origen') || 'capataz';
+
+    if (origen === 'gerente') {
+      document.documentElement.style.setProperty('--addon-color', 'var(--gerente)');
+      document.documentElement.style.setProperty('--addon-light', 'var(--gerente-light)');
+      document.documentElement.style.setProperty('--addon-dark', 'var(--gerente-dark)');
+      document.documentElement.style.setProperty('--addon-muted', 'var(--gerente-muted)');
+    }
+
+    let currentUser = null;
+    let bienData = null;
+    let ejercicios = [];
+    let ejActual = null; // current ejercicio data
+    let editingPartidaId = null;
+    let editingRegistroId = null;
+    let configVisible = false;
+    let expandedGrupos = { ventas: true, costes: true, personal: true, otros: true };
+
+    if (!bienId) { alert('No se ha especificado el bien'); window.location.href = 'lo-comun.html'; }
+    document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarBien();
+      await cargarEjercicios();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('contenido').style.display = '';
+    });
+
+    // ========== DATA ==========
+    async function cargarBien() {
+      try {
+        const doc = await db.collection('bienes').doc(bienId).get();
+        if (doc.exists) { bienData = doc.data(); document.getElementById('nombre-bien').textContent = bienData.nombre || 'Sin nombre'; }
+      } catch (e) { console.error(e); }
+    }
+
+    async function cargarEjercicios() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('ejercicios').orderBy('inicio', 'desc').get();
+        ejercicios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderSelector();
+      } catch (e) { console.error(e); }
+    }
+
+    function renderSelector() {
+      const sel = document.getElementById('sel-ejercicio');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">— Selecciona un ejercicio —</option>';
+      ejercicios.forEach(ej => {
+        sel.innerHTML += `<option value="${ej.id}">${ej.nombre} (${fmtFecha(ej.inicio)} → ${fmtFecha(ej.fin)})</option>`;
+      });
+      if (prev && ejercicios.find(e => e.id === prev)) sel.value = prev;
+      else if (ejercicios.length > 0) sel.value = ejercicios[0].id;
+      seleccionarEjercicio();
+    }
+
+    function seleccionarEjercicio() {
+      const id = document.getElementById('sel-ejercicio').value;
+      ejActual = ejercicios.find(e => e.id === id) || null;
+      const hay = !!ejActual;
+
+      document.getElementById('btn-config-ej').style.display = hay ? '' : 'none';
+      document.getElementById('tabs-finanzas').style.display = hay ? '' : 'none';
+      document.getElementById('tab-presupuesto').style.display = hay ? '' : 'none';
+      document.getElementById('card-config').style.display = 'none';
+      configVisible = false;
+
+      if (hay) {
+        document.getElementById('ej-nombre').value = ejActual.nombre || '';
+        document.getElementById('ej-inicio').value = ejActual.inicio || '';
+        document.getElementById('ej-fin').value = ejActual.fin || '';
+        renderPresupuesto();
+        renderRealizado();
+      }
+    }
+
+    // ========== TABS ==========
+    function cambiarTab(tab) {
+      document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === (tab === 'presupuesto' ? 0 : 1)));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.getElementById('tab-' + tab).style.display = '';
+    }
+
+    function toggleConfig() {
+      configVisible = !configVisible;
+      document.getElementById('card-config').style.display = configVisible ? '' : 'none';
+    }
+
+    // ========== HELPERS ==========
+    function getPartidas() { return ejActual?.partidas || []; }
+    function getRegistros() { return ejActual?.registros || []; }
+
+    function sumByGrupo(items, field, grupo) {
+      return items.filter(p => p.grupo === grupo).reduce((s, p) => s + (parseFloat(p[field]) || 0), 0);
+    }
+
+    function totalRealByPartida(partidaId) {
+      return getRegistros().filter(r => r.partidaId === partidaId).reduce((s, r) => s + (parseFloat(r.importe) || 0), 0);
+    }
+
+    function calcResultado(sums) {
+      return (sums.ventas || 0) - (sums.costes || 0) - (sums.personal || 0) - (sums.otros || 0);
+    }
+
+    // ========== RENDER PRESUPUESTO ==========
+    function renderPresupuesto() {
+      if (!ejActual) return;
+      const partidas = getPartidas();
+
+      // Resumen
+      const sums = {};
+      GRUPO_KEYS.forEach(g => { sums[g] = sumByGrupo(partidas, 'importe', g); });
+      const resultado = calcResultado(sums);
+
+      document.getElementById('resumen-pto').innerHTML = GRUPO_KEYS.map(g => `
+        <div class="resumen-item ${g}">
+          <div class="resumen-label">${GRUPOS[g].nombre}</div>
+          <div class="resumen-valor">${fmtNum(sums[g])}</div>
+          <div class="resumen-count">${partidas.filter(p => p.grupo === g).length} partidas</div>
+        </div>`).join('') + `
+        <div class="resumen-item resultado">
+          <div class="resumen-label">Resultado</div>
+          <div class="resumen-valor" style="color:${resultado >= 0 ? 'var(--success)' : 'var(--error)'}">${fmtNum(resultado)}</div>
+          <div class="resumen-count">Ventas − Costes − Personal − Otros</div>
+        </div>`;
+
+      // Grupos con partidas
+      const container = document.getElementById('partidas-pto-container');
+
+      if (partidas.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div>
+          <div class="empty-state-title">Sin partidas presupuestadas</div>
+          <div class="empty-state-text">Define las partidas de ingresos y gastos previstos</div>
+          <button class="btn btn-addon" onclick="abrirModalPartida()">+ Primera partida</button></div>`;
+        return;
+      }
+
+      container.innerHTML = GRUPO_KEYS.map(g => {
+        const items = partidas.filter(p => p.grupo === g).sort((a, b) => (a.concepto || '').localeCompare(b.concepto || ''));
+        if (items.length === 0) return '';
+        const total = sums[g];
+        const collapsed = !expandedGrupos[g];
+        return `
+          <div class="grupo-section">
+            <div class="grupo-header ${g}" onclick="toggleGrupo('${g}')">
+              <div class="grupo-header-left">
+                <span class="grupo-header-icon">${GRUPOS[g].icon}</span>
+                <span class="grupo-header-name">${GRUPOS[g].nombre}</span>
+                <span class="grupo-header-count">(${items.length})</span>
+              </div>
+              <span class="grupo-header-total">${fmtNum(total)} €</span>
+            </div>
+            <div class="grupo-body ${collapsed ? 'collapsed' : ''}" id="grupo-body-pto-${g}">
+              ${items.map(p => `
+                <div class="partida-row" onclick="editarPartida('${p.id}')" style="cursor:pointer;">
+                  <div style="flex:1;"><div class="partida-concepto">${p.concepto}</div>${p.notas ? `<div class="partida-notas">${p.notas}</div>` : ''}</div>
+                  <div class="partida-importe">${fmtNum(p.importe)} €</div>
+                </div>`).join('')}
+            </div>
+          </div>`;
+      }).join('') + `
+        <div class="resultado-row">
+          <span class="resultado-label">RESULTADO PREVISTO</span>
+          <span class="resultado-valor" style="color:${resultado >= 0 ? 'var(--success)' : 'var(--error)'}">${fmtNum(resultado)} €</span>
+        </div>`;
+    }
+
+    // ========== RENDER REALIZADO ==========
+    function renderRealizado() {
+      if (!ejActual) return;
+      const partidas = getPartidas();
+      const registros = getRegistros();
+
+      // Sumas reales por grupo
+      const sumsReal = {}, sumsPto = {};
+      GRUPO_KEYS.forEach(g => {
+        sumsPto[g] = sumByGrupo(partidas, 'importe', g);
+        sumsReal[g] = 0;
+        partidas.filter(p => p.grupo === g).forEach(p => { sumsReal[g] += totalRealByPartida(p.id); });
+      });
+      const resultadoPto = calcResultado(sumsPto);
+      const resultadoReal = calcResultado(sumsReal);
+
+      document.getElementById('resumen-real').innerHTML = GRUPO_KEYS.map(g => {
+        const pct = sumsPto[g] > 0 ? (sumsReal[g] / sumsPto[g] * 100) : 0;
+        return `<div class="resumen-item ${g}">
+          <div class="resumen-label">${GRUPOS[g].nombre}</div>
+          <div class="resumen-valor">${fmtNum(sumsReal[g])}</div>
+          <div class="resumen-count">${fmtNum(sumsPto[g])} pto · ${pct.toFixed(0)}%</div>
+        </div>`;
+      }).join('') + `
+        <div class="resumen-item resultado">
+          <div class="resumen-label">Resultado</div>
+          <div class="resumen-valor" style="color:${resultadoReal >= 0 ? 'var(--success)' : 'var(--error)'}">${fmtNum(resultadoReal)}</div>
+          <div class="resumen-count">Pto: ${fmtNum(resultadoPto)}</div>
+        </div>`;
+
+      // Grupos
+      const container = document.getElementById('partidas-real-container');
+
+      if (partidas.length === 0) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div>
+          <div class="empty-state-title">Sin partidas</div>
+          <div class="empty-state-text">Define partidas en Presupuesto para poder registrar la ejecución</div></div>`;
+        return;
+      }
+
+      container.innerHTML = GRUPO_KEYS.map(g => {
+        const items = partidas.filter(p => p.grupo === g).sort((a, b) => (a.concepto || '').localeCompare(b.concepto || ''));
+        if (items.length === 0) return '';
+        const collapsed = !expandedGrupos[g];
+        return `
+          <div class="grupo-section">
+            <div class="grupo-header ${g}" onclick="toggleGrupo('${g}')">
+              <div class="grupo-header-left">
+                <span class="grupo-header-icon">${GRUPOS[g].icon}</span>
+                <span class="grupo-header-name">${GRUPOS[g].nombre}</span>
+                <span class="grupo-header-count">(${items.length})</span>
+              </div>
+              <span class="grupo-header-total">${fmtNum(sumsReal[g])} / ${fmtNum(sumsPto[g])} €</span>
+            </div>
+            <div class="grupo-body ${collapsed ? 'collapsed' : ''}" id="grupo-body-real-${g}">
+              ${items.map(p => {
+                const real = totalRealByPartida(p.id);
+                const pto = parseFloat(p.importe) || 0;
+                const pct = pto > 0 ? (real / pto * 100) : (real > 0 ? 100 : 0);
+                const pctCapped = Math.min(pct, 100);
+                const barClass = pct <= 75 ? 'ok' : pct <= 100 ? 'warning' : 'over';
+                const regs = registros.filter(r => r.partidaId === p.id).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+                return `<div style="border-bottom:1px solid var(--cream-dark); padding: 8px 0;">
+                  <div class="partida-row" style="border:none; cursor:pointer;" onclick="toggleRegistros('regs-${p.id}')">
+                    <div style="flex:1;"><div class="partida-concepto">${p.concepto}</div><div class="partida-notas">Pto: ${fmtNum(pto)} € · ${regs.length} registro${regs.length !== 1 ? 's' : ''}</div></div>
+                    <div class="partida-realizado">
+                      <div class="progress-bar"><div class="progress-fill ${barClass}" style="width:${pctCapped}%"></div></div>
+                      <span class="partida-pct" style="color:${barClass === 'over' ? 'var(--error)' : ''}">${pct.toFixed(0)}%</span>
+                      <span class="partida-real-amount">${fmtNum(real)} €</span>
+                    </div>
+                  </div>
+                  <div class="registros-list" id="regs-${p.id}" style="display:none;">
+                    ${regs.length === 0 ? '<div style="font-size:0.82rem;color:var(--text-muted);padding:6px 10px;">Sin registros</div>' :
+                      regs.map(r => `<div class="registro-item">
+                        <span class="registro-fecha">${fmtFecha(r.fecha)}</span>
+                        <span class="registro-concepto">${r.concepto || '—'}</span>
+                        <span class="registro-importe">${fmtNum(r.importe)} €</span>
+                        <div class="registro-acciones">
+                          <button class="btn-ghost" style="font-size:0.75rem;padding:3px 6px;" onclick="event.stopPropagation();editarRegistro('${r.id}')">✏️</button>
+                        </div>
+                      </div>`).join('')}
+                    <button class="btn btn-sm btn-secondary" style="margin:6px 0 4px 10px;" onclick="event.stopPropagation();abrirModalRegistro('${p.id}')">+ Registro</button>
+                  </div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+      }).join('') + `
+        <div class="resultado-row">
+          <div>
+            <span class="resultado-label">RESULTADO REAL</span>
+            <div style="font-size:0.78rem;color:var(--text-muted);">Previsto: ${fmtNum(resultadoPto)} €</div>
+          </div>
+          <span class="resultado-valor" style="color:${resultadoReal >= 0 ? 'var(--success)' : 'var(--error)'}">${fmtNum(resultadoReal)} €</span>
+        </div>`;
+    }
+
+    function toggleGrupo(g) {
+      expandedGrupos[g] = !expandedGrupos[g];
+      // Toggle both tabs
+      const ptoBody = document.getElementById('grupo-body-pto-' + g);
+      const realBody = document.getElementById('grupo-body-real-' + g);
+      if (ptoBody) ptoBody.classList.toggle('collapsed');
+      if (realBody) realBody.classList.toggle('collapsed');
+    }
+
+    function toggleRegistros(id) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+    }
+
+    // ========== CRUD EJERCICIO ==========
+    function abrirModalEjercicio() {
+      const yr = new Date().getFullYear();
+      document.getElementById('new-ej-nombre').value = `Ejercicio ${yr}`;
+      document.getElementById('new-ej-inicio').value = `${yr}-01-01`;
+      document.getElementById('new-ej-fin').value = `${yr}-12-31`;
+      document.getElementById('modal-ejercicio').classList.add('active');
+    }
+
+    async function crearEjercicio() {
+      const nombre = document.getElementById('new-ej-nombre').value.trim();
+      const inicio = document.getElementById('new-ej-inicio').value;
+      const fin = document.getElementById('new-ej-fin').value;
+      if (!nombre || !inicio || !fin) { alert('Rellena todos los campos'); return; }
+      try {
+        const ref = await db.collection('bienes').doc(bienId).collection('ejercicios').add({
+          nombre, inicio, fin, partidas: [], registros: [],
+          creadoPor: currentUser.uid, fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        cerrarModales();
+        await cargarEjercicios();
+        document.getElementById('sel-ejercicio').value = ref.id;
+        seleccionarEjercicio();
+      } catch (e) { console.error(e); alert('Error al crear'); }
+    }
+
+    async function guardarConfigEjercicio() {
+      if (!ejActual) return;
+      const nombre = document.getElementById('ej-nombre').value.trim();
+      const inicio = document.getElementById('ej-inicio').value;
+      const fin = document.getElementById('ej-fin').value;
+      if (!nombre) { alert('Nombre obligatorio'); return; }
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejActual.id).update({ nombre, inicio, fin });
+        ejActual.nombre = nombre; ejActual.inicio = inicio; ejActual.fin = fin;
+        renderSelector();
+        alert('✅ Guardado');
+      } catch (e) { console.error(e); alert('Error'); }
+    }
+
+    async function eliminarEjercicio() {
+      if (!ejActual || !confirm(`¿Eliminar "${ejActual.nombre}"?`)) return;
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejActual.id).delete();
+        ejActual = null;
+        await cargarEjercicios();
+      } catch (e) { console.error(e); alert('Error'); }
+    }
+
+    // ========== CRUD PARTIDAS ==========
+    function abrirModalPartida(partida) {
+      editingPartidaId = partida?.id || null;
+      document.getElementById('modal-partida-titulo').textContent = partida ? '✏️ Editar partida' : '📝 Nueva partida';
+      document.getElementById('btn-del-partida').style.display = partida ? '' : 'none';
+      document.getElementById('part-grupo').value = partida?.grupo || 'ventas';
+      document.getElementById('part-concepto').value = partida?.concepto || '';
+      document.getElementById('part-importe').value = partida?.importe || '';
+      document.getElementById('part-notas').value = partida?.notas || '';
+      document.getElementById('modal-partida').classList.add('active');
+    }
+
+    function editarPartida(id) {
+      const p = getPartidas().find(x => x.id === id);
+      if (p) abrirModalPartida(p);
+    }
+
+    async function guardarPartida() {
+      if (!ejActual) return;
+      const grupo = document.getElementById('part-grupo').value;
+      const concepto = document.getElementById('part-concepto').value.trim();
+      const importe = parseFloat(document.getElementById('part-importe').value) || 0;
+      const notas = document.getElementById('part-notas').value.trim();
+      if (!concepto) { alert('Concepto obligatorio'); return; }
+      if (importe <= 0) { alert('Importe debe ser mayor que 0'); return; }
+
+      let partidas = [...getPartidas()];
+      if (editingPartidaId) {
+        const idx = partidas.findIndex(p => p.id === editingPartidaId);
+        if (idx >= 0) partidas[idx] = { ...partidas[idx], grupo, concepto, importe, notas };
+      } else {
+        partidas.push({ id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), grupo, concepto, importe, notas });
+      }
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejActual.id).update({ partidas });
+        ejActual.partidas = partidas;
+        cerrarModales();
+        renderPresupuesto();
+        renderRealizado();
+      } catch (e) { console.error(e); alert('Error'); }
+    }
+
+    async function eliminarPartida() {
+      if (!editingPartidaId || !ejActual) return;
+      const regs = getRegistros().filter(r => r.partidaId === editingPartidaId);
+      if (regs.length > 0 && !confirm(`Esta partida tiene ${regs.length} registro(s). ¿Eliminar partida y sus registros?`)) return;
+      if (regs.length === 0 && !confirm('¿Eliminar partida?')) return;
+      const partidas = getPartidas().filter(p => p.id !== editingPartidaId);
+      const registros = getRegistros().filter(r => r.partidaId !== editingPartidaId);
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejActual.id).update({ partidas, registros });
+        ejActual.partidas = partidas;
+        ejActual.registros = registros;
+        cerrarModales();
+        renderPresupuesto();
+        renderRealizado();
+      } catch (e) { console.error(e); alert('Error'); }
+    }
+
+    // ========== CRUD REGISTROS ==========
+    function abrirModalRegistro(partidaId) {
+      editingRegistroId = null;
+      document.getElementById('modal-registro-titulo').textContent = '📊 Nuevo registro';
+      document.getElementById('btn-del-registro').style.display = 'none';
+
+      // Poblar selector de partidas
+      const sel = document.getElementById('reg-partida');
+      sel.innerHTML = '';
+      GRUPO_KEYS.forEach(g => {
+        const items = getPartidas().filter(p => p.grupo === g);
+        if (items.length > 0) {
+          sel.innerHTML += `<optgroup label="${GRUPOS[g].icon} ${GRUPOS[g].nombre}">`;
+          items.forEach(p => { sel.innerHTML += `<option value="${p.id}" ${p.id === partidaId ? 'selected' : ''}>${p.concepto} (${fmtNum(p.importe)} €)</option>`; });
+          sel.innerHTML += `</optgroup>`;
+        }
+      });
+
+      document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
+      document.getElementById('reg-importe').value = '';
+      document.getElementById('reg-concepto').value = '';
+      document.getElementById('reg-notas').value = '';
+      document.getElementById('modal-registro').classList.add('active');
+    }
+
+    function editarRegistro(id) {
+      const r = getRegistros().find(x => x.id === id);
+      if (!r) return;
+      editingRegistroId = id;
+      document.getElementById('modal-registro-titulo').textContent = '✏️ Editar registro';
+      document.getElementById('btn-del-registro').style.display = '';
+
+      // Poblar selector
+      const sel = document.getElementById('reg-partida');
+      sel.innerHTML = '';
+      GRUPO_KEYS.forEach(g => {
+        const items = getPartidas().filter(p => p.grupo === g);
+        if (items.length > 0) {
+          sel.innerHTML += `<optgroup label="${GRUPOS[g].icon} ${GRUPOS[g].nombre}">`;
+          items.forEach(p => { sel.innerHTML += `<option value="${p.id}" ${p.id === r.partidaId ? 'selected' : ''}>${p.concepto}</option>`; });
+          sel.innerHTML += `</optgroup>`;
+        }
+      });
+
+      document.getElementById('reg-fecha').value = r.fecha || '';
+      document.getElementById('reg-importe').value = r.importe || '';
+      document.getElementById('reg-concepto').value = r.concepto || '';
+      document.getElementById('reg-notas').value = r.notas || '';
+      document.getElementById('modal-registro').classList.add('active');
+    }
+
+    async function guardarRegistro() {
+      if (!ejActual) return;
+      const partidaId = document.getElementById('reg-partida').value;
+      const fecha = document.getElementById('reg-fecha').value;
+      const importe = parseFloat(document.getElementById('reg-importe').value) || 0;
+      const concepto = document.getElementById('reg-concepto').value.trim();
+      const notas = document.getElementById('reg-notas').value.trim();
+
+      if (!partidaId) { alert('Selecciona una partida'); return; }
+      if (!fecha) { alert('Fecha obligatoria'); return; }
+      if (importe <= 0) { alert('Importe debe ser mayor que 0'); return; }
+
+      let registros = [...getRegistros()];
+      if (editingRegistroId) {
+        const idx = registros.findIndex(r => r.id === editingRegistroId);
+        if (idx >= 0) registros[idx] = { ...registros[idx], partidaId, fecha, importe, concepto, notas };
+      } else {
+        registros.push({ id: 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), partidaId, fecha, importe, concepto, notas });
+      }
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejActual.id).update({ registros });
+        ejActual.registros = registros;
+        cerrarModales();
+        renderRealizado();
+      } catch (e) { console.error(e); alert('Error'); }
+    }
+
+    async function eliminarRegistro() {
+      if (!editingRegistroId || !ejActual || !confirm('¿Eliminar registro?')) return;
+      const registros = getRegistros().filter(r => r.id !== editingRegistroId);
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejActual.id).update({ registros });
+        ejActual.registros = registros;
+        cerrarModales();
+        renderRealizado();
+      } catch (e) { console.error(e); alert('Error'); }
+    }
+
+    // ========== EXPORT PDF ==========
+    function exportarPDF() {
+      if (!ejActual) { alert('Selecciona un ejercicio'); return; }
+      const partidas = getPartidas();
+      const registros = getRegistros();
+      const activeTab = document.querySelector('.tab.active')?.textContent.includes('Realizado') ? 'real' : 'pto';
+      const addonColor = origen === 'gerente' ? '#2D4A5C' : '#6B8E23';
+
+      const sumsPto = {}, sumsReal = {};
+      GRUPO_KEYS.forEach(g => {
+        sumsPto[g] = sumByGrupo(partidas, 'importe', g);
+        sumsReal[g] = 0;
+        partidas.filter(p => p.grupo === g).forEach(p => { sumsReal[g] += totalRealByPartida(p.id); });
+      });
+      const resPto = calcResultado(sumsPto);
+      const resReal = calcResultado(sumsReal);
+
+      let tablesHtml = '';
+      GRUPO_KEYS.forEach(g => {
+        const items = partidas.filter(p => p.grupo === g);
+        if (items.length === 0) return;
+        const gColor = { ventas: '#7DB59A', costes: '#E8B44D', personal: '#5B9BD5', otros: '#D4695A' }[g];
+        tablesHtml += `<h3 style="color:${gColor};margin:20px 0 8px;">${GRUPOS[g].icon} ${GRUPOS[g].nombre}</h3>`;
+        tablesHtml += `<table><thead><tr><th style="text-align:left;">Concepto</th><th style="text-align:right;">Presupuesto</th>`;
+        if (activeTab === 'real') tablesHtml += `<th style="text-align:right;">Realizado</th><th style="text-align:right;">%</th><th style="text-align:right;">Desviación</th>`;
+        tablesHtml += `</tr></thead><tbody>`;
+        let sumPto = 0, sumReal = 0;
+        items.forEach(p => {
+          const pto = parseFloat(p.importe) || 0;
+          const real = totalRealByPartida(p.id);
+          const pct = pto > 0 ? (real / pto * 100) : 0;
+          const desv = real - pto;
+          sumPto += pto; sumReal += real;
+          tablesHtml += `<tr><td style="padding:6px 10px;">${p.concepto}</td><td style="padding:6px 10px;text-align:right;">${fmtNum(pto)} €</td>`;
+          if (activeTab === 'real') tablesHtml += `<td style="text-align:right;font-weight:600;">${fmtNum(real)} €</td><td style="text-align:center;">${pct.toFixed(0)}%</td><td style="text-align:right;color:${desv > 0 ? '#D4695A' : '#7DB59A'}">${desv > 0 ? '+' : ''}${fmtNum(desv)} €</td>`;
+          tablesHtml += `</tr>`;
+        });
+        tablesHtml += `<tr style="background:${gColor}15;font-weight:700;"><td style="padding:8px 10px;">Total ${GRUPOS[g].nombre}</td><td style="text-align:right;padding:8px 10px;">${fmtNum(sumPto)} €</td>`;
+        if (activeTab === 'real') { const d = sumReal - sumPto; tablesHtml += `<td style="text-align:right;">${fmtNum(sumReal)} €</td><td></td><td style="text-align:right;color:${d > 0 ? '#D4695A' : '#7DB59A'}">${d > 0 ? '+' : ''}${fmtNum(d)} €</td>`; }
+        tablesHtml += `</tr></tbody></table>`;
+      });
+
+      const pdfHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Finanzas - ${ejActual.nombre}</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Nunito',sans-serif;color:#3D3D3D;padding:40px;max-width:800px;margin:0 auto}
+table{width:100%;border-collapse:collapse;margin-bottom:8px}thead th{background:#f5f0ea;padding:8px 10px;font-size:0.75rem;text-transform:uppercase;color:#9A9A9A;font-weight:600}tbody td{border-bottom:1px solid #eee}
+@media print{body{padding:20px}}</style></head><body>
+<div style="display:flex;justify-content:space-between;margin-bottom:30px;padding-bottom:16px;border-bottom:3px solid ${addonColor};">
+  <div><h1 style="font-family:'Quicksand';font-size:1.5rem;color:${addonColor};">FINANZAS — ${activeTab === 'real' ? 'PRESUPUESTO vs REALIZADO' : 'PRESUPUESTO'}</h1>
+  <div style="font-size:0.9rem;color:#6B6B6B;">${bienData?.nombre || ''}</div></div>
+  <div style="text-align:right;font-size:0.85rem;color:#6B6B6B;"><strong>${ejActual.nombre}</strong><br>${fmtFecha(ejActual.inicio)} → ${fmtFecha(ejActual.fin)}</div>
+</div>
+${tablesHtml}
+<div style="margin-top:20px;padding:16px;background:${addonColor}15;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+  <div><div style="font-size:0.8rem;color:#9A9A9A;">RESULTADO PREVISTO</div><div style="font-family:'Quicksand';font-size:1.3rem;font-weight:700;color:${resPto >= 0 ? '#7DB59A' : '#D4695A'}">${fmtNum(resPto)} €</div></div>
+  ${activeTab === 'real' ? `<div style="text-align:right;"><div style="font-size:0.8rem;color:#9A9A9A;">RESULTADO REAL</div><div style="font-family:'Quicksand';font-size:1.3rem;font-weight:700;color:${resReal >= 0 ? '#7DB59A' : '#D4695A'}">${fmtNum(resReal)} €</div></div>` : ''}
+</div>
+<div style="margin-top:40px;text-align:center;font-size:0.72rem;color:#9A9A9A;">Generado con FAMILYNK · ${new Date().toLocaleDateString('es-ES')}</div>
+<script>window.onload = () => window.print();<\/script></body></html>`;
+      const v = window.open('', '_blank');
+      v.document.write(pdfHtml);
+      v.document.close();
+    }
+
+    // ========== UTILS ==========
+    function cerrarModales() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      editingPartidaId = null;
+      editingRegistroId = null;
+    }
+    function fmtFecha(f) {
+      if (!f) return '—';
+      const d = new Date(f + 'T00:00:00');
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    function fmtNum(n) {
+      return (parseFloat(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => { if (e.target.classList.contains('modal-overlay')) cerrarModales(); });
+    });
+  </script>
+</body>
+</html>
