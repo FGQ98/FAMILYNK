@@ -1840,7 +1840,7 @@
       { id: 'fechas', nombre: 'Fechas', icono: '📅', desc: 'Acordar fechas' },
       { id: 'amigo', nombre: 'Amigo Invisible', icono: '🎁', desc: 'Sorteo de regalos' },
       { id: 'listas', nombre: 'Listas', icono: '📝', desc: 'Listas colaborativas' },
-      { id: 'jugar', nombre: 'Jugar', icono: '🎲', desc: 'Porras, competiciones y calcutas' },
+      { id: 'porras', nombre: 'Porras', icono: '🎲', desc: 'Apuestas amistosas' },
       { id: 'mercadillo', nombre: 'Mercadillo', icono: '🏷️', desc: 'Compra-venta familiar' },
       { id: 'votaciones', nombre: 'Votaciones', icono: '🗳️', desc: 'Decisiones colectivas' },
       { id: 'encuestas', nombre: 'Encuestas', icono: '📊', desc: 'Sondeos de opinión' },
@@ -1856,8 +1856,7 @@
       { id: 'evento', nombre: 'Solicitar evento', icono: '🎉', desc: 'Pedir celebraciones' },
       { id: 'reserva', nombre: 'Solicitar reserva', icono: '📅', desc: 'Reservar bienes' },
       { id: 'queo', nombre: 'Enviar queo', icono: '📣', desc: 'Comunicados rápidos' },
-      { id: 'convocar', nombre: 'Convocar', icono: '✋', desc: 'Llamar a reunión' },
-      { id: 'jugar', nombre: 'Jugar', icono: '🎲', desc: 'Porras, competiciones y apuestas' }
+      { id: 'convocar', nombre: 'Convocar', icono: '✋', desc: 'Llamar a reunión' }
     ];
 
     const permisosBase = [
@@ -2293,11 +2292,10 @@
         modulos: {
           reservas: { icon: '📅', nombre: 'Reservas' }, inventario: { icon: '📦', nombre: 'Inventario' },
           ajuar: { icon: '🪑', nombre: 'Ajuar' }, menus: { icon: '🍽️', nombre: 'Menús' },
-          mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' },
+          finanzas: { icon: '💰', nombre: 'Finanzas' }, mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' },
           limpieza: { icon: '🧹', nombre: 'Limpieza' }, eventos: { icon: '🎉', nombre: 'Eventos' },
           planLimpieza: { icon: '📋', nombre: 'Plan Limpieza' }, prepararSemana: { icon: '📝', nombre: 'Preparar Semana' },
-          especiales: { icon: '⭐', nombre: 'Especiales' }, finanzas: { icon: '💰', nombre: 'Finanzas' },
-          informes: { icon: '📄', nombre: 'Informes' }
+          especiales: { icon: '⭐', nombre: 'Especiales' }, informes: { icon: '📄', nombre: 'Informes' }
         },
         params: {
           mascota: { icon: '🐾', nombre: 'Mascota' }, reglas: { icon: '📏', nombre: 'Reglas de la casa' },
@@ -2329,10 +2327,11 @@
           entidad: { icon: '🏛️', nombre: 'Entidad' }, parcelas: { icon: '🌾', nombre: 'Parcelas' },
           aprovechamientos: { icon: '🌱', nombre: 'Aprovechamientos' }, labores: { icon: '📋', nombre: 'Labores' },
           cosechas: { icon: '🌻', nombre: 'Cosechas' }, instalaciones: { icon: '🏭', nombre: 'Instalaciones' },
-          maquinaria: { icon: '🚜', nombre: 'Maquinaria' }, reservas: { icon: '📅', nombre: 'Reservas' }, inventario: { icon: '📦', nombre: 'Inventario' },
+          maquinaria: { icon: '🚜', nombre: 'Maquinaria' },
+          reservas: { icon: '📅', nombre: 'Reservas' }, inventario: { icon: '📦', nombre: 'Inventario' },
           mantenimiento: { icon: '🔧', nombre: 'Mantenimiento' }, acuerdos: { icon: '🤝', nombre: 'Acuerdos' },
-          tarifas: { icon: '💶', nombre: 'Tarifas' }, finanzas: { icon: '💰', nombre: 'Finanzas' },
-          informes: { icon: '📄', nombre: 'Informes' }
+          tarifas: { icon: '💶', nombre: 'Tarifas' },
+          finanzas: { icon: '💰', nombre: 'Finanzas' }, informes: { icon: '📄', nombre: 'Informes' }
         },
         params: {
           externos: { icon: '👷', nombre: 'Externos (guardas)' }, documentos: { icon: '📑', nombre: 'Documentos' },
@@ -2344,14 +2343,24 @@
 
     // Helper: obtener catálogo de módulos para un tipo
     function getCatalogoModulos(tipo) {
-      // Si admin-sistema definió modulosDisponibles, usamos solo los habilitados
       const sysConfig = catalogoSistema[tipo];
       const fallback = CATALOGO_FALLBACK[tipo]?.modulos || {};
       if (!sysConfig || !sysConfig.modulosDisponibles) return fallback;
-      // Filtrar: solo módulos habilitados por admin-sistema
+      // Fuente de metadatos: modulosCatalogo (guardado desde admin-sistema) > fallback
+      const meta = sysConfig.modulosCatalogo || {};
       const result = {};
       for (const [key, enabled] of Object.entries(sysConfig.modulosDisponibles)) {
-        if (enabled && fallback[key]) result[key] = fallback[key];
+        if (enabled) {
+          // Buscar icon+nombre en: 1) modulosCatalogo del sistema, 2) fallback local
+          if (meta[key]) {
+            result[key] = meta[key];
+          } else if (fallback[key]) {
+            result[key] = fallback[key];
+          } else {
+            // Módulo nuevo sin metadatos: nombre humanizado
+            result[key] = { icon: '📋', nombre: key.charAt(0).toUpperCase() + key.slice(1) };
+          }
+        }
       }
       return Object.keys(result).length > 0 ? result : fallback;
     }
@@ -2361,9 +2370,18 @@
       const sysConfig = catalogoSistema[tipo];
       const fallback = CATALOGO_FALLBACK[tipo]?.params || {};
       if (!sysConfig || !sysConfig.parametrosDisponibles) return fallback;
+      const meta = sysConfig.parametrosCatalogo || {};
       const result = {};
       for (const [key, enabled] of Object.entries(sysConfig.parametrosDisponibles)) {
-        if (enabled && fallback[key]) result[key] = fallback[key];
+        if (enabled) {
+          if (meta[key]) {
+            result[key] = meta[key];
+          } else if (fallback[key]) {
+            result[key] = fallback[key];
+          } else {
+            result[key] = { icon: '⚙️', nombre: key.charAt(0).toUpperCase() + key.slice(1) };
+          }
+        }
       }
       return Object.keys(result).length > 0 ? result : fallback;
     }
@@ -3425,8 +3443,8 @@
         cerebro: { analisis: false, intuicion: false, memoria: false, razonamiento: false },
         locomun: { inmuebles: true, terrenos: true, vehiculos: true },
         legado: { recetas: true, fotos: false, historias: false, valores: false, tradiciones: false, anecdotas: false, sabiduria: false },
-        activacion: { fechas: true, amigo: true, listas: true, jugar: true, mercadillo: true, votaciones: false, encuestas: false, turnos: false, asistencia: false, mesas: false, escaleta: false },
-        ctas: { averia: true, iniciativa: true, evento: true, reserva: true, queo: true, convocar: true, jugar: true }
+        activacion: { fechas: true, amigo: true, listas: true, porras: true, mercadillo: true, votaciones: false, encuestas: false, turnos: false, asistencia: false, mesas: false, escaleta: false },
+        ctas: { averia: true, iniciativa: true, evento: true, reserva: true, queo: true, convocar: true }
       };
 
       const seccionesConfig = config.secciones || defaultConfig.secciones;

@@ -1353,28 +1353,49 @@ Soporte prioritario</textarea></div>
             precio: parseFloat(document.getElementById('addon-mayordomo-precio').value) || 4.99,
             activo: document.getElementById('addon-mayordomo-activo').checked,
             modulosDisponibles: recogerChips('sys-modulos-mayordomo'),
-            parametrosDisponibles: recogerChips('sys-params-mayordomo')
+            modulosCatalogo: CATALOGO_SISTEMA_MODULOS.mayordomo,
+            parametrosDisponibles: recogerChips('sys-params-mayordomo'),
+            parametrosCatalogo: CATALOGO_SISTEMA_PARAMS.mayordomo
           },
           gerente: {
             id: 'gerente', nombre: 'Gerente', icon: '🏨', descripcion: 'Alquiler turístico profesional',
             precio: parseFloat(document.getElementById('addon-gerente-precio').value) || 9.99,
             activo: document.getElementById('addon-gerente-activo').checked,
             modulosDisponibles: recogerChips('sys-modulos-gerente'),
-            parametrosDisponibles: recogerChips('sys-params-gerente')
+            modulosCatalogo: CATALOGO_SISTEMA_MODULOS.gerente,
+            parametrosDisponibles: recogerChips('sys-params-gerente'),
+            parametrosCatalogo: CATALOGO_SISTEMA_PARAMS.gerente
           },
           capataz: {
             id: 'capataz', nombre: 'Capataz', icon: '🌾', descripcion: 'Gestión de fincas rurales',
             precio: parseFloat(document.getElementById('addon-capataz-precio').value) || 9.99,
             activo: document.getElementById('addon-capataz-activo').checked,
             modulosDisponibles: recogerChips('sys-modulos-capataz'),
-            parametrosDisponibles: recogerChips('sys-params-capataz')
+            modulosCatalogo: CATALOGO_SISTEMA_MODULOS.capataz,
+            parametrosDisponibles: recogerChips('sys-params-capataz'),
+            parametrosCatalogo: CATALOGO_SISTEMA_PARAMS.capataz
           },
           ultimaModificacion: firebase.firestore.FieldValue.serverTimestamp()
         };
+
+        // Verificar que se recogieron módulos (debug)
+        const nModsMayo = Object.keys(addons.mayordomo.modulosDisponibles).length;
+        const nModsGer = Object.keys(addons.gerente.modulosDisponibles).length;
+        const nModsCap = Object.keys(addons.capataz.modulosDisponibles).length;
+        console.log('Guardando addons — Módulos recogidos:', { mayordomo: nModsMayo, gerente: nModsGer, capataz: nModsCap });
+        console.log('Detalle:', JSON.stringify({ mayo: addons.mayordomo.modulosDisponibles, ger: addons.gerente.modulosDisponibles, cap: addons.capataz.modulosDisponibles }, null, 2));
+
+        if (nModsMayo === 0 && nModsGer === 0 && nModsCap === 0) {
+          console.warn('⚠️ No se recogieron módulos — ¿chips no renderizados?');
+        }
+
         await db.collection('config').doc('addons').set(addons);
         addonsConfigData = addons;
         alert('✅ Add-ons guardados: precios, módulos y parámetros');
-      } catch (e) { alert('Error guardando Add-ons: ' + e.message); }
+      } catch (e) {
+        console.error('Error guardando Add-ons:', e);
+        alert('Error guardando Add-ons: ' + e.message);
+      }
     }
     async function cargarLegal(){try{const tc=await db.collection('config').doc('terminos').get();if(tc.exists){document.getElementById('tc-contenido').value=tc.data().contenido||'';document.getElementById('tc-fecha').textContent=tc.data().fechaActualizacion?.toDate?.().toLocaleDateString('es')||'-'}const pp=await db.collection('config').doc('privacidad').get();if(pp.exists){document.getElementById('pp-contenido').value=pp.data().contenido||'';document.getElementById('pp-fecha').textContent=pp.data().fechaActualizacion?.toDate?.().toLocaleDateString('es')||'-'}}catch(e){console.error(e)}}
     async function guardarTerminos(){const c=document.getElementById('tc-contenido').value;if(!c.trim())return alert('Contenido requerido');try{await db.collection('config').doc('terminos').set({contenido:c,fechaActualizacion:firebase.firestore.FieldValue.serverTimestamp()});document.getElementById('tc-fecha').textContent=new Date().toLocaleDateString('es');alert('✅ Guardado')}catch(e){alert('Error: '+e.message)}}
