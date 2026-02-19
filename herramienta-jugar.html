@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FAMILYNK — Porras</title>
+  <title>FAMILYNK — Apostar</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -36,6 +36,15 @@
     .btn-sm { padding: 8px 14px; font-size: 0.8rem; }
     .btn-danger { background: #D4695A; color: white; }
     .btn-gold { background: var(--gold); color: white; }
+
+    /* Tabs de modalidad */
+    .modalidad-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .modalidad-tab { padding: 10px 18px; border: 2px solid var(--cream-dark); border-radius: var(--radius-full); font-family: 'Nunito', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; background: var(--white); display: flex; align-items: center; gap: 6px; }
+    .modalidad-tab:hover { border-color: var(--gold); }
+    .modalidad-tab.active { background: var(--gold); color: white; border-color: var(--gold); }
+    .modalidad-tab.disabled { opacity: 0.45; pointer-events: none; }
+    .modalidad-tab-count { padding: 2px 8px; background: rgba(0,0,0,0.1); border-radius: var(--radius-full); font-size: 0.75rem; }
+    .modalidad-tab.active .modalidad-tab-count { background: rgba(255,255,255,0.25); }
 
     /* Cards de porras */
     .porras-grid {
@@ -416,13 +425,6 @@
     .empty-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
     .empty-text { color: var(--text-muted); margin-bottom: 20px; }
 
-    .plan-required { text-align: center; padding: 60px 20px; max-width: 400px; margin: 40px auto; background: var(--white); border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
-    .plan-required-icon { width: 64px; height: 64px; background: rgba(122,158,126,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 1.5rem; color: #5C7D5F; font-weight: 700; }
-    .plan-required-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.2rem; margin-bottom: 10px; }
-    .plan-required-text { color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem; line-height: 1.5; }
-    .plan-required-btn { display: inline-block; padding: 12px 24px; background: var(--sage); color: white; text-decoration: none; border-radius: 12px; font-weight: 600; }
-    .plan-required-btn:hover { background: #5C7D5F; }
-
     .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--sage); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -437,51 +439,61 @@
   <main class="main">
     <div class="page-header">
       <div>
-        <h1 class="page-title">🎲 Porras</h1>
-        <p class="page-subtitle">Apuestas familiares con premio para quien acierte</p>
+        <h1 class="page-title">🎲 Apostar</h1>
+        <p class="page-subtitle">Apuestas familiares: porras, competiciones y más</p>
       </div>
-      <button class="btn btn-primary" onclick="abrirModalCrear()">+ Nueva porra</button>
+      <button class="btn btn-primary" id="btn-crear" onclick="abrirModalCrear()">+ Nueva apuesta</button>
+    </div>
+
+    <div class="modalidad-tabs" id="modalidad-tabs">
+      <button class="modalidad-tab active" data-mod="todas" onclick="filtrarModalidad('todas')">Todas <span class="modalidad-tab-count" id="count-todas">0</span></button>
+      <button class="modalidad-tab" data-mod="porra" onclick="filtrarModalidad('porra')">🎲 Porra <span class="modalidad-tab-count" id="count-porra">0</span></button>
+      <button class="modalidad-tab" data-mod="competicion" onclick="filtrarModalidad('competicion')">🏆 Competición <span class="modalidad-tab-count" id="count-competicion">0</span></button>
+      <button class="modalidad-tab" data-mod="precio-justo" onclick="filtrarModalidad('precio-justo')">💰 Precio justo <span class="modalidad-tab-count" id="count-precio-justo">0</span></button>
+      <button class="modalidad-tab disabled">🧮 Calcutas</button>
     </div>
 
     <div id="loading" class="loading"><div class="spinner"></div></div>
-
-    <div id="plan-required" class="plan-required hidden">
-      <div class="plan-required-icon">+</div>
-      <h2 class="plan-required-title">Función Plus</h2>
-      <p class="plan-required-text">Las porras están disponibles en el plan Plus. Mejora tu plan para desbloquear esta y otras herramientas.</p>
-      <a href="planes.html" class="plan-required-btn">Ver planes</a>
-    </div>
 
     <div id="porras-grid" class="porras-grid hidden"></div>
 
     <div id="empty-state" class="empty-state hidden">
       <div class="empty-icon">🎲</div>
-      <p class="empty-text">No hay porras activas.<br>¡Crea una para empezar a apostar!</p>
-      <button class="btn btn-primary" onclick="abrirModalCrear()">+ Nueva porra</button>
+      <p class="empty-text">No hay apuestas activas.<br>¡Crea una para empezar!</p>
+      <button class="btn btn-primary" onclick="abrirModalCrear()">+ Nueva apuesta</button>
     </div>
   </main>
 
-  <!-- Modal Crear Porra -->
+  <!-- Modal Crear Apuesta -->
   <div class="modal-overlay" id="modal-crear">
     <div class="modal">
       <div class="modal-header">
-        <h3 class="modal-title">🎲 Nueva porra</h3>
+        <h3 class="modal-title">🎲 Nueva apuesta</h3>
         <button class="modal-close" onclick="cerrarModales()">×</button>
       </div>
       <form id="form-porra" onsubmit="crearPorra(event)">
         <div class="modal-body">
           <div class="form-group">
-            <label class="form-label">Nombre de la porra *</label>
+            <label class="form-label">Modalidad</label>
+            <select class="form-select" id="porra-modalidad" onchange="cambiarModalidad()">
+              <option value="porra">🎲 Porra</option>
+              <option value="competicion">🏆 Competición</option>
+              <option value="precio-justo">💰 Precio justo</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Nombre de la apuesta *</label>
             <input type="text" class="form-input" id="porra-nombre" placeholder="Ej: Final Champions 2025, Oscar mejor película..." required>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Tipo de porra</label>
+          <div class="form-row" id="row-tipo-inscripcion">
+            <div class="form-group" id="grupo-tipo">
+              <label class="form-label">Tipo</label>
               <select class="form-select" id="porra-tipo" onchange="cambiarTipoPorra()">
                 <option value="futbol">⚽ Partido de fútbol</option>
                 <option value="podium">🏆 Podium (1º, 2º, 3º)</option>
-                <option value="ganador">🥇 Ganador de competición</option>
+                <option value="ganador">🥇 Ganador</option>
               </select>
             </div>
             <div class="form-group">
@@ -500,7 +512,7 @@
             </select>
           </div>
 
-          <!-- Config específica: Fútbol -->
+          <!-- Config: Fútbol -->
           <div class="config-section" id="config-futbol">
             <div class="config-title">⚽ Configuración del partido</div>
             <div class="form-row">
@@ -515,29 +527,30 @@
             </div>
           </div>
 
-          <!-- Config específica: Podium/Ganador -->
+          <!-- Config: Podium/Ganador/Competición -->
           <div class="config-section hidden" id="config-competidores">
-            <div class="config-title">🏆 Competidores / Opciones</div>
+            <div class="config-title" id="config-competidores-title">🏆 Competidores / Opciones</div>
             <div class="competidores-lista" id="competidores-lista">
-              <div class="competidor-input">
-                <input type="text" placeholder="Competidor 1">
-                <button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>
-              </div>
-              <div class="competidor-input">
-                <input type="text" placeholder="Competidor 2">
-                <button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>
-              </div>
-              <div class="competidor-input">
-                <input type="text" placeholder="Competidor 3">
-                <button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>
-              </div>
+              <div class="competidor-input"><input type="text" placeholder="Competidor 1"><button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button></div>
+              <div class="competidor-input"><input type="text" placeholder="Competidor 2"><button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button></div>
+              <div class="competidor-input"><input type="text" placeholder="Competidor 3"><button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button></div>
             </div>
             <button type="button" class="btn-add-comp" onclick="agregarCompetidor()">+ Añadir competidor</button>
+          </div>
+
+          <!-- Config: Precio Justo -->
+          <div class="config-section hidden" id="config-precio-justo">
+            <div class="config-title">💰 ¿Cuánto cuesta esto?</div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Objeto o producto</label>
+              <input type="text" class="form-input" id="pj-objeto" placeholder="Ej: Este coche, la cena de anoche, el vestido de mamá...">
+            </div>
+            <p class="form-hint" style="margin-top:8px">Cada participante da su precio. Gana quien más se acerque sin pasarse.</p>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Crear porra</button>
+          <button type="submit" class="btn btn-primary">Crear apuesta</button>
         </div>
       </form>
     </div>
@@ -593,6 +606,11 @@
     let porrasData = [];
     let miembrosData = [];
     let porraActual = null;
+    let modalidadActual = 'todas';
+
+    // Leer modalidad de URL (viene del CGI)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tipoInicial = urlParams.get('tipo');
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
@@ -603,19 +621,13 @@
       userData = userDoc.data();
       familiaId = userData.familiaId;
 
-      // Verificar plan
-      const familiaDoc = await db.collection('familias').doc(familiaId).get();
-      const plan = familiaDoc.exists ? (familiaDoc.data().plan || 'gratuito') : 'gratuito';
-      
-      if (plan === 'gratuito') {
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('plan-required').classList.remove('hidden');
-        document.querySelector('.header-actions')?.classList.add('hidden');
-        return;
-      }
-
       await cargarMiembros();
       await loadPorras();
+
+      // Si viene con tipo desde el CGI, activar esa tab
+      if (tipoInicial && ['porra', 'competicion', 'precio-justo'].includes(tipoInicial)) {
+        filtrarModalidad(tipoInicial);
+      }
     });
 
     async function cargarMiembros() {
@@ -632,8 +644,6 @@
           .get();
 
         porrasData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        // Ordenar: abiertas primero, luego por fecha
         porrasData.sort((a, b) => {
           if (a.finalizada !== b.finalizada) return a.finalizada ? 1 : -1;
           if (a.cerrada !== b.cerrada) return a.cerrada ? 1 : -1;
@@ -641,6 +651,7 @@
         });
         
         document.getElementById('loading').classList.add('hidden');
+        actualizarContadores();
         renderPorras();
       } catch (error) {
         console.error('Error:', error);
@@ -649,11 +660,36 @@
       }
     }
 
+    function actualizarContadores() {
+      const conteos = { porra: 0, competicion: 0, 'precio-justo': 0 };
+      porrasData.forEach(p => {
+        const mod = p.modalidad || 'porra';
+        if (conteos[mod] !== undefined) conteos[mod]++;
+      });
+      document.getElementById('count-todas').textContent = porrasData.length;
+      document.getElementById('count-porra').textContent = conteos.porra;
+      document.getElementById('count-competicion').textContent = conteos.competicion;
+      document.getElementById('count-precio-justo').textContent = conteos['precio-justo'];
+    }
+
+    function filtrarModalidad(mod) {
+      modalidadActual = mod;
+      document.querySelectorAll('.modalidad-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.mod === mod);
+      });
+      renderPorras();
+    }
+
     function renderPorras() {
       const container = document.getElementById('porras-grid');
       const empty = document.getElementById('empty-state');
 
-      if (porrasData.length === 0) {
+      let filtered = porrasData;
+      if (modalidadActual !== 'todas') {
+        filtered = porrasData.filter(p => (p.modalidad || 'porra') === modalidadActual);
+      }
+
+      if (filtered.length === 0) {
         container.classList.add('hidden');
         empty.classList.remove('hidden');
         return;
@@ -663,37 +699,35 @@
       container.classList.remove('hidden');
 
       const tipoLabels = {
-        'futbol': '⚽ Partido de fútbol',
-        'podium': '🏆 Podium',
-        'ganador': '🥇 Ganador'
+        'futbol': '⚽ Partido', 'podium': '🏆 Podium', 'ganador': '🥇 Ganador', 'precio-justo': '💰 Precio justo'
+      };
+      const modLabels = {
+        'porra': '🎲 Porra', 'competicion': '🏆 Competición', 'precio-justo': '💰 Precio justo'
       };
 
-      container.innerHTML = porrasData.map(p => {
+      container.innerHTML = filtered.map(p => {
         const participantes = p.participantes || {};
         const numParticipantes = Object.keys(participantes).length;
         const bote = numParticipantes * (p.inscripcion || 0);
         const yaParticipo = participantes[currentUser.uid] !== undefined;
         const esCreador = p.creadoPor === currentUser.uid;
+        const modalidad = p.modalidad || 'porra';
 
-        let estadoClass = 'abierta';
-        let estadoTexto = '🟢 Abierta';
-        if (p.finalizada) {
-          estadoClass = 'finalizada';
-          estadoTexto = '🏆 Finalizada';
-        } else if (p.cerrada) {
-          estadoClass = 'cerrada';
-          estadoTexto = '🔒 Cerrada';
-        }
+        let estadoClass = 'abierta', estadoTexto = '🟢 Abierta';
+        if (p.finalizada) { estadoClass = 'finalizada'; estadoTexto = '🏆 Finalizada'; }
+        else if (p.cerrada) { estadoClass = 'cerrada'; estadoTexto = '🔒 Cerrada'; }
 
-        // Renderizar participantes
+        // Participantes
         let participantesHTML = '';
-        Object.entries(participantes).forEach(([odId, datos]) => {
-          const miembro = miembrosData.find(m => m.id === odId);
-          const esGanador = p.ganadores && p.ganadores.includes(odId);
+        Object.entries(participantes).forEach(([uid, datos]) => {
+          const miembro = miembrosData.find(m => m.id === uid);
+          const esGanador = p.ganadores && p.ganadores.includes(uid);
           const inicial = (miembro?.nombre || '?').charAt(0).toUpperCase();
           
           let pronosticoTexto = '';
-          if (p.tipo === 'futbol') {
+          if (modalidad === 'precio-justo') {
+            pronosticoTexto = datos.precio != null ? `${datos.precio}€` : '—';
+          } else if (p.tipo === 'futbol') {
             pronosticoTexto = `${datos.golesLocal} - ${datos.golesVisitante}`;
           } else if (p.tipo === 'podium') {
             pronosticoTexto = `1º ${datos.primero}, 2º ${datos.segundo}, 3º ${datos.tercero}`;
@@ -708,90 +742,80 @@
                 <div class="participante-nombre">${miembro?.nombre || 'Desconocido'}</div>
                 <div class="participante-pronostico">${pronosticoTexto}</div>
               </div>
-            </div>
-          `;
+            </div>`;
         });
 
-        // Resultado final si existe
+        // Resultado
         let resultadoHTML = '';
         if (p.finalizada && p.resultado) {
           let resultadoTexto = '';
-          if (p.tipo === 'futbol') {
+          if (modalidad === 'precio-justo') {
+            resultadoTexto = `💰 Precio real: ${p.resultado.precioReal}€`;
+          } else if (p.tipo === 'futbol') {
             resultadoTexto = `${p.config?.equipoLocal || 'Local'} ${p.resultado.golesLocal} - ${p.resultado.golesVisitante} ${p.config?.equipoVisitante || 'Visitante'}`;
           } else if (p.tipo === 'podium') {
             resultadoTexto = `🥇 ${p.resultado.primero} | 🥈 ${p.resultado.segundo} | 🥉 ${p.resultado.tercero}`;
           } else if (p.tipo === 'ganador') {
             resultadoTexto = `🏆 ${p.resultado.ganador}`;
           }
-          
-          resultadoHTML = `
-            <div class="resultado-final">
-              <div class="resultado-final-label">Resultado final</div>
-              <div class="resultado-final-value">${resultadoTexto}</div>
-            </div>
-          `;
+          resultadoHTML = `<div class="resultado-final"><div class="resultado-final-label">Resultado final</div><div class="resultado-final-value">${resultadoTexto}</div></div>`;
         }
+
+        // Subtítulo por modalidad
+        const subInfo = modalidad === 'precio-justo' && p.config?.objeto ? `<div style="font-size:0.85rem;color:var(--text-light);margin-top:4px">📦 ${p.config.objeto}</div>` : '';
 
         return `
           <div class="porra-card ${p.finalizada ? 'finalizada' : ''}">
             <div class="porra-header">
               <div>
                 <div class="porra-titulo">${p.nombre}</div>
-                <div class="porra-tipo">${tipoLabels[p.tipo] || p.tipo}</div>
+                <div class="porra-tipo">${modLabels[modalidad] || modalidad}${p.tipo ? ' · ' + (tipoLabels[p.tipo] || p.tipo) : ''}</div>
+                ${subInfo}
               </div>
               <span class="porra-estado ${estadoClass}">${estadoTexto}</span>
             </div>
             <div class="porra-body">
               <div class="porra-info">
-                <div class="porra-info-item">
-                  <div class="porra-info-label">Inscripción</div>
-                  <div class="porra-info-value">${p.inscripcion || 0}€</div>
-                </div>
-                <div class="porra-info-item">
-                  <div class="porra-info-label">Participantes</div>
-                  <div class="porra-info-value">${numParticipantes}</div>
-                </div>
-                <div class="porra-info-item">
-                  <div class="porra-info-label">Bote</div>
-                  <div class="porra-info-value bote">${bote}€</div>
-                </div>
+                <div class="porra-info-item"><div class="porra-info-label">Inscripción</div><div class="porra-info-value">${p.inscripcion || 0}€</div></div>
+                <div class="porra-info-item"><div class="porra-info-label">Participantes</div><div class="porra-info-value">${numParticipantes}</div></div>
+                <div class="porra-info-item"><div class="porra-info-label">Bote</div><div class="porra-info-value bote">${bote}€</div></div>
               </div>
-
               ${resultadoHTML}
-
-              ${numParticipantes > 0 ? `
-                <div class="participantes-section">
-                  <div class="participantes-title">👥 Participantes y pronósticos</div>
-                  <div class="participantes-lista">
-                    ${participantesHTML}
-                  </div>
-                </div>
-              ` : '<p style="text-align:center;color:var(--text-muted)">Aún no hay participantes</p>'}
+              ${numParticipantes > 0 ? `<div class="participantes-section"><div class="participantes-title">👥 Participantes y pronósticos</div><div class="participantes-lista">${participantesHTML}</div></div>` : '<p style="text-align:center;color:var(--text-muted)">Aún no hay participantes</p>'}
             </div>
             <div class="porra-footer">
               <div>
-                ${!p.finalizada && !p.cerrada && !yaParticipo ? `
-                  <button class="btn btn-sm btn-primary" onclick="abrirModalParticipar('${p.id}')">🎯 Participar</button>
-                ` : ''}
-                ${!p.finalizada && !p.cerrada && yaParticipo ? `
-                  <span style="color:var(--sage);font-weight:600">✅ Ya participas</span>
-                ` : ''}
+                ${!p.finalizada && !p.cerrada && !yaParticipo ? `<button class="btn btn-sm btn-primary" onclick="abrirModalParticipar('${p.id}')">🎯 Participar</button>` : ''}
+                ${!p.finalizada && !p.cerrada && yaParticipo ? '<span style="color:var(--sage);font-weight:600">✅ Ya participas</span>' : ''}
               </div>
               <div style="display:flex;gap:8px">
-                ${esCreador && !p.finalizada && !p.cerrada ? `
-                  <button class="btn btn-sm btn-secondary" onclick="cerrarPorra('${p.id}')">🔒 Cerrar</button>
-                ` : ''}
-                ${esCreador && p.cerrada && !p.finalizada ? `
-                  <button class="btn btn-sm btn-gold" onclick="abrirModalResultado('${p.id}')">🏆 Resultado</button>
-                ` : ''}
-                ${esCreador ? `
-                  <button class="btn btn-sm btn-danger" onclick="eliminarPorra('${p.id}')">🗑️</button>
-                ` : ''}
+                ${esCreador && !p.finalizada && !p.cerrada ? `<button class="btn btn-sm btn-secondary" onclick="cerrarPorra('${p.id}')">🔒 Cerrar</button>` : ''}
+                ${esCreador && p.cerrada && !p.finalizada ? `<button class="btn btn-sm btn-gold" onclick="abrirModalResultado('${p.id}')">🏆 Resultado</button>` : ''}
+                ${esCreador ? `<button class="btn btn-sm btn-danger" onclick="eliminarPorra('${p.id}')">🗑️</button>` : ''}
               </div>
             </div>
-          </div>
-        `;
+          </div>`;
       }).join('');
+    }
+
+    // ===== MODAL: Cambiar modalidad =====
+    function cambiarModalidad() {
+      const mod = document.getElementById('porra-modalidad').value;
+      const grupoTipo = document.getElementById('grupo-tipo');
+      
+      // Precio justo: ocultar tipo, mostrar config propia
+      grupoTipo.style.display = mod === 'precio-justo' ? 'none' : '';
+      document.getElementById('config-precio-justo').classList.toggle('hidden', mod !== 'precio-justo');
+      
+      if (mod === 'precio-justo') {
+        document.getElementById('config-futbol').classList.add('hidden');
+        document.getElementById('config-competidores').classList.add('hidden');
+      } else if (mod === 'competicion') {
+        document.getElementById('porra-tipo').value = 'ganador';
+        cambiarTipoPorra();
+      } else {
+        cambiarTipoPorra();
+      }
     }
 
     function cambiarTipoPorra() {
@@ -805,126 +829,78 @@
       const count = lista.querySelectorAll('.competidor-input').length;
       const div = document.createElement('div');
       div.className = 'competidor-input';
-      div.innerHTML = `
-        <input type="text" placeholder="Competidor ${count + 1}">
-        <button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>
-      `;
+      div.innerHTML = `<input type="text" placeholder="Competidor ${count + 1}"><button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>`;
       lista.appendChild(div);
     }
 
     function eliminarCompetidor(btn) {
       const lista = document.getElementById('competidores-lista');
-      if (lista.querySelectorAll('.competidor-input').length > 2) {
-        btn.parentElement.remove();
-      }
+      if (lista.querySelectorAll('.competidor-input').length > 2) btn.parentElement.remove();
     }
 
     function abrirModalCrear() {
       document.getElementById('modal-crear').classList.add('active');
       document.getElementById('form-porra').reset();
       document.getElementById('porra-inscripcion').value = '5';
-      cambiarTipoPorra();
       
-      // Reset competidores
+      // Preseleccionar modalidad si hay tab activa
+      if (modalidadActual !== 'todas') {
+        document.getElementById('porra-modalidad').value = modalidadActual;
+      }
+      cambiarModalidad();
+      
       document.getElementById('competidores-lista').innerHTML = `
-        <div class="competidor-input">
-          <input type="text" placeholder="Competidor 1">
-          <button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>
-        </div>
-        <div class="competidor-input">
-          <input type="text" placeholder="Competidor 2">
-          <button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>
-        </div>
-        <div class="competidor-input">
-          <input type="text" placeholder="Competidor 3">
-          <button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button>
-        </div>
-      `;
+        <div class="competidor-input"><input type="text" placeholder="Competidor 1"><button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button></div>
+        <div class="competidor-input"><input type="text" placeholder="Competidor 2"><button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button></div>
+        <div class="competidor-input"><input type="text" placeholder="Competidor 3"><button type="button" class="btn-remove-comp" onclick="eliminarCompetidor(this)">×</button></div>`;
     }
 
     function abrirModalParticipar(porraId) {
       porraActual = porrasData.find(p => p.id === porraId);
       if (!porraActual) return;
 
+      const modalidad = porraActual.modalidad || 'porra';
       document.getElementById('participar-titulo').textContent = `🎯 ${porraActual.nombre}`;
-      
       let bodyHTML = '';
 
-      if (porraActual.tipo === 'futbol') {
+      if (modalidad === 'precio-justo') {
+        bodyHTML = `
+          <p style="text-align:center;margin-bottom:20px;color:var(--text-light)">¿Cuánto crees que cuesta?</p>
+          ${porraActual.config?.objeto ? `<p style="text-align:center;font-weight:700;margin-bottom:16px">📦 ${porraActual.config.objeto}</p>` : ''}
+          <div class="form-group" style="max-width:200px;margin:0 auto">
+            <input type="number" class="form-input" id="pronostico-precio" min="0" step="0.01" placeholder="Tu precio (€)" required style="text-align:center;font-size:1.3rem;font-weight:700">
+          </div>
+          <p class="form-hint" style="text-align:center;margin-top:8px">Recuerda: sin pasarte del precio real</p>`;
+      } else if (porraActual.tipo === 'futbol') {
         const local = porraActual.config?.equipoLocal || 'Local';
         const visitante = porraActual.config?.equipoVisitante || 'Visitante';
-        
         bodyHTML = `
-          <p style="text-align:center;margin-bottom:20px;color:var(--text-light)">
-            Introduce tu pronóstico para el partido
-          </p>
+          <p style="text-align:center;margin-bottom:20px;color:var(--text-light)">Introduce tu pronóstico para el partido</p>
           <div class="pronostico-futbol">
-            <div class="pronostico-equipo">
-              <div class="pronostico-equipo-nombre">${local}</div>
-              <input type="number" class="pronostico-goles" id="pronostico-local" min="0" value="0" required>
-            </div>
+            <div class="pronostico-equipo"><div class="pronostico-equipo-nombre">${local}</div><input type="number" class="pronostico-goles" id="pronostico-local" min="0" value="0" required></div>
             <div class="pronostico-vs">VS</div>
-            <div class="pronostico-equipo">
-              <div class="pronostico-equipo-nombre">${visitante}</div>
-              <input type="number" class="pronostico-goles" id="pronostico-visitante" min="0" value="0" required>
-            </div>
-          </div>
-        `;
+            <div class="pronostico-equipo"><div class="pronostico-equipo-nombre">${visitante}</div><input type="number" class="pronostico-goles" id="pronostico-visitante" min="0" value="0" required></div>
+          </div>`;
       } else if (porraActual.tipo === 'podium') {
         const competidores = porraActual.config?.competidores || [];
         const options = competidores.map(c => `<option value="${c}">${c}</option>`).join('');
-        
         bodyHTML = `
-          <p style="margin-bottom:20px;color:var(--text-light)">
-            Selecciona tu pronóstico para el podium
-          </p>
+          <p style="margin-bottom:20px;color:var(--text-light)">Selecciona tu pronóstico para el podium</p>
           <div class="podium-inputs">
-            <div class="podium-item">
-              <div class="podium-posicion oro">1º</div>
-              <select class="form-select" id="pronostico-primero" required>
-                <option value="">Selecciona...</option>
-                ${options}
-              </select>
-            </div>
-            <div class="podium-item">
-              <div class="podium-posicion plata">2º</div>
-              <select class="form-select" id="pronostico-segundo" required>
-                <option value="">Selecciona...</option>
-                ${options}
-              </select>
-            </div>
-            <div class="podium-item">
-              <div class="podium-posicion bronce">3º</div>
-              <select class="form-select" id="pronostico-tercero" required>
-                <option value="">Selecciona...</option>
-                ${options}
-              </select>
-            </div>
-          </div>
-        `;
+            <div class="podium-item"><div class="podium-posicion oro">1º</div><select class="form-select" id="pronostico-primero" required><option value="">Selecciona...</option>${options}</select></div>
+            <div class="podium-item"><div class="podium-posicion plata">2º</div><select class="form-select" id="pronostico-segundo" required><option value="">Selecciona...</option>${options}</select></div>
+            <div class="podium-item"><div class="podium-posicion bronce">3º</div><select class="form-select" id="pronostico-tercero" required><option value="">Selecciona...</option>${options}</select></div>
+          </div>`;
       } else if (porraActual.tipo === 'ganador') {
         const competidores = porraActual.config?.competidores || [];
         const options = competidores.map(c => `<option value="${c}">${c}</option>`).join('');
-        
         bodyHTML = `
-          <p style="margin-bottom:20px;color:var(--text-light)">
-            ¿Quién crees que ganará?
-          </p>
-          <div class="form-group">
-            <select class="form-select" id="pronostico-ganador" required>
-              <option value="">Selecciona al ganador...</option>
-              ${options}
-            </select>
-          </div>
-        `;
+          <p style="margin-bottom:20px;color:var(--text-light)">¿Quién crees que ganará?</p>
+          <div class="form-group"><select class="form-select" id="pronostico-ganador" required><option value="">Selecciona al ganador...</option>${options}</select></div>`;
       }
 
       if (porraActual.inscripcion > 0) {
-        bodyHTML += `
-          <div style="margin-top:20px;padding:12px;background:var(--terracotta-muted);border-radius:var(--radius-md);text-align:center">
-            <strong>💰 Inscripción: ${porraActual.inscripcion}€</strong>
-          </div>
-        `;
+        bodyHTML += `<div style="margin-top:20px;padding:12px;background:var(--terracotta-muted);border-radius:var(--radius-md);text-align:center"><strong>💰 Inscripción: ${porraActual.inscripcion}€</strong></div>`;
       }
 
       document.getElementById('participar-body').innerHTML = bodyHTML;
@@ -935,67 +911,37 @@
       porraActual = porrasData.find(p => p.id === porraId);
       if (!porraActual) return;
 
+      const modalidad = porraActual.modalidad || 'porra';
       let bodyHTML = '<p style="margin-bottom:20px;color:var(--text-light)">Introduce el resultado real</p>';
 
-      if (porraActual.tipo === 'futbol') {
+      if (modalidad === 'precio-justo') {
+        bodyHTML += `
+          <div class="form-group" style="max-width:200px;margin:0 auto">
+            <label class="form-label" style="text-align:center">Precio real (€)</label>
+            <input type="number" class="form-input" id="resultado-precio-real" min="0" step="0.01" required style="text-align:center;font-size:1.3rem;font-weight:700">
+          </div>`;
+      } else if (porraActual.tipo === 'futbol') {
         const local = porraActual.config?.equipoLocal || 'Local';
         const visitante = porraActual.config?.equipoVisitante || 'Visitante';
-        
         bodyHTML += `
           <div class="pronostico-futbol">
-            <div class="pronostico-equipo">
-              <div class="pronostico-equipo-nombre">${local}</div>
-              <input type="number" class="pronostico-goles" id="resultado-local" min="0" value="0" required>
-            </div>
+            <div class="pronostico-equipo"><div class="pronostico-equipo-nombre">${local}</div><input type="number" class="pronostico-goles" id="resultado-local" min="0" value="0" required></div>
             <div class="pronostico-vs">VS</div>
-            <div class="pronostico-equipo">
-              <div class="pronostico-equipo-nombre">${visitante}</div>
-              <input type="number" class="pronostico-goles" id="resultado-visitante" min="0" value="0" required>
-            </div>
-          </div>
-        `;
+            <div class="pronostico-equipo"><div class="pronostico-equipo-nombre">${visitante}</div><input type="number" class="pronostico-goles" id="resultado-visitante" min="0" value="0" required></div>
+          </div>`;
       } else if (porraActual.tipo === 'podium') {
         const competidores = porraActual.config?.competidores || [];
         const options = competidores.map(c => `<option value="${c}">${c}</option>`).join('');
-        
         bodyHTML += `
           <div class="podium-inputs">
-            <div class="podium-item">
-              <div class="podium-posicion oro">1º</div>
-              <select class="form-select" id="resultado-primero" required>
-                <option value="">Selecciona...</option>
-                ${options}
-              </select>
-            </div>
-            <div class="podium-item">
-              <div class="podium-posicion plata">2º</div>
-              <select class="form-select" id="resultado-segundo" required>
-                <option value="">Selecciona...</option>
-                ${options}
-              </select>
-            </div>
-            <div class="podium-item">
-              <div class="podium-posicion bronce">3º</div>
-              <select class="form-select" id="resultado-tercero" required>
-                <option value="">Selecciona...</option>
-                ${options}
-              </select>
-            </div>
-          </div>
-        `;
+            <div class="podium-item"><div class="podium-posicion oro">1º</div><select class="form-select" id="resultado-primero" required><option value="">Selecciona...</option>${options}</select></div>
+            <div class="podium-item"><div class="podium-posicion plata">2º</div><select class="form-select" id="resultado-segundo" required><option value="">Selecciona...</option>${options}</select></div>
+            <div class="podium-item"><div class="podium-posicion bronce">3º</div><select class="form-select" id="resultado-tercero" required><option value="">Selecciona...</option>${options}</select></div>
+          </div>`;
       } else if (porraActual.tipo === 'ganador') {
         const competidores = porraActual.config?.competidores || [];
         const options = competidores.map(c => `<option value="${c}">${c}</option>`).join('');
-        
-        bodyHTML += `
-          <div class="form-group">
-            <label class="form-label">Ganador</label>
-            <select class="form-select" id="resultado-ganador" required>
-              <option value="">Selecciona al ganador...</option>
-              ${options}
-            </select>
-          </div>
-        `;
+        bodyHTML += `<div class="form-group"><label class="form-label">Ganador</label><select class="form-select" id="resultado-ganador" required><option value="">Selecciona al ganador...</option>${options}</select></div>`;
       }
 
       document.getElementById('resultado-body').innerHTML = bodyHTML;
@@ -1010,48 +956,42 @@
     async function crearPorra(e) {
       e.preventDefault();
 
+      const modalidad = document.getElementById('porra-modalidad').value;
       const nombre = document.getElementById('porra-nombre').value.trim();
-      const tipo = document.getElementById('porra-tipo').value;
       const inscripcion = parseFloat(document.getElementById('porra-inscripcion').value) || 0;
       const grupo = document.getElementById('porra-grupo').value;
 
+      let tipo = null;
       let config = {};
 
-      if (tipo === 'futbol') {
-        config.equipoLocal = document.getElementById('equipo-local').value.trim() || 'Local';
-        config.equipoVisitante = document.getElementById('equipo-visitante').value.trim() || 'Visitante';
+      if (modalidad === 'precio-justo') {
+        tipo = 'precio-justo';
+        config.objeto = document.getElementById('pj-objeto').value.trim();
       } else {
-        const inputs = document.querySelectorAll('#competidores-lista input');
-        config.competidores = Array.from(inputs).map(i => i.value.trim()).filter(v => v);
-        
-        if (config.competidores.length < 2) {
-          alert('Añade al menos 2 competidores');
-          return;
+        tipo = document.getElementById('porra-tipo').value;
+        if (tipo === 'futbol') {
+          config.equipoLocal = document.getElementById('equipo-local').value.trim() || 'Local';
+          config.equipoVisitante = document.getElementById('equipo-visitante').value.trim() || 'Visitante';
+        } else {
+          const inputs = document.querySelectorAll('#competidores-lista input');
+          config.competidores = Array.from(inputs).map(i => i.value.trim()).filter(v => v);
+          if (config.competidores.length < 2) { alert('Añade al menos 2 competidores'); return; }
         }
       }
 
       try {
         await db.collection('porras').add({
-          nombre,
-          tipo,
-          inscripcion,
-          grupo,
-          config,
-          participantes: {},
-          cerrada: false,
-          finalizada: false,
-          resultado: null,
-          ganadores: [],
-          familiaId,
-          creadoPor: currentUser.uid,
+          nombre, modalidad, tipo, inscripcion, grupo, config,
+          participantes: {}, cerrada: false, finalizada: false,
+          resultado: null, ganadores: [],
+          familiaId, creadoPor: currentUser.uid,
           fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
         });
-
         cerrarModales();
         await loadPorras();
       } catch (error) {
         console.error('Error:', error);
-        alert('Error al crear la porra');
+        alert('Error al crear la apuesta');
       }
     }
 
@@ -1059,40 +999,30 @@
       e.preventDefault();
       if (!porraActual) return;
 
+      const modalidad = porraActual.modalidad || 'porra';
       let pronostico = {};
 
-      if (porraActual.tipo === 'futbol') {
+      if (modalidad === 'precio-justo') {
+        pronostico.precio = parseFloat(document.getElementById('pronostico-precio').value);
+        if (isNaN(pronostico.precio) || pronostico.precio < 0) { alert('Introduce un precio válido'); return; }
+      } else if (porraActual.tipo === 'futbol') {
         pronostico.golesLocal = parseInt(document.getElementById('pronostico-local').value) || 0;
         pronostico.golesVisitante = parseInt(document.getElementById('pronostico-visitante').value) || 0;
       } else if (porraActual.tipo === 'podium') {
         pronostico.primero = document.getElementById('pronostico-primero').value;
         pronostico.segundo = document.getElementById('pronostico-segundo').value;
         pronostico.tercero = document.getElementById('pronostico-tercero').value;
-        
-        if (!pronostico.primero || !pronostico.segundo || !pronostico.tercero) {
-          alert('Selecciona las 3 posiciones del podium');
-          return;
-        }
-        if (pronostico.primero === pronostico.segundo || pronostico.primero === pronostico.tercero || pronostico.segundo === pronostico.tercero) {
-          alert('No puedes repetir competidores en el podium');
-          return;
-        }
+        if (!pronostico.primero || !pronostico.segundo || !pronostico.tercero) { alert('Selecciona las 3 posiciones del podium'); return; }
+        if (pronostico.primero === pronostico.segundo || pronostico.primero === pronostico.tercero || pronostico.segundo === pronostico.tercero) { alert('No puedes repetir competidores en el podium'); return; }
       } else if (porraActual.tipo === 'ganador') {
         pronostico.ganador = document.getElementById('pronostico-ganador').value;
-        if (!pronostico.ganador) {
-          alert('Selecciona un ganador');
-          return;
-        }
+        if (!pronostico.ganador) { alert('Selecciona un ganador'); return; }
       }
 
       try {
         const participantes = porraActual.participantes || {};
         participantes[currentUser.uid] = pronostico;
-
-        await db.collection('porras').doc(porraActual.id).update({
-          participantes
-        });
-
+        await db.collection('porras').doc(porraActual.id).update({ participantes });
         cerrarModales();
         await loadPorras();
       } catch (error) {
@@ -1105,9 +1035,13 @@
       e.preventDefault();
       if (!porraActual) return;
 
+      const modalidad = porraActual.modalidad || 'porra';
       let resultado = {};
 
-      if (porraActual.tipo === 'futbol') {
+      if (modalidad === 'precio-justo') {
+        resultado.precioReal = parseFloat(document.getElementById('resultado-precio-real').value);
+        if (isNaN(resultado.precioReal)) { alert('Introduce el precio real'); return; }
+      } else if (porraActual.tipo === 'futbol') {
         resultado.golesLocal = parseInt(document.getElementById('resultado-local').value) || 0;
         resultado.golesVisitante = parseInt(document.getElementById('resultado-visitante').value) || 0;
       } else if (porraActual.tipo === 'podium') {
@@ -1118,16 +1052,10 @@
         resultado.ganador = document.getElementById('resultado-ganador').value;
       }
 
-      // Calcular ganadores
       const ganadores = calcularGanadores(porraActual, resultado);
 
       try {
-        await db.collection('porras').doc(porraActual.id).update({
-          resultado,
-          ganadores,
-          finalizada: true
-        });
-
+        await db.collection('porras').doc(porraActual.id).update({ resultado, ganadores, finalizada: true });
         cerrarModales();
         await loadPorras();
         
@@ -1138,7 +1066,7 @@
           }).join(', ');
           alert(`🏆 ¡Ganador${ganadores.length > 1 ? 'es' : ''}: ${nombresGanadores}!`);
         } else {
-          alert('No hubo ganadores exactos');
+          alert('No hubo ganadores');
         }
       } catch (error) {
         console.error('Error:', error);
@@ -1148,31 +1076,49 @@
 
     function calcularGanadores(porra, resultado) {
       const participantes = porra.participantes || {};
+      const modalidad = porra.modalidad || 'porra';
+
+      // === PRECIO JUSTO: gana quien más se acerca SIN PASARSE ===
+      if (modalidad === 'precio-justo') {
+        const precioReal = resultado.precioReal;
+        let mejorDiff = Infinity;
+        let ganadores = [];
+
+        Object.entries(participantes).forEach(([uid, datos]) => {
+          const precio = datos.precio;
+          if (precio > precioReal) return; // Se pasó → eliminado
+          const diff = precioReal - precio;
+          if (diff < mejorDiff) {
+            mejorDiff = diff;
+            ganadores = [uid];
+          } else if (diff === mejorDiff) {
+            ganadores.push(uid);
+          }
+        });
+        return ganadores;
+      }
+
+      // === PORRAS y COMPETICIONES: lógica original ===
       const ganadores = [];
       let mejorPuntuacion = -1;
 
-      Object.entries(participantes).forEach(([odId, pronostico]) => {
+      Object.entries(participantes).forEach(([uid, pronostico]) => {
         let puntuacion = 0;
 
         if (porra.tipo === 'futbol') {
-          // Puntuación: 3 puntos por acertar exacto, 1 por acertar ganador
           const aciertoLocal = pronostico.golesLocal === resultado.golesLocal;
           const aciertoVisitante = pronostico.golesVisitante === resultado.golesVisitante;
-          
           if (aciertoLocal && aciertoVisitante) {
-            puntuacion = 3; // Exacto
+            puntuacion = 3;
           } else {
-            // Acertar tendencia (1X2)
             const tendenciaReal = resultado.golesLocal > resultado.golesVisitante ? 1 : (resultado.golesLocal < resultado.golesVisitante ? 2 : 0);
             const tendenciaPron = pronostico.golesLocal > pronostico.golesVisitante ? 1 : (pronostico.golesLocal < pronostico.golesVisitante ? 2 : 0);
             if (tendenciaReal === tendenciaPron) puntuacion = 1;
           }
         } else if (porra.tipo === 'podium') {
-          // 3 puntos por cada posición acertada
           if (pronostico.primero === resultado.primero) puntuacion += 3;
           if (pronostico.segundo === resultado.segundo) puntuacion += 3;
           if (pronostico.tercero === resultado.tercero) puntuacion += 3;
-          // 1 punto si está en podium pero mal posición
           if (pronostico.primero !== resultado.primero && [resultado.segundo, resultado.tercero].includes(pronostico.primero)) puntuacion += 1;
           if (pronostico.segundo !== resultado.segundo && [resultado.primero, resultado.tercero].includes(pronostico.segundo)) puntuacion += 1;
           if (pronostico.tercero !== resultado.tercero && [resultado.primero, resultado.segundo].includes(pronostico.tercero)) puntuacion += 1;
@@ -1183,36 +1129,29 @@
         if (puntuacion > mejorPuntuacion) {
           mejorPuntuacion = puntuacion;
           ganadores.length = 0;
-          ganadores.push(odId);
+          ganadores.push(uid);
         } else if (puntuacion === mejorPuntuacion && puntuacion > 0) {
-          ganadores.push(odId);
+          ganadores.push(uid);
         }
       });
 
-      // Solo devolver ganadores si tienen puntuación > 0
       return mejorPuntuacion > 0 ? ganadores : [];
     }
 
     async function cerrarPorra(id) {
-      if (!confirm('¿Cerrar esta porra? Ya no se podrán añadir participantes.')) return;
-      
+      if (!confirm('¿Cerrar esta apuesta? Ya no se podrán añadir participantes.')) return;
       try {
         await db.collection('porras').doc(id).update({ cerrada: true });
         await loadPorras();
-      } catch (error) {
-        console.error('Error:', error);
-      }
+      } catch (error) { console.error('Error:', error); }
     }
 
     async function eliminarPorra(id) {
-      if (!confirm('¿Eliminar esta porra?')) return;
-      
+      if (!confirm('¿Eliminar esta apuesta?')) return;
       try {
         await db.collection('porras').doc(id).delete();
         await loadPorras();
-      } catch (error) {
-        console.error('Error:', error);
-      }
+      } catch (error) { console.error('Error:', error); }
     }
 
     // Cerrar modales con click fuera
