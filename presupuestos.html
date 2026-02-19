@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Presupuestos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --cream: #FDF8F3; --cream-dark: #F5EDE4; --cream-medium: #FAF5EF;
+      --terracotta: #C17757; --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A; --white: #FFFFFF;
+      --capataz: #6B8E23; --capataz-light: #8FBC3C; --capataz-dark: #4A6B10; --capataz-muted: rgba(107,142,35,0.15);
+      --gerente: #2D4A5C; --gerente-light: #4A6B7C; --gerente-dark: #1D3544; --gerente-muted: rgba(45,74,92,0.15);
+      --success: #7DB59A; --success-muted: rgba(125,181,154,0.15);
+      --warning: #E8B44D; --warning-muted: rgba(232,180,77,0.15);
+      --error: #D4695A; --error-muted: rgba(212,105,90,0.15);
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+
+      /* Dynamic - set by JS based on origin */
+      --addon-color: var(--capataz);
+      --addon-light: var(--capataz-light);
+      --addon-dark: var(--capataz-dark);
+      --addon-muted: var(--capataz-muted);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* ========== HEADER ========== */
+    .header {
+      background: linear-gradient(135deg, var(--addon-color) 0%, var(--addon-dark) 100%);
+      padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: var(--shadow-medium); position: sticky; top: 0; z-index: 100;
+    }
+    .back-btn { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(255,255,255,0.15); border: none; border-radius: var(--radius-md); color: white; font-family: 'Nunito'; font-size: 0.85rem; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+    .header-info h1 { color: white; font-family: 'Quicksand'; font-size: 1.2rem; font-weight: 700; }
+    .header-info p { color: rgba(255,255,255,0.7); font-size: 0.8rem; }
+
+    /* ========== LAYOUT ========== */
+    .main { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .card { background: var(--white); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-soft); }
+    .card-title { font-family: 'Quicksand'; font-weight: 700; font-size: 1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* ========== SELECTOR EJERCICIO ========== */
+    .ejercicio-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .ejercicio-select { flex: 1; min-width: 200px; padding: 12px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito'; font-size: 0.95rem; font-weight: 600; background: var(--white); }
+    .ejercicio-select:focus { outline: none; border-color: var(--addon-color); }
+
+    /* ========== BUTTONS ========== */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: var(--radius-md); font-family: 'Nunito'; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; text-decoration: none; }
+    .btn-addon { background: var(--addon-color); color: white; }
+    .btn-addon:hover { background: var(--addon-dark); }
+    .btn-secondary { background: var(--cream); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream-dark); }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-sm { padding: 7px 12px; font-size: 0.8rem; }
+    .btn-ghost { background: none; color: var(--addon-color); padding: 6px 10px; }
+    .btn-ghost:hover { background: var(--addon-muted); }
+
+    /* ========== RESUMEN ========== */
+    .resumen-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .resumen-item { background: var(--white); border-radius: var(--radius-md); padding: 16px; text-align: center; box-shadow: var(--shadow-soft); border-top: 3px solid var(--cream-dark); }
+    .resumen-item.ingresos { border-top-color: var(--success); }
+    .resumen-item.costes { border-top-color: var(--warning); }
+    .resumen-item.gastos { border-top-color: var(--error); }
+    .resumen-item.resultado { border-top-color: var(--addon-color); }
+    .resumen-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .resumen-valor { font-family: 'Quicksand'; font-size: 1.3rem; font-weight: 700; }
+    .resumen-item.ingresos .resumen-valor { color: var(--success); }
+    .resumen-item.costes .resumen-valor { color: var(--warning); }
+    .resumen-item.gastos .resumen-valor { color: var(--error); }
+    .resumen-item.resultado .resumen-valor { color: var(--addon-color); }
+    .resumen-count { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ========== PARTIDAS TABLE ========== */
+    .filtro-tipo { display: flex; gap: 6px; }
+    .filtro-tipo button { padding: 6px 14px; border: 2px solid var(--cream-dark); border-radius: var(--radius-full); font-family: 'Nunito'; font-size: 0.8rem; font-weight: 600; cursor: pointer; background: var(--white); transition: all 0.2s; }
+    .filtro-tipo button:hover { border-color: var(--addon-color); }
+    .filtro-tipo button.active { background: var(--addon-color); color: white; border-color: var(--addon-color); }
+
+    .partidas-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .partidas-table th { background: var(--cream); padding: 10px 12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); text-align: left; font-weight: 600; }
+    .partidas-table th:last-child { text-align: right; }
+    .partidas-table th.col-importe { text-align: right; }
+    .partidas-table td { padding: 12px; border-bottom: 1px solid var(--cream-dark); font-size: 0.9rem; vertical-align: middle; }
+    .partidas-table tr:hover { background: var(--cream-medium, #FAF5EF); }
+
+    .tipo-badge { display: inline-block; padding: 3px 10px; border-radius: var(--radius-full); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+    .tipo-badge.ingreso { background: var(--success-muted); color: var(--success); }
+    .tipo-badge.coste { background: var(--warning-muted); color: var(--warning); }
+    .tipo-badge.gasto { background: var(--error-muted); color: var(--error); }
+
+    .partida-importe { font-weight: 700; text-align: right; font-family: 'Quicksand'; }
+    .partida-importe.ingreso { color: var(--success); }
+    .partida-importe.coste { color: var(--warning); }
+    .partida-importe.gasto { color: var(--error); }
+
+    .partida-notas { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+    .partida-acciones { text-align: right; white-space: nowrap; }
+
+    .fila-subtotal { background: var(--cream) !important; font-weight: 700; }
+    .fila-subtotal td { border-bottom: 2px solid var(--cream-dark); }
+    .fila-resultado { background: var(--addon-muted) !important; font-weight: 700; }
+    .fila-resultado td { font-family: 'Quicksand'; font-size: 1rem; }
+
+    /* ========== CONFIG EJERCICIO ========== */
+    .config-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .config-row .form-group { flex: 1; min-width: 140px; }
+    .form-group { margin-bottom: 12px; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; color: var(--text-light); }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 12px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      font-family: 'Nunito'; font-size: 0.9rem; background: var(--white); transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--addon-color); }
+    .form-textarea { resize: vertical; min-height: 60px; }
+
+    /* ========== MODALS ========== */
+    .modal-overlay { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index: 1000; opacity:0; visibility:hidden; transition: all 0.3s; padding: 20px; }
+    .modal-overlay.active { opacity:1; visibility:visible; }
+    .modal { background: var(--white); border-radius: var(--radius-lg); width:100%; max-width:520px; max-height:90vh; overflow-y:auto; }
+    .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--cream-dark); display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { font-family: 'Quicksand'; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; justify-content: flex-end; gap: 10px; }
+
+    /* ========== EMPTY STATE ========== */
+    .empty-state { text-align: center; padding: 40px 20px; }
+    .empty-state-icon { font-size: 3rem; opacity: 0.3; margin-bottom: 12px; }
+    .empty-state-title { font-family: 'Quicksand'; font-weight: 700; margin-bottom: 8px; }
+    .empty-state-text { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px; }
+
+    .loading { display: flex; align-items: center; justify-content: center; min-height: 200px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--addon-color); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 640px) {
+      .resumen-grid { grid-template-columns: 1fr 1fr; }
+      .config-row { flex-direction: column; }
+      .partidas-table th:nth-child(3), .partidas-table td:nth-child(3) { display: none; }
+    }
+    @media (max-width: 400px) { .resumen-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <a id="btn-volver" class="back-btn">← Volver</a>
+      <div class="header-info">
+        <h1>📋 Presupuestos</h1>
+        <p id="nombre-bien">Cargando...</p>
+      </div>
+    </div>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:white;" onclick="exportarPDF()">📄 PDF</button>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+
+    <div id="contenido" style="display:none;">
+      <!-- Selector ejercicio -->
+      <div class="ejercicio-bar">
+        <select class="ejercicio-select" id="sel-ejercicio" onchange="seleccionarEjercicio()">
+          <option value="">— Selecciona un ejercicio —</option>
+        </select>
+        <button class="btn btn-addon" onclick="abrirModalEjercicio()">+ Nuevo ejercicio</button>
+      </div>
+
+      <!-- Config del ejercicio seleccionado -->
+      <div class="card" id="card-config" style="display:none;">
+        <div class="card-title">
+          ⚙️ Ejercicio
+          <span style="flex:1"></span>
+          <button class="btn btn-sm btn-addon" onclick="guardarConfigEjercicio()">💾 Guardar</button>
+          <button class="btn btn-sm btn-danger" onclick="eliminarEjercicio()">🗑️</button>
+        </div>
+        <div class="config-row">
+          <div class="form-group">
+            <label class="form-label">Nombre</label>
+            <input type="text" class="form-input" id="ej-nombre" placeholder="Ej: Ejercicio 2025-2026">
+          </div>
+          <div class="form-group" style="max-width:160px;">
+            <label class="form-label">Inicio</label>
+            <input type="date" class="form-input" id="ej-inicio">
+          </div>
+          <div class="form-group" style="max-width:160px;">
+            <label class="form-label">Fin</label>
+            <input type="date" class="form-input" id="ej-fin">
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen -->
+      <div class="resumen-grid" id="resumen-grid" style="display:none;">
+        <div class="resumen-item ingresos">
+          <div class="resumen-label">Ingresos</div>
+          <div class="resumen-valor" id="res-ingresos">0 €</div>
+          <div class="resumen-count" id="res-ingresos-n">0 partidas</div>
+        </div>
+        <div class="resumen-item costes">
+          <div class="resumen-label">Costes</div>
+          <div class="resumen-valor" id="res-costes">0 €</div>
+          <div class="resumen-count" id="res-costes-n">0 partidas</div>
+        </div>
+        <div class="resumen-item gastos">
+          <div class="resumen-label">Gastos</div>
+          <div class="resumen-valor" id="res-gastos">0 €</div>
+          <div class="resumen-count" id="res-gastos-n">0 partidas</div>
+        </div>
+        <div class="resumen-item resultado">
+          <div class="resumen-label">Resultado</div>
+          <div class="resumen-valor" id="res-resultado">0 €</div>
+          <div class="resumen-count" id="res-resultado-n">Ingresos − Costes − Gastos</div>
+        </div>
+      </div>
+
+      <!-- Partidas -->
+      <div class="card" id="card-partidas" style="display:none;">
+        <div class="card-title">
+          📝 Partidas
+          <span style="flex:1"></span>
+          <div class="filtro-tipo" id="filtros-tipo">
+            <button class="active" onclick="filtrarTipo('todas')">Todas</button>
+            <button onclick="filtrarTipo('ingreso')">Ingresos</button>
+            <button onclick="filtrarTipo('coste')">Costes</button>
+            <button onclick="filtrarTipo('gasto')">Gastos</button>
+          </div>
+          <button class="btn btn-sm btn-addon" style="margin-left:8px;" onclick="abrirModalPartida()">+ Partida</button>
+        </div>
+        <div id="partidas-container"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Nuevo Ejercicio -->
+  <div class="modal-overlay" id="modal-ejercicio">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">📋 Nuevo ejercicio</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nombre del ejercicio *</label>
+          <input type="text" class="form-input" id="new-ej-nombre" placeholder="Ej: Ejercicio 2025-2026">
+        </div>
+        <div class="config-row">
+          <div class="form-group">
+            <label class="form-label">Fecha inicio *</label>
+            <input type="date" class="form-input" id="new-ej-inicio">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fecha fin *</label>
+            <input type="date" class="form-input" id="new-ej-fin">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-addon" onclick="crearEjercicio()">Crear ejercicio</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Partida -->
+  <div class="modal-overlay" id="modal-partida">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-partida-titulo">📝 Nueva partida</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Tipo *</label>
+          <select class="form-select" id="part-tipo">
+            <option value="ingreso">💚 Ingreso</option>
+            <option value="coste">🟡 Coste</option>
+            <option value="gasto">🔴 Gasto</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Concepto *</label>
+          <input type="text" class="form-input" id="part-concepto" placeholder="Ej: Venta aceituna, Jornales, Riego...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Importe previsto (€) *</label>
+          <input type="number" class="form-input" id="part-importe" min="0" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-textarea" id="part-notas" rows="2" placeholder="Detalles, condiciones, proveedor..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-danger" id="btn-eliminar-partida" onclick="eliminarPartida()" style="display:none;">Eliminar</button>
+        <button class="btn btn-addon" id="btn-guardar-partida" onclick="guardarPartida()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    // ========== INIT ==========
+    const params = new URLSearchParams(window.location.search);
+    const bienId = params.get('id');
+    const origen = params.get('origen') || 'capataz';
+
+    // Dynamic colors
+    if (origen === 'gerente') {
+      document.documentElement.style.setProperty('--addon-color', 'var(--gerente)');
+      document.documentElement.style.setProperty('--addon-light', 'var(--gerente-light)');
+      document.documentElement.style.setProperty('--addon-dark', 'var(--gerente-dark)');
+      document.documentElement.style.setProperty('--addon-muted', 'var(--gerente-muted)');
+    }
+
+    let currentUser = null;
+    let bienData = null;
+    let ejercicios = [];
+    let ejercicioActual = null;
+    let filtroTipoActual = 'todas';
+    let editingPartidaId = null;
+
+    if (!bienId) {
+      alert('No se ha especificado el bien');
+      window.location.href = 'lo-comun.html';
+    }
+
+    document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarBien();
+      await cargarEjercicios();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('contenido').style.display = '';
+    });
+
+    // ========== CARGAR DATOS ==========
+    async function cargarBien() {
+      try {
+        const doc = await db.collection('bienes').doc(bienId).get();
+        if (doc.exists) {
+          bienData = doc.data();
+          document.getElementById('nombre-bien').textContent = bienData.nombre || 'Sin nombre';
+        }
+      } catch (e) { console.error('Error:', e); }
+    }
+
+    async function cargarEjercicios() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId)
+          .collection('presupuestos')
+          .orderBy('inicio', 'desc')
+          .get();
+
+        ejercicios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderSelectorEjercicios();
+      } catch (e) { console.error('Error:', e); }
+    }
+
+    function renderSelectorEjercicios() {
+      const sel = document.getElementById('sel-ejercicio');
+      const prevValue = sel.value;
+      sel.innerHTML = '<option value="">— Selecciona un ejercicio —</option>';
+      ejercicios.forEach(ej => {
+        const inicio = ej.inicio || '';
+        const fin = ej.fin || '';
+        sel.innerHTML += `<option value="${ej.id}">${ej.nombre || 'Sin nombre'} (${formatFecha(inicio)} → ${formatFecha(fin)})</option>`;
+      });
+      // Restaurar selección o seleccionar el primero
+      if (prevValue && ejercicios.find(e => e.id === prevValue)) {
+        sel.value = prevValue;
+      } else if (ejercicios.length > 0 && !prevValue) {
+        sel.value = ejercicios[0].id;
+      }
+      seleccionarEjercicio();
+    }
+
+    function seleccionarEjercicio() {
+      const id = document.getElementById('sel-ejercicio').value;
+      ejercicioActual = ejercicios.find(e => e.id === id) || null;
+
+      const mostrar = !!ejercicioActual;
+      document.getElementById('card-config').style.display = mostrar ? '' : 'none';
+      document.getElementById('resumen-grid').style.display = mostrar ? '' : 'none';
+      document.getElementById('card-partidas').style.display = mostrar ? '' : 'none';
+
+      if (ejercicioActual) {
+        document.getElementById('ej-nombre').value = ejercicioActual.nombre || '';
+        document.getElementById('ej-inicio').value = ejercicioActual.inicio || '';
+        document.getElementById('ej-fin').value = ejercicioActual.fin || '';
+        renderPartidas();
+      }
+    }
+
+    // ========== RENDER PARTIDAS ==========
+    function renderPartidas() {
+      if (!ejercicioActual) return;
+      const partidas = ejercicioActual.partidas || [];
+      const container = document.getElementById('partidas-container');
+
+      // Filtrar
+      let filtered = partidas;
+      if (filtroTipoActual !== 'todas') {
+        filtered = partidas.filter(p => p.tipo === filtroTipoActual);
+      }
+
+      // Calcular resumen
+      const ingresos = partidas.filter(p => p.tipo === 'ingreso');
+      const costes = partidas.filter(p => p.tipo === 'coste');
+      const gastos = partidas.filter(p => p.tipo === 'gasto');
+      const sumIng = ingresos.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+      const sumCos = costes.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+      const sumGas = gastos.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+      const resultado = sumIng - sumCos - sumGas;
+
+      document.getElementById('res-ingresos').textContent = formatNum(sumIng) + ' €';
+      document.getElementById('res-costes').textContent = formatNum(sumCos) + ' €';
+      document.getElementById('res-gastos').textContent = formatNum(sumGas) + ' €';
+      document.getElementById('res-resultado').textContent = formatNum(resultado) + ' €';
+      document.getElementById('res-resultado').style.color = resultado >= 0 ? '' : 'var(--error)';
+      document.getElementById('res-ingresos-n').textContent = `${ingresos.length} partida${ingresos.length !== 1 ? 's' : ''}`;
+      document.getElementById('res-costes-n').textContent = `${costes.length} partida${costes.length !== 1 ? 's' : ''}`;
+      document.getElementById('res-gastos-n').textContent = `${gastos.length} partida${gastos.length !== 1 ? 's' : ''}`;
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <div class="empty-state-title">${partidas.length === 0 ? 'Sin partidas' : 'Sin partidas de este tipo'}</div>
+            <div class="empty-state-text">${partidas.length === 0 ? 'Añade la primera partida al presupuesto' : 'Prueba otro filtro'}</div>
+            ${partidas.length === 0 ? '<button class="btn btn-addon" onclick="abrirModalPartida()">+ Primera partida</button>' : ''}
+          </div>`;
+        return;
+      }
+
+      // Ordenar: ingresos → costes → gastos, luego por concepto
+      const orden = { ingreso: 0, coste: 1, gasto: 2 };
+      const sorted = [...filtered].sort((a, b) => {
+        const diff = (orden[a.tipo] || 0) - (orden[b.tipo] || 0);
+        if (diff !== 0) return diff;
+        return (a.concepto || '').localeCompare(b.concepto || '');
+      });
+
+      // Agrupar por tipo si mostramos "todas"
+      let html = `<table class="partidas-table"><thead><tr>
+        <th style="width:90px;">Tipo</th>
+        <th>Concepto</th>
+        <th>Notas</th>
+        <th class="col-importe" style="width:130px;text-align:right;">Importe</th>
+        <th style="width:80px;"></th>
+      </tr></thead><tbody>`;
+
+      let lastTipo = '';
+      let subTotal = 0;
+
+      sorted.forEach((p, i) => {
+        // Subtotal al cambiar de tipo (solo en vista "todas")
+        if (filtroTipoActual === 'todas' && lastTipo && p.tipo !== lastTipo) {
+          html += filaSubtotal(lastTipo, subTotal);
+          subTotal = 0;
+        }
+        lastTipo = p.tipo;
+        subTotal += parseFloat(p.importe) || 0;
+
+        const tipoLabel = { ingreso: 'Ingreso', coste: 'Coste', gasto: 'Gasto' };
+        html += `<tr>
+          <td><span class="tipo-badge ${p.tipo}">${tipoLabel[p.tipo] || p.tipo}</span></td>
+          <td style="font-weight:600;">${p.concepto || '—'}</td>
+          <td class="partida-notas">${p.notas || '—'}</td>
+          <td class="partida-importe ${p.tipo}">${formatNum(p.importe || 0)} €</td>
+          <td class="partida-acciones">
+            <button class="btn-ghost btn-sm" onclick="editarPartida('${p.id}')">✏️</button>
+          </td>
+        </tr>`;
+      });
+
+      // Último subtotal
+      if (filtroTipoActual === 'todas' && lastTipo) {
+        html += filaSubtotal(lastTipo, subTotal);
+      }
+
+      // Fila resultado (solo en "todas")
+      if (filtroTipoActual === 'todas') {
+        html += `<tr class="fila-resultado">
+          <td colspan="3" style="text-align:right;">RESULTADO PREVISTO</td>
+          <td class="partida-importe" style="color:${resultado >= 0 ? 'var(--success)' : 'var(--error)'}">${formatNum(resultado)} €</td>
+          <td></td>
+        </tr>`;
+      } else {
+        // Subtotal de la vista filtrada
+        const subFilt = filtered.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+        html += `<tr class="fila-subtotal"><td colspan="3" style="text-align:right;">TOTAL</td>
+          <td class="partida-importe">${formatNum(subFilt)} €</td><td></td></tr>`;
+      }
+
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    function filaSubtotal(tipo, total) {
+      const labels = { ingreso: '∑ Ingresos', coste: '∑ Costes', gasto: '∑ Gastos' };
+      return `<tr class="fila-subtotal">
+        <td colspan="3" style="text-align:right;">${labels[tipo] || tipo}</td>
+        <td class="partida-importe">${formatNum(total)} €</td>
+        <td></td>
+      </tr>`;
+    }
+
+    function filtrarTipo(tipo) {
+      filtroTipoActual = tipo;
+      document.querySelectorAll('#filtros-tipo button').forEach(b => {
+        b.classList.toggle('active', b.textContent.toLowerCase().includes(
+          tipo === 'todas' ? 'todas' : tipo === 'ingreso' ? 'ingreso' : tipo === 'coste' ? 'coste' : 'gasto'
+        ));
+      });
+      // Más fiable: reset y activar por índice
+      const btns = document.querySelectorAll('#filtros-tipo button');
+      btns.forEach(b => b.classList.remove('active'));
+      const idx = { todas: 0, ingreso: 1, coste: 2, gasto: 3 };
+      btns[idx[tipo]]?.classList.add('active');
+      renderPartidas();
+    }
+
+    // ========== CRUD EJERCICIO ==========
+    function abrirModalEjercicio() {
+      document.getElementById('new-ej-nombre').value = '';
+      // Default: año natural actual
+      const yr = new Date().getFullYear();
+      document.getElementById('new-ej-inicio').value = `${yr}-01-01`;
+      document.getElementById('new-ej-fin').value = `${yr}-12-31`;
+      document.getElementById('modal-ejercicio').classList.add('active');
+    }
+
+    async function crearEjercicio() {
+      const nombre = document.getElementById('new-ej-nombre').value.trim();
+      const inicio = document.getElementById('new-ej-inicio').value;
+      const fin = document.getElementById('new-ej-fin').value;
+      if (!nombre || !inicio || !fin) { alert('Rellena todos los campos'); return; }
+
+      try {
+        const ref = await db.collection('bienes').doc(bienId).collection('presupuestos').add({
+          nombre, inicio, fin,
+          partidas: [],
+          creadoPor: currentUser.uid,
+          fechaCreacion: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        cerrarModales();
+        await cargarEjercicios();
+        document.getElementById('sel-ejercicio').value = ref.id;
+        seleccionarEjercicio();
+      } catch (e) {
+        console.error('Error:', e);
+        alert('Error al crear ejercicio');
+      }
+    }
+
+    async function guardarConfigEjercicio() {
+      if (!ejercicioActual) return;
+      const nombre = document.getElementById('ej-nombre').value.trim();
+      const inicio = document.getElementById('ej-inicio').value;
+      const fin = document.getElementById('ej-fin').value;
+      if (!nombre) { alert('El nombre es obligatorio'); return; }
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('presupuestos')
+          .doc(ejercicioActual.id).update({ nombre, inicio, fin });
+        ejercicioActual.nombre = nombre;
+        ejercicioActual.inicio = inicio;
+        ejercicioActual.fin = fin;
+        renderSelectorEjercicios();
+        alert('✅ Ejercicio actualizado');
+      } catch (e) { console.error(e); alert('Error al guardar'); }
+    }
+
+    async function eliminarEjercicio() {
+      if (!ejercicioActual) return;
+      if (!confirm(`¿Eliminar "${ejercicioActual.nombre}" y todas sus partidas?`)) return;
+      try {
+        await db.collection('bienes').doc(bienId).collection('presupuestos')
+          .doc(ejercicioActual.id).delete();
+        ejercicioActual = null;
+        await cargarEjercicios();
+      } catch (e) { console.error(e); alert('Error al eliminar'); }
+    }
+
+    // ========== CRUD PARTIDAS ==========
+    function abrirModalPartida(partida) {
+      editingPartidaId = partida?.id || null;
+      document.getElementById('modal-partida-titulo').textContent = partida ? '✏️ Editar partida' : '📝 Nueva partida';
+      document.getElementById('btn-eliminar-partida').style.display = partida ? '' : 'none';
+
+      document.getElementById('part-tipo').value = partida?.tipo || 'ingreso';
+      document.getElementById('part-concepto').value = partida?.concepto || '';
+      document.getElementById('part-importe').value = partida?.importe || '';
+      document.getElementById('part-notas').value = partida?.notas || '';
+      document.getElementById('modal-partida').classList.add('active');
+    }
+
+    function editarPartida(id) {
+      const partida = (ejercicioActual?.partidas || []).find(p => p.id === id);
+      if (partida) abrirModalPartida(partida);
+    }
+
+    async function guardarPartida() {
+      if (!ejercicioActual) return;
+      const tipo = document.getElementById('part-tipo').value;
+      const concepto = document.getElementById('part-concepto').value.trim();
+      const importe = parseFloat(document.getElementById('part-importe').value) || 0;
+      const notas = document.getElementById('part-notas').value.trim();
+
+      if (!concepto) { alert('El concepto es obligatorio'); return; }
+      if (importe <= 0) { alert('El importe debe ser mayor que 0'); return; }
+
+      let partidas = [...(ejercicioActual.partidas || [])];
+
+      if (editingPartidaId) {
+        // Editar
+        const idx = partidas.findIndex(p => p.id === editingPartidaId);
+        if (idx >= 0) {
+          partidas[idx] = { ...partidas[idx], tipo, concepto, importe, notas };
+        }
+      } else {
+        // Crear
+        partidas.push({
+          id: 'p_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          tipo, concepto, importe, notas
+        });
+      }
+
+      try {
+        await db.collection('bienes').doc(bienId).collection('presupuestos')
+          .doc(ejercicioActual.id).update({ partidas });
+        ejercicioActual.partidas = partidas;
+        cerrarModales();
+        renderPartidas();
+      } catch (e) { console.error(e); alert('Error al guardar partida'); }
+    }
+
+    async function eliminarPartida() {
+      if (!editingPartidaId || !ejercicioActual) return;
+      if (!confirm('¿Eliminar esta partida?')) return;
+
+      const partidas = (ejercicioActual.partidas || []).filter(p => p.id !== editingPartidaId);
+      try {
+        await db.collection('bienes').doc(bienId).collection('presupuestos')
+          .doc(ejercicioActual.id).update({ partidas });
+        ejercicioActual.partidas = partidas;
+        cerrarModales();
+        renderPartidas();
+      } catch (e) { console.error(e); alert('Error al eliminar'); }
+    }
+
+    // ========== EXPORT PDF ==========
+    function exportarPDF() {
+      if (!ejercicioActual) { alert('Selecciona un ejercicio primero'); return; }
+      const partidas = ejercicioActual.partidas || [];
+      const ingresos = partidas.filter(p => p.tipo === 'ingreso');
+      const costes = partidas.filter(p => p.tipo === 'coste');
+      const gastos = partidas.filter(p => p.tipo === 'gasto');
+      const sumIng = ingresos.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+      const sumCos = costes.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+      const sumGas = gastos.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+      const resultado = sumIng - sumCos - sumGas;
+
+      const renderGrupo = (items, label, color) => {
+        if (items.length === 0) return '';
+        const total = items.reduce((s, p) => s + (parseFloat(p.importe) || 0), 0);
+        let rows = items.map(p => `<tr><td style="padding:8px 12px;">${p.concepto}</td><td style="padding:8px 12px;color:#6B6B6B;font-size:0.85rem;">${p.notas || '—'}</td><td style="padding:8px 12px;text-align:right;font-weight:600;">${formatNum(p.importe)} €</td></tr>`).join('');
+        rows += `<tr style="background:${color}15;font-weight:700;"><td colspan="2" style="padding:8px 12px;text-align:right;">Total ${label}</td><td style="padding:8px 12px;text-align:right;color:${color}">${formatNum(total)} €</td></tr>`;
+        return `<h3 style="color:${color};margin:20px 0 8px;font-size:0.95rem;">${label}</h3>
+          <table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#f5f0ea;"><th style="padding:8px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;color:#9A9A9A;">Concepto</th><th style="padding:8px 12px;text-align:left;font-size:0.75rem;text-transform:uppercase;color:#9A9A9A;">Notas</th><th style="padding:8px 12px;text-align:right;font-size:0.75rem;text-transform:uppercase;color:#9A9A9A;">Importe</th></tr></thead><tbody>${rows}</tbody></table>`;
+      };
+
+      const addonColor = origen === 'gerente' ? '#2D4A5C' : '#6B8E23';
+      const pdfHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Presupuesto - ${ejercicioActual.nombre}</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Nunito',sans-serif;color:#3D3D3D;padding:40px;max-width:800px;margin:0 auto}
+table{margin-bottom:12px}thead th{font-weight:600}tbody td{border-bottom:1px solid #eee}
+@media print{body{padding:20px}}</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px;padding-bottom:16px;border-bottom:3px solid ${addonColor};">
+  <div><h1 style="font-family:'Quicksand';font-size:1.5rem;color:${addonColor};">PRESUPUESTO</h1>
+  <div style="font-size:0.9rem;color:#6B6B6B;margin-top:4px;">${bienData?.nombre || ''}</div></div>
+  <div style="text-align:right;font-size:0.85rem;color:#6B6B6B;">
+    <strong>${ejercicioActual.nombre}</strong><br>
+    ${formatFecha(ejercicioActual.inicio)} → ${formatFecha(ejercicioActual.fin)}
+  </div>
+</div>
+<div style="display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+  <div style="flex:1;padding:14px;background:#7DB59A15;border-radius:8px;text-align:center;border-top:3px solid #7DB59A;">
+    <div style="font-size:0.7rem;text-transform:uppercase;color:#9A9A9A;">Ingresos</div>
+    <div style="font-family:'Quicksand';font-size:1.2rem;font-weight:700;color:#7DB59A;">${formatNum(sumIng)} €</div></div>
+  <div style="flex:1;padding:14px;background:#E8B44D15;border-radius:8px;text-align:center;border-top:3px solid #E8B44D;">
+    <div style="font-size:0.7rem;text-transform:uppercase;color:#9A9A9A;">Costes</div>
+    <div style="font-family:'Quicksand';font-size:1.2rem;font-weight:700;color:#E8B44D;">${formatNum(sumCos)} €</div></div>
+  <div style="flex:1;padding:14px;background:#D4695A15;border-radius:8px;text-align:center;border-top:3px solid #D4695A;">
+    <div style="font-size:0.7rem;text-transform:uppercase;color:#9A9A9A;">Gastos</div>
+    <div style="font-family:'Quicksand';font-size:1.2rem;font-weight:700;color:#D4695A;">${formatNum(sumGas)} €</div></div>
+  <div style="flex:1;padding:14px;background:${addonColor}15;border-radius:8px;text-align:center;border-top:3px solid ${addonColor};">
+    <div style="font-size:0.7rem;text-transform:uppercase;color:#9A9A9A;">Resultado</div>
+    <div style="font-family:'Quicksand';font-size:1.2rem;font-weight:700;color:${resultado >= 0 ? '#7DB59A' : '#D4695A'};">${formatNum(resultado)} €</div></div>
+</div>
+${renderGrupo(ingresos, 'Ingresos', '#7DB59A')}
+${renderGrupo(costes, 'Costes', '#E8B44D')}
+${renderGrupo(gastos, 'Gastos', '#D4695A')}
+<div style="margin-top:24px;padding:16px;background:${addonColor}15;border-radius:8px;text-align:center;">
+  <div style="font-size:0.8rem;color:#9A9A9A;margin-bottom:4px;">RESULTADO PREVISTO DEL EJERCICIO</div>
+  <div style="font-family:'Quicksand';font-size:1.5rem;font-weight:700;color:${resultado >= 0 ? '#7DB59A' : '#D4695A'};">${formatNum(resultado)} €</div>
+</div>
+<div style="margin-top:40px;text-align:center;font-size:0.72rem;color:#9A9A9A;">Generado con FAMILYNK · ${new Date().toLocaleDateString('es-ES')}</div>
+<script>window.onload = () => window.print();<\/script></body></html>`;
+
+      const v = window.open('', '_blank');
+      v.document.write(pdfHtml);
+      v.document.close();
+    }
+
+    // ========== UTILS ==========
+    function cerrarModales() {
+      document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+      editingPartidaId = null;
+    }
+
+    function formatFecha(f) {
+      if (!f) return '—';
+      const d = new Date(f + 'T00:00:00');
+      return d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function formatNum(n) {
+      return (parseFloat(n) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // Cerrar modales con click fuera
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('modal-overlay')) cerrarModales();
+      });
+    });
+  </script>
+</body>
+</html>
