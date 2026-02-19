@@ -316,21 +316,63 @@
     </div>
   </div>
 
-  <!-- Modal Registro -->
+  <!-- Modal Registro (Realizado) -->
   <div class="modal-overlay" id="modal-registro">
     <div class="modal">
       <div class="modal-header"><h3 class="modal-title" id="modal-reg-title">📊 Nuevo registro</h3><button class="modal-close" onclick="cerrarModales()">×</button></div>
       <div class="modal-body">
+        <!-- Cascada: Apartado → Grupo → Partida -->
         <div class="form-group">
+          <label class="form-label">Apartado *</label>
+          <select class="form-select" id="reg-apartado" onchange="regCambioApartado()">
+            <option value="">— Selecciona —</option>
+            <option value="ventas">💚 Ventas</option>
+            <option value="costes">🟡 Costes</option>
+            <option value="personal">🔵 Personal</option>
+            <option value="otros">🔴 Otros gastos</option>
+          </select>
+        </div>
+        <div class="form-group" id="wrap-reg-grupo" style="display:none;">
+          <label class="form-label">Grupo *</label>
+          <select class="form-select" id="reg-grupo" onchange="regCambioGrupo()"></select>
+        </div>
+        <div class="form-group" id="wrap-reg-partida" style="display:none;">
           <label class="form-label">Partida *</label>
           <select class="form-select" id="reg-partida"></select>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-input" id="reg-fecha"></div>
-          <div class="form-group"><label class="form-label">Importe (€) *</label><input type="number" class="form-input" id="reg-importe" min="0" step="0.01" placeholder="0.00"></div>
+
+        <!-- Datos del registro -->
+        <div id="reg-campos" style="display:none;">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-input" id="reg-fecha"></div>
+            <div class="form-group"><label class="form-label">Importe (€) *</label><input type="number" class="form-input" id="reg-importe" min="0" step="0.01" placeholder="0.00"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Concepto</label><input type="text" class="form-input" id="reg-concepto" placeholder="Descripción del movimiento..."></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Nº Factura</label><input type="text" class="form-input" id="reg-factura" placeholder="Ej: F-2025/042"></div>
+            <div class="form-group">
+              <label class="form-label">Medio de pago</label>
+              <select class="form-select" id="reg-medio">
+                <option value="">— Sin especificar —</option>
+                <option value="efectivo">💵 Efectivo</option>
+                <option value="transferencia">🏦 Transferencia</option>
+                <option value="tarjeta">💳 Tarjeta</option>
+                <option value="domiciliacion">📋 Domiciliación</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cuenta de cargo/abono</label>
+            <div class="subgrupo-input-wrap">
+              <div class="form-group">
+                <select class="form-select" id="reg-cuenta"></select>
+              </div>
+              <span class="subgrupo-toggle" id="toggle-new-cuenta" onclick="toggleNuevaCuenta()">+ Nueva</span>
+            </div>
+            <input type="text" class="form-input" id="reg-cuenta-new" placeholder="Ej: CaixaBank, Santander, Caja chica..." style="display:none;margin-top:6px;">
+          </div>
+          <div class="form-group"><label class="form-label">Notas</label><textarea class="form-textarea" id="reg-notas" rows="2" placeholder="Observaciones..."></textarea></div>
         </div>
-        <div class="form-group"><label class="form-label">Concepto</label><input type="text" class="form-input" id="reg-concepto" placeholder="Ej: Factura Endesa, Pago jornales..."></div>
-        <div class="form-group"><label class="form-label">Notas</label><textarea class="form-textarea" id="reg-notas" rows="2" placeholder="Nº factura, proveedor..."></textarea></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
@@ -377,6 +419,7 @@
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
       await cargarBien();
+      await cargarCuentas();
       await cargarEjercicios();
       document.getElementById('loading').style.display = 'none';
       document.getElementById('contenido').style.display = '';
@@ -600,9 +643,11 @@
           </div>
         </div>
         <div class="registros-list" id="${rid}" style="display:none;">
-          ${regs.length ? regs.map(r => `<div class="registro-item">
+          ${regs.length ? regs.map(r => {
+            const extras = [r.factura ? `📄${r.factura}` : '', r.medio ? r.medio : '', r.cuenta ? `🏦${r.cuenta}` : ''].filter(Boolean).join(' · ');
+            return `<div class="registro-item">
             <span class="registro-fecha">${fD(r.fecha)}</span>
-            <span class="registro-concepto">${r.concepto || '—'}</span>
+            <span class="registro-concepto">${r.concepto || '—'}${extras ? `<div style="font-size:0.7rem;color:var(--text-muted);">${extras}</div>` : ''}</span>
             <span class="registro-importe">${fN(r.importe)} €</span>
             <button class="btn-ghost" style="font-size:0.72rem;padding:2px 5px;" onclick="event.stopPropagation();editarRegistro('${r.id}')">✏️</button>
           </div>`).join('') : '<div style="font-size:0.8rem;color:var(--text-muted);padding:4px 10px;">Sin registros</div>'}
@@ -745,35 +790,125 @@
       } catch(e) { console.error(e); }
     }
 
-    // ===== CRUD REGISTROS =====
-    function poblarSelPartidas(sel, preselect) {
-      sel.innerHTML = '';
-      GK.forEach(g => {
-        const items = PP().filter(p => p.grupo === g);
-        if (!items.length) return;
-        sel.innerHTML += `<optgroup label="${GRUPOS[g].icon} ${GRUPOS[g].nombre}">`;
-        const subs = subsDeGrupo(g);
-        subs.forEach(sub => {
-          items.filter(p => p.subgrupo === sub).forEach(p => {
-            sel.innerHTML += `<option value="${p.id}" ${p.id === preselect ? 'selected' : ''}>${sub} → ${p.concepto}</option>`;
-          });
-        });
-        items.filter(p => !p.subgrupo).forEach(p => {
-          sel.innerHTML += `<option value="${p.id}" ${p.id === preselect ? 'selected' : ''}>${p.concepto}</option>`;
-        });
-        sel.innerHTML += `</optgroup>`;
-      });
+    // ===== CUENTAS (persisten en el bien) =====
+    let cuentas = []; // array de strings: ['Caja', 'CaixaBank', ...]
+
+    async function cargarCuentas() {
+      try {
+        const doc = await db.collection('bienes').doc(bienId).get();
+        if (doc.exists && doc.data().cuentas) cuentas = doc.data().cuentas;
+      } catch(e) { console.error(e); }
+    }
+
+    async function guardarNuevaCuenta(nombre) {
+      if (!nombre || cuentas.includes(nombre)) return;
+      cuentas.push(nombre);
+      cuentas.sort();
+      try { await db.collection('bienes').doc(bienId).update({ cuentas }); } catch(e) { console.error(e); }
+    }
+
+    function renderSelCuentas(preselect) {
+      const sel = document.getElementById('reg-cuenta');
+      sel.innerHTML = '<option value="">— Sin especificar —</option>';
+      cuentas.forEach(c => { sel.innerHTML += `<option value="${c}" ${c === preselect ? 'selected' : ''}>${c}</option>`; });
+    }
+
+    function toggleNuevaCuenta() {
+      const inp = document.getElementById('reg-cuenta-new');
+      const vis = inp.style.display !== 'none';
+      inp.style.display = vis ? 'none' : '';
+      document.getElementById('toggle-new-cuenta').textContent = vis ? '+ Nueva' : 'Existente';
+      if (!vis) inp.focus();
+    }
+
+    // ===== CRUD REGISTROS (cascada) =====
+    function regCambioApartado() {
+      const g = document.getElementById('reg-apartado').value;
+      const wGrupo = document.getElementById('wrap-reg-grupo');
+      const wPartida = document.getElementById('wrap-reg-partida');
+      const wCampos = document.getElementById('reg-campos');
+
+      if (!g) { wGrupo.style.display = 'none'; wPartida.style.display = 'none'; wCampos.style.display = 'none'; return; }
+
+      // Poblar grupos (subgrupos) del apartado
+      const subs = subsDeGrupo(g);
+      const sel = document.getElementById('reg-grupo');
+      if (subs.length) {
+        sel.innerHTML = '<option value="">— Selecciona grupo —</option>' + subs.map(s => `<option value="${s}">${s}</option>`).join('');
+        wGrupo.style.display = '';
+      } else {
+        // Sin subgrupos: mostrar partidas directamente
+        sel.innerHTML = '';
+        wGrupo.style.display = 'none';
+        regPoblarPartidas(g, null);
+      }
+      wPartida.style.display = 'none';
+      wCampos.style.display = 'none';
+    }
+
+    function regCambioGrupo() {
+      const g = document.getElementById('reg-apartado').value;
+      const sub = document.getElementById('reg-grupo').value;
+      if (!sub) { document.getElementById('wrap-reg-partida').style.display = 'none'; document.getElementById('reg-campos').style.display = 'none'; return; }
+      regPoblarPartidas(g, sub);
+    }
+
+    function regPoblarPartidas(grupo, subgrupo) {
+      const items = PP().filter(p => p.grupo === grupo && (!subgrupo || p.subgrupo === subgrupo));
+      const sel = document.getElementById('reg-partida');
+      if (!items.length) {
+        sel.innerHTML = '<option value="">— No hay partidas en este grupo —</option>';
+        document.getElementById('wrap-reg-partida').style.display = '';
+        document.getElementById('reg-campos').style.display = 'none';
+        return;
+      }
+      sel.innerHTML = items.sort((a,b) => (a.concepto||'').localeCompare(b.concepto||'')).map(p =>
+        `<option value="${p.id}">${p.concepto} (Pto: ${fN(p.importe)} €)</option>`
+      ).join('');
+      document.getElementById('wrap-reg-partida').style.display = '';
+      document.getElementById('reg-campos').style.display = '';
+    }
+
+    function regPreseleccionar(partidaId) {
+      // Dado un partidaId, preseleccionar toda la cascada
+      const p = PP().find(x => x.id === partidaId);
+      if (!p) return;
+      document.getElementById('reg-apartado').value = p.grupo;
+      regCambioApartado();
+      if (p.subgrupo) {
+        document.getElementById('reg-grupo').value = p.subgrupo;
+        regCambioGrupo();
+      }
+      document.getElementById('reg-partida').value = p.id;
+      document.getElementById('reg-campos').style.display = '';
     }
 
     function abrirModalRegistro(partidaId) {
       editRegId = null;
       document.getElementById('modal-reg-title').textContent = '📊 Nuevo registro';
       document.getElementById('btn-del-reg').style.display = 'none';
-      poblarSelPartidas(document.getElementById('reg-partida'), partidaId || '');
+
+      // Reset cascada
+      document.getElementById('reg-apartado').value = '';
+      document.getElementById('wrap-reg-grupo').style.display = 'none';
+      document.getElementById('wrap-reg-partida').style.display = 'none';
+      document.getElementById('reg-campos').style.display = 'none';
+
+      // Si viene con partida preseleccionada
+      if (partidaId) regPreseleccionar(partidaId);
+
+      // Campos
       document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
       document.getElementById('reg-importe').value = '';
       document.getElementById('reg-concepto').value = '';
+      document.getElementById('reg-factura').value = '';
+      document.getElementById('reg-medio').value = '';
+      renderSelCuentas('');
+      document.getElementById('reg-cuenta-new').value = '';
+      document.getElementById('reg-cuenta-new').style.display = 'none';
+      document.getElementById('toggle-new-cuenta').textContent = '+ Nueva';
       document.getElementById('reg-notas').value = '';
+
       document.getElementById('modal-registro').classList.add('active');
     }
 
@@ -783,11 +918,23 @@
       editRegId = id;
       document.getElementById('modal-reg-title').textContent = '✏️ Editar registro';
       document.getElementById('btn-del-reg').style.display = '';
-      poblarSelPartidas(document.getElementById('reg-partida'), r.partidaId);
+
+      // Preseleccionar cascada
+      regPreseleccionar(r.partidaId);
+
+      // Campos
       document.getElementById('reg-fecha').value = r.fecha || '';
       document.getElementById('reg-importe').value = r.importe || '';
       document.getElementById('reg-concepto').value = r.concepto || '';
+      document.getElementById('reg-factura').value = r.factura || '';
+      document.getElementById('reg-medio').value = r.medio || '';
+      renderSelCuentas(r.cuenta || '');
+      document.getElementById('reg-cuenta-new').value = '';
+      document.getElementById('reg-cuenta-new').style.display = 'none';
+      document.getElementById('toggle-new-cuenta').textContent = '+ Nueva';
       document.getElementById('reg-notas').value = r.notas || '';
+      document.getElementById('reg-campos').style.display = '';
+
       document.getElementById('modal-registro').classList.add('active');
     }
 
@@ -797,15 +944,29 @@
       const fecha = document.getElementById('reg-fecha').value;
       const importe = parseFloat(document.getElementById('reg-importe').value) || 0;
       const concepto = document.getElementById('reg-concepto').value.trim();
+      const factura = document.getElementById('reg-factura').value.trim();
+      const medio = document.getElementById('reg-medio').value;
+      const cuentaNew = document.getElementById('reg-cuenta-new');
+      let cuenta = (cuentaNew.style.display !== 'none' && cuentaNew.value.trim()) ? cuentaNew.value.trim() : document.getElementById('reg-cuenta').value;
       const notas = document.getElementById('reg-notas').value.trim();
-      if (!partidaId || !fecha || importe <= 0) { alert('Partida, fecha e importe obligatorios'); return; }
+
+      if (!partidaId) { alert('Selecciona apartado, grupo y partida'); return; }
+      if (!fecha) { alert('Fecha obligatoria'); return; }
+      if (importe <= 0) { alert('Importe > 0'); return; }
+
+      // Si es cuenta nueva, guardarla
+      if (cuentaNew.style.display !== 'none' && cuentaNew.value.trim()) {
+        await guardarNuevaCuenta(cuentaNew.value.trim());
+      }
 
       let registros = [...RR()];
+      const regData = { partidaId, fecha, importe, concepto, factura, medio, cuenta, notas };
+
       if (editRegId) {
         const idx = registros.findIndex(r => r.id === editRegId);
-        if (idx >= 0) registros[idx] = { ...registros[idx], partidaId, fecha, importe, concepto, notas };
+        if (idx >= 0) registros[idx] = { ...registros[idx], ...regData };
       } else {
-        registros.push({ id: 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), partidaId, fecha, importe, concepto, notas });
+        registros.push({ id: 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4), ...regData });
       }
       try {
         await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ej.id).update({ registros });
