@@ -746,6 +746,10 @@
           <div class="quick-action-icon">🚜</div>
           <div class="quick-action-text">Estado apero</div>
         </div>
+        <div class="quick-action" onclick="abrirModalFinanzas()">
+          <div class="quick-action-icon">💰</div>
+          <div class="quick-action-text">Registrar gasto</div>
+        </div>
       </div>
 
       <!-- Módulos -->
@@ -889,6 +893,81 @@
     </div>
   </div>
 
+  <!-- Modal Finanzas: Solo registro de partidas de Realizado -->
+  <div class="modal-overlay" id="modal-finanzas">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">💰 Registrar movimiento</h3>
+        <button class="modal-close" onclick="cerrarModales()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" id="fin-wrap-ejercicio" style="display:none;">
+          <label class="form-label">Ejercicio</label>
+          <select class="form-select" id="fin-ejercicio" onchange="finSelEjercicio()"></select>
+        </div>
+        <div id="fin-no-ejercicio" style="display:none;text-align:center;padding:20px;color:#9A9A9A;">
+          <div style="font-size:2rem;margin-bottom:8px;">📊</div>
+          <p>No hay ejercicios abiertos.</p>
+          <p style="font-size:0.8rem;">Contacta al administrador para crear uno.</p>
+        </div>
+        <div id="fin-form-campos" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">Apartado *</label>
+            <select class="form-select" id="fin-apartado" onchange="finCambioApartado()">
+              <option value="">— Selecciona —</option>
+              <option value="ventas">💚 Ventas</option>
+              <option value="costes">🟡 Costes</option>
+              <option value="personal">🔵 Personal</option>
+              <option value="otros">🔴 Otros gastos</option>
+            </select>
+          </div>
+          <div class="form-group" id="fin-wrap-grupo" style="display:none;">
+            <label class="form-label">Grupo *</label>
+            <select class="form-select" id="fin-grupo" onchange="finCambioGrupo()"></select>
+          </div>
+          <div class="form-group" id="fin-wrap-partida" style="display:none;">
+            <label class="form-label">Partida *</label>
+            <select class="form-select" id="fin-partida" onchange="finSelPartida()"></select>
+          </div>
+          <div id="fin-datos" style="display:none;">
+            <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-input" id="fin-fecha"></div>
+            <div style="display:flex;gap:10px;">
+              <div class="form-group" style="flex:1;"><label class="form-label">Base (€) *</label><input type="number" class="form-input" id="fin-base" min="0" step="0.01" placeholder="0.00" oninput="finCalcLiquido()"></div>
+              <div class="form-group" style="flex:1;"><label class="form-label">IVA (€)</label><input type="number" class="form-input" id="fin-iva" min="0" step="0.01" placeholder="0.00" oninput="finCalcLiquido()"></div>
+            </div>
+            <div style="display:flex;gap:10px;">
+              <div class="form-group" style="flex:1;"><label class="form-label">Retención (€)</label><input type="number" class="form-input" id="fin-retencion" min="0" step="0.01" placeholder="0.00" oninput="finCalcLiquido()"></div>
+              <div class="form-group" style="flex:1;">
+                <label class="form-label">Líquido (€)</label>
+                <div class="form-input" id="fin-liquido" style="background:#FAF5EF;font-weight:700;">0,00</div>
+                <div style="font-size:0.7rem;color:#9A9A9A;margin-top:2px;">Base + IVA − Retención</div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Concepto</label><input type="text" class="form-input" id="fin-concepto" placeholder="Descripción del movimiento..."></div>
+            <div style="display:flex;gap:10px;">
+              <div class="form-group" style="flex:1;"><label class="form-label">Nº Factura</label><input type="text" class="form-input" id="fin-factura" placeholder="F-2025/042"></div>
+              <div class="form-group" style="flex:1;">
+                <label class="form-label">Medio de pago</label>
+                <select class="form-select" id="fin-medio">
+                  <option value="">—</option>
+                  <option value="efectivo">💵 Efectivo</option>
+                  <option value="transferencia">🏦 Transferencia</option>
+                  <option value="tarjeta">💳 Tarjeta</option>
+                  <option value="domiciliacion">📋 Domiciliación</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Notas</label><textarea class="form-input" id="fin-notas" rows="2" placeholder="Observaciones..."></textarea></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" id="fin-footer" style="display:none;">
+        <button class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button class="btn btn-capataz" onclick="finGuardarRegistro()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -908,6 +987,8 @@
     let inventarioData = [];
     let normasData = [];
     let configFamilia = {};
+    let finEjercicios = [];
+    let finEjActual = null;
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -1040,6 +1121,15 @@
       } catch (e) {
         console.error('Error cargando inventario:', e);
         inventarioData = [];
+      }
+
+      // Ejercicios (finanzas — solo lectura de partidas para registro)
+      try {
+        const ejSnap = await bienRef.collection('ejercicios').orderBy('inicio', 'desc').get();
+        finEjercicios = ejSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {
+        console.error('Error cargando ejercicios:', e);
+        finEjercicios = [];
       }
     }
 
@@ -1311,6 +1401,116 @@
     });
 
     // ========== NORMAS Y PROCEDIMIENTOS ==========
+    // ========== FINANZAS — Solo Crear registro en Realizado ==========
+
+    function abrirModalFinanzas() {
+      const abiertos = finEjercicios.filter(e => !e.cerrado);
+      if (!abiertos.length) {
+        document.getElementById('fin-no-ejercicio').style.display = '';
+        document.getElementById('fin-wrap-ejercicio').style.display = 'none';
+        document.getElementById('fin-form-campos').style.display = 'none';
+        document.getElementById('fin-footer').style.display = 'none';
+        document.getElementById('modal-finanzas').classList.add('active');
+        return;
+      }
+      document.getElementById('fin-no-ejercicio').style.display = 'none';
+      const sel = document.getElementById('fin-ejercicio');
+      sel.innerHTML = abiertos.map(e => `<option value="${e.id}">${e.nombre || 'Ejercicio'}</option>`).join('');
+      document.getElementById('fin-wrap-ejercicio').style.display = abiertos.length > 1 ? '' : 'none';
+      finEjActual = abiertos[0];
+      document.getElementById('fin-apartado').value = '';
+      document.getElementById('fin-wrap-grupo').style.display = 'none';
+      document.getElementById('fin-wrap-partida').style.display = 'none';
+      document.getElementById('fin-datos').style.display = 'none';
+      document.getElementById('fin-fecha').value = new Date().toISOString().split('T')[0];
+      ['fin-base','fin-iva','fin-retencion','fin-concepto','fin-factura','fin-notas'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('fin-medio').value = '';
+      document.getElementById('fin-liquido').textContent = '0,00';
+      document.getElementById('fin-form-campos').style.display = '';
+      document.getElementById('fin-footer').style.display = '';
+      document.getElementById('modal-finanzas').classList.add('active');
+    }
+
+    function finSelEjercicio() {
+      finEjActual = finEjercicios.find(e => e.id === document.getElementById('fin-ejercicio').value) || null;
+      document.getElementById('fin-apartado').value = '';
+      finCambioApartado();
+    }
+
+    function finPP() { return finEjActual?.partidas || []; }
+
+    function finCambioApartado() {
+      const apt = document.getElementById('fin-apartado').value;
+      document.getElementById('fin-wrap-grupo').style.display = 'none';
+      document.getElementById('fin-wrap-partida').style.display = 'none';
+      document.getElementById('fin-datos').style.display = 'none';
+      if (!apt) return;
+      const subs = [...new Set(finPP().filter(p => p.grupo === apt).map(p => p.subgrupo).filter(Boolean))].sort();
+      if (!subs.length) { finMostrarPartidas(apt, null); return; }
+      const sel = document.getElementById('fin-grupo');
+      sel.innerHTML = '<option value="">— Selecciona grupo —</option>' + subs.map(s => `<option value="${s}">📁 ${s}</option>`).join('');
+      document.getElementById('fin-wrap-grupo').style.display = '';
+    }
+
+    function finCambioGrupo() {
+      const apt = document.getElementById('fin-apartado').value;
+      const grp = document.getElementById('fin-grupo').value;
+      document.getElementById('fin-wrap-partida').style.display = 'none';
+      document.getElementById('fin-datos').style.display = 'none';
+      if (!grp) return;
+      finMostrarPartidas(apt, grp);
+    }
+
+    function finMostrarPartidas(apt, grp) {
+      const items = finPP().filter(p => p.grupo === apt && (!grp || p.subgrupo === grp));
+      if (!items.length) return;
+      const sel = document.getElementById('fin-partida');
+      sel.innerHTML = '<option value="">— Selecciona partida —</option>' + items.map(p => `<option value="${p.id}">${p.concepto}</option>`).join('');
+      document.getElementById('fin-wrap-partida').style.display = '';
+    }
+
+    function finSelPartida() {
+      document.getElementById('fin-datos').style.display = document.getElementById('fin-partida').value ? '' : 'none';
+    }
+
+    function finCalcLiquido() {
+      const b = parseFloat(document.getElementById('fin-base').value) || 0;
+      const i = parseFloat(document.getElementById('fin-iva').value) || 0;
+      const r = parseFloat(document.getElementById('fin-retencion').value) || 0;
+      document.getElementById('fin-liquido').textContent = (b + i - r).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function finGuardarRegistro() {
+      if (!finEjActual || !bienActual) return;
+      const partidaId = document.getElementById('fin-partida').value;
+      const fecha = document.getElementById('fin-fecha').value;
+      const base = parseFloat(document.getElementById('fin-base').value) || 0;
+      if (!partidaId) { alert('Selecciona apartado, grupo y partida'); return; }
+      if (!fecha) { alert('Fecha obligatoria'); return; }
+      if (base <= 0) { alert('Base debe ser mayor que 0'); return; }
+      const iva = parseFloat(document.getElementById('fin-iva').value) || 0;
+      const retencion = parseFloat(document.getElementById('fin-retencion').value) || 0;
+      const liquido = base + iva - retencion;
+      const registro = {
+        id: 'r_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        partidaId, fecha, base, iva, retencion, liquido, importe: liquido,
+        concepto: document.getElementById('fin-concepto').value.trim(),
+        factura: document.getElementById('fin-factura').value.trim(),
+        medio: document.getElementById('fin-medio').value,
+        notas: document.getElementById('fin-notas').value.trim(),
+        registradoPor: currentUser?.email || 'externo',
+        tipoExterno: 'guarda',
+        fechaRegistro: new Date().toISOString()
+      };
+      try {
+        const registros = [...(finEjActual.registros || []), registro];
+        await db.collection('bienes').doc(bienActual.id).collection('ejercicios').doc(finEjActual.id).update({ registros });
+        finEjActual.registros = registros;
+        cerrarModales();
+        alert('✅ Registro guardado');
+      } catch (e) { console.error(e); alert('Error al guardar: ' + e.message); }
+    }
+
     async function cargarNormasYConfig() {
       if (!bienActual) return;
       
