@@ -730,21 +730,27 @@
       if (!ej) return;
       if (ej.cerrado) { alert('Este ejercicio ya está cerrado'); return; }
 
-      // Calcular snapshot de resultados
+      // Snapshot = BASES por grupo (para resultados) + TESORERÍA (líquidos netos)
       const snapshot = {};
+      let cobros = 0, pagos = 0;
       GK.forEach(g => {
-        snapshot[g] = 0;
-        PP().filter(p => p.grupo === g).forEach(p => {
-          snapshot[g] += RR().filter(r => r.partidaId === p.id).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0);
-        });
+        const pids = PP().filter(p => p.grupo === g).map(p => p.id);
+        // Resultados: suma de bases
+        snapshot[g] = RR().filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.base ?? r.importe)||0), 0);
+        // Tesorería: suma de líquidos
+        const sumLiq = RR().filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0);
+        if (g === 'ventas') cobros += sumLiq; else pagos += sumLiq;
       });
+      snapshot.tesoreria = cobros - pagos;
+      const resultado = snapshot.ventas - snapshot.costes - snapshot.personal - snapshot.otros;
 
       const resumen = `Cerrar "${ej.nombre}":\n\n` +
-        `💚 Ventas: ${fN(snapshot.ventas)} €\n` +
-        `🟡 Costes: ${fN(snapshot.costes)} €\n` +
-        `🔵 Personal: ${fN(snapshot.personal)} €\n` +
-        `🔴 Otros: ${fN(snapshot.otros)} €\n` +
-        `📊 Resultado: ${fN(snapshot.ventas - snapshot.costes - snapshot.personal - snapshot.otros)} €\n\n` +
+        `💚 Ventas (base): ${fN(snapshot.ventas)} €\n` +
+        `🟡 Costes (base): ${fN(snapshot.costes)} €\n` +
+        `🔵 Personal (base): ${fN(snapshot.personal)} €\n` +
+        `🔴 Otros (base): ${fN(snapshot.otros)} €\n` +
+        `📊 Resultado: ${fN(resultado)} €\n` +
+        `🏦 Tesorería (líquidos): ${fN(snapshot.tesoreria)} €\n\n` +
         `⚠️ Una vez cerrado, no se podrán editar partidas ni registros.\n¿Confirmar cierre?`;
 
       if (!confirm(resumen)) return;

@@ -160,6 +160,8 @@
     .evo-row-otros td:first-child { padding-left:16px; }
     .evo-row-resultado td { font-weight:700; border-top:2px solid var(--addon-color); background:var(--addon-muted) !important; font-size:0.9rem; }
     .evo-row-resultado td:first-child { background:var(--addon-muted) !important; }
+    .evo-row-tesoreria td { font-weight:700; background:rgba(91,155,213,0.08) !important; font-size:0.88rem; border-top:1px dashed var(--info); }
+    .evo-row-tesoreria td:first-child { background:rgba(91,155,213,0.08) !important; }
     .evo-row-kpi td:first-child { padding-left:16px; font-size:0.82rem; }
     .evo-row-kpi-actions { display:inline-flex; gap:4px; margin-left:6px; }
     .evo-row-kpi-actions button { background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0.4; transition:opacity 0.2s; padding:0; }
@@ -283,7 +285,7 @@
         </div>
 
         <div class="evo-legend">
-          <span>📐 Fórmulas KPI — Variables: <code>ventas</code> <code>costes</code> <code>personal</code> <code>otros</code> <code>resultado</code> <code>gastos</code> · Anterior: <code>ventas_ant</code> etc.</span>
+          <span>📐 Fórmulas KPI — Variables: <code>ventas</code> <code>costes</code> <code>personal</code> <code>otros</code> <code>resultado</code> <code>gastos</code> <code>tesoreria</code> · Anterior: <code>ventas_ant</code> etc. · Valores en base imponible (excepto tesorería = líquidos)</span>
         </div>
       </div>
 
@@ -296,7 +298,7 @@
             <div class="form-group">
               <label class="form-label">Fórmula *</label>
               <input type="text" class="form-input" id="kpi-formula" placeholder="Ej: resultado/ventas*100" style="font-family:monospace;">
-              <div class="form-hint">💡 resultado/ventas*100 · (ventas-ventas_ant)/ventas_ant*100 · ventas/gastos</div>
+              <div class="form-hint">💡 resultado/ventas*100 · (ventas-ventas_ant)/ventas_ant*100 · tesoreria/resultado</div>
             </div>
             <div class="form-row" style="display:flex;gap:12px;">
               <div class="form-group" style="flex:1;">
@@ -337,6 +339,7 @@
             <div class="form-group"><label class="form-label">🟡 Costes</label><input type="number" class="form-input" id="man-costes" step="0.01" placeholder="0.00"></div>
             <div class="form-group"><label class="form-label">🔵 Personal</label><input type="number" class="form-input" id="man-personal" step="0.01" placeholder="0.00"></div>
             <div class="form-group"><label class="form-label">🔴 Otros gastos</label><input type="number" class="form-input" id="man-otros" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label class="form-label">🏦 Tesorería</label><input type="number" class="form-input" id="man-tesoreria" step="0.01" placeholder="Cobros − Pagos (líquidos)"></div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" onclick="cerrarModalManual()">Cancelar</button>
@@ -686,17 +689,31 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
 
     function ejResultados(ej) {
       // Si tiene snapshot (cerrado o manual), usarlo
-      if (ej.snapshot) return { ...ej.snapshot, resultado: (ej.snapshot.ventas||0) - (ej.snapshot.costes||0) - (ej.snapshot.personal||0) - (ej.snapshot.otros||0) };
+      if (ej.snapshot) {
+        const s = ej.snapshot;
+        const res = { ventas: s.ventas||0, costes: s.costes||0, personal: s.personal||0, otros: s.otros||0, tesoreria: s.tesoreria||0 };
+        res.resultado = res.ventas - res.costes - res.personal - res.otros;
+        res.gastos = res.costes + res.personal + res.otros;
+        return res;
+      }
       // Si tiene partidas, calcular en vivo
       const pp = ej.partidas || [];
       const rr = ej.registros || [];
       const res = {};
+      // Resultados = suma de BASES por grupo
       GK.forEach(g => {
-        const items = pp.filter(p => p.grupo === g);
-        let total = 0;
-        items.forEach(p => { total += rr.filter(r => r.partidaId === p.id).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0); });
-        res[g] = total;
+        const pids = pp.filter(p => p.grupo === g).map(p => p.id);
+        res[g] = rr.filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.base ?? r.importe)||0), 0);
       });
+      // Tesorería = cobros (líquidos ventas) - pagos (líquidos costes+personal+otros)
+      let cobros = 0, pagos = 0;
+      GK.forEach(g => {
+        const pids = pp.filter(p => p.grupo === g).map(p => p.id);
+        const sumLiq = rr.filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0);
+        if (g === 'ventas') cobros += sumLiq;
+        else pagos += sumLiq;
+      });
+      res.tesoreria = cobros - pagos;
       res.ventas = res.ventas || 0; res.costes = res.costes || 0;
       res.personal = res.personal || 0; res.otros = res.otros || 0;
       res.resultado = res.ventas - res.costes - res.personal - res.otros;
@@ -707,23 +724,13 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
     function evalFormula(formula, data, dataAnt) {
       if (!formula) return null;
       let expr = formula.trim();
-      // Reemplazar variables _ant primero (match más largo)
-      ['ventas','costes','personal','otros','resultado','gastos'].forEach(v => {
-        const re = new RegExp(v + '_ant', 'g');
-        expr = expr.replace(re, String(dataAnt ? (dataAnt[v]||0) : 0));
-      });
+      const vars = ['ventas','costes','personal','otros','resultado','gastos','tesoreria'];
+      // Reemplazar variables _ant primero
+      vars.forEach(v => { expr = expr.replace(new RegExp(v + '_ant', 'g'), String(dataAnt ? (dataAnt[v]||0) : 0)); });
       // Reemplazar variables actuales
-      ['ventas','costes','personal','otros','resultado','gastos'].forEach(v => {
-        const re = new RegExp('\\b' + v + '\\b', 'g');
-        expr = expr.replace(re, String(data[v]||0));
-      });
-      // Validar: solo números, operadores, paréntesis, puntos
+      vars.forEach(v => { expr = expr.replace(new RegExp('\\b' + v + '\\b', 'g'), String(data[v]||0)); });
       if (!/^[\d\s\+\-\*\/\(\)\.]+$/.test(expr)) return null;
-      try {
-        const val = Function('"use strict"; return (' + expr + ')')();
-        if (!isFinite(val)) return null;
-        return val;
-      } catch(e) { return null; }
+      try { const val = Function('"use strict"; return (' + expr + ')')(); return isFinite(val) ? val : null; } catch(e) { return null; }
     }
 
     function trendHtml(curr, prev) {
@@ -732,6 +739,16 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
       if (curr < prev) return ' <span class="evo-trend-down">▼</span>';
       return '';
     }
+
+    // KPIs predefinidos del sistema (siempre visibles)
+    const KPIS_SISTEMA = [
+      { id:'sys_margen',     nombre:'Margen neto',         formula:'resultado/ventas*100',                        unidad:'%',    decimales:'1' },
+      { id:'sys_crec',       nombre:'Crecimiento ventas',  formula:'(ventas-ventas_ant)/ventas_ant*100',           unidad:'%',    decimales:'1' },
+      { id:'sys_cobertura',  nombre:'Ratio cobertura',     formula:'ventas/gastos',                                unidad:'ratio',decimales:'2' },
+      { id:'sys_peso_cost',  nombre:'Peso costes',         formula:'costes/ventas*100',                            unidad:'%',    decimales:'1' },
+      { id:'sys_peso_pers',  nombre:'Peso personal',       formula:'personal/ventas*100',                          unidad:'%',    decimales:'1' },
+    ];
+    const MAX_KPIS_USUARIO = 10;
 
     function renderEvolucion() {
       const serie = getEjSerie();
@@ -770,7 +787,8 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
         { key:'costes',    label:'🟡 Costes',       cls:'evo-row-costes' },
         { key:'personal',  label:'🔵 Personal',     cls:'evo-row-personal' },
         { key:'otros',     label:'🔴 Otros gastos', cls:'evo-row-otros' },
-        { key:'resultado', label:'📊 Resultado',    cls:'evo-row-resultado' }
+        { key:'resultado', label:'📊 Resultado',    cls:'evo-row-resultado' },
+        { key:'tesoreria', label:'🏦 Tesorería',    cls:'evo-row-tesoreria' }
       ];
 
       rows.forEach(row => {
@@ -778,18 +796,22 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
         datos.forEach((d, i) => {
           const v = d.res[row.key] || 0;
           const prev = i > 0 ? (datos[i-1].res[row.key]||0) : null;
-          const color = row.key === 'resultado' ? (v >= 0 ? 'var(--success)' : 'var(--error)') : '';
+          const color = (row.key === 'resultado' || row.key === 'tesoreria') ? (v >= 0 ? 'var(--success)' : 'var(--error)') : '';
           html += `<td${color ? ` style="color:${color}"` : ''}>${fN(v)} €${trendHtml(v, prev)}</td>`;
         });
         html += '</tr>';
       });
 
-      // SECCIÓN KPIs
-      if (evoConfig.kpis.length) {
+      // SECCIÓN KPIs: sistema + usuario
+      const allKpis = [...KPIS_SISTEMA, ...(evoConfig.kpis || [])];
+      if (allKpis.length) {
         html += `<tr class="evo-section"><td colspan="${serie.length + 1}">📐 KPIs</td></tr>`;
-        evoConfig.kpis.forEach(kpi => {
+        allKpis.forEach(kpi => {
+          const esSistema = kpi.id.startsWith('sys_');
           html += `<tr class="evo-row-kpi"><td>${kpi.nombre} <span style="color:var(--text-muted);font-size:0.7rem;">(${kpi.unidad||''})</span>`;
-          html += `<span class="evo-row-kpi-actions"><button onclick="editarKpi('${kpi.id}')" title="Editar">✏️</button></span>`;
+          if (!esSistema) {
+            html += `<span class="evo-row-kpi-actions"><button onclick="editarKpi('${kpi.id}')" title="Editar">✏️</button></span>`;
+          }
           html += `</td>`;
           datos.forEach((d, i) => {
             const dataAnt = i > 0 ? datos[i-1].res : null;
@@ -811,6 +833,9 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
 
     // KPI CRUD
     function abrirModalKpi(kpiData) {
+      if (!kpiData && (evoConfig.kpis || []).length >= MAX_KPIS_USUARIO) {
+        alert(`Máximo ${MAX_KPIS_USUARIO} KPIs personalizados alcanzado`); return;
+      }
       editKpiId = kpiData ? kpiData.id : null;
       document.getElementById('modal-kpi-title').textContent = kpiData ? '✏️ Editar KPI' : '📐 Nuevo KPI';
       document.getElementById('btn-del-kpi').style.display = kpiData ? '' : 'none';
@@ -836,7 +861,7 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
       if (!nombre || !formula) { alert('Nombre y fórmula obligatorios'); return; }
 
       // Validar fórmula con datos dummy
-      const dummy = { ventas:100, costes:50, personal:20, otros:10, resultado:20, gastos:80 };
+      const dummy = { ventas:100, costes:50, personal:20, otros:10, resultado:20, gastos:80, tesoreria:18 };
       const test = evalFormula(formula, dummy, dummy);
       if (test === null) { alert('Fórmula inválida. Revisa la sintaxis.\nVariables: ventas, costes, personal, otros, resultado, gastos\nPara anterior: ventas_ant, costes_ant, etc.'); return; }
 
@@ -865,6 +890,7 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
       document.getElementById('man-costes').value = '';
       document.getElementById('man-personal').value = '';
       document.getElementById('man-otros').value = '';
+      document.getElementById('man-tesoreria').value = '';
       document.getElementById('man-ejercicio').value = '';
       document.getElementById('modal-manual').classList.add('active');
     }
@@ -878,7 +904,8 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
         ventas: parseFloat(document.getElementById('man-ventas').value) || 0,
         costes: parseFloat(document.getElementById('man-costes').value) || 0,
         personal: parseFloat(document.getElementById('man-personal').value) || 0,
-        otros: parseFloat(document.getElementById('man-otros').value) || 0
+        otros: parseFloat(document.getElementById('man-otros').value) || 0,
+        tesoreria: parseFloat(document.getElementById('man-tesoreria').value) || 0
       };
       try {
         await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejId).update({ snapshot });
@@ -904,28 +931,29 @@ td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
       const rDefs = [
         { key:'ventas', label:'💚 Ventas' }, { key:'costes', label:'🟡 Costes' },
         { key:'personal', label:'🔵 Personal' }, { key:'otros', label:'🔴 Otros gastos' },
-        { key:'resultado', label:'📊 Resultado' }
+        { key:'resultado', label:'📊 Resultado' }, { key:'tesoreria', label:'🏦 Tesorería' }
       ];
       rows += `<tr style="background:#f0f0f0;"><td colspan="${serie.length+1}" style="padding:8px;font-weight:700;font-size:0.8rem;">RESULTADOS</td></tr>`;
       rDefs.forEach(r => {
-        const isBold = r.key === 'resultado';
+        const isBold = r.key === 'resultado' || r.key === 'tesoreria';
         rows += `<tr${isBold ? ` style="border-top:2px solid ${ac};font-weight:700;"` : ''}><td style="padding:6px 8px;${!isBold ? 'padding-left:16px;' : ''}">${r.label}</td>`;
         datos.forEach(d => {
           const v = d.res[r.key]||0;
-          const col = r.key === 'resultado' ? (v >= 0 ? '#7DB59A' : '#D4695A') : '';
+          const col = (r.key === 'resultado' || r.key === 'tesoreria') ? (v >= 0 ? '#7DB59A' : '#D4695A') : '';
           rows += `<td style="text-align:right;padding:6px 8px;${col ? 'color:'+col+';' : ''}">${fN(v)} €</td>`;
         });
         rows += '</tr>';
       });
 
-      if (evoConfig.kpis.length) {
+      const allKpis = [...KPIS_SISTEMA, ...(evoConfig.kpis || [])];
+      if (allKpis.length) {
         rows += `<tr style="background:#f0f0f0;"><td colspan="${serie.length+1}" style="padding:8px;font-weight:700;font-size:0.8rem;">KPIs</td></tr>`;
-        evoConfig.kpis.forEach(kpi => {
+        allKpis.forEach(kpi => {
           rows += `<tr><td style="padding:6px 8px;padding-left:16px;">${kpi.nombre} (${kpi.unidad||''})</td>`;
           datos.forEach((d,i) => {
             const val = evalFormula(kpi.formula, d.res, i > 0 ? datos[i-1].res : null);
             const dec = parseInt(kpi.decimales)||0;
-            rows += `<td style="text-align:right;padding:6px 8px;">${val !== null ? val.toLocaleString('es-ES',{minimumFractionDigits:dec,maximumFractionDigits:dec})+' '+( kpi.unidad||'') : '—'}</td>`;
+            rows += `<td style="text-align:right;padding:6px 8px;">${val !== null ? val.toLocaleString('es-ES',{minimumFractionDigits:dec,maximumFractionDigits:dec})+' '+(kpi.unidad||'') : '—'}</td>`;
           });
           rows += '</tr>';
         });
