@@ -343,9 +343,18 @@
 
         <!-- Datos del registro -->
         <div id="reg-campos" style="display:none;">
+          <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-input" id="reg-fecha"></div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-input" id="reg-fecha"></div>
-            <div class="form-group"><label class="form-label">Importe (€) *</label><input type="number" class="form-input" id="reg-importe" min="0" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label class="form-label">Base (€) *</label><input type="number" class="form-input" id="reg-base" min="0" step="0.01" placeholder="0.00" oninput="calcLiquido()"></div>
+            <div class="form-group"><label class="form-label">IVA (€)</label><input type="number" class="form-input" id="reg-iva" min="0" step="0.01" placeholder="0.00" oninput="calcLiquido()"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Retención (€)</label><input type="number" class="form-input" id="reg-retencion" min="0" step="0.01" placeholder="0.00" oninput="calcLiquido()"></div>
+            <div class="form-group">
+              <label class="form-label">Líquido (€)</label>
+              <div class="form-input" id="reg-liquido" style="background:var(--cream-medium);font-weight:700;font-family:'Quicksand';color:var(--text);">0,00</div>
+              <div class="form-hint">Base + IVA − Retención</div>
+            </div>
           </div>
           <div class="form-group"><label class="form-label">Concepto</label><input type="text" class="form-input" id="reg-concepto" placeholder="Descripción del movimiento..."></div>
           <div class="form-row">
@@ -470,7 +479,7 @@
     function PP() { return ej?.partidas || []; }
     function RR() { return ej?.registros || []; }
     function sumG(g) { return PP().filter(p => p.grupo === g).reduce((s, p) => s + (parseFloat(p.importe) || 0), 0); }
-    function realByPart(pid) { return RR().filter(r => r.partidaId === pid).reduce((s, r) => s + (parseFloat(r.importe) || 0), 0); }
+    function realByPart(pid) { return RR().filter(r => r.partidaId === pid).reduce((s, r) => s + (parseFloat(r.liquido ?? r.importe) || 0), 0); }
     function realByGrupo(g) { let t = 0; PP().filter(p => p.grupo === g).forEach(p => { t += realByPart(p.id); }); return t; }
     function resultado(sums) { return (sums.ventas || 0) - (sums.costes || 0) - (sums.personal || 0) - (sums.otros || 0); }
     function subsDeGrupo(grupo) {
@@ -645,10 +654,11 @@
         <div class="registros-list" id="${rid}" style="display:none;">
           ${regs.length ? regs.map(r => {
             const extras = [r.factura ? `📄${r.factura}` : '', r.medio ? r.medio : '', r.cuenta ? `🏦${r.cuenta}` : ''].filter(Boolean).join(' · ');
+            const desglose = r.base ? `Base: ${fN(r.base)}${r.iva ? ' + IVA: ' + fN(r.iva) : ''}${r.retencion ? ' − Ret: ' + fN(r.retencion) : ''}` : '';
             return `<div class="registro-item">
             <span class="registro-fecha">${fD(r.fecha)}</span>
-            <span class="registro-concepto">${r.concepto || '—'}${extras ? `<div style="font-size:0.7rem;color:var(--text-muted);">${extras}</div>` : ''}</span>
-            <span class="registro-importe">${fN(r.importe)} €</span>
+            <span class="registro-concepto">${r.concepto || '—'}${desglose ? `<div style="font-size:0.68rem;color:var(--text-muted);">${desglose}</div>` : ''}${extras ? `<div style="font-size:0.68rem;color:var(--text-muted);">${extras}</div>` : ''}</span>
+            <span class="registro-importe">${fN(r.liquido || r.importe)} €</span>
             <button class="btn-ghost" style="font-size:0.72rem;padding:2px 5px;" onclick="event.stopPropagation();editarRegistro('${r.id}')">✏️</button>
           </div>`).join('') : '<div style="font-size:0.8rem;color:var(--text-muted);padding:4px 10px;">Sin registros</div>'}
           <button class="btn btn-sm btn-secondary" style="margin:6px 0 4px 8px;" onclick="event.stopPropagation();abrirModalRegistro('${p.id}')">+ Registro</button>
@@ -790,6 +800,16 @@
       } catch(e) { console.error(e); }
     }
 
+    // ===== CÁLCULO LÍQUIDO =====
+    function calcLiquido() {
+      const base = parseFloat(document.getElementById('reg-base').value) || 0;
+      const iva = parseFloat(document.getElementById('reg-iva').value) || 0;
+      const ret = parseFloat(document.getElementById('reg-retencion').value) || 0;
+      const liquido = base + iva - ret;
+      document.getElementById('reg-liquido').textContent = fN(liquido);
+      document.getElementById('reg-liquido').style.color = liquido >= 0 ? 'var(--text)' : 'var(--error)';
+    }
+
     // ===== CUENTAS (persisten en el bien) =====
     let cuentas = []; // array de strings: ['Caja', 'CaixaBank', ...]
 
@@ -899,7 +919,10 @@
 
       // Campos
       document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
-      document.getElementById('reg-importe').value = '';
+      document.getElementById('reg-base').value = '';
+      document.getElementById('reg-iva').value = '';
+      document.getElementById('reg-retencion').value = '';
+      document.getElementById('reg-liquido').textContent = '0,00';
       document.getElementById('reg-concepto').value = '';
       document.getElementById('reg-factura').value = '';
       document.getElementById('reg-medio').value = '';
@@ -924,7 +947,10 @@
 
       // Campos
       document.getElementById('reg-fecha').value = r.fecha || '';
-      document.getElementById('reg-importe').value = r.importe || '';
+      document.getElementById('reg-base').value = r.base || '';
+      document.getElementById('reg-iva').value = r.iva || '';
+      document.getElementById('reg-retencion').value = r.retencion || '';
+      calcLiquido();
       document.getElementById('reg-concepto').value = r.concepto || '';
       document.getElementById('reg-factura').value = r.factura || '';
       document.getElementById('reg-medio').value = r.medio || '';
@@ -942,7 +968,11 @@
       if (!ej) return;
       const partidaId = document.getElementById('reg-partida').value;
       const fecha = document.getElementById('reg-fecha').value;
-      const importe = parseFloat(document.getElementById('reg-importe').value) || 0;
+      const base = parseFloat(document.getElementById('reg-base').value) || 0;
+      const iva = parseFloat(document.getElementById('reg-iva').value) || 0;
+      const retencion = parseFloat(document.getElementById('reg-retencion').value) || 0;
+      const liquido = base + iva - retencion;
+      const importe = liquido; // para compatibilidad con totales
       const concepto = document.getElementById('reg-concepto').value.trim();
       const factura = document.getElementById('reg-factura').value.trim();
       const medio = document.getElementById('reg-medio').value;
@@ -952,7 +982,7 @@
 
       if (!partidaId) { alert('Selecciona apartado, grupo y partida'); return; }
       if (!fecha) { alert('Fecha obligatoria'); return; }
-      if (importe <= 0) { alert('Importe > 0'); return; }
+      if (base <= 0) { alert('Base imponible > 0'); return; }
 
       // Si es cuenta nueva, guardarla
       if (cuentaNew.style.display !== 'none' && cuentaNew.value.trim()) {
@@ -960,7 +990,7 @@
       }
 
       let registros = [...RR()];
-      const regData = { partidaId, fecha, importe, concepto, factura, medio, cuenta, notas };
+      const regData = { partidaId, fecha, base, iva, retencion, liquido, importe, concepto, factura, medio, cuenta, notas };
 
       if (editRegId) {
         const idx = registros.findIndex(r => r.id === editRegId);
