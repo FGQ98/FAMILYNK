@@ -2411,12 +2411,13 @@
           catalogoSistema = sysDoc.data();
         }
         // 2) Cargar config de esta familia (qué ha activado admin-rama)
-        const familiaDoc = await db.collection('familias').doc(familiaId).get();
-        if (familiaDoc.exists && familiaDoc.data().configAddons) {
-          configAddons = familiaDoc.data().configAddons;
+        const familiaDoc2 = await db.collection('familias').doc(familiaData.id).get();
+        if (familiaDoc2.exists && familiaDoc2.data().configAddons) {
+          configAddons = familiaDoc2.data().configAddons;
         }
       } catch (error) {
-        console.log('Config addons no encontrada, usando defaults');
+        console.error('Error cargando config addons:', error);
+        console.log('familiaData.id:', familiaData?.id, '— usando defaults');
       }
     }
 
@@ -2530,6 +2531,8 @@
     }
 
     async function guardarCatalogoAddon(tipo) {
+      if (!familiaData?.id) { alert('Error: no se ha cargado la familia'); return; }
+
       // Recoger módulos
       const modulosCheckboxes = document.querySelectorAll(`input[data-addon="${tipo}"][data-kind="modulo"]`);
       const modulosDisponibles = {};
@@ -2544,9 +2547,10 @@
         parametrosDisponibles[cb.dataset.modulo] = cb.checked;
       });
 
+      console.log(`Guardando ${tipo} para familia ${familiaData.id}:`, { modulosDisponibles, parametrosDisponibles });
+
       try {
-        // Guardar ambos en configAddons de la familia
-        await db.collection('familias').doc(familiaId).update({
+        await db.collection('familias').doc(familiaData.id).update({
           [`configAddons.${tipo}.modulosDisponibles`]: modulosDisponibles,
           [`configAddons.${tipo}.parametrosDisponibles`]: parametrosDisponibles
         });
