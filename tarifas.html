@@ -265,6 +265,15 @@
               <option value="servicio">/ servicio</option><option value="pack">/ pack</option>
             </select>
           </div>
+          <div class="form-group" style="flex:0 0 110px;"><label class="form-label">IVA aplicable</label>
+            <select class="form-select" id="srv-iva">
+              <option value="">— Sin IVA —</option>
+              <option value="0">Exento (0%)</option>
+              <option value="4">Superreducido (4%)</option>
+              <option value="10">Reducido (10%)</option>
+              <option value="21">General (21%)</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -429,7 +438,7 @@
                   ${s.descripcion ? `<div class="srv-desc">${s.descripcion}</div>` : ''}
                 </div>
               </div>
-              <span class="srv-unit">/${s.unidad||'unidad'}</span>
+              <span class="srv-unit">/${s.unidad||'unidad'}${s.iva ? ` · ${s.iva}% IVA` : ''}</span>
               <div class="srv-actions">
                 <button class="btn-ghost" onclick="editarSrv('${s.id}')">✏️</button>
               </div>
@@ -500,6 +509,7 @@
       document.getElementById('srv-desc').value = data?.descripcion || '';
       document.getElementById('srv-icono').value = data?.icono || '';
       document.getElementById('srv-unidad').value = data?.unidad || 'noche';
+      document.getElementById('srv-iva').value = data?.iva ?? '';
       document.getElementById('modal-srv').classList.add('active');
     }
 
@@ -514,7 +524,8 @@
         categoriaId: catId,
         descripcion: document.getElementById('srv-desc').value.trim(),
         icono: document.getElementById('srv-icono').value.trim() || '•',
-        unidad: document.getElementById('srv-unidad').value
+        unidad: document.getElementById('srv-unidad').value,
+        iva: document.getElementById('srv-iva').value
       };
       if (editSrvId) {
         const idx = servicios.findIndex(s => s.id === editSrvId);
@@ -568,7 +579,7 @@
         if (!items.length) return;
         html += `<tr class="cat-separator"><td colspan="${columnas.length + 1}">${cat.icono||'📁'} ${cat.nombre}</td></tr>`;
         items.forEach(s => {
-          html += `<tr><td>${s.icono||'•'} ${s.nombre} <span style="color:var(--text-muted);font-size:0.7rem;">/${s.unidad}</span></td>`;
+          html += `<tr><td>${s.icono||'•'} ${s.nombre} <span style="color:var(--text-muted);font-size:0.7rem;">/${s.unidad}${s.iva ? ` · ${s.iva}%` : ''}</span></td>`;
           columnas.forEach(col => {
             const key = s.id + '_' + col.id;
             const val = precios[key] ?? '';
@@ -709,7 +720,7 @@
         if (!items.length) return;
         rows += `<tr style="background:${ac}10;"><td colspan="${columnas.length + 1}" style="padding:8px 10px;font-weight:700;">${cat.icono||'📁'} ${cat.nombre}</td></tr>`;
         items.forEach(s => {
-          rows += `<tr><td style="padding:6px 10px;">${s.icono||'•'} ${s.nombre} <span style="color:#9A9A9A;font-size:0.75rem;">/${s.unidad}</span></td>`;
+          rows += `<tr><td style="padding:6px 10px;">${s.icono||'•'} ${s.nombre} <span style="color:#9A9A9A;font-size:0.75rem;">/${s.unidad}${s.iva ? ` · ${s.iva}%` : ''}</span></td>`;
           columnas.forEach(col => {
             const v = precios[s.id + '_' + col.id];
             rows += `<td style="text-align:center;padding:6px 10px;">${v ? fN(v) + ' €' : '—'}</td>`;

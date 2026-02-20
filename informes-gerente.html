@@ -200,7 +200,7 @@
       border-bottom: 2px solid var(--cream-dark);
     }
 
-    .tabla-resultados th:last-child { text-align: right; }
+    .tabla-resultados th:nth-child(2), .tabla-resultados th:last-child { text-align: right; }
 
     .tabla-resultados td {
       padding: 10px 14px;
@@ -209,7 +209,8 @@
       vertical-align: middle;
     }
 
-    .tabla-resultados td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+    .tabla-resultados td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
+    .tabla-resultados .col-anterior { text-align: right; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
 
     .tabla-resultados tr:hover { background: var(--cream-medium); }
 
@@ -444,7 +445,8 @@
             <thead>
               <tr>
                 <th>Concepto</th>
-                <th style="text-align:right;">Importe</th>
+                <th style="text-align:right;">Actual</th>
+                <th style="text-align:right;color:var(--text-muted);font-size:0.75rem;display:none;" id="th-anterior">Anterior</th>
               </tr>
             </thead>
             <tbody id="tbody-resultados">
@@ -654,24 +656,59 @@
         let gastos = { personal: 0, seguros: 0, otrosGastos: 0 };
         let imputacion = { amortizacion: 0, impuestos: 0 };
 
-        // Cargar ventas/ingresos
-        let ventasQuery = bienRef.collection('ventas');
-        if (reservaId) {
-          ventasQuery = ventasQuery.where('reservaId', '==', reservaId);
+        // Datos ANTERIORES (T-1) — misma estructura
+        let ingresosAnt = { estancias: 0, hospitalidad: 0, actividades: 0, otrosIngresos: 0 };
+        let costesAnt = { suministros: 0, limpieza: 0, mantenimiento: 0, otrosCostes: 0 };
+        let gastosAnt = { personal: 0, seguros: 0, otrosGastos: 0 };
+        let imputacionAnt = { amortizacion: 0, impuestos: 0 };
+
+        // Calcular fechas T-1 (un año antes)
+        let desdeAnt = null, hastaAnt = null;
+        if (desde) {
+          const d = new Date(desde);
+          d.setFullYear(d.getFullYear() - 1);
+          desdeAnt = d.toISOString().split('T')[0];
         }
+        if (hasta) {
+          const h = new Date(hasta);
+          h.setFullYear(h.getFullYear() - 1);
+          hastaAnt = h.toISOString().split('T')[0];
+        }
+
+        // --- CARGAR VENTAS ACTUAL ---
+        let ventasQuery = bienRef.collection('ventas');
+        if (reservaId) ventasQuery = ventasQuery.where('reservaId', '==', reservaId);
         const ventasSnap = await ventasQuery.get();
         ventasSnap.forEach(doc => {
           const v = doc.data();
           const tipo = v.tipo || 'estancias';
           const importe = parseFloat(v.importe) || 0;
-          if (ingresos.hasOwnProperty(tipo)) {
-            ingresos[tipo] += importe;
-          } else {
-            ingresos.otrosIngresos += importe;
-          }
+          if (ingresos.hasOwnProperty(tipo)) ingresos[tipo] += importe;
+          else ingresos.otrosIngresos += importe;
         });
 
-        // Cargar gastos
+        // --- CARGAR VENTAS ANTERIOR (si hay rango de fechas) ---
+        if (desdeAnt && hastaAnt && !reservaId) {
+          try {
+            let ventasAntQuery = bienRef.collection('ventas');
+            // No hay filtro por reservaId para anterior
+            const ventasAntSnap = await ventasAntQuery.get();
+            ventasAntSnap.forEach(doc => {
+              const v = doc.data();
+              // Filtrar manualmente por rango de fechas T-1
+              const f = v.fecha?.toDate?.() || (v.fecha ? new Date(v.fecha) : null);
+              if (!f) return;
+              const fStr = f.toISOString().split('T')[0];
+              if (fStr < desdeAnt || fStr > hastaAnt) return;
+              const tipo = v.tipo || 'estancias';
+              const importe = parseFloat(v.importe) || 0;
+              if (ingresosAnt.hasOwnProperty(tipo)) ingresosAnt[tipo] += importe;
+              else ingresosAnt.otrosIngresos += importe;
+            });
+          } catch(e) { console.log('Sin datos anteriores ventas:', e); }
+        }
+
+        // --- CARGAR GASTOS ACTUAL ---
         let gastosQuery = bienRef.collection('gastos');
         if (desde) gastosQuery = gastosQuery.where('fecha', '>=', firebase.firestore.Timestamp.fromDate(new Date(desde)));
         if (hasta) gastosQuery = gastosQuery.where('fecha', '<=', firebase.firestore.Timestamp.fromDate(new Date(hasta + 'T23:59:59')));
@@ -685,15 +722,45 @@
           else gastos.otrosGastos += importe;
         });
 
-        // Calcular totales
+        // --- CARGAR GASTOS ANTERIOR ---
+        if (desdeAnt && hastaAnt) {
+          try {
+            let gastosAntQuery = bienRef.collection('gastos')
+              .where('fecha', '>=', firebase.firestore.Timestamp.fromDate(new Date(desdeAnt)))
+              .where('fecha', '<=', firebase.firestore.Timestamp.fromDate(new Date(hastaAnt + 'T23:59:59')));
+            const gastosAntSnap = await gastosAntQuery.get();
+            gastosAntSnap.forEach(doc => {
+              const g = doc.data();
+              const cat = g.categoria || 'otrosGastos';
+              const importe = parseFloat(g.importe) || 0;
+              if (costesAnt.hasOwnProperty(cat)) costesAnt[cat] += importe;
+              else if (gastosAnt.hasOwnProperty(cat)) gastosAnt[cat] += importe;
+              else gastosAnt.otrosGastos += importe;
+            });
+          } catch(e) { console.log('Sin datos anteriores gastos:', e); }
+        }
+
+        // Totales ACTUAL
         const totalIngresos = Object.values(ingresos).reduce((a, b) => a + b, 0);
         const totalCostes = Object.values(costes).reduce((a, b) => a + b, 0);
         const totalGastos = Object.values(gastos).reduce((a, b) => a + b, 0);
         const totalImputacion = Object.values(imputacion).reduce((a, b) => a + b, 0);
         const resultado = totalIngresos - totalCostes - totalGastos - totalImputacion;
 
-        // Render tabla
-        renderTablaResultados(ingresos, costes, gastos, imputacion, totalIngresos, totalCostes, totalGastos, totalImputacion, resultado);
+        // Totales ANTERIOR
+        const totalIngresosAnt = Object.values(ingresosAnt).reduce((a, b) => a + b, 0);
+        const totalCostesAnt = Object.values(costesAnt).reduce((a, b) => a + b, 0);
+        const totalGastosAnt = Object.values(gastosAnt).reduce((a, b) => a + b, 0);
+        const totalImputacionAnt = Object.values(imputacionAnt).reduce((a, b) => a + b, 0);
+        const resultadoAnt = totalIngresosAnt - totalCostesAnt - totalGastosAnt - totalImputacionAnt;
+
+        const hayAnterior = totalIngresosAnt > 0 || totalCostesAnt > 0 || totalGastosAnt > 0;
+
+        renderTablaResultados(
+          ingresos, costes, gastos, imputacion, totalIngresos, totalCostes, totalGastos, totalImputacion, resultado,
+          ingresosAnt, costesAnt, gastosAnt, imputacionAnt, totalIngresosAnt, totalCostesAnt, totalGastosAnt, totalImputacionAnt, resultadoAnt,
+          hayAnterior
+        );
 
         if (totalIngresos === 0 && totalCostes === 0 && totalGastos === 0) {
           document.getElementById('resultados-vacio').style.display = 'block';
@@ -707,61 +774,91 @@
       }
     }
 
-    function renderTablaResultados(ingresos, costes, gastos, imputacion, totI, totC, totG, totIm, resultado) {
+    function renderTablaResultados(ingresos, costes, gastos, imputacion, totI, totC, totG, totIm, resultado,
+      ingresosAnt, costesAnt, gastosAnt, imputacionAnt, totIAnt, totCAnt, totGAnt, totImAnt, resultadoAnt,
+      hayAnterior) {
       const tbody = document.getElementById('tbody-resultados');
+      // Mostrar/ocultar columna Anterior en thead con año T-1
+      const thAnt = document.getElementById('th-anterior');
+      if (thAnt) {
+        thAnt.style.display = hayAnterior ? '' : 'none';
+        if (hayAnterior) {
+          const desde = document.getElementById('filtro-desde').value;
+          const yearAnt = desde ? new Date(desde).getFullYear() - 1 : new Date().getFullYear() - 1;
+          thAnt.textContent = 'Anterior (' + yearAnt + ')';
+        }
+      }
+
       let html = '';
 
       // INGRESOS
-      html += filaCategoria('💰 INGRESOS', '');
-      html += filaPartida('Estancias', ingresos.estancias);
-      html += filaPartida('Hospitalidad', ingresos.hospitalidad);
-      html += filaPartida('Actividades', ingresos.actividades);
-      html += filaPartida('Otros ingresos', ingresos.otrosIngresos);
-      html += filaSubtotal('Total Ingresos', totI, 'positivo');
+      html += filaCategoria('💰 INGRESOS', hayAnterior);
+      html += filaPartida('Estancias', ingresos.estancias, ingresosAnt?.estancias, hayAnterior);
+      html += filaPartida('Hospitalidad', ingresos.hospitalidad, ingresosAnt?.hospitalidad, hayAnterior);
+      html += filaPartida('Actividades', ingresos.actividades, ingresosAnt?.actividades, hayAnterior);
+      html += filaPartida('Otros ingresos', ingresos.otrosIngresos, ingresosAnt?.otrosIngresos, hayAnterior);
+      html += filaSubtotal('Total Ingresos', totI, 'positivo', totIAnt, hayAnterior);
 
       // COSTES
-      html += filaCategoria('🏗️ COSTES DIRECTOS', '');
-      html += filaPartida('Suministros', costes.suministros);
-      html += filaPartida('Limpieza', costes.limpieza);
-      html += filaPartida('Mantenimiento', costes.mantenimiento);
-      html += filaPartida('Otros costes', costes.otrosCostes);
-      html += filaSubtotal('Total Costes', totC, 'negativo');
+      html += filaCategoria('🏗️ COSTES DIRECTOS', hayAnterior);
+      html += filaPartida('Suministros', costes.suministros, costesAnt?.suministros, hayAnterior);
+      html += filaPartida('Limpieza', costes.limpieza, costesAnt?.limpieza, hayAnterior);
+      html += filaPartida('Mantenimiento', costes.mantenimiento, costesAnt?.mantenimiento, hayAnterior);
+      html += filaPartida('Otros costes', costes.otrosCostes, costesAnt?.otrosCostes, hayAnterior);
+      html += filaSubtotal('Total Costes', totC, 'negativo', totCAnt, hayAnterior);
 
       // GASTOS
-      html += filaCategoria('💼 GASTOS GENERALES', '');
-      html += filaPartida('Personal', gastos.personal);
-      html += filaPartida('Seguros', gastos.seguros);
-      html += filaPartida('Otros gastos', gastos.otrosGastos);
-      html += filaSubtotal('Total Gastos', totG, 'negativo');
+      html += filaCategoria('💼 GASTOS GENERALES', hayAnterior);
+      html += filaPartida('Personal', gastos.personal, gastosAnt?.personal, hayAnterior);
+      html += filaPartida('Seguros', gastos.seguros, gastosAnt?.seguros, hayAnterior);
+      html += filaPartida('Otros gastos', gastos.otrosGastos, gastosAnt?.otrosGastos, hayAnterior);
+      html += filaSubtotal('Total Gastos', totG, 'negativo', totGAnt, hayAnterior);
 
       // IMPUTACIÓN
-      html += filaCategoria('📋 IMPUTACIÓN', '');
-      html += filaPartida('Amortización', imputacion.amortizacion);
-      html += filaPartida('Impuestos', imputacion.impuestos);
-      html += filaSubtotal('Total Imputación', totIm, 'negativo');
+      html += filaCategoria('📋 IMPUTACIÓN', hayAnterior);
+      html += filaPartida('Amortización', imputacion.amortizacion, imputacionAnt?.amortizacion, hayAnterior);
+      html += filaPartida('Impuestos', imputacion.impuestos, imputacionAnt?.impuestos, hayAnterior);
+      html += filaSubtotal('Total Imputación', totIm, 'negativo', totImAnt, hayAnterior);
 
       // RESULTADO
       const claseRes = resultado >= 0 ? 'positivo' : 'negativo';
       html += '<tr class="fila-resultado ' + claseRes + '">' +
         '<td>📊 RESULTADO</td>' +
         '<td>' + formatEur(resultado) + '</td>' +
+        (hayAnterior ? '<td class="col-anterior">' + formatEurAnt(resultadoAnt) + variacion(resultado, resultadoAnt) + '</td>' : '') +
         '</tr>';
 
       tbody.innerHTML = html;
     }
 
-    function filaCategoria(nombre) {
-      return '<tr class="fila-categoria"><td>' + nombre + '</td><td></td></tr>';
+    function filaCategoria(nombre, hayAnt) {
+      return '<tr class="fila-categoria"><td>' + nombre + '</td><td></td>' + (hayAnt ? '<td></td>' : '') + '</tr>';
     }
 
-    function filaPartida(nombre, importe) {
-      if (importe === 0) return ''; // no mostrar partidas vacías
-      return '<tr class="fila-partida"><td>' + nombre + '</td><td>' + formatEur(importe) + '</td></tr>';
+    function filaPartida(nombre, importe, importeAnt, hayAnt) {
+      if (importe === 0 && (!importeAnt || importeAnt === 0)) return ''; // no mostrar partidas vacías en ambos
+      return '<tr class="fila-partida"><td>' + nombre + '</td><td>' + formatEur(importe) + '</td>' +
+        (hayAnt ? '<td class="col-anterior">' + formatEurAnt(importeAnt) + '</td>' : '') + '</tr>';
     }
 
-    function filaSubtotal(nombre, importe, tipo) {
+    function filaSubtotal(nombre, importe, tipo, importeAnt, hayAnt) {
       const clase = tipo === 'positivo' ? 'importe-positivo' : (tipo === 'negativo' ? 'importe-negativo' : '');
-      return '<tr class="fila-subtotal"><td>' + nombre + '</td><td class="' + clase + '">' + formatEur(importe) + '</td></tr>';
+      return '<tr class="fila-subtotal"><td>' + nombre + '</td><td class="' + clase + '">' + formatEur(importe) + '</td>' +
+        (hayAnt ? '<td class="col-anterior">' + formatEurAnt(importeAnt) + variacion(importe, importeAnt) + '</td>' : '') + '</tr>';
+    }
+
+    function formatEurAnt(n) {
+      if (!n || n === 0) return '<span style="color:var(--text-muted);">—</span>';
+      return '<span style="color:var(--text-muted);">' + formatEur(n) + '</span>';
+    }
+
+    function variacion(actual, anterior) {
+      if (!anterior || anterior === 0) return '';
+      const pct = ((actual - anterior) / Math.abs(anterior) * 100);
+      if (Math.abs(pct) < 0.5) return '';
+      const color = pct > 0 ? 'var(--success)' : 'var(--error)';
+      const arrow = pct > 0 ? '▲' : '▼';
+      return ' <span style="font-size:0.68rem;color:' + color + ';">' + arrow + Math.abs(pct).toFixed(0) + '%</span>';
     }
 
     // ========== CARD 2: INCIDENCIAS ==========
