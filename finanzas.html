@@ -287,6 +287,9 @@
               <option value="tarjeta">💳 Tarjeta</option>
               <option value="domiciliacion">📋 Domiciliación</option>
             </select>
+            <select class="form-select" id="filtro-reg-anotador" onchange="renderRegistroTab()" style="flex:1;min-width:120px;font-size:0.82rem;">
+              <option value="">👤 Todos</option>
+            </select>
           </div>
           <div id="registro-lista"></div>
           <div id="registro-vacio" style="display:none;text-align:center;padding:30px;">
@@ -403,6 +406,18 @@
             </div>
           </div>
           <div class="form-group"><label class="form-label">Nota</label><textarea class="form-textarea" id="reg-notas" rows="2" placeholder="Observaciones..."></textarea></div>
+          <div class="form-group">
+            <label class="form-label">Quién anota</label>
+            <div class="subgrupo-input-wrap">
+              <div class="form-group">
+                <select class="form-select" id="reg-anotador">
+                  <option value="">— Yo mismo —</option>
+                </select>
+              </div>
+              <span class="subgrupo-toggle" id="toggle-new-anotador" onclick="toggleNuevoAnotador()">+ Otro</span>
+            </div>
+            <input type="text" class="form-input" id="reg-anotador-new" placeholder="Ej: Casero, Guarda, Administrador..." style="display:none;margin-top:6px;">
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -680,7 +695,7 @@
         </div>
         <div class="registros-list" id="${rid}" style="display:none;">
           ${regs.length ? regs.map(r => {
-            const extras = [r.medio ? r.medio : '', r.cuenta ? `🏦${r.cuenta}` : ''].filter(Boolean).join(' · ');
+            const extras = [r.medio ? r.medio : '', r.cuenta ? `🏦${r.cuenta}` : '', r.anotador ? `👤${r.anotador}` : ''].filter(Boolean).join(' · ');
             return `<div class="registro-item">
             <span class="registro-fecha">${fD(r.fecha)}</span>
             <span class="registro-concepto">${r.concepto || '—'}${extras ? `<div style="font-size:0.68rem;color:var(--text-muted);">${extras}</div>` : ''}</span>
@@ -912,6 +927,22 @@
       if (!vis) inp.focus();
     }
 
+    function toggleNuevoAnotador() {
+      const inp = document.getElementById('reg-anotador-new');
+      const vis = inp.style.display !== 'none';
+      inp.style.display = vis ? 'none' : '';
+      document.getElementById('toggle-new-anotador').textContent = vis ? '+ Otro' : 'Existente';
+      if (!vis) inp.focus();
+    }
+
+    function cargarAnotadores() {
+      const sel = document.getElementById('reg-anotador');
+      const existentes = new Set();
+      RR().forEach(r => { if (r.anotador) existentes.add(r.anotador); });
+      sel.innerHTML = '<option value="">— Yo mismo —</option>' +
+        Array.from(existentes).sort().map(a => `<option value="${a}">${a}</option>`).join('');
+    }
+
     // ===== CRUD REGISTROS (cascada) =====
     function regCambioApartado() {
       const g = document.getElementById('reg-apartado').value;
@@ -998,6 +1029,11 @@
       document.getElementById('reg-cuenta-new').style.display = 'none';
       document.getElementById('toggle-new-cuenta').textContent = '+ Nueva';
       document.getElementById('reg-notas').value = '';
+      cargarAnotadores();
+      document.getElementById('reg-anotador').value = '';
+      document.getElementById('reg-anotador-new').value = '';
+      document.getElementById('reg-anotador-new').style.display = 'none';
+      document.getElementById('toggle-new-anotador').textContent = '+ Otro';
 
       document.getElementById('modal-registro').classList.add('active');
     }
@@ -1022,6 +1058,11 @@
       document.getElementById('reg-cuenta-new').style.display = 'none';
       document.getElementById('toggle-new-cuenta').textContent = '+ Nueva';
       document.getElementById('reg-notas').value = r.notas || '';
+      cargarAnotadores();
+      document.getElementById('reg-anotador').value = r.anotador || '';
+      document.getElementById('reg-anotador-new').value = '';
+      document.getElementById('reg-anotador-new').style.display = 'none';
+      document.getElementById('toggle-new-anotador').textContent = '+ Otro';
       document.getElementById('reg-campos').style.display = '';
 
       document.getElementById('modal-registro').classList.add('active');
@@ -1038,6 +1079,8 @@
       const cuentaNew = document.getElementById('reg-cuenta-new');
       let cuenta = (cuentaNew.style.display !== 'none' && cuentaNew.value.trim()) ? cuentaNew.value.trim() : document.getElementById('reg-cuenta').value;
       const notas = document.getElementById('reg-notas').value.trim();
+      const anotadorNew = document.getElementById('reg-anotador-new');
+      let anotador = (anotadorNew.style.display !== 'none' && anotadorNew.value.trim()) ? anotadorNew.value.trim() : document.getElementById('reg-anotador').value;
 
       if (!partidaId) { alert('Selecciona apartado, grupo y partida'); return; }
       if (!fecha) { alert('Fecha obligatoria'); return; }
@@ -1049,7 +1092,7 @@
       }
 
       let registros = [...RR()];
-      const regData = { partidaId, fecha, importe, concepto, medio, cuenta, notas };
+      const regData = { partidaId, fecha, importe, concepto, medio, cuenta, notas, anotador };
 
       if (editRegId) {
         const idx = registros.findIndex(r => r.id === editRegId);
@@ -1092,6 +1135,19 @@
         regs = regs.filter(r => pids.includes(r.partidaId));
       }
       if (filtroMedio) regs = regs.filter(r => r.medio === filtroMedio);
+      const filtroAnot = document.getElementById('filtro-reg-anotador')?.value;
+      if (filtroAnot) regs = regs.filter(r => (r.anotador || '') === filtroAnot);
+
+      // Poblar filtro de anotadores dinámicamente
+      const selAnot = document.getElementById('filtro-reg-anotador');
+      if (selAnot) {
+        const anots = new Set();
+        RR().forEach(r => { if (r.anotador) anots.add(r.anotador); });
+        const prev = selAnot.value;
+        selAnot.innerHTML = '<option value="">👤 Todos</option>' +
+          Array.from(anots).sort().map(a => `<option value="${a}">${a}</option>`).join('');
+        selAnot.value = prev;
+      }
 
       if (!regs.length) {
         lista.innerHTML = '';
@@ -1134,7 +1190,7 @@
             <span class="registro-fecha">${fD(r.fecha)}</span>
             <span class="registro-concepto">
               ${r.concepto || '—'}
-              <div style="font-size:0.7rem;color:var(--text-muted);">${grupoLabel}${p ? ' · ' + p.concepto : ''}${r.cuenta ? ' · 🏦' + r.cuenta : ''}</div>
+              <div style="font-size:0.7rem;color:var(--text-muted);">${grupoLabel}${p ? ' · ' + p.concepto : ''}${r.cuenta ? ' · 🏦' + r.cuenta : ''}${r.anotador ? ' · 👤' + r.anotador : ''}</div>
             </span>
             <span style="display:flex;align-items:center;gap:4px;">
               ${medioIcon ? `<span style="font-size:0.75rem;">${medioIcon}</span>` : ''}
