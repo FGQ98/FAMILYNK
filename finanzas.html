@@ -241,6 +241,7 @@
       <div class="tabs" id="tabs-fin" style="display:none;">
         <button class="tab active" onclick="cambiarTab('presupuesto')">📋 Presupuesto</button>
         <button class="tab" onclick="cambiarTab('realizado')">📊 Realizado</button>
+        <button class="tab" onclick="cambiarTab('registro')">📝 Registro</button>
       </div>
 
       <!-- TAB PRESUPUESTO -->
@@ -262,6 +263,37 @@
             <button class="btn btn-sm btn-addon" onclick="abrirModalRegistro()">+ Registro</button>
           </div>
           <div id="real-container"></div>
+        </div>
+      </div>
+
+      <!-- TAB REGISTRO -->
+      <div class="tab-content" id="tab-registro">
+        <div class="card">
+          <div class="card-title">📝 Registro de movimientos <span style="flex:1"></span>
+            <button class="btn btn-sm btn-addon" onclick="abrirModalRegistro()">+ Registro</button>
+          </div>
+          <div id="registro-filtros" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+            <select class="form-select" id="filtro-reg-tipo" onchange="renderRegistroTab()" style="flex:1;min-width:120px;font-size:0.82rem;">
+              <option value="">Todos los tipos</option>
+              <option value="ventas">💚 Ventas</option>
+              <option value="costes">🟡 Costes</option>
+              <option value="personal">🔵 Personal</option>
+              <option value="otros">🔴 Otros gastos</option>
+            </select>
+            <select class="form-select" id="filtro-reg-medio" onchange="renderRegistroTab()" style="flex:1;min-width:120px;font-size:0.82rem;">
+              <option value="">Todos los medios</option>
+              <option value="efectivo">💵 Efectivo</option>
+              <option value="transferencia">🏦 Transferencia</option>
+              <option value="tarjeta">💳 Tarjeta</option>
+              <option value="domiciliacion">📋 Domiciliación</option>
+            </select>
+          </div>
+          <div id="registro-lista"></div>
+          <div id="registro-vacio" style="display:none;text-align:center;padding:30px;">
+            <div style="font-size:2rem;margin-bottom:8px;">📝</div>
+            <div style="color:var(--text-muted);font-size:0.9rem;">Sin registros en este ejercicio</div>
+            <div style="color:var(--text-muted);font-size:0.8rem;margin-top:4px;">Pulsa + Registro para añadir el primero</div>
+          </div>
         </div>
       </div>
     </div>
@@ -346,21 +378,9 @@
         <!-- Datos del registro -->
         <div id="reg-campos" style="display:none;">
           <div class="form-group"><label class="form-label">Fecha *</label><input type="date" class="form-input" id="reg-fecha"></div>
+          <div class="form-group"><label class="form-label">Descripción</label><input type="text" class="form-input" id="reg-concepto" placeholder="Descripción del movimiento..."></div>
+          <div class="form-group"><label class="form-label">Importe (€) *</label><input type="number" class="form-input" id="reg-importe" min="0" step="0.01" placeholder="0.00"></div>
           <div class="form-row">
-            <div class="form-group"><label class="form-label">Base (€) *</label><input type="number" class="form-input" id="reg-base" min="0" step="0.01" placeholder="0.00" oninput="calcLiquido()"></div>
-            <div class="form-group"><label class="form-label">IVA (€)</label><input type="number" class="form-input" id="reg-iva" min="0" step="0.01" placeholder="0.00" oninput="calcLiquido()"></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Retención (€)</label><input type="number" class="form-input" id="reg-retencion" min="0" step="0.01" placeholder="0.00" oninput="calcLiquido()"></div>
-            <div class="form-group">
-              <label class="form-label">Líquido (€)</label>
-              <div class="form-input" id="reg-liquido" style="background:var(--cream-medium);font-weight:700;font-family:'Quicksand';color:var(--text);">0,00</div>
-              <div class="form-hint">Base + IVA − Retención</div>
-            </div>
-          </div>
-          <div class="form-group"><label class="form-label">Concepto</label><input type="text" class="form-input" id="reg-concepto" placeholder="Descripción del movimiento..."></div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label">Nº Factura</label><input type="text" class="form-input" id="reg-factura" placeholder="Ej: F-2025/042"></div>
             <div class="form-group">
               <label class="form-label">Medio de pago</label>
               <select class="form-select" id="reg-medio">
@@ -371,18 +391,18 @@
                 <option value="domiciliacion">📋 Domiciliación</option>
               </select>
             </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Cuenta de cargo/abono</label>
-            <div class="subgrupo-input-wrap">
-              <div class="form-group">
-                <select class="form-select" id="reg-cuenta"></select>
+            <div class="form-group">
+              <label class="form-label">Cuenta de cargo/abono</label>
+              <div class="subgrupo-input-wrap">
+                <div class="form-group">
+                  <select class="form-select" id="reg-cuenta"></select>
+                </div>
+                <span class="subgrupo-toggle" id="toggle-new-cuenta" onclick="toggleNuevaCuenta()">+ Nueva</span>
               </div>
-              <span class="subgrupo-toggle" id="toggle-new-cuenta" onclick="toggleNuevaCuenta()">+ Nueva</span>
+              <input type="text" class="form-input" id="reg-cuenta-new" placeholder="Ej: CaixaBank, Santander, Caja chica..." style="display:none;margin-top:6px;">
             </div>
-            <input type="text" class="form-input" id="reg-cuenta-new" placeholder="Ej: CaixaBank, Santander, Caja chica..." style="display:none;margin-top:6px;">
           </div>
-          <div class="form-group"><label class="form-label">Notas</label><textarea class="form-textarea" id="reg-notas" rows="2" placeholder="Observaciones..."></textarea></div>
+          <div class="form-group"><label class="form-label">Nota</label><textarea class="form-textarea" id="reg-notas" rows="2" placeholder="Observaciones..."></textarea></div>
         </div>
       </div>
       <div class="modal-footer">
@@ -468,7 +488,7 @@
       document.getElementById('btn-cerrar-ej').style.display = hay && !cerrado ? '' : 'none';
       document.getElementById('badge-cerrado').style.display = hay && cerrado ? '' : 'none';
       document.getElementById('tabs-fin').style.display = hay ? '' : 'none';
-      ['tab-presupuesto', 'tab-realizado'].forEach(t => { if (!hay) document.getElementById(t).style.display = 'none'; });
+      ['tab-presupuesto', 'tab-realizado', 'tab-registro'].forEach(t => { if (!hay) document.getElementById(t).style.display = 'none'; });
       document.getElementById('card-config').style.display = 'none'; configVis = false;
       // Ocultar botones de edición si cerrado
       document.querySelectorAll('.btn-add-partida, .btn-add-registro').forEach(b => { b.style.display = cerrado ? 'none' : ''; });
@@ -486,7 +506,7 @@
     function PP() { return ej?.partidas || []; }
     function RR() { return ej?.registros || []; }
     function sumG(g) { return PP().filter(p => p.grupo === g).reduce((s, p) => s + (parseFloat(p.importe) || 0), 0); }
-    function realByPart(pid) { return RR().filter(r => r.partidaId === pid).reduce((s, r) => s + (parseFloat(r.liquido ?? r.importe) || 0), 0); }
+    function realByPart(pid) { return RR().filter(r => r.partidaId === pid).reduce((s, r) => s + (parseFloat(r.importe ?? r.liquido) || 0), 0); }
     function realByGrupo(g) { let t = 0; PP().filter(p => p.grupo === g).forEach(p => { t += realByPart(p.id); }); return t; }
     function resultado(sums) { return (sums.ventas || 0) - (sums.costes || 0) - (sums.personal || 0) - (sums.otros || 0); }
     function subsDeGrupo(grupo) {
@@ -660,12 +680,11 @@
         </div>
         <div class="registros-list" id="${rid}" style="display:none;">
           ${regs.length ? regs.map(r => {
-            const extras = [r.factura ? `📄${r.factura}` : '', r.medio ? r.medio : '', r.cuenta ? `🏦${r.cuenta}` : ''].filter(Boolean).join(' · ');
-            const desglose = r.base ? `Base: ${fN(r.base)}${r.iva ? ' + IVA: ' + fN(r.iva) : ''}${r.retencion ? ' − Ret: ' + fN(r.retencion) : ''}` : '';
+            const extras = [r.medio ? r.medio : '', r.cuenta ? `🏦${r.cuenta}` : ''].filter(Boolean).join(' · ');
             return `<div class="registro-item">
             <span class="registro-fecha">${fD(r.fecha)}</span>
-            <span class="registro-concepto">${r.concepto || '—'}${desglose ? `<div style="font-size:0.68rem;color:var(--text-muted);">${desglose}</div>` : ''}${extras ? `<div style="font-size:0.68rem;color:var(--text-muted);">${extras}</div>` : ''}</span>
-            <span class="registro-importe">${fN(r.liquido || r.importe)} €</span>
+            <span class="registro-concepto">${r.concepto || '—'}${extras ? `<div style="font-size:0.68rem;color:var(--text-muted);">${extras}</div>` : ''}</span>
+            <span class="registro-importe">${fN(r.importe || r.liquido || r.base || 0)} €</span>
             <button class="btn-ghost" style="font-size:0.72rem;padding:2px 5px;" onclick="event.stopPropagation();editarRegistro('${r.id}')">✏️</button>
           </div>`}).join('') : '<div style="font-size:0.8rem;color:var(--text-muted);padding:4px 10px;">Sin registros</div>'}
           <button class="btn btn-sm btn-secondary" style="margin:6px 0 4px 8px;" onclick="event.stopPropagation();abrirModalRegistro('${p.id}')">+ Registro</button>
@@ -680,9 +699,11 @@
 
     // ===== TABS =====
     function cambiarTab(t) {
-      document.querySelectorAll('.tab').forEach((b, i) => b.classList.toggle('active', i === (t === 'presupuesto' ? 0 : 1)));
+      const tabs = ['presupuesto', 'realizado', 'registro'];
+      document.querySelectorAll('.tab').forEach((b, i) => b.classList.toggle('active', tabs[i] === t));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       const el = document.getElementById('tab-' + t); el.classList.add('active'); el.style.display = '';
+      if (t === 'registro') renderRegistroTab();
     }
 
     // ===== CRUD EJERCICIO =====
@@ -736,9 +757,9 @@
       GK.forEach(g => {
         const pids = PP().filter(p => p.grupo === g).map(p => p.id);
         // Resultados: suma de bases
-        snapshot[g] = RR().filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.base ?? r.importe)||0), 0);
+        snapshot[g] = RR().filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.importe ?? r.base)||0), 0);
         // Tesorería: suma de líquidos
-        const sumLiq = RR().filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0);
+        const sumLiq = RR().filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.importe ?? r.liquido)||0), 0);
         if (g === 'ventas') cobros += sumLiq; else pagos += sumLiq;
       });
       snapshot.tesoreria = cobros - pagos;
@@ -969,12 +990,8 @@
 
       // Campos
       document.getElementById('reg-fecha').value = new Date().toISOString().split('T')[0];
-      document.getElementById('reg-base').value = '';
-      document.getElementById('reg-iva').value = '';
-      document.getElementById('reg-retencion').value = '';
-      document.getElementById('reg-liquido').textContent = '0,00';
+      document.getElementById('reg-importe').value = '';
       document.getElementById('reg-concepto').value = '';
-      document.getElementById('reg-factura').value = '';
       document.getElementById('reg-medio').value = '';
       renderSelCuentas('');
       document.getElementById('reg-cuenta-new').value = '';
@@ -995,14 +1012,10 @@
       // Preseleccionar cascada
       regPreseleccionar(r.partidaId);
 
-      // Campos
+      // Campos — compatibilidad: leer liquido/base si no hay importe
       document.getElementById('reg-fecha').value = r.fecha || '';
-      document.getElementById('reg-base').value = r.base || '';
-      document.getElementById('reg-iva').value = r.iva || '';
-      document.getElementById('reg-retencion').value = r.retencion || '';
-      calcLiquido();
+      document.getElementById('reg-importe').value = r.importe || r.liquido || r.base || '';
       document.getElementById('reg-concepto').value = r.concepto || '';
-      document.getElementById('reg-factura').value = r.factura || '';
       document.getElementById('reg-medio').value = r.medio || '';
       renderSelCuentas(r.cuenta || '');
       document.getElementById('reg-cuenta-new').value = '';
@@ -1019,13 +1032,8 @@
       if (!ej) return;
       const partidaId = document.getElementById('reg-partida').value;
       const fecha = document.getElementById('reg-fecha').value;
-      const base = parseFloat(document.getElementById('reg-base').value) || 0;
-      const iva = parseFloat(document.getElementById('reg-iva').value) || 0;
-      const retencion = parseFloat(document.getElementById('reg-retencion').value) || 0;
-      const liquido = base + iva - retencion;
-      const importe = liquido; // para compatibilidad con totales
+      const importe = parseFloat(document.getElementById('reg-importe').value) || 0;
       const concepto = document.getElementById('reg-concepto').value.trim();
-      const factura = document.getElementById('reg-factura').value.trim();
       const medio = document.getElementById('reg-medio').value;
       const cuentaNew = document.getElementById('reg-cuenta-new');
       let cuenta = (cuentaNew.style.display !== 'none' && cuentaNew.value.trim()) ? cuentaNew.value.trim() : document.getElementById('reg-cuenta').value;
@@ -1033,7 +1041,7 @@
 
       if (!partidaId) { alert('Selecciona apartado, grupo y partida'); return; }
       if (!fecha) { alert('Fecha obligatoria'); return; }
-      if (base <= 0) { alert('Base imponible > 0'); return; }
+      if (importe <= 0) { alert('Importe debe ser > 0'); return; }
 
       // Si es cuenta nueva, guardarla
       if (cuentaNew.style.display !== 'none' && cuentaNew.value.trim()) {
@@ -1041,7 +1049,7 @@
       }
 
       let registros = [...RR()];
-      const regData = { partidaId, fecha, base, iva, retencion, liquido, importe, concepto, factura, medio, cuenta, notas };
+      const regData = { partidaId, fecha, importe, concepto, medio, cuenta, notas };
 
       if (editRegId) {
         const idx = registros.findIndex(r => r.id === editRegId);
@@ -1051,7 +1059,7 @@
       }
       try {
         await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ej.id).update({ registros });
-        ej.registros = registros; cerrarModales(); renderReal();
+        ej.registros = registros; cerrarModales(); renderReal(); renderRegistroTab();
       } catch(e) { console.error(e); alert('Error'); }
     }
 
@@ -1061,8 +1069,90 @@
       const registros = RR().filter(r => r.id !== editRegId);
       try {
         await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ej.id).update({ registros });
-        ej.registros = registros; cerrarModales(); renderReal();
+        ej.registros = registros; cerrarModales(); renderReal(); renderRegistroTab();
       } catch(e) { console.error(e); }
+    }
+
+    // ===== TAB REGISTRO =====
+    const GK_LABELS = { ventas: '💚 Ventas', costes: '🟡 Costes', personal: '🔵 Personal', otros: '🔴 Otros' };
+    const MEDIO_LABELS = { efectivo: '💵', transferencia: '🏦', tarjeta: '💳', domiciliacion: '📋' };
+
+    function renderRegistroTab() {
+      const lista = document.getElementById('registro-lista');
+      const vacio = document.getElementById('registro-vacio');
+      if (!lista) return;
+
+      let regs = [...RR()].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+      // Filtros
+      const filtroTipo = document.getElementById('filtro-reg-tipo')?.value;
+      const filtroMedio = document.getElementById('filtro-reg-medio')?.value;
+      if (filtroTipo) {
+        const pids = PP().filter(p => p.grupo === filtroTipo).map(p => p.id);
+        regs = regs.filter(r => pids.includes(r.partidaId));
+      }
+      if (filtroMedio) regs = regs.filter(r => r.medio === filtroMedio);
+
+      if (!regs.length) {
+        lista.innerHTML = '';
+        vacio.style.display = '';
+        return;
+      }
+      vacio.style.display = 'none';
+
+      // Agrupar por mes
+      const meses = {};
+      regs.forEach(r => {
+        const mes = r.fecha ? r.fecha.substring(0, 7) : 'sin-fecha';
+        if (!meses[mes]) meses[mes] = [];
+        meses[mes].push(r);
+      });
+
+      let html = '';
+      let totalGeneral = 0;
+
+      Object.keys(meses).sort().reverse().forEach(mes => {
+        const items = meses[mes];
+        const totalMes = items.reduce((s, r) => s + (parseFloat(r.importe ?? r.liquido) || 0), 0);
+        totalGeneral += totalMes;
+        const mesLabel = mes === 'sin-fecha' ? 'Sin fecha' :
+          new Date(mes + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
+        html += `<div style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--cream-medium);border-radius:var(--radius-sm);margin-bottom:6px;">
+            <span style="font-weight:700;font-size:0.88rem;text-transform:capitalize;">${mesLabel}</span>
+            <span style="font-weight:700;font-size:0.88rem;">${fN(totalMes)} €</span>
+          </div>`;
+
+        items.forEach(r => {
+          const p = PP().find(x => x.id === r.partidaId);
+          const grupoLabel = p ? (GK_LABELS[p.grupo] || p.grupo) : '';
+          const medioIcon = MEDIO_LABELS[r.medio] || '';
+          const imp = parseFloat(r.importe ?? r.liquido) || 0;
+
+          html += `<div class="registro-item" style="cursor:pointer;border-left:3px solid ${p?.grupo === 'ventas' ? 'var(--success)' : 'var(--terracotta)'};" onclick="editarRegistro('${r.id}')">
+            <span class="registro-fecha">${fD(r.fecha)}</span>
+            <span class="registro-concepto">
+              ${r.concepto || '—'}
+              <div style="font-size:0.7rem;color:var(--text-muted);">${grupoLabel}${p ? ' · ' + p.concepto : ''}${r.cuenta ? ' · 🏦' + r.cuenta : ''}</div>
+            </span>
+            <span style="display:flex;align-items:center;gap:4px;">
+              ${medioIcon ? `<span style="font-size:0.75rem;">${medioIcon}</span>` : ''}
+              <span class="registro-importe" style="${p?.grupo === 'ventas' ? 'color:var(--success)' : ''}">${p?.grupo === 'ventas' ? '+' : '-'}${fN(imp)} €</span>
+            </span>
+          </div>`;
+        });
+
+        html += '</div>';
+      });
+
+      // Total general
+      html += `<div style="display:flex;justify-content:space-between;padding:12px;background:var(--addon-color);color:white;border-radius:var(--radius-sm);font-weight:700;">
+        <span>Total (${regs.length} registros)</span>
+        <span>${fN(totalGeneral)} €</span>
+      </div>`;
+
+      lista.innerHTML = html;
     }
 
     // ===== PDF =====
