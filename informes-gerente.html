@@ -192,25 +192,29 @@
 
     .tabla-resultados th {
       text-align: left;
-      padding: 10px 14px;
-      font-size: 0.75rem;
+      padding: 10px 12px;
+      font-size: 0.72rem;
       text-transform: uppercase;
       letter-spacing: 0.3px;
       color: var(--text-muted);
       border-bottom: 2px solid var(--cream-dark);
     }
 
-    .tabla-resultados th:nth-child(2), .tabla-resultados th:last-child { text-align: right; }
+    .tabla-resultados th:not(:first-child) { text-align: right; }
 
     .tabla-resultados td {
-      padding: 10px 14px;
-      font-size: 0.9rem;
+      padding: 10px 12px;
+      font-size: 0.88rem;
       border-bottom: 1px solid var(--cream-dark);
       vertical-align: middle;
     }
 
-    .tabla-resultados td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
-    .tabla-resultados .col-anterior { text-align: right; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+    .tabla-resultados td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+    .tabla-resultados .col-ant { color: var(--text-muted); font-size: 0.82rem; }
+    .tabla-resultados .col-pct { font-size: 0.78rem; font-weight: 600; }
+    .tabla-resultados .pct-pos { color: var(--success); }
+    .tabla-resultados .pct-neg { color: var(--error); }
+    .tabla-resultados .pct-zero { color: var(--text-muted); }
 
     .tabla-resultados tr:hover { background: var(--cream-medium); }
 
@@ -387,8 +391,9 @@
       .filtros-bar { flex-direction: column; align-items: stretch; }
       .filtro-group.grow { min-width: auto; }
       .incidencia-grid { grid-template-columns: 1fr; }
-      .tabla-resultados { font-size: 0.8rem; }
-      .tabla-resultados th, .tabla-resultados td { padding: 8px 10px; }
+      #resultados-contenido { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .tabla-resultados { font-size: 0.75rem; min-width: 600px; }
+      .tabla-resultados th, .tabla-resultados td { padding: 6px 8px; white-space: nowrap; }
       .fila-partida td:first-child { padding-left: 16px; }
     }
   </style>
@@ -445,8 +450,11 @@
             <thead>
               <tr>
                 <th>Concepto</th>
-                <th style="text-align:right;">Actual</th>
-                <th style="text-align:right;color:var(--text-muted);font-size:0.75rem;display:none;" id="th-anterior">Anterior</th>
+                <th>Anterior</th>
+                <th>Realizado</th>
+                <th>Presupuesto</th>
+                <th>Cto%</th>
+                <th>Desv%</th>
               </tr>
             </thead>
             <tbody id="tbody-resultados">
@@ -648,121 +656,99 @@
     }
 
     // ========== CARD 1: RESULTADOS ==========
+    const GRUPOS = {
+      ventas:   { icon: '💚', nombre: 'Ventas',      signo: 1 },
+      costes:   { icon: '🟡', nombre: 'Costes',      signo: -1 },
+      personal: { icon: '🔵', nombre: 'Personal',    signo: -1 },
+      otros:    { icon: '🔴', nombre: 'Otros gastos', signo: -1 }
+    };
+    const GK = ['ventas', 'costes', 'personal', 'otros'];
+
     async function cargarResultados(reservaId, desde, hasta) {
       try {
         const bienRef = db.collection('bienes').doc(bienId);
-        let ingresos = { estancias: 0, hospitalidad: 0, actividades: 0, otrosIngresos: 0 };
-        let costes = { suministros: 0, limpieza: 0, mantenimiento: 0, otrosCostes: 0 };
-        let gastos = { personal: 0, seguros: 0, otrosGastos: 0 };
-        let imputacion = { amortizacion: 0, impuestos: 0 };
 
-        // Datos ANTERIORES (T-1) — misma estructura
-        let ingresosAnt = { estancias: 0, hospitalidad: 0, actividades: 0, otrosIngresos: 0 };
-        let costesAnt = { suministros: 0, limpieza: 0, mantenimiento: 0, otrosCostes: 0 };
-        let gastosAnt = { personal: 0, seguros: 0, otrosGastos: 0 };
-        let imputacionAnt = { amortizacion: 0, impuestos: 0 };
+        // Cargar todos los ejercicios
+        const ejSnap = await bienRef.collection('ejercicios').orderBy('inicio', 'desc').get();
+        const ejercicios = ejSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        // Calcular fechas T-1 (un año antes)
-        let desdeAnt = null, hastaAnt = null;
-        if (desde) {
-          const d = new Date(desde);
-          d.setFullYear(d.getFullYear() - 1);
-          desdeAnt = d.toISOString().split('T')[0];
-        }
-        if (hasta) {
-          const h = new Date(hasta);
-          h.setFullYear(h.getFullYear() - 1);
-          hastaAnt = h.toISOString().split('T')[0];
+        if (!ejercicios.length) {
+          document.getElementById('resultados-vacio').style.display = 'block';
+          document.getElementById('tbody-resultados').innerHTML = '';
+          return;
         }
 
-        // --- CARGAR VENTAS ACTUAL ---
-        let ventasQuery = bienRef.collection('ventas');
-        if (reservaId) ventasQuery = ventasQuery.where('reservaId', '==', reservaId);
-        const ventasSnap = await ventasQuery.get();
-        ventasSnap.forEach(doc => {
-          const v = doc.data();
-          const tipo = v.tipo || 'estancias';
-          const importe = parseFloat(v.importe) || 0;
-          if (ingresos.hasOwnProperty(tipo)) ingresos[tipo] += importe;
-          else ingresos.otrosIngresos += importe;
-        });
+        // Buscar ejercicio actual (por filtro o el más reciente)
+        let ejActual = null;
+        if (desde) ejActual = ejercicios.find(e => e.inicio <= desde && e.fin >= desde);
+        if (!ejActual && hasta) ejActual = ejercicios.find(e => e.inicio <= hasta && e.fin >= hasta);
+        if (!ejActual) ejActual = ejercicios[0];
 
-        // --- CARGAR VENTAS ANTERIOR (si hay rango de fechas) ---
-        if (desdeAnt && hastaAnt && !reservaId) {
-          try {
-            let ventasAntQuery = bienRef.collection('ventas');
-            // No hay filtro por reservaId para anterior
-            const ventasAntSnap = await ventasAntQuery.get();
-            ventasAntSnap.forEach(doc => {
-              const v = doc.data();
-              // Filtrar manualmente por rango de fechas T-1
-              const f = v.fecha?.toDate?.() || (v.fecha ? new Date(v.fecha) : null);
-              if (!f) return;
-              const fStr = f.toISOString().split('T')[0];
-              if (fStr < desdeAnt || fStr > hastaAnt) return;
-              const tipo = v.tipo || 'estancias';
-              const importe = parseFloat(v.importe) || 0;
-              if (ingresosAnt.hasOwnProperty(tipo)) ingresosAnt[tipo] += importe;
-              else ingresosAnt.otrosIngresos += importe;
-            });
-          } catch(e) { console.log('Sin datos anteriores ventas:', e); }
+        const partidas = ejActual.partidas || [];
+        const registros = ejActual.registros || [];
+
+        // Buscar ejercicio anterior (T-1)
+        let ejAnterior = null;
+        const yearAct = parseInt(ejActual.inicio?.substring(0, 4));
+        if (yearAct) {
+          ejAnterior = ejercicios.find(e => e.inicio?.startsWith(String(yearAct - 1)));
+        }
+        const partidasAnt = ejAnterior?.partidas || [];
+        const registrosAnt = ejAnterior?.registros || [];
+
+        // --- Agregar presupuesto por grupo/subgrupo ---
+        function agregarPto(parts) {
+          const data = {};
+          GK.forEach(g => { data[g] = { total: 0, subs: {} }; });
+          parts.forEach(p => {
+            const g = p.grupo || 'otros';
+            if (!data[g]) data[g] = { total: 0, subs: {} };
+            const imp = parseFloat(p.importe) || 0;
+            data[g].total += imp;
+            const sub = p.subgrupo || '(sin grupo)';
+            data[g].subs[sub] = (data[g].subs[sub] || 0) + imp;
+          });
+          return data;
         }
 
-        // --- CARGAR GASTOS ACTUAL ---
-        let gastosQuery = bienRef.collection('gastos');
-        if (desde) gastosQuery = gastosQuery.where('fecha', '>=', firebase.firestore.Timestamp.fromDate(new Date(desde)));
-        if (hasta) gastosQuery = gastosQuery.where('fecha', '<=', firebase.firestore.Timestamp.fromDate(new Date(hasta + 'T23:59:59')));
-        const gastosSnap = await gastosQuery.get();
-        gastosSnap.forEach(doc => {
-          const g = doc.data();
-          const cat = g.categoria || 'otrosGastos';
-          const importe = parseFloat(g.importe) || 0;
-          if (costes.hasOwnProperty(cat)) costes[cat] += importe;
-          else if (gastos.hasOwnProperty(cat)) gastos[cat] += importe;
-          else gastos.otrosGastos += importe;
-        });
-
-        // --- CARGAR GASTOS ANTERIOR ---
-        if (desdeAnt && hastaAnt) {
-          try {
-            let gastosAntQuery = bienRef.collection('gastos')
-              .where('fecha', '>=', firebase.firestore.Timestamp.fromDate(new Date(desdeAnt)))
-              .where('fecha', '<=', firebase.firestore.Timestamp.fromDate(new Date(hastaAnt + 'T23:59:59')));
-            const gastosAntSnap = await gastosAntQuery.get();
-            gastosAntSnap.forEach(doc => {
-              const g = doc.data();
-              const cat = g.categoria || 'otrosGastos';
-              const importe = parseFloat(g.importe) || 0;
-              if (costesAnt.hasOwnProperty(cat)) costesAnt[cat] += importe;
-              else if (gastosAnt.hasOwnProperty(cat)) gastosAnt[cat] += importe;
-              else gastosAnt.otrosGastos += importe;
-            });
-          } catch(e) { console.log('Sin datos anteriores gastos:', e); }
+        // --- Agregar realizado por grupo/subgrupo ---
+        function agregarReal(regs, parts) {
+          const data = {};
+          GK.forEach(g => { data[g] = { total: 0, subs: {} }; });
+          const pMap = {};
+          parts.forEach(p => { pMap[p.id] = { grupo: p.grupo || 'otros', sub: p.subgrupo || '(sin grupo)' }; });
+          regs.forEach(r => {
+            const info = pMap[r.partidaId];
+            if (!info) return;
+            const imp = parseFloat(r.importe ?? r.liquido) || 0;
+            if (!data[info.grupo]) data[info.grupo] = { total: 0, subs: {} };
+            data[info.grupo].total += imp;
+            data[info.grupo].subs[info.sub] = (data[info.grupo].subs[info.sub] || 0) + imp;
+          });
+          return data;
         }
 
-        // Totales ACTUAL
-        const totalIngresos = Object.values(ingresos).reduce((a, b) => a + b, 0);
-        const totalCostes = Object.values(costes).reduce((a, b) => a + b, 0);
-        const totalGastos = Object.values(gastos).reduce((a, b) => a + b, 0);
-        const totalImputacion = Object.values(imputacion).reduce((a, b) => a + b, 0);
-        const resultado = totalIngresos - totalCostes - totalGastos - totalImputacion;
+        // Filtrar registros actuales por rango si hay filtro
+        let regsFiltrados = registros;
+        if (desde || hasta) {
+          regsFiltrados = registros.filter(r => {
+            const f = r.fecha || '';
+            if (desde && f < desde) return false;
+            if (hasta && f > hasta) return false;
+            return true;
+          });
+        }
 
-        // Totales ANTERIOR
-        const totalIngresosAnt = Object.values(ingresosAnt).reduce((a, b) => a + b, 0);
-        const totalCostesAnt = Object.values(costesAnt).reduce((a, b) => a + b, 0);
-        const totalGastosAnt = Object.values(gastosAnt).reduce((a, b) => a + b, 0);
-        const totalImputacionAnt = Object.values(imputacionAnt).reduce((a, b) => a + b, 0);
-        const resultadoAnt = totalIngresosAnt - totalCostesAnt - totalGastosAnt - totalImputacionAnt;
+        const ptoData = agregarPto(partidas);
+        const realData = agregarReal(regsFiltrados, partidas);
+        const antData = agregarReal(registrosAnt, partidasAnt);
+        const hayAnterior = GK.some(g => antData[g]?.total > 0);
 
-        const hayAnterior = totalIngresosAnt > 0 || totalCostesAnt > 0 || totalGastosAnt > 0;
+        renderTablaResultados(ptoData, realData, antData, hayAnterior, ejAnterior);
 
-        renderTablaResultados(
-          ingresos, costes, gastos, imputacion, totalIngresos, totalCostes, totalGastos, totalImputacion, resultado,
-          ingresosAnt, costesAnt, gastosAnt, imputacionAnt, totalIngresosAnt, totalCostesAnt, totalGastosAnt, totalImputacionAnt, resultadoAnt,
-          hayAnterior
-        );
-
-        if (totalIngresos === 0 && totalCostes === 0 && totalGastos === 0) {
+        const totalReal = GK.reduce((s, g) => s + (realData[g]?.total || 0), 0);
+        const totalPto = GK.reduce((s, g) => s + (ptoData[g]?.total || 0), 0);
+        if (totalReal === 0 && totalPto === 0) {
           document.getElementById('resultados-vacio').style.display = 'block';
           document.getElementById('tbody-resultados').innerHTML = '';
         } else {
@@ -774,91 +760,108 @@
       }
     }
 
-    function renderTablaResultados(ingresos, costes, gastos, imputacion, totI, totC, totG, totIm, resultado,
-      ingresosAnt, costesAnt, gastosAnt, imputacionAnt, totIAnt, totCAnt, totGAnt, totImAnt, resultadoAnt,
-      hayAnterior) {
+    function renderTablaResultados(ptoData, realData, antData, hayAnt, ejAnt) {
       const tbody = document.getElementById('tbody-resultados');
-      // Mostrar/ocultar columna Anterior en thead con año T-1
-      const thAnt = document.getElementById('th-anterior');
-      if (thAnt) {
-        thAnt.style.display = hayAnterior ? '' : 'none';
-        if (hayAnterior) {
-          const desde = document.getElementById('filtro-desde').value;
-          const yearAnt = desde ? new Date(desde).getFullYear() - 1 : new Date().getFullYear() - 1;
-          thAnt.textContent = 'Anterior (' + yearAnt + ')';
-        }
-      }
-
       let html = '';
 
-      // INGRESOS
-      html += filaCategoria('💰 INGRESOS', hayAnterior);
-      html += filaPartida('Estancias', ingresos.estancias, ingresosAnt?.estancias, hayAnterior);
-      html += filaPartida('Hospitalidad', ingresos.hospitalidad, ingresosAnt?.hospitalidad, hayAnterior);
-      html += filaPartida('Actividades', ingresos.actividades, ingresosAnt?.actividades, hayAnterior);
-      html += filaPartida('Otros ingresos', ingresos.otrosIngresos, ingresosAnt?.otrosIngresos, hayAnterior);
-      html += filaSubtotal('Total Ingresos', totI, 'positivo', totIAnt, hayAnterior);
+      let totalPto = 0, totalReal = 0, totalAnt = 0;
 
-      // COSTES
-      html += filaCategoria('🏗️ COSTES DIRECTOS', hayAnterior);
-      html += filaPartida('Suministros', costes.suministros, costesAnt?.suministros, hayAnterior);
-      html += filaPartida('Limpieza', costes.limpieza, costesAnt?.limpieza, hayAnterior);
-      html += filaPartida('Mantenimiento', costes.mantenimiento, costesAnt?.mantenimiento, hayAnterior);
-      html += filaPartida('Otros costes', costes.otrosCostes, costesAnt?.otrosCostes, hayAnterior);
-      html += filaSubtotal('Total Costes', totC, 'negativo', totCAnt, hayAnterior);
+      GK.forEach(g => {
+        const info = GRUPOS[g];
+        const pto = ptoData[g]?.total || 0;
+        const real = realData[g]?.total || 0;
+        const ant = antData[g]?.total || 0;
 
-      // GASTOS
-      html += filaCategoria('💼 GASTOS GENERALES', hayAnterior);
-      html += filaPartida('Personal', gastos.personal, gastosAnt?.personal, hayAnterior);
-      html += filaPartida('Seguros', gastos.seguros, gastosAnt?.seguros, hayAnterior);
-      html += filaPartida('Otros gastos', gastos.otrosGastos, gastosAnt?.otrosGastos, hayAnterior);
-      html += filaSubtotal('Total Gastos', totG, 'negativo', totGAnt, hayAnterior);
+        // Cabecera del grupo
+        html += '<tr class="fila-categoria"><td>' + info.icon + ' ' + info.nombre.toUpperCase() +
+          '</td><td></td><td></td><td></td><td></td><td></td></tr>';
 
-      // IMPUTACIÓN
-      html += filaCategoria('📋 IMPUTACIÓN', hayAnterior);
-      html += filaPartida('Amortización', imputacion.amortizacion, imputacionAnt?.amortizacion, hayAnterior);
-      html += filaPartida('Impuestos', imputacion.impuestos, imputacionAnt?.impuestos, hayAnterior);
-      html += filaSubtotal('Total Imputación', totIm, 'negativo', totImAnt, hayAnterior);
+        // Subgrupos (unión de las 3 fuentes)
+        const allSubs = new Set();
+        [ptoData[g]?.subs, realData[g]?.subs, antData[g]?.subs].forEach(obj => {
+          if (obj) Object.keys(obj).forEach(k => allSubs.add(k));
+        });
+
+        Array.from(allSubs).sort().forEach(sub => {
+          const sp = ptoData[g]?.subs?.[sub] || 0;
+          const sr = realData[g]?.subs?.[sub] || 0;
+          const sa = antData[g]?.subs?.[sub] || 0;
+          if (sp === 0 && sr === 0 && sa === 0) return;
+          const nombre = sub === '(sin grupo)' ? 'General' : sub;
+          html += filaPartida(nombre, sa, sr, sp, hayAnt, info.signo);
+        });
+
+        // Subtotal
+        html += filaSubtotal('Total ' + info.nombre, ant, real, pto, hayAnt, info.signo);
+
+        totalPto += pto * info.signo;
+        totalReal += real * info.signo;
+        totalAnt += ant * info.signo;
+      });
 
       // RESULTADO
-      const claseRes = resultado >= 0 ? 'positivo' : 'negativo';
-      html += '<tr class="fila-resultado ' + claseRes + '">' +
-        '<td>📊 RESULTADO</td>' +
-        '<td>' + formatEur(resultado) + '</td>' +
-        (hayAnterior ? '<td class="col-anterior">' + formatEurAnt(resultadoAnt) + variacion(resultado, resultadoAnt) + '</td>' : '') +
-        '</tr>';
-
+      html += filaResultado(totalAnt, totalReal, totalPto, hayAnt);
       tbody.innerHTML = html;
     }
 
-    function filaCategoria(nombre, hayAnt) {
-      return '<tr class="fila-categoria"><td>' + nombre + '</td><td></td>' + (hayAnt ? '<td></td>' : '') + '</tr>';
+    // Columnas: Concepto | Anterior | Realizado | Presupuesto | Cto% | Desv%
+    function filaPartida(nombre, ant, real, pto, hayAnt, signo) {
+      return '<tr class="fila-partida"><td>' + nombre + '</td>' +
+        '<td class="col-ant">' + fEur(ant, true) + '</td>' +
+        '<td>' + fEur(real) + '</td>' +
+        '<td>' + fEur(pto) + '</td>' +
+        '<td class="col-pct">' + pctCto(real, ant, hayAnt, signo) + '</td>' +
+        '<td class="col-pct">' + pctDesv(real, pto, signo) + '</td></tr>';
     }
 
-    function filaPartida(nombre, importe, importeAnt, hayAnt) {
-      if (importe === 0 && (!importeAnt || importeAnt === 0)) return ''; // no mostrar partidas vacías en ambos
-      return '<tr class="fila-partida"><td>' + nombre + '</td><td>' + formatEur(importe) + '</td>' +
-        (hayAnt ? '<td class="col-anterior">' + formatEurAnt(importeAnt) + '</td>' : '') + '</tr>';
+    function filaSubtotal(nombre, ant, real, pto, hayAnt, signo) {
+      return '<tr class="fila-subtotal"><td>' + nombre + '</td>' +
+        '<td class="col-ant">' + fEur(ant, true) + '</td>' +
+        '<td>' + fEur(real) + '</td>' +
+        '<td>' + fEur(pto) + '</td>' +
+        '<td class="col-pct">' + pctCto(real, ant, hayAnt, signo) + '</td>' +
+        '<td class="col-pct">' + pctDesv(real, pto, signo) + '</td></tr>';
     }
 
-    function filaSubtotal(nombre, importe, tipo, importeAnt, hayAnt) {
-      const clase = tipo === 'positivo' ? 'importe-positivo' : (tipo === 'negativo' ? 'importe-negativo' : '');
-      return '<tr class="fila-subtotal"><td>' + nombre + '</td><td class="' + clase + '">' + formatEur(importe) + '</td>' +
-        (hayAnt ? '<td class="col-anterior">' + formatEurAnt(importeAnt) + variacion(importe, importeAnt) + '</td>' : '') + '</tr>';
+    function filaResultado(antRes, realRes, ptoRes, hayAnt) {
+      const clase = realRes >= 0 ? 'positivo' : 'negativo';
+      return '<tr class="fila-resultado ' + clase + '"><td>📊 RESULTADO</td>' +
+        '<td class="col-ant">' + fEur(antRes, true) + '</td>' +
+        '<td>' + fEur(realRes) + '</td>' +
+        '<td>' + fEur(ptoRes) + '</td>' +
+        '<td class="col-pct">' + pctCto(realRes, antRes, hayAnt, 1) + '</td>' +
+        '<td class="col-pct">' + pctDesv(realRes, ptoRes, 1) + '</td></tr>';
     }
 
-    function formatEurAnt(n) {
-      if (!n || n === 0) return '<span style="color:var(--text-muted);">—</span>';
-      return '<span style="color:var(--text-muted);">' + formatEur(n) + '</span>';
+    function fEur(n, muted) {
+      if (n === undefined || n === null) return '—';
+      if (n === 0) return '<span style="color:var(--text-muted);">—</span>';
+      const s = formatEur(n);
+      return muted ? '<span style="color:var(--text-muted);">' + s + '</span>' : s;
     }
 
-    function variacion(actual, anterior) {
-      if (!anterior || anterior === 0) return '';
-      const pct = ((actual - anterior) / Math.abs(anterior) * 100);
-      if (Math.abs(pct) < 0.5) return '';
-      const color = pct > 0 ? 'var(--success)' : 'var(--error)';
+    // Cto%: crecimiento Realizado vs Anterior
+    // signo indica si crecer es bueno (+1 para ventas) o malo (-1 para costes)
+    function pctCto(real, ant, hayAnt, signo) {
+      if (!hayAnt || !ant || ant === 0) return '';
+      const pct = (real - ant) / Math.abs(ant) * 100;
+      if (Math.abs(pct) < 0.5) return '<span class="pct-zero">—</span>';
+      const favorable = (pct * signo) > 0;
+      const cls = favorable ? 'pct-pos' : 'pct-neg';
       const arrow = pct > 0 ? '▲' : '▼';
-      return ' <span style="font-size:0.68rem;color:' + color + ';">' + arrow + Math.abs(pct).toFixed(0) + '%</span>';
+      return '<span class="' + cls + '">' + arrow + ' ' + Math.abs(pct).toFixed(0) + '%</span>';
+    }
+
+    // Desv%: desviación Realizado vs Presupuesto
+    // signo: +1 ventas (superar pto = bien), -1 costes (superar pto = mal)
+    function pctDesv(real, pto, signo) {
+      if (!pto || pto === 0) return '';
+      const pct = (real - pto) / Math.abs(pto) * 100;
+      if (Math.abs(pct) < 0.5) return '<span class="pct-zero">0%</span>';
+      const favorable = (pct * signo) > 0;
+      const cls = favorable ? 'pct-pos' : 'pct-neg';
+      const sign = pct > 0 ? '+' : '';
+      return '<span class="' + cls + '">' + sign + pct.toFixed(0) + '%</span>';
     }
 
     // ========== CARD 2: INCIDENCIAS ==========
