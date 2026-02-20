@@ -3230,6 +3230,7 @@
     let bienId = null;
     let bienData = null;
     let familiaId = null;
+    let configAddons = {}; // Lo que admin-rama habilitó para esta familia
     let nidosData = [];
     let reservasData = [];
     let inventarioData = [];
@@ -3280,6 +3281,14 @@
 
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         familiaId = bienData.familiaId;
+
+        // Cargar configAddons de la familia (módulos habilitados por admin-rama)
+        try {
+          const famDoc = await db.collection('familias').doc(familiaId).get();
+          if (famDoc.exists && famDoc.data().configAddons) {
+            configAddons = famDoc.data().configAddons;
+          }
+        } catch (e) { console.error('Error cargando configAddons:', e); }
         
         // Verificar si el usuario es AdminRama
         try {
@@ -3331,38 +3340,55 @@
       const updateData = {};
       let needsUpdate = false;
 
-      // Módulos completos de Mayordomo
+      // Módulos completos de Mayordomo (nombres actualizados)
       const modulosMayordomoCompletos = {
         reservas: false, habitaciones: false, inventario: false, ajuar: false, menus: false,
-        gastos: false, mantenimiento: false, limpieza: false, instalaciones: false, eventos: false,
+        finanzas: false, mantenimiento: false, limpieza: false, instalaciones: false, eventos: false,
         planLimpieza: false, prepararSemana: false, especiales: false, informes: false
       };
 
       // Módulos completos de Gerente
       const modulosGerenteCompletos = {
         reservas: false, habitaciones: false, huespedes: false, tarifas: false,
-        ventas: false, inventario: false, ajuar: false, acuerdos: false,
-        entidad: false, servicios: false, menus: false
+        finanzas: false, inventario: false, ajuar: false, acuerdos: false,
+        entidad: false, servicios: false, menus: false, mantenimiento: false,
+        limpieza: false, informes: false
       };
 
       // Módulos completos de Capataz
       const modulosCapatazCompletos = {
         entidad: false, parcelas: false, aprovechamientos: false,
-        labores: false, cosechas: false, instalaciones: false,
+        labores: false, cosechas: false, instalaciones: false, maquinaria: false,
         reservas: false, inventario: false, mantenimiento: false,
-        acuerdos: false, ventas: false, gastos: false, informes: false
+        acuerdos: false, tarifas: false, finanzas: false, informes: false
       };
+
+      // Helper: migrar claves antiguas → nuevas
+      function migrarClaves(existentes) {
+        const migrado = { ...existentes };
+        // gastos → finanzas (si no existía finanzas, heredar valor de gastos)
+        if ('gastos' in migrado && !('finanzas' in migrado)) {
+          migrado.finanzas = migrado.gastos;
+        }
+        delete migrado.gastos;
+        // ventas → finanzas (merge: si ventas o gastos estaban activos, finanzas activo)
+        if ('ventas' in migrado) {
+          if (migrado.ventas && !migrado.finanzas) migrado.finanzas = true;
+          delete migrado.ventas;
+        }
+        // personal → (obsoleto, eliminar)
+        delete migrado.personal;
+        return migrado;
+      }
 
       // Verificar y migrar Mayordomo
       if (bienData.mayordomoModulos) {
-        const existentes = bienData.mayordomoModulos;
+        const existentes = migrarClaves(bienData.mayordomoModulos);
         const merged = { ...modulosMayordomoCompletos };
         Object.keys(existentes).forEach(key => {
           if (key in merged) merged[key] = existentes[key];
         });
-        // Solo actualizar si hay diferencia
-        if (Object.keys(merged).length !== Object.keys(existentes).length ||
-            !Object.keys(modulosMayordomoCompletos).every(k => k in existentes)) {
+        if (JSON.stringify(merged) !== JSON.stringify(bienData.mayordomoModulos)) {
           updateData.mayordomoModulos = merged;
           needsUpdate = true;
         }
@@ -3370,13 +3396,12 @@
 
       // Verificar y migrar Gerente
       if (bienData.gerenteModulos) {
-        const existentes = bienData.gerenteModulos;
+        const existentes = migrarClaves(bienData.gerenteModulos);
         const merged = { ...modulosGerenteCompletos };
         Object.keys(existentes).forEach(key => {
           if (key in merged) merged[key] = existentes[key];
         });
-        if (Object.keys(merged).length !== Object.keys(existentes).length ||
-            !Object.keys(modulosGerenteCompletos).every(k => k in existentes)) {
+        if (JSON.stringify(merged) !== JSON.stringify(bienData.gerenteModulos)) {
           updateData.gerenteModulos = merged;
           needsUpdate = true;
         }
@@ -3384,13 +3409,12 @@
 
       // Verificar y migrar Capataz
       if (bienData.capatazModulos) {
-        const existentes = bienData.capatazModulos;
+        const existentes = migrarClaves(bienData.capatazModulos);
         const merged = { ...modulosCapatazCompletos };
         Object.keys(existentes).forEach(key => {
           if (key in merged) merged[key] = existentes[key];
         });
-        if (Object.keys(merged).length !== Object.keys(existentes).length ||
-            !Object.keys(modulosCapatazCompletos).every(k => k in existentes)) {
+        if (JSON.stringify(merged) !== JSON.stringify(bienData.capatazModulos)) {
           updateData.capatazModulos = merged;
           needsUpdate = true;
         }
@@ -3792,11 +3816,13 @@
           { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario.html?id=${bienId}&origen=bien` },
           { key: 'ajuar', icon: '🪑', label: 'Ajuar', url: `ajuar.html?id=${bienId}&origen=bien` },
           { key: 'menus', icon: '🍽️', label: 'Menús', url: `menus-nidos.html?id=${bienId}&origen=bien` },
-          { key: 'gastos', icon: '💰', label: 'Gastos', url: `gastos.html?id=${bienId}&origen=bien` },
+          { key: 'finanzas', icon: '💰', label: 'Finanzas', url: `finanzas.html?id=${bienId}&origen=mayordomo` },
           { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mantenimiento.html?id=${bienId}&origen=bien` },
           { key: 'limpieza', icon: '🧹', label: 'Limpieza', url: `limpieza.html?id=${bienId}&origen=bien` },
           { key: 'instalaciones', icon: '⚙️', label: 'Instalaciones', url: `instalaciones.html?id=${bienId}&origen=bien` },
           { key: 'eventos', icon: '🎉', label: 'Eventos', url: `eventos.html?id=${bienId}&origen=bien` },
+          { key: 'planLimpieza', icon: '📋', label: 'Plan Limpieza', url: `plan-limpieza.html?id=${bienId}&origen=bien` },
+          { key: 'prepararSemana', icon: '📝', label: 'Preparar Semana', url: `preparar-semana.html?id=${bienId}&origen=bien` },
           { key: 'especiales', icon: '🛍️', label: 'Especiales', url: `config-especiales.html?id=${bienId}&origen=bien` },
           { key: 'informes', icon: '📋', label: 'Informes', url: `informes.html?id=${bienId}&origen=bien` }
         ];
@@ -3813,13 +3839,16 @@
           { key: 'habitaciones', icon: '🏠', label: 'Zonas', url: `zonas.html?id=${bienId}&origen=gerente` },
           { key: 'huespedes', icon: '👥', label: 'Huéspedes', url: `huespedes.html?id=${bienId}` },
           { key: 'tarifas', icon: '💶', label: 'Tarifas', url: `tarifas.html?id=${bienId}` },
-          { key: 'ventas', icon: '💰', label: 'Ventas', url: `ventas.html?id=${bienId}&origen=gerente` },
           { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario.html?id=${bienId}&origen=gerente` },
           { key: 'ajuar', icon: '🪑', label: 'Ajuar', url: `ajuar.html?id=${bienId}&origen=bien` },
           { key: 'acuerdos', icon: '🤝', label: 'Acuerdos', url: `acuerdos.html?id=${bienId}&origen=gerente` },
           { key: 'entidad', icon: '🏛️', label: 'Entidad', url: `entidad.html?id=${bienId}&origen=gerente` },
           { key: 'servicios', icon: '🚐', label: 'Otros Servicios', url: `servicios-externos.html?id=${bienId}` },
-          { key: 'menus', icon: '🍽️', label: 'Menús', url: `menus-nidos.html?id=${bienId}&origen=bien` }
+          { key: 'menus', icon: '🍽️', label: 'Menús', url: `menus-nidos.html?id=${bienId}&origen=bien` },
+          { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mantenimiento.html?id=${bienId}&origen=gerente` },
+          { key: 'limpieza', icon: '🧹', label: 'Limpieza', url: `limpieza.html?id=${bienId}&origen=gerente` },
+          { key: 'finanzas', icon: '💰', label: 'Finanzas', url: `finanzas.html?id=${bienId}&origen=gerente` },
+          { key: 'informes', icon: '📄', label: 'Informes', url: `informes.html?id=${bienId}&origen=gerente` }
         ];
         
         modulosConfig.forEach(mod => {
@@ -3836,12 +3865,13 @@
           { key: 'labores', icon: '📋', label: 'Labores', url: `labores.html?id=${bienId}` },
           { key: 'cosechas', icon: '🌻', label: 'Cosechas', url: `cosechas.html?id=${bienId}` },
           { key: 'instalaciones', icon: '🏭', label: 'Instalaciones', url: `instalaciones.html?id=${bienId}` },
+          { key: 'maquinaria', icon: '🚜', label: 'Maquinaria', url: `maquinaria.html?id=${bienId}` },
           { key: 'reservas', icon: '📅', label: 'Reservas', url: `reservas.html?id=${bienId}&origen=capataz` },
           { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario-config.html?id=${bienId}&origen=capataz` },
           { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mantenimiento.html?id=${bienId}&origen=capataz` },
           { key: 'acuerdos', icon: '🤝', label: 'Acuerdos', url: `acuerdos.html?id=${bienId}&origen=capataz` },
-          { key: 'ventas', icon: '💰', label: 'Ventas', url: `ventas.html?id=${bienId}&origen=capataz` },
-          { key: 'gastos', icon: '💸', label: 'Gastos', url: `gastos.html?id=${bienId}&origen=capataz` },
+          { key: 'tarifas', icon: '💶', label: 'Tarifas', url: `tarifas.html?id=${bienId}&origen=capataz` },
+          { key: 'finanzas', icon: '💰', label: 'Finanzas', url: `finanzas.html?id=${bienId}&origen=capataz` },
           { key: 'informes', icon: '📄', label: 'Informes', url: `informes-capataz.html?id=${bienId}` }
         ];
         
@@ -3926,7 +3956,7 @@
             inventario: false,
             ajuar: false,
             menus: false,
-            gastos: false,
+            finanzas: false,
             mantenimiento: false,
             limpieza: false,
             eventos: false
@@ -3967,13 +3997,16 @@
             habitaciones: false,
             huespedes: false,
             tarifas: false,
-            ventas: false,
+            finanzas: false,
             inventario: false,
             ajuar: false,
             acuerdos: false,
             entidad: false,
             servicios: false,
-            menus: false
+            menus: false,
+            mantenimiento: false,
+            limpieza: false,
+            informes: false
           };
         }
 
@@ -4008,12 +4041,20 @@
         
         if (!bienData.capatazModulos) {
           updateData.capatazModulos = {
+            entidad: false,
             parcelas: true,
+            aprovechamientos: false,
+            labores: true,
+            cosechas: true,
             instalaciones: true,
             maquinaria: true,
-            personal: true,
-            labores: true,
-            cosechas: true
+            reservas: false,
+            inventario: false,
+            mantenimiento: false,
+            acuerdos: false,
+            tarifas: false,
+            finanzas: false,
+            informes: false
           };
         }
 
@@ -4049,11 +4090,13 @@
       inventario: { icon: '📦', nombre: 'Inventario', desc: 'Control de productos consumibles (limpieza, despensa). Alertas de stock bajo y lista de compra.' },
       ajuar: { icon: '🪑', nombre: 'Ajuar', desc: 'Catálogo de muebles y enseres. Registra ubicación, marca, procedencia y fotos.' },
       menus: { icon: '🍽️', nombre: 'Menús', desc: 'Planificación de comidas. Organiza desayunos, comidas y cenas para cada estancia.' },
-      gastos: { icon: '💰', nombre: 'Gastos', desc: 'Registro de gastos del inmueble. Reparto entre nidos y control de pagos.' },
+      finanzas: { icon: '💰', nombre: 'Finanzas', desc: 'Presupuesto, registro de gastos e ingresos, ejercicios y partidas del inmueble.' },
       mantenimiento: { icon: '🔧', nombre: 'Mantenimiento', desc: 'Tareas programadas y averías. Historial de reparaciones y recordatorios.' },
       limpieza: { icon: '🧹', nombre: 'Limpieza', desc: 'Checklists por estancia y turnos. Control de limpieza al entrar y salir.' },
       instalaciones: { icon: '⚙️', nombre: 'Instalaciones', desc: 'Documentación técnica de sistemas e instalaciones. Electricidad, fontanería, calefacción...' },
       eventos: { icon: '🎉', nombre: 'Eventos', desc: 'Celebraciones y reuniones familiares. Coordina cumpleaños, fiestas y encuentros.' },
+      planLimpieza: { icon: '📋', nombre: 'Plan Limpieza', desc: 'Planificación semanal de limpieza por zonas y rotación de responsables.' },
+      prepararSemana: { icon: '📝', nombre: 'Preparar Semana', desc: 'Checklist de preparación antes de cada estancia. Tareas previas a la llegada.' },
       especiales: { icon: '🛍️', nombre: 'Especiales', desc: 'Catálogo de productos especiales y delicatessen. Extras bajo petición.' },
       informes: { icon: '📋', nombre: 'Informes', desc: 'Plantillas de checklist para estancias. Configura y consulta informes de entrada y salida.' }
     };
@@ -4063,13 +4106,16 @@
       habitaciones: { icon: '🏠', nombre: 'Zonas', desc: 'Define zonas y espacios disponibles. Capacidad, servicios y configuración.' },
       huespedes: { icon: '👥', nombre: 'Huéspedes', desc: 'Registro de huéspedes. Titulares, acompañantes e invitados con historial.' },
       tarifas: { icon: '💶', nombre: 'Tarifas', desc: 'Precios por temporada y tipo de habitación. Descuentos y ofertas especiales.' },
-      ventas: { icon: '💰', nombre: 'Ventas', desc: 'Ingresos por estancias, hospitalidad, actividades y servicios adicionales.' },
       inventario: { icon: '📦', nombre: 'Inventario', desc: 'Control de productos consumibles. Amenities, limpieza y suministros.' },
       ajuar: { icon: '🪑', nombre: 'Ajuar', desc: 'Catálogo de mobiliario y equipamiento. Control de estado y ubicación.' },
       acuerdos: { icon: '🤝', nombre: 'Acuerdos', desc: 'Gestión de acuerdos con colaboradores. Obligaciones y prestaciones económicas.' },
       entidad: { icon: '🏛️', nombre: 'Entidad', desc: 'Entidad jurídica o persona titular que explota el bien. Datos societarios, fiscales y de propiedad.' },
       servicios: { icon: '🚐', nombre: 'Otros Servicios', desc: 'Servicios externos: transfers, excursiones, catering, guías turísticos.' },
-      menus: { icon: '🍽️', nombre: 'Menús', desc: 'Planificación de hospitalidad. Desayunos, comidas, cenas y bar.' }
+      menus: { icon: '🍽️', nombre: 'Menús', desc: 'Planificación de hospitalidad. Desayunos, comidas, cenas y bar.' },
+      mantenimiento: { icon: '🔧', nombre: 'Mantenimiento', desc: 'Tareas programadas y averías. Historial de reparaciones y recordatorios.' },
+      limpieza: { icon: '🧹', nombre: 'Limpieza', desc: 'Checklists de limpieza entre huéspedes y turnos de servicio.' },
+      finanzas: { icon: '💰', nombre: 'Finanzas', desc: 'Presupuesto, ingresos por estancias, gastos operativos y ejercicios contables.' },
+      informes: { icon: '📄', nombre: 'Informes', desc: 'Resúmenes de ocupación, facturación e indicadores de gestión.' }
     };
 
     const modulosDescripcionesCapataz = {
@@ -4079,12 +4125,13 @@
       labores: { icon: '📋', nombre: 'Labores', desc: 'Planificación y registro de trabajos: siembra, tratamientos, riegos, podas.' },
       cosechas: { icon: '🌻', nombre: 'Cosechas', desc: 'Registro de producciones. Kilos, calidades y destino de cada cosecha.' },
       instalaciones: { icon: '🏭', nombre: 'Instalaciones', desc: 'Naves, almacenes, pozos, cercados y otras infraestructuras de la finca.' },
+      maquinaria: { icon: '🚜', nombre: 'Maquinaria', desc: 'Catálogo de maquinaria y aperos. Horas de uso, mantenimiento y alertas.' },
       reservas: { icon: '📅', nombre: 'Reservas', desc: 'Calendario de uso de la finca. Estancias, jornadas y eventos programados.' },
       inventario: { icon: '📦', nombre: 'Inventario', desc: 'Control de productos, materiales, piensos y suministros consumibles.' },
       mantenimiento: { icon: '🔧', nombre: 'Mantenimiento', desc: 'Maquinaria, aperos, infraestructuras. Reparaciones y mantenimiento programado.' },
       acuerdos: { icon: '🤝', nombre: 'Acuerdos', desc: 'Acuerdos con colaboradores, arrendatarios y proveedores de servicios.' },
-      ventas: { icon: '💰', nombre: 'Ventas', desc: 'Ingresos por producciones, alquileres, cacerías y servicios de la finca.' },
-      gastos: { icon: '💸', nombre: 'Gastos', desc: 'Costes operativos: personal, suministros, maquinaria, tratamientos.' },
+      tarifas: { icon: '💶', nombre: 'Tarifas', desc: 'Precios de alquiler, aprovechamientos, servicios y jornadas de uso.' },
+      finanzas: { icon: '💰', nombre: 'Finanzas', desc: 'Presupuesto, ingresos por producciones, gastos operativos y ejercicios.' },
       informes: { icon: '📄', nombre: 'Informes', desc: 'Resúmenes de actividad, producción e indicadores de gestión.' }
     };
 
@@ -4115,7 +4162,15 @@
         return;
       }
 
+      // Filtrar: solo módulos habilitados por admin-rama (configAddons)
+      const modulosHabilitados = configAddons[tipoGestion]?.modulosDisponibles || null;
+
       Object.keys(descripciones).forEach(key => {
+        // Si admin-rama ha configurado módulos, respetar su filtro
+        if (modulosHabilitados && modulosHabilitados[key] === false) return;
+        // Si la clave no existe en configAddons, solo mostrar si no hay filtro o no está definida
+        if (modulosHabilitados && Object.keys(modulosHabilitados).length > 0 && !(key in modulosHabilitados)) return;
+
         const mod = descripciones[key];
         const activo = modulos[key] === true;
         html += `
@@ -4127,6 +4182,10 @@
           </div>
         `;
       });
+
+      if (!html) {
+        html = '<p style="text-align:center;padding:20px;color:var(--text-muted);">Admin Rama no ha habilitado módulos para este add-on</p>';
+      }
 
       grid.innerHTML = html;
       document.getElementById('modal-config-modulos').classList.add('active');
