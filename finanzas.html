@@ -457,6 +457,7 @@
     let currentUser = null, bienData = null, ejercicios = [], ej = null;
     let editPartId = null, editRegId = null, configVis = false;
     let expanded = {};
+    let externosNombres = [];
 
     if (!bienId) { alert('Falta bien'); window.location.href = 'lo-comun.html'; }
     document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
@@ -466,6 +467,7 @@
       currentUser = user;
       await cargarBien();
       await cargarCuentas();
+      await cargarExternos();
       await cargarEjercicios();
       document.getElementById('loading').style.display = 'none';
       document.getElementById('contenido').style.display = '';
@@ -474,6 +476,22 @@
     // ===== DATA =====
     async function cargarBien() {
       try { const d = await db.collection('bienes').doc(bienId).get(); if (d.exists) { bienData = d.data(); document.getElementById('nombre-bien').textContent = bienData.nombre || ''; } } catch(e) { console.error(e); }
+    }
+
+    async function cargarExternos() {
+      externosNombres = [];
+      try {
+        const colecciones = ['caseros', 'hosters', 'guardas'];
+        const roles = { caseros: '🏠 Casero', hosters: '🏨 Hoster', guardas: '🌾 Guarda' };
+        for (const col of colecciones) {
+          const snap = await db.collection('bienes').doc(bienId).collection(col).get();
+          snap.docs.forEach(d => {
+            const data = d.data();
+            const nombre = data.nombre || data.email || '';
+            if (nombre) externosNombres.push({ nombre, rol: roles[col], email: data.email || '' });
+          });
+        }
+      } catch(e) { console.warn('No se pudieron cargar externos:', e); }
     }
 
     async function cargarEjercicios() {
@@ -937,10 +955,25 @@
 
     function cargarAnotadores() {
       const sel = document.getElementById('reg-anotador');
-      const existentes = new Set();
-      RR().forEach(r => { if (r.anotador) existentes.add(r.anotador); });
-      sel.innerHTML = '<option value="">— Yo mismo —</option>' +
-        Array.from(existentes).sort().map(a => `<option value="${a}">${a}</option>`).join('');
+      // 1. Externos configurados en el bien (caseros, hosters, guardas)
+      let html = '<option value="">— Yo mismo —</option>';
+      if (externosNombres.length) {
+        html += '<optgroup label="Externos del bien">';
+        externosNombres.forEach(e => {
+          html += `<option value="${e.nombre}">${e.rol} ${e.nombre}</option>`;
+        });
+        html += '</optgroup>';
+      }
+      // 2. Anotadores usados previamente (que no sean externos ya listados)
+      const nombresExternos = new Set(externosNombres.map(e => e.nombre));
+      const previos = new Set();
+      RR().forEach(r => { if (r.anotador && !nombresExternos.has(r.anotador)) previos.add(r.anotador); });
+      if (previos.size) {
+        html += '<optgroup label="Anteriores">';
+        Array.from(previos).sort().forEach(a => { html += `<option value="${a}">${a}</option>`; });
+        html += '</optgroup>';
+      }
+      sel.innerHTML = html;
     }
 
     // ===== CRUD REGISTROS (cascada) =====
