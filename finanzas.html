@@ -481,16 +481,15 @@
     async function cargarExternos() {
       externosNombres = [];
       try {
-        const colecciones = ['caseros', 'hosters', 'guardas'];
-        const roles = { caseros: '🏠 Casero', hosters: '🏨 Hoster', guardas: '🌾 Guarda' };
-        for (const col of colecciones) {
-          const snap = await db.collection('bienes').doc(bienId).collection(col).get();
-          snap.docs.forEach(d => {
-            const data = d.data();
-            const nombre = data.nombre || data.email || '';
-            if (nombre) externosNombres.push({ nombre, rol: roles[col], email: data.email || '' });
-          });
-        }
+        const snap = await db.collection('bienes').doc(bienId).collection('externos').get();
+        const rolIcons = { casero: '🏠', hoster: '🏨', guarda: '🌾', oficina: '🏢', otro: '👤' };
+        snap.docs.forEach(d => {
+          const data = d.data();
+          if (!data.activo && data.activo !== undefined) return; // omitir inactivos
+          const nombre = data.nombre || data.email || '';
+          const rol = data.rol || 'otro';
+          if (nombre) externosNombres.push({ nombre, rol: `${rolIcons[rol] || '👤'} ${rol.charAt(0).toUpperCase() + rol.slice(1)}`, email: data.email || '' });
+        });
       } catch(e) { console.warn('No se pudieron cargar externos:', e); }
     }
 
