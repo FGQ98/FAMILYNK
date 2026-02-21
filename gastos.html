@@ -120,6 +120,15 @@
       .form-row { grid-template-columns: 1fr; }
       .filtros { flex-direction: column; }
     }
+
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: white; color: #5C7D5F;
+      border: 2px solid #7A9E7E; border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-pdf:hover { background: #7A9E7E; color: white; }
   </style>
 </head>
 <body>
@@ -130,7 +139,7 @@
       <div class="header-title">💶 Gastos</div>
       <div class="header-bien" id="bien-nombre">Cargando...</div>
     </div>
-    <span style="width:60px;"></span>
+    <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
   </div>
 
   <div class="container">
@@ -243,6 +252,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -608,6 +618,89 @@
       if (!d) return '—';
       const p = d.split('-');
       return p.length === 3 ? `${p[2]}/${p[1]}` : d;
+    }
+
+    // ========== PDF DESCARGA DIRECTA ==========
+    function generarPDF() {
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      
+      let items = [...gastos];
+      const filtCat = document.getElementById('filtro-cat').value;
+      const filtMed = document.getElementById('filtro-medio').value;
+      const filtAnot = document.getElementById('filtro-anotador').value;
+      if (filtCat) items = items.filter(g => g.categoria === filtCat);
+      if (filtMed) items = items.filter(g => g.medio === filtMed || g.medioPago === filtMed);
+      if (filtAnot) items = items.filter(g => (g.anotador || g.pagadorNombre || '') === filtAnot);
+      
+      const total = items.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
+      const media = items.length > 0 ? total / items.length : 0;
+      
+      // Agrupar por mes
+      const meses = {};
+      items.forEach(g => {
+        const mes = g.fecha ? g.fecha.substring(0, 7) : 'sin-fecha';
+        if (!meses[mes]) meses[mes] = [];
+        meses[mes].push(g);
+      });
+      
+      let tablas = '';
+      Object.keys(meses).sort().reverse().forEach(mes => {
+        const regs = meses[mes];
+        const totalMes = regs.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
+        const mesLabel = mes === 'sin-fecha' ? 'Sin fecha' :
+          new Date(mes + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        
+        let filas = regs.map(g => `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${g.fecha || '-'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${g.concepto || '-'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${CAT_LABELS[g.categoria] || g.categoria || '-'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${g.anotador || g.pagadorNombre || '-'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${(parseFloat(g.importe) || 0).toFixed(2)} €</td>
+        </tr>`).join('');
+        
+        tablas += `
+          <div style="margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#F5F0E8;border-radius:6px;margin-bottom:8px;font-weight:700;font-size:13px;text-transform:capitalize;">
+              <span>${mesLabel}</span><span>${totalMes.toFixed(2)} €</span>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+              <thead><tr style="background:#7A9E7E;color:white;">
+                <th style="padding:6px 8px;text-align:left;">Fecha</th>
+                <th style="padding:6px 8px;text-align:left;">Concepto</th>
+                <th style="padding:6px 8px;text-align:left;">Categoría</th>
+                <th style="padding:6px 8px;text-align:left;">Anotador</th>
+                <th style="padding:6px 8px;text-align:right;">Importe</th>
+              </tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>`;
+      });
+      
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#5C7D5F;">💶 Gastos</h2>
+            <p style="margin:4px 0;color:#888;">${bienNombre}</p>
+            <p style="margin:2px 0;font-size:11px;color:#aaa;">${new Date().toLocaleDateString('es-ES')}</p>
+          </div>
+          <div style="display:flex;gap:30px;justify-content:center;margin-bottom:20px;font-size:13px;">
+            <span>Total: <b>${total.toFixed(2)} €</b></span>
+            <span>Registros: <b>${items.length}</b></span>
+            <span>Media: <b>${media.toFixed(2)} €</b></span>
+          </div>
+          ${tablas || '<p style="text-align:center;color:#aaa;">Sin gastos registrados</p>'}
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Gastos</div>
+        </div>
+      `;
+      
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: 'gastos-' + bienNombre.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
     }
   </script>
 </body>

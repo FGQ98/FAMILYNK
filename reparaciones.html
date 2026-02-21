@@ -542,6 +542,15 @@
       .grid { grid-template-columns: 1fr; }
       .stats { grid-template-columns: repeat(3, 1fr); }
     }
+
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: white; color: #5C7D5F;
+      border: 2px solid #7A9E7E; border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-pdf:hover { background: #7A9E7E; color: white; }
   </style>
 </head>
 <body>
@@ -586,6 +595,7 @@
         <button class="filtro" data-estado="en-curso" onclick="filtrar('en-curso')">🔨 En curso</button>
         <button class="filtro" data-estado="completada" onclick="filtrar('completada')">✅ Completadas</button>
       </div>
+      <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
       <button class="btn btn-mayordomo" onclick="abrirModal()">+ Nueva reparación</button>
     </div>
 
@@ -699,6 +709,7 @@
   </div>
 
   <!-- Firebase -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -1011,6 +1022,72 @@
         }
       });
     });
+
+    // ========== PDF DESCARGA DIRECTA ==========
+    function generarPDF() {
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      const items = filtroActual === 'todas' ? reparaciones : reparaciones.filter(r => r.estado === filtroActual);
+      
+      const pendientes = reparaciones.filter(r => r.estado === 'pendiente').length;
+      const enCurso = reparaciones.filter(r => r.estado === 'en-curso').length;
+      const completadas = reparaciones.filter(r => r.estado === 'completada').length;
+      const costeTotal = reparaciones.reduce((s, r) => s + (parseFloat(r.coste) || 0), 0);
+      
+      let filas = items.map(r => {
+        const estadoTexto = {'a-decidir':'A decidir','pendiente':'Pendiente','en-curso':'En curso','completada':'Completada'}[r.estado] || r.estado;
+        const fechaObj = r.fecha?.toDate ? r.fecha.toDate() : (r.fecha ? new Date(r.fecha) : null);
+        const fechaStr = fechaObj && !isNaN(fechaObj) ? fechaObj.toLocaleDateString('es-ES') : '-';
+        return `<tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${r.titulo || '-'}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${r.prioridad || 'media'}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${estadoTexto}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${fechaStr}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${r.coste ? r.coste + ' €' : '-'}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${r.responsable || '-'}</td>
+        </tr>`;
+      }).join('');
+      
+      const filtroLabel = filtroActual === 'todas' ? 'Todas' : filtroActual;
+      
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#5C7D5F;">🔧 Reparaciones</h2>
+            <p style="margin:4px 0;color:#888;">${bienNombre} · Filtro: ${filtroLabel}</p>
+            <p style="margin:2px 0;font-size:11px;color:#aaa;">${new Date().toLocaleDateString('es-ES')}</p>
+          </div>
+          <div style="display:flex;gap:20px;justify-content:center;margin-bottom:20px;font-size:13px;">
+            <span>⏳ Pendientes: <b>${pendientes}</b></span>
+            <span>🔨 En curso: <b>${enCurso}</b></span>
+            <span>✅ Completadas: <b>${completadas}</b></span>
+            <span>💰 Coste total: <b>${costeTotal.toFixed(0)} €</b></span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:#7A9E7E;color:white;">
+                <th style="padding:8px;text-align:left;">Título</th>
+                <th style="padding:8px;text-align:center;">Prioridad</th>
+                <th style="padding:8px;text-align:center;">Estado</th>
+                <th style="padding:8px;text-align:center;">Fecha</th>
+                <th style="padding:8px;text-align:right;">Coste</th>
+                <th style="padding:8px;text-align:left;">Responsable</th>
+              </tr>
+            </thead>
+            <tbody>${filas || '<tr><td colspan="6" style="padding:20px;text-align:center;">Sin datos</td></tr>'}</tbody>
+          </table>
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Reparaciones</div>
+        </div>
+      `;
+      
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: 'reparaciones-' + bienNombre.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
+    }
   </script>
 </body>
 </html>

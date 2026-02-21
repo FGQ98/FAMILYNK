@@ -188,6 +188,15 @@
       .tabla-resumen { font-size: 0.78rem; }
       .tabla-resumen thead th, .tabla-resumen tbody td { padding: 8px 6px; }
     }
+
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: white; color: #5C7D5F;
+      border: 2px solid #7A9E7E; border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-pdf:hover { background: #7A9E7E; color: white; }
   </style>
 </head>
 <body>
@@ -202,6 +211,7 @@
         </div>
       </div>
     </div>
+    <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
   </header>
 
   <main class="main">
@@ -320,6 +330,7 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -915,6 +926,78 @@
       if (!ts) return '—';
       const d = ts.toDate ? ts.toDate() : new Date(ts);
       return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    // ========== PDF DESCARGA DIRECTA ==========
+    function generarPDF() {
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      
+      // Tabla resumen estancias
+      let filasEst = estancias.map(est => {
+        const nombre = est.nombre || est.tipoReservaNombre || 'Estancia';
+        const dias = calcularDias(est.fechaInicio, est.fechaFin);
+        let familiares = 0, total = 0;
+        if (est.preparacion?.personas) {
+          Object.values(est.preparacion.personas).forEach(dia => {
+            familiares = Math.max(familiares, dia.familiares || 0);
+            total = Math.max(total, (dia.familiares || 0) + (dia.duermen || 0));
+          });
+        }
+        const zonasUsadas = est.preparacion?.zonas?.length || 0;
+        const gastosEst = gastos.filter(g => g.estanciaId === est.id).reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
+        const encuesta = encuestas.find(e => e.estanciaId === est.id || e.vinculacion?.estanciaId === est.id);
+        const puntuacion = encuesta ? (encuesta.puntuacionMedia || encuesta.puntuacion || 0) : 0;
+        
+        return `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${nombre}<br><span style="font-size:10px;color:#888;">${formatFecha(est.fechaInicio)} → ${formatFecha(est.fechaFin)}</span></td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${dias}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${familiares || '-'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${total || '-'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${zonasUsadas}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;">${gastosEst > 0 ? gastosEst.toFixed(0) + ' €' : '-'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${puntuacion > 0 ? '⭐ ' + puntuacion.toFixed(1) : '-'}</td>
+        </tr>`;
+      }).join('');
+      
+      const totalGastos = gastos.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
+      
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#5C7D5F;">📊 Informe Mayordomo</h2>
+            <p style="margin:4px 0;color:#888;">${bienNombre}</p>
+            <p style="margin:2px 0;font-size:11px;color:#aaa;">${new Date().toLocaleDateString('es-ES')}</p>
+          </div>
+          <div style="display:flex;gap:30px;justify-content:center;margin-bottom:20px;font-size:13px;">
+            <span>Estancias: <b>${estancias.length}</b></span>
+            <span>Gastos total: <b>${totalGastos.toFixed(0)} €</b></span>
+            <span>Encuestas: <b>${encuestas.length}</b></span>
+          </div>
+          <h3 style="color:#5C7D5F;font-size:14px;margin:20px 0 10px;">Resumen de Estancias</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;">
+            <thead><tr style="background:#7A9E7E;color:white;">
+              <th style="padding:6px 8px;text-align:left;">Estancia</th>
+              <th style="padding:6px 8px;text-align:center;">Días</th>
+              <th style="padding:6px 8px;text-align:center;">Fam.</th>
+              <th style="padding:6px 8px;text-align:center;">Total</th>
+              <th style="padding:6px 8px;text-align:center;">Zonas</th>
+              <th style="padding:6px 8px;text-align:right;">Gastos</th>
+              <th style="padding:6px 8px;text-align:center;">Encuesta</th>
+            </tr></thead>
+            <tbody>${filasEst || '<tr><td colspan="7" style="padding:20px;text-align:center;">Sin estancias</td></tr>'}</tbody>
+          </table>
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Informe Mayordomo</div>
+        </div>
+      `;
+      
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: 'informe-mayordomo-' + bienNombre.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
     }
   </script>
 </body>

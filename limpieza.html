@@ -269,6 +269,14 @@
       .modulos-grid { grid-template-columns: 1fr; }
       .main { padding: 16px; }
     }
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: white; color: #5C7D5F;
+      border: 2px solid #7A9E7E; border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-pdf:hover { background: #7A9E7E; color: white; }
   </style>
   <!-- Sistema de permisos CVEB para externos -->
   <script src="permisos-externos.js"></script>
@@ -281,6 +289,7 @@
       Limpieza
       <span class="header-bien" id="nombre-bien"></span>
     </div>
+    <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
   </header>
 
   <main class="main">
@@ -331,6 +340,7 @@
     </div>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -648,6 +658,68 @@
       } catch (error) {
         console.error('Error actualizando tarea:', error);
       }
+    }
+
+    // ========== PDF DESCARGA DIRECTA ==========
+    function generarPDF() {
+      const bienNombre = document.getElementById('nombre-bien')?.textContent || 'Bien';
+      const tiposConTareas = document.getElementById('stat-tipos')?.textContent || '0';
+      const totalTareas = document.getElementById('stat-tareas')?.textContent || '0';
+      
+      // Plan semanal
+      let tareasHTML = '';
+      if (planSemanalData.length > 0) {
+        let filas = planSemanalData.map(t => {
+          const completada = completadosData[t.id] ? '✅' : '⬜';
+          return `<tr>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${completada}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;">${t.nombre || '-'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;">${t.zona || '-'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${t.tiempo || '-'} min</td>
+            <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${t.frecuencia || '-'}</td>
+          </tr>`;
+        }).join('');
+        
+        const completadas = Object.values(completadosData).filter(Boolean).length;
+        
+        tareasHTML = `
+          <h3 style="color:#5C7D5F;font-size:14px;margin:16px 0 8px;">📋 Plan Semanal (${completadas}/${planSemanalData.length} completadas)</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="background:#7A9E7E;color:white;">
+              <th style="padding:6px 8px;width:40px;"></th>
+              <th style="padding:6px 8px;text-align:left;">Tarea</th>
+              <th style="padding:6px 8px;text-align:left;">Zona</th>
+              <th style="padding:6px 8px;text-align:center;">Tiempo</th>
+              <th style="padding:6px 8px;text-align:left;">Frecuencia</th>
+            </tr></thead>
+            <tbody>${filas}</tbody>
+          </table>`;
+      }
+      
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#5C7D5F;">🧹 Limpieza</h2>
+            <p style="margin:4px 0;color:#888;">${bienNombre}</p>
+            <p style="margin:2px 0;font-size:11px;color:#aaa;">${new Date().toLocaleDateString('es-ES')}</p>
+          </div>
+          <div style="display:flex;gap:30px;justify-content:center;margin-bottom:20px;font-size:13px;">
+            <span>Tipos con tareas: <b>${tiposConTareas}</b></span>
+            <span>Total tareas: <b>${totalTareas}</b></span>
+          </div>
+          ${tareasHTML || '<p style="text-align:center;color:#aaa;">Sin plan semanal configurado</p>'}
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Limpieza</div>
+        </div>
+      `;
+      
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: 'limpieza-' + bienNombre.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
     }
   </script>
 </body>

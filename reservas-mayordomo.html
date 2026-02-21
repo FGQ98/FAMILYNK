@@ -191,6 +191,15 @@
     .hidden { display: none !important; }
     @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { order: -1; } }
     @media (max-width: 600px) { .header { padding: 12px 16px; } .main { padding: 16px; } .calendario-dia { min-height: 60px; } }
+
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: white; color: #5C7D5F;
+      border: 2px solid #7A9E7E; border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-pdf:hover { background: #7A9E7E; color: white; }
   </style>
 </head>
 <body>
@@ -205,6 +214,7 @@
         </div>
       </div>
     </div>
+    <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
   </header>
 
   <main class="main">
@@ -288,6 +298,7 @@
     </div>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -566,6 +577,62 @@
       if (e.esFamiliar === true) return 'familiar';
       if (e.tipoReserva === 'evento' || e.tipo === 'evento') return 'evento';
       return 'familiar'; // default
+    }
+
+    // ========== PDF DESCARGA DIRECTA ==========
+    function generarPDF() {
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      const mes = MESES[mesActual.getMonth()] + ' ' + mesActual.getFullYear();
+      
+      let filas = estancias.map(e => {
+        const nombre = e.titulo || e.nombre || e.tipoReservaNombre || 'Estancia';
+        const estadoRaw = e.estado || 'borrador';
+        const estadoLabel = (estadoRaw === 'confirmada' || estadoRaw === 'aprobada') ? 'Confirmado' : 
+                           estadoRaw === 'pendiente' ? 'Pendiente' : 'Borrador';
+        const fi = toFechaStr(e.fechaInicio);
+        const ff = toFechaStr(e.fechaFin);
+        const creador = e.creadoPorNombre || '-';
+        return `<tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${nombre}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(fi)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(ff)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${estadoLabel}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${creador}</td>
+        </tr>`;
+      }).join('');
+      
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#5C7D5F;">📅 Estancias</h2>
+            <p style="margin:4px 0;color:#888;">${bienNombre}</p>
+            <p style="margin:2px 0;font-size:11px;color:#aaa;">${new Date().toLocaleDateString('es-ES')}</p>
+          </div>
+          <p style="text-align:center;margin-bottom:16px;font-size:13px;">Total estancias registradas: <b>${estancias.length}</b></p>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:#7A9E7E;color:white;">
+                <th style="padding:8px;text-align:left;">Nombre</th>
+                <th style="padding:8px;text-align:center;">Inicio</th>
+                <th style="padding:8px;text-align:center;">Fin</th>
+                <th style="padding:8px;text-align:center;">Estado</th>
+                <th style="padding:8px;text-align:left;">Creador</th>
+              </tr>
+            </thead>
+            <tbody>${filas || '<tr><td colspan="5" style="padding:20px;text-align:center;">Sin estancias</td></tr>'}</tbody>
+          </table>
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Estancias</div>
+        </div>
+      `;
+      
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: 'estancias-' + bienNombre.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
     }
   </script>
 </body>
