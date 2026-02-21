@@ -3343,7 +3343,7 @@
       // Módulos completos de Mayordomo (nombres actualizados)
       const modulosMayordomoCompletos = {
         reservas: false, habitaciones: false, inventario: false, ajuar: false, menus: false,
-        finanzas: false, mantenimiento: false, limpieza: false, instalaciones: false, eventos: false,
+        gastos: false, mantenimiento: false, limpieza: false, instalaciones: false, eventos: false,
         planLimpieza: false, prepararSemana: false, especiales: false, informes: false
       };
 
@@ -3363,27 +3363,38 @@
         acuerdos: false, tarifas: false, finanzas: false, informes: false
       };
 
-      // Helper: migrar claves antiguas → nuevas
-      function migrarClaves(existentes) {
+      // Helper: migrar claves antiguas → nuevas (Mayordomo: mantiene gastos, NO tiene finanzas)
+      function migrarClavesMayordomo(existentes) {
         const migrado = { ...existentes };
-        // gastos → finanzas (si no existía finanzas, heredar valor de gastos)
+        // Si tenía finanzas (error previo), convertir a gastos
+        if ('finanzas' in migrado && !('gastos' in migrado)) {
+          migrado.gastos = migrado.finanzas;
+        }
+        delete migrado.finanzas;
+        delete migrado.ventas;
+        delete migrado.personal;
+        delete migrado.tarifas;
+        return migrado;
+      }
+
+      // Helper: migrar claves (Gerente/Capataz: tienen finanzas, NO tienen gastos)
+      function migrarClavesComercial(existentes) {
+        const migrado = { ...existentes };
         if ('gastos' in migrado && !('finanzas' in migrado)) {
           migrado.finanzas = migrado.gastos;
         }
         delete migrado.gastos;
-        // ventas → finanzas (merge: si ventas o gastos estaban activos, finanzas activo)
         if ('ventas' in migrado) {
           if (migrado.ventas && !migrado.finanzas) migrado.finanzas = true;
           delete migrado.ventas;
         }
-        // personal → (obsoleto, eliminar)
         delete migrado.personal;
         return migrado;
       }
 
       // Verificar y migrar Mayordomo
       if (bienData.mayordomoModulos) {
-        const existentes = migrarClaves(bienData.mayordomoModulos);
+        const existentes = migrarClavesMayordomo(bienData.mayordomoModulos);
         const merged = { ...modulosMayordomoCompletos };
         Object.keys(existentes).forEach(key => {
           if (key in merged) merged[key] = existentes[key];
@@ -3396,7 +3407,7 @@
 
       // Verificar y migrar Gerente
       if (bienData.gerenteModulos) {
-        const existentes = migrarClaves(bienData.gerenteModulos);
+        const existentes = migrarClavesComercial(bienData.gerenteModulos);
         const merged = { ...modulosGerenteCompletos };
         Object.keys(existentes).forEach(key => {
           if (key in merged) merged[key] = existentes[key];
@@ -3409,7 +3420,7 @@
 
       // Verificar y migrar Capataz
       if (bienData.capatazModulos) {
-        const existentes = migrarClaves(bienData.capatazModulos);
+        const existentes = migrarClavesComercial(bienData.capatazModulos);
         const merged = { ...modulosCapatazCompletos };
         Object.keys(existentes).forEach(key => {
           if (key in merged) merged[key] = existentes[key];
@@ -3816,7 +3827,7 @@
           { key: 'inventario', icon: '📦', label: 'Inventario', url: `inventario.html?id=${bienId}&origen=bien` },
           { key: 'ajuar', icon: '🪑', label: 'Ajuar', url: `ajuar.html?id=${bienId}&origen=bien` },
           { key: 'menus', icon: '🍽️', label: 'Menús', url: `menus-nidos.html?id=${bienId}&origen=bien` },
-          { key: 'finanzas', icon: '💰', label: 'Finanzas', url: `finanzas.html?id=${bienId}&origen=mayordomo` },
+          { key: 'gastos', icon: '💶', label: 'Gastos', url: `gastos.html?id=${bienId}&origen=mayordomo` },
           { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mantenimiento.html?id=${bienId}&origen=bien` },
           { key: 'limpieza', icon: '🧹', label: 'Limpieza', url: `limpieza.html?id=${bienId}&origen=bien` },
           { key: 'instalaciones', icon: '⚙️', label: 'Instalaciones', url: `instalaciones.html?id=${bienId}&origen=bien` },
@@ -3824,7 +3835,7 @@
           { key: 'planLimpieza', icon: '📋', label: 'Plan Limpieza', url: `plan-limpieza.html?id=${bienId}&origen=bien` },
           { key: 'prepararSemana', icon: '📝', label: 'Preparar Semana', url: `preparar-semana.html?id=${bienId}&origen=bien` },
           { key: 'especiales', icon: '🛍️', label: 'Especiales', url: `config-especiales.html?id=${bienId}&origen=bien` },
-          { key: 'informes', icon: '📋', label: 'Informes', url: `informes.html?id=${bienId}&origen=bien` }
+          { key: 'informes', icon: '📋', label: 'Informes', url: `informes-mayordomo.html?id=${bienId}` }
         ];
         
         modulosConfig.forEach(mod => {
@@ -3848,7 +3859,7 @@
           { key: 'mantenimiento', icon: '🔧', label: 'Mantenimiento', url: `mantenimiento.html?id=${bienId}&origen=gerente` },
           { key: 'limpieza', icon: '🧹', label: 'Limpieza', url: `limpieza.html?id=${bienId}&origen=gerente` },
           { key: 'finanzas', icon: '💰', label: 'Finanzas', url: `finanzas.html?id=${bienId}&origen=gerente` },
-          { key: 'informes', icon: '📄', label: 'Informes', url: `informes.html?id=${bienId}&origen=gerente` }
+          { key: 'informes', icon: '📄', label: 'Informes', url: `informes-gerente.html?id=${bienId}` }
         ];
         
         modulosConfig.forEach(mod => {
