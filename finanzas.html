@@ -288,7 +288,7 @@
               <option value="domiciliacion">📋 Domiciliación</option>
             </select>
             <select class="form-select" id="filtro-reg-anotador" onchange="renderRegistroTab()" style="flex:1;min-width:120px;font-size:0.82rem;">
-              <option value="">👤 Todos</option>
+              <option value="">👤 Todos los que apuntan</option>
             </select>
           </div>
           <div id="registro-lista"></div>
@@ -480,17 +480,21 @@
 
     async function cargarExternos() {
       externosNombres = [];
+      console.log('[DEBUG] cargarExternos: bienId=', bienId);
       try {
         const snap = await db.collection('bienes').doc(bienId).collection('externos').get();
+        console.log('[DEBUG] externos encontrados:', snap.size);
         const rolIcons = { casero: '🏠', hoster: '🏨', guarda: '🌾', oficina: '🏢', otro: '👤' };
         snap.docs.forEach(d => {
           const data = d.data();
-          if (!data.activo && data.activo !== undefined) return; // omitir inactivos
+          console.log('[DEBUG] externo:', d.id, data.nombre, 'activo:', data.activo, 'rol:', data.rol);
+          if (!data.activo && data.activo !== undefined) return;
           const nombre = data.nombre || data.email || '';
           const rol = data.rol || 'otro';
           if (nombre) externosNombres.push({ nombre, rol: `${rolIcons[rol] || '👤'} ${rol.charAt(0).toUpperCase() + rol.slice(1)}`, email: data.email || '' });
         });
-      } catch(e) { console.warn('No se pudieron cargar externos:', e); }
+        console.log('[DEBUG] externosNombres final:', externosNombres.length, externosNombres);
+      } catch(e) { console.warn('[DEBUG] ERROR cargarExternos:', e); }
     }
 
     async function cargarEjercicios() {
@@ -953,6 +957,7 @@
     }
 
     function cargarAnotadores() {
+      console.log('[DEBUG] cargarAnotadores llamada. externosNombres:', externosNombres.length);
       const sel = document.getElementById('reg-anotador');
       // 1. Externos configurados en el bien (caseros, hosters, guardas)
       let html = '<option value="">— Yo mismo —</option>';
@@ -1176,7 +1181,7 @@
         const anots = new Set();
         RR().forEach(r => { if (r.anotador) anots.add(r.anotador); });
         const prev = selAnot.value;
-        selAnot.innerHTML = '<option value="">👤 Todos</option>' +
+        selAnot.innerHTML = '<option value="">👤 Todos los que apuntan</option>' +
           Array.from(anots).sort().map(a => `<option value="${a}">${a}</option>`).join('');
         selAnot.value = prev;
       }
