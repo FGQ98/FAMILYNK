@@ -86,7 +86,7 @@ service cloud.firestore {
     }
     
     // ============================================================
-    // COLECCIÓN: externos
+    // COLECCIÓN RAÍZ: externos (login de externos — mantener hasta migrar portales)
     // ============================================================
     match /externos/{externoId} {
       allow read: if isAuthenticated() && 
@@ -145,7 +145,7 @@ service cloud.firestore {
       allow update, delete: if isAuthenticated() && 
                               (isSuperAdmin() || isAdminSistema() || belongsToFamilia(resource.data.familiaId));
       
-      // Subcolecciones de primer nivel (caseros, hosters, guardas, reservas, etc.)
+      // Subcolecciones de primer nivel (externos, gastos, reservas, ejercicios, etc.)
       match /{subcollection}/{docId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
@@ -159,8 +159,16 @@ service cloud.firestore {
     }
     
     // ============================================================
-    // COLLECTION GROUP QUERIES para externos
+    // COLLECTION GROUP QUERIES — Portales de externos
     // ============================================================
+    
+    // NUEVO: externos unificados (portal del externo busca sus bienes asignados)
+    match /{path=**}/externos/{externoId} {
+      allow read: if isAuthenticated() && 
+                    request.auth.token.email == resource.data.email;
+    }
+    
+    // LEGACY: mantener hasta migrar completamente casero.html, hoster.html, guarda.html
     match /{path=**}/caseros/{caseroId} {
       allow read: if isAuthenticated() && 
                     request.auth.token.email == resource.data.email;
@@ -176,9 +184,7 @@ service cloud.firestore {
                     request.auth.token.email == resource.data.email;
     }
     
-    // ============================================================
     // COLLECTION GROUP QUERIES para reservas (Mis Reservas, CGI)
-    // ============================================================
     match /{path=**}/reservas/{reservaId} {
       allow read: if isAuthenticated();
     }
@@ -259,21 +265,13 @@ service cloud.firestore {
     // COLECCIÓN: notificaciones
     // ============================================================
     match /notificaciones/{notifId} {
-      // Lectura: destinatarios o cualquier miembro de la familia
       allow read: if isAuthenticated() && 
                     (request.auth.uid in resource.data.destinatarios ||
                      belongsToFamilia(resource.data.familiaId));
-      
-      // Crear: cualquier usuario autenticado
       allow create: if isAuthenticated();
-      
-      // Actualizar: destinatarios o miembros de la familia
       allow update: if isAuthenticated() && 
                       (request.auth.uid in resource.data.destinatarios ||
                        belongsToFamilia(resource.data.familiaId));
-      
-      // ELIMINAR: Admins de la familia, creador, o superadmin
-      // *** CAMBIO PRINCIPAL: ahora admins de familia pueden eliminar ***
       allow delete: if isAuthenticated() && 
                       (isSuperAdmin() || 
                        isAdminSistema() ||
