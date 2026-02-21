@@ -230,6 +230,7 @@
               <thead>
                 <tr>
                   <th>Estancia</th>
+                  <th style="text-align:center">Tipo</th>
                   <th style="text-align:center">Días</th>
                   <th style="text-align:center">Familiar</th>
                   <th style="text-align:center">Total</th>
@@ -453,6 +454,53 @@
     }
 
     // ========================================
+    // HELPERS DE TIPO/SUBTIPO DE ESTANCIA
+    // ========================================
+    function getTipoEstancia(e) {
+      const sub = e.subtipoEstancia || '';
+      if (sub === 'nietos_amigos' || sub === 'finde_asignado' || sub === 'familiar') return 'familiar';
+      if (e.tipoEstancia) {
+        if (e.tipoEstancia === 'nietos_amigos' || e.tipoEstancia === 'finde_asignado') return 'familiar';
+        return e.tipoEstancia;
+      }
+      const tid = e.tipoId || e.tipo || '';
+      if (tid.includes('familiar') || tid.includes('estancia') || tid.includes('nietos') || tid.includes('finde')) return 'familiar';
+      if (tid.includes('evento')) return 'evento';
+      return 'familiar';
+    }
+
+    function getSubtipoEstancia(e) {
+      if (e.subtipoEstancia) return e.subtipoEstancia;
+      if (e.tipoEstancia === 'nietos_amigos' || e.tipoEstancia === 'finde_asignado') return e.tipoEstancia;
+      const tipo = getTipoEstancia(e);
+      if (tipo === 'evento') return 'evento';
+      if (tipo === 'otros') return 'otros';
+      return 'familiar';
+    }
+
+    function getSubtipoIcon(e) {
+      const sub = getSubtipoEstancia(e);
+      switch(sub) {
+        case 'nietos_amigos': return '👶';
+        case 'finde_asignado': return '📅';
+        case 'evento': return '🎉';
+        case 'otros': return '📌';
+        default: return '🏠';
+      }
+    }
+
+    function getSubtipoLabel(e) {
+      const sub = getSubtipoEstancia(e);
+      switch(sub) {
+        case 'nietos_amigos': return 'Nietos con amigos';
+        case 'finde_asignado': return 'Finde asignado';
+        case 'evento': return 'Evento';
+        case 'otros': return 'Otros';
+        default: return 'Familiar';
+      }
+    }
+
+    // ========================================
     // CARD 1: RESUMEN DE ESTANCIAS
     // ========================================
     function renderResumen() {
@@ -514,6 +562,7 @@
               <div class="estancia-nombre">${nombre}</div>
               <div class="estancia-fechas">${fechas}</div>
             </td>
+            <td class="tabla-valor">${getSubtipoIcon(est)} ${getSubtipoLabel(est)}</td>
             <td class="tabla-valor">${dias}</td>
             <td class="tabla-valor">${familiares || '—'}</td>
             <td class="tabla-valor">${total || '—'}</td>
@@ -935,6 +984,7 @@
       // Tabla resumen estancias
       let filasEst = estancias.map(est => {
         const nombre = est.nombre || est.tipoReservaNombre || 'Estancia';
+        const subLabel = getSubtipoLabel(est);
         const dias = calcularDias(est.fechaInicio, est.fechaFin);
         let familiares = 0, total = 0;
         if (est.preparacion?.personas) {
@@ -950,6 +1000,7 @@
         
         return `<tr>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;">${nombre}<br><span style="font-size:10px;color:#888;">${formatFecha(est.fechaInicio)} → ${formatFecha(est.fechaFin)}</span></td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;font-size:10px;">${subLabel}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${dias}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${familiares || '-'}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${total || '-'}</td>
@@ -978,6 +1029,7 @@
           <table style="width:100%;border-collapse:collapse;font-size:11px;">
             <thead><tr style="background:#7A9E7E;color:white;">
               <th style="padding:6px 8px;text-align:left;">Estancia</th>
+              <th style="padding:6px 8px;text-align:center;">Tipo</th>
               <th style="padding:6px 8px;text-align:center;">Días</th>
               <th style="padding:6px 8px;text-align:center;">Fam.</th>
               <th style="padding:6px 8px;text-align:center;">Total</th>
@@ -985,7 +1037,7 @@
               <th style="padding:6px 8px;text-align:right;">Gastos</th>
               <th style="padding:6px 8px;text-align:center;">Encuesta</th>
             </tr></thead>
-            <tbody>${filasEst || '<tr><td colspan="7" style="padding:20px;text-align:center;">Sin estancias</td></tr>'}</tbody>
+            <tbody>${filasEst || '<tr><td colspan="8" style="padding:20px;text-align:center;">Sin estancias</td></tr>'}</tbody>
           </table>
           <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Informe Mayordomo</div>
         </div>

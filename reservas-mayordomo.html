@@ -177,8 +177,11 @@
     .dropdown-item:hover { background: var(--cream-medium); }
     .dropdown-item-color { width: 12px; height: 12px; border-radius: 3px; }
     .dropdown-item-color.familiar { background: #7A9E7E; }
+    .dropdown-item-color.nietos_amigos { background: #7A9E7E; }
+    .dropdown-item-color.finde_asignado { background: #7A9E7E; }
     .dropdown-item-color.evento { background: #5B9BD5; }
     .dropdown-item-color.otros { background: #E8A87C; }
+    .dropdown-separator { height: 1px; background: var(--cream-dark); margin: 4px 16px; }
 
     .btn { padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border: none; }
     .btn-addon { background: linear-gradient(135deg, var(--mayordomo) 0%, var(--mayordomo-dark) 100%); color: white; width: 100%; }
@@ -239,15 +242,24 @@
           <div class="dropdown-menu" id="dropdown-menu">
             <div class="dropdown-item" onclick="nuevaEstanciaTipo('familiar')">
               <div class="dropdown-item-color familiar"></div>
-              <span>Estancia Familiar</span>
+              <span>🏠 Estancia Familiar</span>
             </div>
+            <div class="dropdown-item" onclick="nuevaEstanciaTipo('nietos_amigos')">
+              <div class="dropdown-item-color nietos_amigos"></div>
+              <span>👶 Nietos con amigos</span>
+            </div>
+            <div class="dropdown-item" onclick="nuevaEstanciaTipo('finde_asignado')">
+              <div class="dropdown-item-color finde_asignado"></div>
+              <span>📅 Finde asignado</span>
+            </div>
+            <div class="dropdown-separator"></div>
             <div class="dropdown-item" onclick="nuevaEstanciaTipo('evento')">
               <div class="dropdown-item-color evento"></div>
-              <span>Evento</span>
+              <span>🎉 Evento</span>
             </div>
             <div class="dropdown-item" onclick="nuevaEstanciaTipo('otros')">
               <div class="dropdown-item-color otros"></div>
-              <span>Otros</span>
+              <span>📌 Otros</span>
             </div>
           </div>
         </div>
@@ -259,28 +271,36 @@
           <div class="sidebar-card-body">
             <div class="leyenda">
               <div class="leyenda-item">
+                <div class="leyenda-color familiar-enviado"></div>
+                <span>🏠 Familiar</span>
+              </div>
+              <div class="leyenda-item">
+                <div class="leyenda-color familiar-enviado"></div>
+                <span>👶 Nietos con amigos</span>
+              </div>
+              <div class="leyenda-item">
+                <div class="leyenda-color familiar-enviado"></div>
+                <span>📅 Finde asignado</span>
+              </div>
+              <div class="leyenda-item">
                 <div class="leyenda-color familiar-borrador"></div>
                 <span>Familiar (borrador)</span>
               </div>
               <div class="leyenda-item">
-                <div class="leyenda-color familiar-enviado"></div>
-                <span>Familiar (enviado)</span>
+                <div class="leyenda-color evento-enviado"></div>
+                <span>🎉 Evento</span>
               </div>
               <div class="leyenda-item">
                 <div class="leyenda-color evento-borrador"></div>
                 <span>Evento (borrador)</span>
               </div>
               <div class="leyenda-item">
-                <div class="leyenda-color evento-enviado"></div>
-                <span>Evento (enviado)</span>
+                <div class="leyenda-color otros-enviado"></div>
+                <span>📌 Otros</span>
               </div>
               <div class="leyenda-item">
                 <div class="leyenda-color otros-borrador"></div>
                 <span>Otros (borrador)</span>
-              </div>
-              <div class="leyenda-item">
-                <div class="leyenda-color otros-enviado"></div>
-                <span>Otros (enviado)</span>
               </div>
             </div>
           </div>
@@ -453,10 +473,12 @@
           const estado = (estadoRaw === 'confirmada' || estadoRaw === 'aprobada') ? 'enviado' : 
                          (estadoRaw === 'pendiente') ? 'borrador' : estadoRaw;
           const tipo = getTipoEstancia(e);
+          const icon = getSubtipoIcon(e);
           const nombre = e.titulo || e.nombre || e.tipoReservaNombre || 'Estancia';
           const creador = e.creadoPorNombre ? ` (${e.creadoPorNombre.split(' ')[0]})` : '';
           const horasInfo = (e.horaLlegada || e.horaSalida) ? ` · 🕐 ${e.horaLlegada || '—'} → ${e.horaSalida || '—'}` : '';
-          return `<div class="calendario-evento ${tipo} ${estado}" onclick="event.stopPropagation(); editarEstancia('${e.id}','${e.src || 'estancias'}')" title="${nombre}${creador}${horasInfo}">${nombre}</div>`;
+          const subLabel = getSubtipoLabel(e);
+          return `<div class="calendario-evento ${tipo} ${estado}" onclick="event.stopPropagation(); editarEstancia('${e.id}','${e.src || 'estancias'}')" title="${subLabel}: ${nombre}${creador}${horasInfo}">${icon} ${nombre}</div>`;
         }).join('');
 
         html += `
@@ -500,6 +522,7 @@
         const estadoLabel = estado === 'enviado' ? 'Confirmado' : 
                            estadoRaw === 'pendiente' ? 'Pendiente' : 'Borrador';
         const nombre = e.titulo || e.nombre || e.tipoReservaNombre || 'Estancia';
+        const icon = getSubtipoIcon(e);
         const horaLleg = e.horaLlegada ? ` ${e.horaLlegada}` : '';
         const horaSal = e.horaSalida ? ` ${e.horaSalida}` : '';
         const fechas = `${formatFecha(toFechaStr(e.fechaInicio))}${horaLleg} → ${formatFecha(toFechaStr(e.fechaFin))}${horaSal}`;
@@ -508,7 +531,7 @@
         return `
           <div class="estancia-item ${tipo} ${estado}" onclick="editarEstancia('${e.id}','${e.src || 'estancias'}')">
             <div class="estancia-info">
-              <div class="estancia-nombre">${nombre}</div>
+              <div class="estancia-nombre">${icon} ${nombre}</div>
               <div class="estancia-fechas">📅 ${fechas}${creador ? ` · 👤 ${creador}` : ''}</div>
             </div>
             <span class="estancia-estado ${estado}">${estadoLabel}</span>
@@ -547,8 +570,10 @@
     function nuevaEstanciaTipo(tipo) {
       document.getElementById('dropdown-menu').classList.remove('show');
       if (tipo === 'otros') {
-        // Modal simple para "Otros"
         window.location.href = `estancia-simple.html?bienId=${bienId}&tipo=otros`;
+      } else if (tipo === 'nietos_amigos' || tipo === 'finde_asignado') {
+        // Subtipos familiares: tipo=familiar + subtipo para estadísticas
+        window.location.href = `estancia-form.html?bienId=${bienId}&tipo=familiar&subtipo=${tipo}`;
       } else {
         window.location.href = `estancia-form.html?bienId=${bienId}&tipo=${tipo}`;
       }
@@ -567,16 +592,56 @@
       window.location.href = `estancia-form.html?bienId=${bienId}&id=${id}&src=${src || 'estancias'}`;
     }
 
-    // Helper para obtener tipo de estancia (retrocompatible)
+    // Helper: tipo visual (para CSS/colores) — siempre devuelve familiar/evento/otros
     function getTipoEstancia(e) {
-      if (e.tipoEstancia) return e.tipoEstancia;
-      // Nuevo formato: tipoId puede contener 'estancias_familiares', 'eventos', etc.
+      // Primero comprobar subtipoEstancia (nuevo campo)
+      const sub = e.subtipoEstancia || '';
+      if (sub === 'nietos_amigos' || sub === 'finde_asignado' || sub === 'familiar') return 'familiar';
+      
+      if (e.tipoEstancia) {
+        if (e.tipoEstancia === 'nietos_amigos' || e.tipoEstancia === 'finde_asignado') return 'familiar';
+        return e.tipoEstancia;
+      }
       const tid = e.tipoId || e.tipo || '';
-      if (tid.includes('familiar') || tid.includes('estancia')) return 'familiar';
+      if (tid.includes('familiar') || tid.includes('estancia') || tid.includes('nietos') || tid.includes('finde')) return 'familiar';
       if (tid.includes('evento')) return 'evento';
       if (e.esFamiliar === true) return 'familiar';
       if (e.tipoReserva === 'evento' || e.tipo === 'evento') return 'evento';
       return 'familiar'; // default
+    }
+
+    // Helper: subtipo detallado (para estadísticas e informes)
+    function getSubtipoEstancia(e) {
+      if (e.subtipoEstancia) return e.subtipoEstancia;
+      if (e.tipoEstancia === 'nietos_amigos' || e.tipoEstancia === 'finde_asignado') return e.tipoEstancia;
+      const tipo = getTipoEstancia(e);
+      if (tipo === 'evento') return 'evento';
+      if (tipo === 'otros') return 'otros';
+      return 'familiar';
+    }
+
+    // Helper: icono según subtipo
+    function getSubtipoIcon(e) {
+      const sub = getSubtipoEstancia(e);
+      switch(sub) {
+        case 'nietos_amigos': return '👶';
+        case 'finde_asignado': return '📅';
+        case 'evento': return '🎉';
+        case 'otros': return '📌';
+        default: return '🏠';
+      }
+    }
+
+    // Helper: nombre legible del subtipo
+    function getSubtipoLabel(e) {
+      const sub = getSubtipoEstancia(e);
+      switch(sub) {
+        case 'nietos_amigos': return 'Nietos con amigos';
+        case 'finde_asignado': return 'Finde asignado';
+        case 'evento': return 'Evento';
+        case 'otros': return 'Otros';
+        default: return 'Familiar';
+      }
     }
 
     // ========== PDF DESCARGA DIRECTA ==========
@@ -592,8 +657,10 @@
         const fi = toFechaStr(e.fechaInicio);
         const ff = toFechaStr(e.fechaFin);
         const creador = e.creadoPorNombre || '-';
+        const subLabel = getSubtipoLabel(e);
         return `<tr>
           <td style="padding:8px;border-bottom:1px solid #eee;">${nombre}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${subLabel}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(fi)}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(ff)}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${estadoLabel}</td>
@@ -614,13 +681,14 @@
             <thead>
               <tr style="background:#7A9E7E;color:white;">
                 <th style="padding:8px;text-align:left;">Nombre</th>
+                <th style="padding:8px;text-align:center;">Tipo</th>
                 <th style="padding:8px;text-align:center;">Inicio</th>
                 <th style="padding:8px;text-align:center;">Fin</th>
                 <th style="padding:8px;text-align:center;">Estado</th>
                 <th style="padding:8px;text-align:left;">Creador</th>
               </tr>
             </thead>
-            <tbody>${filas || '<tr><td colspan="5" style="padding:20px;text-align:center;">Sin estancias</td></tr>'}</tbody>
+            <tbody>${filas || '<tr><td colspan="6" style="padding:20px;text-align:center;">Sin estancias</td></tr>'}</tbody>
           </table>
           <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Estancias</div>
         </div>
