@@ -773,6 +773,7 @@
     const estanciaId = urlParams.get('id'); // Si existe, es edición
     const bienIdParam = urlParams.get('bienId'); // Viene de Mayordomo
     const tipoParam = urlParams.get('tipo') || 'familiar';
+    const subtipoParam = urlParams.get('subtipo') || ''; // 'nietos_amigos', 'finde_asignado'
     const srcParam = urlParams.get('src') || ''; // 'reservas' o 'estancias'
     const modoEdicion = !!estanciaId;
     let estanciaOriginal = null;
@@ -1232,7 +1233,12 @@
         }
         if (tiposActuales.length === 0 && addon) {
           const defaults = {
-            mayordomo: [{ id: 'estancia-familiar', nombre: 'Estancias familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false }],
+            mayordomo: [
+              { id: 'estancia-familiar', nombre: 'Estancias familiares', icono: '🏠', esFamiliar: true },
+              { id: 'nietos-amigos', nombre: 'Nietos con amigos', icono: '👶', esFamiliar: true, subtipo: 'nietos_amigos' },
+              { id: 'finde-asignado', nombre: 'Finde asignado', icono: '📅', esFamiliar: true, subtipo: 'finde_asignado' },
+              { id: 'evento', nombre: 'Eventos', icono: '🎉', esFamiliar: false }
+            ],
             gerente: [{ id: 'reserva-familiar', nombre: 'Reservas familiares', icono: '👨‍👩‍👧‍👦', esFamiliar: true }, { id: 'reserva-huespedes', nombre: 'Reservas de huéspedes', icono: '👥', esFamiliar: false }],
             capataz: [{ id: 'caceria', nombre: 'Cacerías', icono: '🦌', esFamiliar: false }, { id: 'actividad', nombre: 'Otras actividades', icono: '🎯', esFamiliar: false }]
           };
@@ -1260,6 +1266,16 @@
         sel.innerHTML = '<option value="">Selecciona tipo...</option>' +
           tiposActuales.map(t => `<option value="${t.id}">${t.icono || '📌'} ${t.nombre}</option>`).join('');
         tipoContainer.classList.remove('hidden');
+
+        // Auto-seleccionar si viene subtipo desde URL
+        if (subtipoParam) {
+          const subtipoMap = { 'nietos_amigos': 'nietos-amigos', 'finde_asignado': 'finde-asignado' };
+          const idBuscado = subtipoMap[subtipoParam];
+          if (idBuscado && sel.querySelector(`option[value="${idBuscado}"]`)) {
+            sel.value = idBuscado;
+            onTipoChange();
+          }
+        }
       } else {
         tipoContainer.classList.add('hidden');
       }
@@ -1879,6 +1895,9 @@
           bienNombre: bien?.nombre || '',
           addonActivo: addonActivo,
           tipoEstancia: modoEdicion ? (estanciaOriginal.tipoEstancia || tipoParam) : tipoParam,
+          subtipoEstancia: modoEdicion 
+            ? (estanciaOriginal.subtipoEstancia || tipoInfo.subtipo || 'familiar')
+            : (tipoInfo.subtipo || subtipoParam || 'familiar'),
           tipoReserva: tipoId || null,
           tipoReservaNombre: tipoInfo.nombre || tipoId || null,
           esFamiliar: tipoInfo.esFamiliar || false,
@@ -1919,8 +1938,8 @@
           estanciaData.creadoPorNidoId = miNidoPrincipal?.id || null;
           estanciaData.fechaCreacion = firebase.firestore.FieldValue.serverTimestamp();
           
-          estanciaRef = await db.collection('bienes').doc(bienId).collection('estancias').add(estanciaData);
-          console.log('✅ Estancia creada:', estanciaRef.id);
+          estanciaRef = await db.collection('bienes').doc(bienId).collection('reservas').add(estanciaData);
+          console.log('✅ Estancia creada en reservas:', estanciaRef.id);
 
           // Notificar a admins solo al crear
           await notificarAdmins(bien, nombre, inicio, fin, estanciaRef.id, bienId);

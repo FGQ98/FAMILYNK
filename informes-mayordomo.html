@@ -382,14 +382,23 @@
           miembrosData = miembrosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         } catch (e) { console.error('Error cargando miembros:', e); }
 
-        // Cargar estancias
+        // Cargar estancias (de ambas colecciones)
         try {
+          const idsVistos = new Set();
+          // Colección 'estancias'
           const estSnap = await db.collection('bienes').doc(bienId).collection('estancias').get();
-          estancias = estSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          estancias = estSnap.docs.map(d => { idsVistos.add(d.id); return { id: d.id, src: 'estancias', ...d.data() }; });
+          // Colección 'reservas' (sin duplicados)
+          const resSnap = await db.collection('bienes').doc(bienId).collection('reservas').get();
+          const reservas = resSnap.docs
+            .filter(d => !idsVistos.has(d.id))
+            .map(d => ({ id: d.id, src: 'reservas', ...d.data() }));
+          estancias = estancias.concat(reservas);
           estancias.sort((a, b) => {
             const fa = a.fechaInicio || ''; const fb = b.fechaInicio || '';
             return fb.localeCompare(fa);
           });
+          console.log('📦 Total estancias (ambas colecciones):', estancias.length);
         } catch (e) { console.error('Error cargando estancias:', e); }
 
         // Cargar gastos del bien

@@ -390,8 +390,9 @@
         console.log('🔄 Cargando reservas para bien:', bienId);
         
         let todas = [];
+        const idsVistos = new Set();
         
-        // Cargar todas las reservas
+        // 1. Cargar de colección 'reservas'
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('reservas').get();
           const reservas = snap.docs.map(d => ({ id: d.id, src: 'reservas', ...d.data() }))
@@ -399,9 +400,24 @@
               const addon = r.addonActivo;
               return !addon || addon === 'mayordomo';
             });
+          reservas.forEach(r => idsVistos.add(r.id));
           todas = todas.concat(reservas);
           console.log('📦 De reservas:', reservas.length);
         } catch (e) { console.warn('Error leyendo reservas:', e); }
+        
+        // 2. Cargar de colección 'estancias' (datos históricos + creados antes de unificar)
+        try {
+          const snap2 = await db.collection('bienes').doc(bienId).collection('estancias').get();
+          const estancias = snap2.docs
+            .map(d => ({ id: d.id, src: 'estancias', ...d.data() }))
+            .filter(r => {
+              if (idsVistos.has(r.id)) return false; // Evitar duplicados
+              const addon = r.addonActivo;
+              return !addon || addon === 'mayordomo';
+            });
+          todas = todas.concat(estancias);
+          console.log('📦 De estancias:', estancias.length);
+        } catch (e) { console.warn('Error leyendo estancias:', e); }
         
         // Ordenar por fechaInicio
         todas.sort((a, b) => (a.fechaInicio || '').localeCompare(b.fechaInicio || ''));
