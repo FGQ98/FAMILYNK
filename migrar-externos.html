@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Migrar Externos</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #faf8f5; padding: 40px; max-width: 900px; margin: 0 auto; }
+    h1 { color: #5a6b52; margin-bottom: 8px; }
+    .subtitle { color: #888; margin-bottom: 30px; font-size: 0.9rem; }
+    .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .card h2 { font-size: 1rem; color: #5a6b52; margin-bottom: 12px; }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: #5a6b52; color: white; }
+    .btn-primary:hover { background: #4a5b42; }
+    .btn-danger { background: #c0392b; color: white; }
+    .btn-danger:hover { background: #a93226; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .log { background: #f5f5f0; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 0.82rem; max-height: 400px; overflow-y: auto; white-space: pre-wrap; line-height: 1.6; }
+    .log .ok { color: #27ae60; }
+    .log .warn { color: #e67e22; }
+    .log .err { color: #c0392b; }
+    .log .info { color: #2980b9; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+    .summary-item { text-align: center; padding: 16px; background: #f5f5f0; border-radius: 8px; }
+    .summary-item .num { font-size: 2rem; font-weight: 700; color: #5a6b52; }
+    .summary-item .label { font-size: 0.8rem; color: #888; }
+    .steps { display: flex; gap: 12px; margin-bottom: 20px; }
+    .step { flex: 1; padding: 12px; border-radius: 8px; background: #f5f5f0; text-align: center; font-size: 0.85rem; }
+    .step.active { background: #5a6b52; color: white; }
+    .step.done { background: #27ae60; color: white; }
+    .warning { background: #fef3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>🔄 Migración de Externos</h1>
+  <p class="subtitle">Unifica caseros/, hosters/ y guardas/ en bienes/{bienId}/externos/</p>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step" id="step-1">1. Escanear</div>
+    <div class="step" id="step-2">2. Previsualizar</div>
+    <div class="step" id="step-3">3. Migrar</div>
+    <div class="step" id="step-4">4. Verificar</div>
+  </div>
+
+  <!-- Warning -->
+  <div class="warning">
+    ⚠️ <strong>Ejecuta esto logueado como admin.</strong> Lee datos de todos los bienes y crea la subcolección <code>externos/</code> en cada uno. No borra las colecciones antiguas (eso se hace manualmente después de verificar).
+  </div>
+
+  <!-- Summary -->
+  <div class="summary" id="summary" style="display:none;">
+    <div class="summary-item"><div class="num" id="n-bienes">0</div><div class="label">Bienes</div></div>
+    <div class="summary-item"><div class="num" id="n-caseros">0</div><div class="label">Caseros</div></div>
+    <div class="summary-item"><div class="num" id="n-hosters">0</div><div class="label">Hosters</div></div>
+    <div class="summary-item"><div class="num" id="n-guardas">0</div><div class="label">Guardas</div></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="card">
+    <h2>Acciones</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="btn-scan" onclick="escanear()">🔍 Paso 1: Escanear bienes</button>
+      <button class="btn btn-primary" id="btn-migrate" onclick="migrar()" disabled>🚀 Paso 2: Migrar a externos/</button>
+      <button class="btn btn-primary" id="btn-verify" onclick="verificar()" disabled>✅ Paso 3: Verificar</button>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <h2>📋 Log</h2>
+    <div class="log" id="log">Esperando acción...\n</div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+
+    let datosEscaneados = []; // [{bienId, bienNombre, caseros[], hosters[], guardas[]}]
+
+    const logEl = document.getElementById('log');
+    function log(msg, cls = '') {
+      logEl.innerHTML += cls ? `<span class="${cls}">${msg}</span>\n` : msg + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStep(n) {
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById(`step-${i}`);
+        el.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+      }
+    }
+
+    // ===================== PASO 1: ESCANEAR =====================
+    async function escanear() {
+      document.getElementById('btn-scan').disabled = true;
+      setStep(1);
+      logEl.innerHTML = '';
+      datosEscaneados = [];
+
+      const user = auth.currentUser;
+      if (!user) {
+        log('❌ No estás logueado. Abre sesión primero.', 'err');
+        document.getElementById('btn-scan').disabled = false;
+        return;
+      }
+      log(`👤 Logueado como: ${user.email}`, 'info');
+
+      try {
+        // Cargar todos los bienes
+        const bienesSnap = await db.collection('bienes').get();
+        log(`📦 ${bienesSnap.size} bienes encontrados`, 'info');
+
+        let totalC = 0, totalH = 0, totalG = 0;
+
+        for (const bienDoc of bienesSnap.docs) {
+          const bienId = bienDoc.id;
+          const bienNombre = bienDoc.data().nombre || bienId;
+          const entrada = { bienId, bienNombre, caseros: [], hosters: [], guardas: [], externosExistentes: [] };
+
+          // Leer subcolecciones antiguas
+          try {
+            const cSnap = await db.collection('bienes').doc(bienId).collection('caseros').get();
+            entrada.caseros = cSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            totalC += entrada.caseros.length;
+          } catch(e) {}
+
+          try {
+            const hSnap = await db.collection('bienes').doc(bienId).collection('hosters').get();
+            entrada.hosters = hSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            totalH += entrada.hosters.length;
+          } catch(e) {}
+
+          try {
+            const gSnap = await db.collection('bienes').doc(bienId).collection('guardas').get();
+            entrada.guardas = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+            totalG += entrada.guardas.length;
+          } catch(e) {}
+
+          // Ver si ya tiene externos/ (por si se ejecutó antes)
+          try {
+            const eSnap = await db.collection('bienes').doc(bienId).collection('externos').get();
+            entrada.externosExistentes = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch(e) {}
+
+          const total = entrada.caseros.length + entrada.hosters.length + entrada.guardas.length;
+          if (total > 0) {
+            log(`  🏠 ${bienNombre}: ${entrada.caseros.length}C + ${entrada.hosters.length}H + ${entrada.guardas.length}G` +
+                (entrada.externosExistentes.length > 0 ? ` (⚠️ ya tiene ${entrada.externosExistentes.length} externos)` : ''));
+          }
+
+          datosEscaneados.push(entrada);
+        }
+
+        // Summary
+        document.getElementById('summary').style.display = 'grid';
+        document.getElementById('n-bienes').textContent = bienesSnap.size;
+        document.getElementById('n-caseros').textContent = totalC;
+        document.getElementById('n-hosters').textContent = totalH;
+        document.getElementById('n-guardas').textContent = totalG;
+
+        const totalExternos = totalC + totalH + totalG;
+        log('', '');
+        log(`📊 Total a migrar: ${totalExternos} externos en ${datosEscaneados.filter(d => d.caseros.length + d.hosters.length + d.guardas.length > 0).length} bienes`, 'ok');
+
+        // Check duplicados
+        const conExistentes = datosEscaneados.filter(d => d.externosExistentes.length > 0);
+        if (conExistentes.length > 0) {
+          log(`⚠️ ${conExistentes.length} bienes ya tienen externos/ — se omitirán para no duplicar`, 'warn');
+        }
+
+        if (totalExternos > 0) {
+          document.getElementById('btn-migrate').disabled = false;
+          log('\n✅ Escaneo completo. Revisa los datos y pulsa "Migrar" cuando estés listo.', 'ok');
+        } else {
+          log('\nℹ️ No hay datos que migrar.', 'info');
+        }
+
+        setStep(2);
+
+      } catch (error) {
+        log(`❌ Error: ${error.message}`, 'err');
+      }
+
+      document.getElementById('btn-scan').disabled = false;
+    }
+
+    // ===================== PASO 2: MIGRAR =====================
+    async function migrar() {
+      document.getElementById('btn-migrate').disabled = true;
+      setStep(3);
+      log('\n🚀 Iniciando migración...', 'info');
+
+      let migrados = 0, omitidos = 0, errores = 0;
+
+      for (const entrada of datosEscaneados) {
+        const { bienId, bienNombre, caseros, hosters, guardas, externosExistentes } = entrada;
+        const total = caseros.length + hosters.length + guardas.length;
+        if (total === 0) continue;
+
+        // Si ya tiene externos, omitir
+        if (externosExistentes.length > 0) {
+          log(`  ⏭️ ${bienNombre}: omitido (ya tiene ${externosExistentes.length} externos)`, 'warn');
+          omitidos += total;
+          continue;
+        }
+
+        const bienRef = db.collection('bienes').doc(bienId);
+
+        // Migrar caseros
+        for (const c of caseros) {
+          try {
+            const externo = limpiarDatos(c, 'casero');
+            await bienRef.collection('externos').doc(c.id).set(externo);
+            log(`  ✅ ${bienNombre} → ${externo.nombre} (casero)`, 'ok');
+            migrados++;
+          } catch(e) {
+            log(`  ❌ ${bienNombre} → ${c.nombre || c.id}: ${e.message}`, 'err');
+            errores++;
+          }
+        }
+
+        // Migrar hosters
+        for (const h of hosters) {
+          try {
+            const externo = limpiarDatos(h, 'hoster');
+            await bienRef.collection('externos').doc(h.id).set(externo);
+            log(`  ✅ ${bienNombre} → ${externo.nombre} (hoster)`, 'ok');
+            migrados++;
+          } catch(e) {
+            log(`  ❌ ${bienNombre} → ${h.nombre || h.id}: ${e.message}`, 'err');
+            errores++;
+          }
+        }
+
+        // Migrar guardas
+        for (const g of guardas) {
+          try {
+            const externo = limpiarDatos(g, 'guarda');
+            await bienRef.collection('externos').doc(g.id).set(externo);
+            log(`  ✅ ${bienNombre} → ${externo.nombre} (guarda)`, 'ok');
+            migrados++;
+          } catch(e) {
+            log(`  ❌ ${bienNombre} → ${g.nombre || g.id}: ${e.message}`, 'err');
+            errores++;
+          }
+        }
+      }
+
+      log('', '');
+      log(`📊 Resultado: ${migrados} migrados · ${omitidos} omitidos · ${errores} errores`, migrados > 0 ? 'ok' : 'warn');
+
+      if (errores === 0 && migrados > 0) {
+        document.getElementById('btn-verify').disabled = false;
+        log('\n✅ Migración completada. Pulsa "Verificar" para confirmar.', 'ok');
+      } else if (errores > 0) {
+        log('\n⚠️ Hubo errores. Revisa el log antes de verificar.', 'warn');
+        document.getElementById('btn-verify').disabled = false;
+      }
+    }
+
+    function limpiarDatos(original, rol) {
+      // Extraer campos conocidos, ignorar el id (ya se usa como docId)
+      const { id, ...datos } = original;
+      return {
+        nombre: datos.nombre || datos.email || 'Sin nombre',
+        email: datos.email || '',
+        telefono: datos.telefono || '',
+        rol: rol,
+        activo: datos.activo !== undefined ? datos.activo : true,
+        permisos: datos.permisos || {},
+        notas: datos.notas || '',
+        fechaCreacion: datos.fechaCreacion || firebase.firestore.FieldValue.serverTimestamp(),
+        fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp(),
+        origenMigracion: rol === 'casero' ? 'caseros' : rol === 'hoster' ? 'hosters' : 'guardas'
+      };
+    }
+
+    // ===================== PASO 3: VERIFICAR =====================
+    async function verificar() {
+      document.getElementById('btn-verify').disabled = true;
+      setStep(4);
+      log('\n🔍 Verificando migración...', 'info');
+
+      let ok = 0, fail = 0;
+
+      for (const entrada of datosEscaneados) {
+        const { bienId, bienNombre, caseros, hosters, guardas } = entrada;
+        const totalOrigen = caseros.length + hosters.length + guardas.length;
+        if (totalOrigen === 0) continue;
+
+        try {
+          const extSnap = await db.collection('bienes').doc(bienId).collection('externos').get();
+          const totalDest = extSnap.size;
+
+          if (totalDest >= totalOrigen) {
+            log(`  ✅ ${bienNombre}: ${totalOrigen} origen → ${totalDest} externos`, 'ok');
+            ok++;
+          } else {
+            log(`  ⚠️ ${bienNombre}: ${totalOrigen} origen → ${totalDest} externos (faltan ${totalOrigen - totalDest})`, 'warn');
+            fail++;
+          }
+        } catch(e) {
+          log(`  ❌ ${bienNombre}: ${e.message}`, 'err');
+          fail++;
+        }
+      }
+
+      log('', '');
+      if (fail === 0) {
+        log('🎉 ¡Verificación completa! Todos los externos migrados correctamente.', 'ok');
+        log('', '');
+        log('📝 Próximos pasos:', 'info');
+        log('   1. Actualizar bien.html, casero.html, etc. para leer de externos/', 'info');
+        log('   2. Una vez todo funcione, borrar caseros/, hosters/, guardas/ manualmente', 'info');
+      } else {
+        log(`⚠️ ${fail} bienes con problemas. Revisa antes de continuar.`, 'warn');
+      }
+    }
+
+    // Auto-check auth
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        log(`👤 Sesión activa: ${user.email}`, 'info');
+      } else {
+        log('⚠️ No hay sesión. Loguéate primero en familynk.es y luego abre esta página.', 'warn');
+      }
+    });
+  </script>
+</body>
+</html>
