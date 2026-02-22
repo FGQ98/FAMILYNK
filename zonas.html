@@ -479,6 +479,7 @@
     }
   </style>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -1251,15 +1252,23 @@
       
       html += `
           <div class="footer">FAMILYNK - Gestión familiar</div>
-          <script>window.onload = function() { window.print(); }<\/script>
         </body>
         </html>
       `;
       
-      // Abrir en nueva ventana para imprimir/guardar como PDF
-      const win = window.open('', '_blank');
-      win.document.write(html);
-      win.document.close();
+      // Descarga directa como PDF
+      const div = document.createElement('div');
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      if (bodyMatch) div.innerHTML = bodyMatch[1];
+      const nombreBien = bienData?.nombre || 'Bien';
+
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: 'zonas-' + nombreBien.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
     }
   </script>
 </body>
