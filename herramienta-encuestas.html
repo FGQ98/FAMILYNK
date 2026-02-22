@@ -869,6 +869,57 @@
     // ========================================
     // PERMISOS Y FILTRADO
     // ========================================
+    function contarDestinatarios(enc) {
+      const dest = enc.destinatarios || {};
+      const alcance = dest.alcance || [];
+      // Rama = todos
+      if (alcance.includes('rama')) return miembrosData.length;
+      let uids = new Set();
+      // Específicos
+      if (alcance.includes('especifico') && dest.miembrosIds) {
+        dest.miembrosIds.forEach(uid => uids.add(uid));
+      }
+      // Nido = miembros del nido del creador
+      if (alcance.includes('nido') && enc.nidoCreador) {
+        miembrosData.filter(m => m.nidoId === enc.nidoCreador).forEach(m => uids.add(m.id));
+      }
+      // Estirpe
+      if (alcance.includes('estirpe') && enc.estirpeCreador) {
+        miembrosData.filter(m => m.estirpeId === enc.estirpeCreador).forEach(m => uids.add(m.id));
+      }
+      // Solicitante
+      if (dest.incluirSolicitante && dest.solicitanteUid) {
+        uids.add(dest.solicitanteUid);
+      }
+      return uids.size || 1; // mínimo 1
+    }
+
+    function mostrarFormularioRespuesta(encId) {
+      // Re-render la encuesta mostrando el formulario en vez de resultados
+      const enc = encuestasData.find(e => e.id === encId);
+      if (!enc) return;
+      // Buscar la card y reemplazar el body con opciones
+      const cards = document.querySelectorAll('.encuesta-card');
+      for (const card of cards) {
+        if (card.innerHTML.includes(encId)) {
+          let preguntasHTML = '';
+          enc.preguntas.forEach((preg, pIdx) => {
+            preguntasHTML += `<div class="pregunta-item">`;
+            preguntasHTML += `<div class="pregunta-numero">Pregunta ${pIdx + 1}</div>`;
+            preguntasHTML += `<div class="pregunta-texto">${preg.texto}</div>`;
+            preguntasHTML += renderOpciones(encId, pIdx, preg);
+            preguntasHTML += `</div>`;
+          });
+          card.querySelector('.encuesta-body').innerHTML = preguntasHTML + `
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="enviarRespuestas('${encId}')">
+              ✅ Enviar mis respuestas
+            </button>
+          `;
+          break;
+        }
+      }
+    }
+
     function esDestinatario(enc) {
       const dest = enc.destinatarios || {};
       const alcance = dest.alcance || [];
@@ -1019,13 +1070,14 @@
         const respuestas = enc.respuestas || {};
         const totalRespuestas = Object.keys(respuestas).length;
         const yaRespondi = respuestas[currentUser.uid] !== undefined;
+        const puedeVerResultados = yaRespondi || isAdmin || enc.creadoPor === currentUser.uid;
 
         let preguntasHTML = '';
         enc.preguntas.forEach((preg, pIdx) => {
           preguntasHTML += `<div class="pregunta-item">`;
           preguntasHTML += `<div class="pregunta-numero">Pregunta ${pIdx + 1}</div>`;
           preguntasHTML += `<div class="pregunta-texto">${preg.texto}</div>`;
-          if (yaRespondi) {
+          if (puedeVerResultados) {
             preguntasHTML += renderResultadosInline(enc, pIdx, preg);
           } else {
             preguntasHTML += renderOpciones(enc.id, pIdx, preg);
@@ -1052,14 +1104,19 @@
             </div>
             <div class="encuesta-body">
               ${preguntasHTML}
-              ${!yaRespondi ? `
+              ${!yaRespondi && puedeVerResultados && esDestinatario(enc) ? `
+                <button class="btn btn-secondary" style="width:100%;margin-top:16px" onclick="mostrarFormularioRespuesta('${enc.id}')">
+                  📝 Responder yo también
+                </button>
+              ` : ''}
+              ${!yaRespondi && !puedeVerResultados ? `
                 <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="enviarRespuestas('${enc.id}')">
                   ✅ Enviar mis respuestas
                 </button>
               ` : ''}
             </div>
             <div class="encuesta-footer">
-              <span class="participacion">${totalRespuestas} de ${miembrosData.length} han respondido</span>
+              <span class="participacion">${totalRespuestas} de ${contarDestinatarios(enc)} han respondido</span>
               ${(isAdmin || enc.creadoPor === currentUser.uid) ? `
                 <div style="display:flex;gap:8px;">
                   <button class="btn btn-sm btn-secondary" onclick="cerrarEncuesta('${enc.id}')">🔒 Cerrar</button>
@@ -1096,7 +1153,7 @@
               </div>
             </div>
             <div class="realizada-resp">
-              👥 ${totalResp}/${miembrosData.length}
+              👥 ${totalResp}/${contarDestinatarios(enc)}
             </div>
             <span class="realizada-arrow">›</span>
           </div>
@@ -1824,7 +1881,7 @@
       const total = Object.keys(respuestas).length;
 
       let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:14px 18px;background:var(--cream);border-radius:var(--radius-md);">
-        <span style="font-weight:700;font-size:0.95rem;">👥 Participación: ${total} de ${miembrosData.length}</span>
+        <span style="font-weight:700;font-size:0.95rem;">👥 Participación: ${total} de ${contarDestinatarios(enc)}</span>
         <span style="font-size:0.85rem;color:var(--text-muted);">📅 Cerrada: ${formatFecha(enc.fechaCierre || enc.fechaCreacion)}</span>
       </div>`;
 
