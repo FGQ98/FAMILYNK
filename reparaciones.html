@@ -610,7 +610,7 @@
               <th>Prioridad</th>
               <th>Estado</th>
               <th>Fecha</th>
-              <th>Coste</th>
+              <th>Completado</th>
               <th>Responsable</th>
               <th></th>
             </tr>
@@ -668,8 +668,8 @@
               <input type="date" class="form-input" id="item-fecha">
             </div>
             <div class="form-group">
-              <label class="form-label">Coste estimado (€)</label>
-              <input type="number" class="form-input" id="item-coste" step="0.01" placeholder="0.00">
+              <label class="form-label">Fecha completado</label>
+              <input type="date" class="form-input" id="item-fecha-completado">
             </div>
           </div>
           <div class="form-group">
@@ -838,7 +838,7 @@
             <td>${prioridadBadge}</td>
             <td><span class="estado-badge ${r.estado || 'pendiente'}">${estadoTexto}</span></td>
             <td>${fechaStr}</td>
-            <td>${r.coste ? r.coste + '€' : '-'}</td>
+            <td>${r.estado === 'completada' && r.fechaCompletado ? (r.fechaCompletado.toDate ? r.fechaCompletado.toDate() : new Date(r.fechaCompletado)).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : '-'}</td>
             <td>${r.responsable || '-'}</td>
             <td>
               <div class="acciones-cell">
@@ -884,7 +884,9 @@
       document.getElementById('item-fecha').value = r.fecha?.toDate 
         ? r.fecha.toDate().toISOString().split('T')[0] 
         : (r.fecha || '');
-      document.getElementById('item-coste').value = r.coste || '';
+      document.getElementById('item-fecha-completado').value = r.fechaCompletado?.toDate 
+        ? r.fechaCompletado.toDate().toISOString().split('T')[0] 
+        : (r.fechaCompletado || '');
       document.getElementById('item-responsable').value = r.responsable || '';
       document.getElementById('item-foto-url').value = r.fotoURL || '';
       
@@ -958,13 +960,14 @@
         }
       }
       
+      const fechaCompVal = document.getElementById('item-fecha-completado').value;
       const data = {
         titulo: document.getElementById('item-titulo').value.trim(),
         descripcion: document.getElementById('item-descripcion').value.trim(),
         estado: document.getElementById('item-estado').value,
         prioridad: document.getElementById('item-prioridad').value,
         fecha: document.getElementById('item-fecha').value,
-        coste: parseFloat(document.getElementById('item-coste').value) || null,
+        fechaCompletado: fechaCompVal || null,
         responsable: document.getElementById('item-responsable').value.trim(),
         fotoURL: fotoURL || null,
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
@@ -1031,18 +1034,19 @@
       const pendientes = reparaciones.filter(r => r.estado === 'pendiente').length;
       const enCurso = reparaciones.filter(r => r.estado === 'en-curso').length;
       const completadas = reparaciones.filter(r => r.estado === 'completada').length;
-      const costeTotal = reparaciones.reduce((s, r) => s + (parseFloat(r.coste) || 0), 0);
       
       let filas = items.map(r => {
         const estadoTexto = {'a-decidir':'A decidir','pendiente':'Pendiente','en-curso':'En curso','completada':'Completada'}[r.estado] || r.estado;
         const fechaObj = r.fecha?.toDate ? r.fecha.toDate() : (r.fecha ? new Date(r.fecha) : null);
         const fechaStr = fechaObj && !isNaN(fechaObj) ? fechaObj.toLocaleDateString('es-ES') : '-';
+        const fechaCompObj = r.fechaCompletado?.toDate ? r.fechaCompletado.toDate() : (r.fechaCompletado ? new Date(r.fechaCompletado) : null);
+        const fechaCompStr = fechaCompObj && !isNaN(fechaCompObj) ? fechaCompObj.toLocaleDateString('es-ES') : '-';
         return `<tr>
           <td style="padding:8px;border-bottom:1px solid #eee;">${r.titulo || '-'}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${r.prioridad || 'media'}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${estadoTexto}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${fechaStr}</td>
-          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">${r.coste ? r.coste + ' €' : '-'}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${fechaCompStr}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;">${r.responsable || '-'}</td>
         </tr>`;
       }).join('');
@@ -1061,7 +1065,6 @@
             <span>⏳ Pendientes: <b>${pendientes}</b></span>
             <span>🔨 En curso: <b>${enCurso}</b></span>
             <span>✅ Completadas: <b>${completadas}</b></span>
-            <span>💰 Coste total: <b>${costeTotal.toFixed(0)} €</b></span>
           </div>
           <table style="width:100%;border-collapse:collapse;font-size:12px;">
             <thead>
@@ -1070,7 +1073,7 @@
                 <th style="padding:8px;text-align:center;">Prioridad</th>
                 <th style="padding:8px;text-align:center;">Estado</th>
                 <th style="padding:8px;text-align:center;">Fecha</th>
-                <th style="padding:8px;text-align:right;">Coste</th>
+                <th style="padding:8px;text-align:center;">Completado</th>
                 <th style="padding:8px;text-align:left;">Responsable</th>
               </tr>
             </thead>
