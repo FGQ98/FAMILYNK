@@ -489,24 +489,54 @@
     async function cargarExternos() {
       externosNombres = [];
       const rolIcons = { casero: '🏠', hoster: '🏨', guarda: '🌾' };
-      const subcolecciones = ['caseros', 'hosters', 'guardas'];
 
-      for (const sub of subcolecciones) {
-        try {
-          const snap = await db.collection('bienes').doc(bienId).collection(sub).get();
-          const rolKey = sub.slice(0, -1); // caseros → casero
-          snap.docs.forEach(d => {
-            const data = d.data();
-            if (data.activo === false) return;
-            const nombre = data.nombre || data.email || '';
-            if (nombre) externosNombres.push({
-              nombre,
-              rol: `${rolIcons[rolKey] || '👤'} ${rolKey.charAt(0).toUpperCase() + rolKey.slice(1)}`,
-              email: data.email || ''
-            });
+      // 1. Colección raíz 'externos' (estructura actual post-migración)
+      try {
+        const snap = await db.collection('externos').get();
+        console.log('[GASTOS] Colección raíz externos: ' + snap.size + ' docs');
+        snap.docs.forEach(d => {
+          const data = d.data();
+          console.log('[GASTOS] Externo:', d.id, data.nombre, 'tipo:', data.tipo, 'activo:', data.activo, 'bienes:', (data.bienesAsignados||[]).map(b=>b.bienId));
+          if (data.activo === false) return;
+          const asignado = (data.bienesAsignados || []).some(b => b.bienId === bienId);
+          if (!asignado) { console.log('[GASTOS]   → No asignado a este bien (' + bienId + ')'); return; }
+          const nombre = data.nombre || data.email || '';
+          const tipo = data.tipo || 'otro';
+          if (nombre) externosNombres.push({
+            nombre,
+            rol: `${rolIcons[tipo] || '👤'} ${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`,
+            email: data.email || ''
           });
-        } catch(e) { console.warn('Error cargando ' + sub + ':', e); }
+        });
+      } catch(e) { console.warn('[GASTOS] Error colección externos:', e.message); }
+
+      // 2. Fallback: subcollecciones legacy (caseros/hosters/guardas dentro del bien)
+      if (externosNombres.length === 0) {
+        console.log('[GASTOS] Sin resultados en raíz, probando subcollecciones legacy...');
+        const subcolecciones = ['caseros', 'hosters', 'guardas'];
+        for (const sub of subcolecciones) {
+          try {
+            const snap = await db.collection('bienes').doc(bienId).collection(sub).get();
+            console.log('[GASTOS] Subcollección ' + sub + ': ' + snap.size + ' docs');
+            const rolKey = sub.replace(/s$/, '');
+            snap.docs.forEach(d => {
+              const data = d.data();
+              console.log('[GASTOS]   ' + sub + ':', d.id, data.nombre, 'activo:', data.activo, 'migrado:', data.migradoA);
+              if (data.activo === false || data.migradoA === 'externos') return;
+              const nombre = data.nombre || data.email || '';
+              if (nombre && !externosNombres.find(e => e.nombre === nombre)) {
+                externosNombres.push({
+                  nombre,
+                  rol: `${rolIcons[rolKey] || '👤'} ${rolKey.charAt(0).toUpperCase() + rolKey.slice(1)}`,
+                  email: data.email || ''
+                });
+              }
+            });
+          } catch(e) { console.warn('[GASTOS] Error subcollección ' + sub + ':', e.message); }
+        }
       }
+
+      console.log('[GASTOS] RESULTADO FINAL externosNombres:', externosNombres.length, externosNombres);
     }
 
     async function cargarGastos() {
