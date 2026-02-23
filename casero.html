@@ -1228,6 +1228,22 @@
     }
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Detalle reserva */
+    .reserva-detail-field { padding: 10px 0; border-bottom: 1px solid var(--cream-dark); }
+    .reserva-detail-field:last-child { border-bottom: none; }
+    .reserva-detail-label { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 2px; }
+    .reserva-detail-value { font-weight: 600; font-size: 0.92rem; }
+
+    /* Botón PDF en módulos */
+    .btn-pdf-modulo {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 10px; background: white; color: var(--sage);
+      border: 1.5px solid var(--sage); border-radius: 6px;
+      font-family: 'Nunito'; font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-pdf-modulo:hover { background: var(--sage); color: white; }
   </style>
 </head>
 <body>
@@ -1569,6 +1585,21 @@
     </div>
   </div>
 
+  <!-- Modal Detalle Reserva -->
+  <div class="modal-overlay" id="modal-reserva-detalle" onclick="if(event.target===this)this.classList.remove('active')">
+    <div class="modal" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📅 Detalle de reserva</h3>
+        <button class="modal-close" onclick="document.getElementById('modal-reserva-detalle').classList.remove('active')">×</button>
+      </div>
+      <div class="modal-body" id="reserva-detalle-body" style="max-height: 60vh; overflow-y: auto;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('modal-reserva-detalle').classList.remove('active')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -2648,12 +2679,13 @@
           const fin = parseDate(r.fechaFin);
           const fechaStr = inicio ? inicio.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : '';
           return `
-            <div class="item-row no-hover">
+            <div class="item-row" onclick="verDetalleReserva('${r.id}')" style="cursor:pointer">
               <span class="item-icon">📅</span>
               <div class="item-content">
                 <div class="item-title">${r.nidoNombre || 'Reserva'}</div>
-                <div class="item-subtitle">${fechaStr}${fin ? ' - ' + fin.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}</div>
+                <div class="item-subtitle">${fechaStr}${fin ? ' - ' + fin.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}${r.tipo ? ' · ' + r.tipo : ''}</div>
               </div>
+              <span style="font-size:0.7rem;color:var(--text-muted);">👁️</span>
             </div>
           `;
         }).join('') + '</div>';
@@ -2666,6 +2698,9 @@
             <div class="modulo-card-permisos">${renderPermisosBadges('calendario')}</div>
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
+          <div class="modulo-card-footer">
+            ${datosModulos.reservas.length > 0 ? `<button class="btn-pdf-modulo" onclick="generarPDFReservas()">📄 PDF</button>` : ''}
+          </div>
         </div>
       `;
     }
@@ -2740,6 +2775,7 @@
       if (p.crear || p.editar) {
         footerHtml = `
           <div class="modulo-card-footer">
+            <button class="btn-pdf-modulo" onclick="generarPDFInventario()">📄 PDF</button>
             <button class="btn btn-sm btn-secondary ${modoTomaActivo ? 'activo' : ''}" 
                     id="btn-modo-toma" 
                     onclick="toggleModoToma()">
@@ -3245,6 +3281,7 @@
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
           <div class="modulo-card-footer">
+            ${total > 0 ? `<button class="btn-pdf-modulo" onclick="generarPDFGastos()">📄 PDF</button>` : ''}
             ${total > 0 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('gastos')">Ver todos (${total})</button>` : ''}
             ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalGasto()">+ Añadir</button>` : ''}
           </div>
@@ -3303,6 +3340,7 @@
           </div>
           <div class="modulo-card-body">${itemsHtml}</div>
           <div class="modulo-card-footer">
+            ${totalAll > 0 ? `<button class="btn-pdf-modulo" onclick="generarPDFReparaciones()">📄 PDF</button>` : ''}
             ${totalAll > 0 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('reparaciones')">Ver todas (${totalAll})</button>` : ''}
             ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalReparacion()">+ Nueva</button>` : ''}
           </div>
@@ -3344,9 +3382,10 @@
       }
 
       let footerHtml = '';
-      if (total > 6 || p.crear) {
+      if (total > 0 || p.crear) {
         footerHtml = `<div class="modulo-card-footer">
-          ${total > 0 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas (${total})</button>` : ''}
+          ${total > 0 ? `<button class="btn-pdf-modulo" onclick="generarPDFHerramientas()">📄 PDF</button>` : ''}
+          ${total > 6 ? `<button class="btn btn-sm btn-secondary" onclick="verTodos('herramientas')">Ver todas (${total})</button>` : ''}
           ${p.crear ? `<button class="btn btn-sm btn-primary" onclick="abrirModalHerramienta()">+ Nueva</button>` : ''}
         </div>`;
       }
@@ -4302,6 +4341,183 @@
         if (e.target === this) cerrarModalNormas();
       });
     });
+
+    // ========== VER DETALLE RESERVA ==========
+    function verDetalleReserva(id) {
+      const r = datosModulos.reservas.find(x => x.id === id);
+      if (!r) return;
+      const inicio = parseDate(r.fechaInicio);
+      const fin = parseDate(r.fechaFin);
+      const fmtFecha = (d) => d ? d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+
+      const body = document.getElementById('reserva-detalle-body');
+      body.innerHTML = `
+        <div class="reserva-detail-field"><div class="reserva-detail-label">Solicitante</div><div class="reserva-detail-value">${r.nidoNombre || r.solicitante || '—'}</div></div>
+        <div class="reserva-detail-field"><div class="reserva-detail-label">Tipo de estancia</div><div class="reserva-detail-value">${r.tipo || r.tipoReserva || '—'}</div></div>
+        <div class="reserva-detail-field"><div class="reserva-detail-label">Fecha inicio</div><div class="reserva-detail-value">${fmtFecha(inicio)}</div></div>
+        <div class="reserva-detail-field"><div class="reserva-detail-label">Fecha fin</div><div class="reserva-detail-value">${fmtFecha(fin)}</div></div>
+        ${r.numPersonas ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Nº personas</div><div class="reserva-detail-value">${r.numPersonas}</div></div>` : ''}
+        ${r.responsable ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Responsable</div><div class="reserva-detail-value">${r.responsable}</div></div>` : ''}
+        ${r.estado ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Estado</div><div class="reserva-detail-value">${r.estado}</div></div>` : ''}
+        ${r.notas ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Notas / Instrucciones</div><div class="reserva-detail-value" style="font-weight:400;white-space:pre-wrap;">${r.notas}</div></div>` : ''}
+      `;
+      document.getElementById('modal-reserva-detalle').classList.add('active');
+    }
+
+    // ========== PDF GENERATORS ==========
+    function _pdfBase(titulo, contenido) {
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
+          <div style="text-align:center;margin-bottom:20px;">
+            <h2 style="margin:0;color:#5C7D5F;">${titulo}</h2>
+            <p style="margin:4px 0;color:#888;">${bienNombre}</p>
+            <p style="margin:2px 0;font-size:11px;color:#aaa;">${new Date().toLocaleDateString('es-ES')}</p>
+          </div>
+          ${contenido}
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK</div>
+        </div>`;
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: titulo.replace(/[^a-zA-Z0-9]/g, '_') + '-' + bienNombre.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
+    }
+
+    function generarPDFReservas() {
+      const items = datosModulos.reservas;
+      if (!items.length) return;
+      const filas = items.map(r => {
+        const inicio = parseDate(r.fechaInicio);
+        const fin = parseDate(r.fechaFin);
+        return `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${r.nidoNombre || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${inicio ? inicio.toLocaleDateString('es-ES') : '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${fin ? fin.toLocaleDateString('es-ES') : '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${r.tipo || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${r.numPersonas || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${r.notas || ''}</td>
+        </tr>`;
+      }).join('');
+      _pdfBase('📅 Reservas', `
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#7A9E7E;color:white;">
+            <th style="padding:6px 8px;text-align:left;">Solicitante</th>
+            <th style="padding:6px 8px;text-align:left;">Inicio</th>
+            <th style="padding:6px 8px;text-align:left;">Fin</th>
+            <th style="padding:6px 8px;text-align:left;">Tipo</th>
+            <th style="padding:6px 8px;text-align:left;">Pers.</th>
+            <th style="padding:6px 8px;text-align:left;">Notas</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>`);
+    }
+
+    function generarPDFInventario() {
+      const items = datosModulos.inventario;
+      if (!items.length) return;
+      const catIcons = { limpieza: '🧹', bano: '🚿', cocina: '🍳', alimentos: '🥫', bebidas: '🍷', otro: '📦' };
+      const filas = items.sort((a, b) => a.nombre.localeCompare(b.nombre)).map(i => {
+        const bajo = i.stockActual <= i.stockMinimo;
+        const color = bajo ? '#D4695A' : '#3D3D3D';
+        return `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${catIcons[i.categoria] || '📦'} ${i.nombre}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;color:${color};font-weight:600;">${i.stockActual}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;">${i.stockMinimo}</td>
+        </tr>`;
+      }).join('');
+      _pdfBase('📦 Inventario', `
+        <p style="font-size:12px;color:#888;margin-bottom:10px;">${items.length} artículos</p>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#7A9E7E;color:white;">
+            <th style="padding:6px 8px;text-align:left;">Artículo</th>
+            <th style="padding:6px 8px;text-align:center;">Stock</th>
+            <th style="padding:6px 8px;text-align:center;">Mínimo</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>`);
+    }
+
+    function generarPDFHerramientas() {
+      const items = datosModulos.herramientas;
+      if (!items.length) return;
+      const catIcons = { manual: '🔧', electrica: '⚡', jardin: '🌱', limpieza: '🧹', medicion: '📏', seguridad: '🦺', otro: '🔨' };
+      const filas = items.map(h => `<tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${catIcons[h.categoria] || '🔨'} ${h.nombre}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${h.ubicacion || '—'}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${h.estado || 'OK'}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${h.notas || ''}</td>
+      </tr>`).join('');
+      _pdfBase('🛠️ Herramientas', `
+        <p style="font-size:12px;color:#888;margin-bottom:10px;">${items.length} herramientas</p>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#7A9E7E;color:white;">
+            <th style="padding:6px 8px;text-align:left;">Herramienta</th>
+            <th style="padding:6px 8px;text-align:left;">Ubicación</th>
+            <th style="padding:6px 8px;text-align:left;">Estado</th>
+            <th style="padding:6px 8px;text-align:left;">Notas</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>`);
+    }
+
+    function generarPDFGastos() {
+      const items = datosModulos.gastos;
+      if (!items.length) return;
+      const catIcons = { suministros: '💡', comunidad: '🏢', seguro: '🛡️', mantenimiento: '🔧', limpieza: '🧹', compras: '🛒', impuestos: '📋', otro: '📦' };
+      const total = items.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
+      const filas = items.map(g => {
+        const fecha = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES') : '—';
+        return `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${fecha}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${g.concepto || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${g.categoria || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${g.medio || g.medioPago || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${(parseFloat(g.importe) || 0).toFixed(2)} €</td>
+        </tr>`;
+      }).join('');
+      _pdfBase('💶 Gastos', `
+        <p style="font-size:12px;color:#888;margin-bottom:10px;">${items.length} gastos · Total: <b>${total.toFixed(2)} €</b></p>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#7A9E7E;color:white;">
+            <th style="padding:6px 8px;text-align:left;">Fecha</th>
+            <th style="padding:6px 8px;text-align:left;">Concepto</th>
+            <th style="padding:6px 8px;text-align:left;">Categoría</th>
+            <th style="padding:6px 8px;text-align:left;">Medio</th>
+            <th style="padding:6px 8px;text-align:right;">Importe</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>`);
+    }
+
+    function generarPDFReparaciones() {
+      const items = datosModulos.reparaciones;
+      if (!items.length) return;
+      const estadoLabels = { pendiente: '🔴 Pendiente', en_proceso: '🟡 En proceso', completada: '🟢 Completada' };
+      const filas = items.map(r => {
+        const fecha = r.fecha?.toDate?.() ? r.fecha.toDate().toLocaleDateString('es-ES') : (r.fecha || '—');
+        return `<tr>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${r.titulo || r.descripcion || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${estadoLabels[r.estado] || r.estado || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${fecha}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${r.notas || ''}</td>
+        </tr>`;
+      }).join('');
+      _pdfBase('🔩 Reparaciones', `
+        <p style="font-size:12px;color:#888;margin-bottom:10px;">${items.length} reparaciones</p>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead><tr style="background:#7A9E7E;color:white;">
+            <th style="padding:6px 8px;text-align:left;">Descripción</th>
+            <th style="padding:6px 8px;text-align:left;">Estado</th>
+            <th style="padding:6px 8px;text-align:left;">Fecha</th>
+            <th style="padding:6px 8px;text-align:left;">Notas</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>`);
+    }
   </script>
 
   <!-- Modal Normas y Procedimientos -->
