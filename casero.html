@@ -2682,8 +2682,8 @@
             <div class="item-row" onclick="verDetalleReserva('${r.id}')" style="cursor:pointer">
               <span class="item-icon">📅</span>
               <div class="item-content">
-                <div class="item-title">${r.nidoNombre || 'Reserva'}</div>
-                <div class="item-subtitle">${fechaStr}${fin ? ' - ' + fin.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}${r.tipo ? ' · ' + r.tipo : ''}</div>
+                <div class="item-title">${r.tipoNombre || r.nidoNombre || r.tipo || 'Reserva'}</div>
+                <div class="item-subtitle">${fechaStr}${fin ? ' - ' + fin.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : ''}${r.notas ? ' · ' + r.notas : ''}</div>
               </div>
               <span style="font-size:0.7rem;color:var(--text-muted);">👁️</span>
             </div>
@@ -4349,17 +4349,60 @@
       const inicio = parseDate(r.fechaInicio);
       const fin = parseDate(r.fechaFin);
       const fmtFecha = (d) => d ? d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+      
+      // Calcular noches
+      let nochesStr = '';
+      if (inicio && fin) {
+        const noches = Math.ceil((fin - inicio) / (1000*60*60*24));
+        nochesStr = noches + ' noche' + (noches !== 1 ? 's' : '');
+      }
+      
+      // Nombre legible del tipo (quién reserva)
+      const quien = r.tipoNombre || r.nidoNombre || r.tipo || '—';
+      
+      // Estado con colores
+      const estadoMap = {
+        pendiente: '🟡 Pendiente de aprobación',
+        confirmada: '🟢 Confirmada',
+        rechazada: '🔴 Rechazada',
+        cancelada: '⚫ Cancelada'
+      };
+      const estadoLabel = r.estado ? (estadoMap[r.estado] || r.estado) : '';
 
       const body = document.getElementById('reserva-detalle-body');
       body.innerHTML = `
-        <div class="reserva-detail-field"><div class="reserva-detail-label">Solicitante</div><div class="reserva-detail-value">${r.nidoNombre || r.solicitante || '—'}</div></div>
-        <div class="reserva-detail-field"><div class="reserva-detail-label">Tipo de estancia</div><div class="reserva-detail-value">${r.tipo || r.tipoReserva || '—'}</div></div>
-        <div class="reserva-detail-field"><div class="reserva-detail-label">Fecha inicio</div><div class="reserva-detail-value">${fmtFecha(inicio)}</div></div>
-        <div class="reserva-detail-field"><div class="reserva-detail-label">Fecha fin</div><div class="reserva-detail-value">${fmtFecha(fin)}</div></div>
-        ${r.numPersonas ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Nº personas</div><div class="reserva-detail-value">${r.numPersonas}</div></div>` : ''}
-        ${r.responsable ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Responsable</div><div class="reserva-detail-value">${r.responsable}</div></div>` : ''}
-        ${r.estado ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Estado</div><div class="reserva-detail-value">${r.estado}</div></div>` : ''}
-        ${r.notas ? `<div class="reserva-detail-field"><div class="reserva-detail-label">Notas / Instrucciones</div><div class="reserva-detail-value" style="font-weight:400;white-space:pre-wrap;">${r.notas}</div></div>` : ''}
+        <div class="reserva-detail-field">
+          <div class="reserva-detail-label">Quién reserva</div>
+          <div class="reserva-detail-value">${quien}</div>
+        </div>
+        <div class="reserva-detail-field">
+          <div class="reserva-detail-label">Entrada</div>
+          <div class="reserva-detail-value">${fmtFecha(inicio)}</div>
+        </div>
+        <div class="reserva-detail-field">
+          <div class="reserva-detail-label">Salida</div>
+          <div class="reserva-detail-value">${fmtFecha(fin)}</div>
+        </div>
+        ${nochesStr ? `
+        <div class="reserva-detail-field">
+          <div class="reserva-detail-label">Duración</div>
+          <div class="reserva-detail-value">${nochesStr}</div>
+        </div>` : ''}
+        ${r.numPersonas ? `
+        <div class="reserva-detail-field">
+          <div class="reserva-detail-label">Nº personas</div>
+          <div class="reserva-detail-value">${r.numPersonas}</div>
+        </div>` : ''}
+        ${estadoLabel ? `
+        <div class="reserva-detail-field">
+          <div class="reserva-detail-label">Estado</div>
+          <div class="reserva-detail-value">${estadoLabel}</div>
+        </div>` : ''}
+        ${r.notas ? `
+        <div class="reserva-detail-field">
+          <div class="reserva-detail-label">Notas</div>
+          <div class="reserva-detail-value" style="font-weight:400;white-space:pre-wrap;">${r.notas}</div>
+        </div>` : ''}
       `;
       document.getElementById('modal-reserva-detalle').classList.add('active');
     }
@@ -4393,23 +4436,23 @@
       const filas = items.map(r => {
         const inicio = parseDate(r.fechaInicio);
         const fin = parseDate(r.fechaFin);
+        let noches = '';
+        if (inicio && fin) { const n = Math.ceil((fin - inicio) / (1000*60*60*24)); noches = n + 'n'; }
         return `<tr>
-          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${r.nidoNombre || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;">${r.tipoNombre || r.nidoNombre || r.tipo || '—'}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${inicio ? inicio.toLocaleDateString('es-ES') : '—'}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${fin ? fin.toLocaleDateString('es-ES') : '—'}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${r.tipo || '—'}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${r.numPersonas || '—'}</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;text-align:center;">${noches}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${r.notas || ''}</td>
         </tr>`;
       }).join('');
       _pdfBase('📅 Reservas', `
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead><tr style="background:#7A9E7E;color:white;">
-            <th style="padding:6px 8px;text-align:left;">Solicitante</th>
-            <th style="padding:6px 8px;text-align:left;">Inicio</th>
-            <th style="padding:6px 8px;text-align:left;">Fin</th>
-            <th style="padding:6px 8px;text-align:left;">Tipo</th>
-            <th style="padding:6px 8px;text-align:left;">Pers.</th>
+            <th style="padding:6px 8px;text-align:left;">Quién</th>
+            <th style="padding:6px 8px;text-align:left;">Entrada</th>
+            <th style="padding:6px 8px;text-align:left;">Salida</th>
+            <th style="padding:6px 8px;text-align:center;">Noches</th>
             <th style="padding:6px 8px;text-align:left;">Notas</th>
           </tr></thead>
           <tbody>${filas}</tbody>
