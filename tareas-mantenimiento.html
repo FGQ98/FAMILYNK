@@ -552,13 +552,11 @@
       <div id="tipos-container"></div>
     </div>
 
-    <!-- Empty: sin dependencias definidas -->
-    <div id="empty-state" class="empty-state hidden">
-      <div class="empty-state-icon">🏠</div>
-      <div class="empty-state-title">Sin dependencias configuradas</div>
-      <div class="empty-state-text">
-        Primero define las zonas y dependencias del bien.<br>
-        <a href="#" id="link-zonas">Ir a Zonas →</a>
+    <!-- Info: sin dependencias definidas -->
+    <div id="empty-state" class="empty-state hidden" style="margin-bottom:20px;padding:16px;background:var(--cream-medium);border-radius:10px;border:1px dashed var(--sage-light);">
+      <div style="font-size:0.85rem;color:var(--text-light);text-align:center;">
+        💡 No hay zonas/dependencias configuradas. <a href="#" id="link-zonas" style="color:var(--sage-dark);">Ir a Zonas →</a><br>
+        <span style="font-size:0.8rem;color:var(--text-muted);">Puedes configurar tareas igualmente y asignar zonas después.</span>
       </div>
     </div>
   </main>
@@ -654,7 +652,7 @@
     const origen = params.get('origen') || 'mantenimiento';
 
     document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
-    document.getElementById('link-zonas').href = `habitaciones.html?id=${bienId}`;
+    document.getElementById('link-zonas').href = `zonas.html?id=${bienId}`;
 
     if (!bienId) {
       alert('No se especificó el bien');
@@ -684,9 +682,41 @@
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('bien-nombre').textContent = `· ${bienData.nombre || 'Sin nombre'}`;
 
-        // 2. Cargar dependencias desde colección habitaciones (fuente única)
-        const habSnap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
-        habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // 2. Cargar dependencias: intentar zonas→dependencias, luego habitaciones subcolección, luego array
+        habitacionesData = [];
+        
+        // Fuente 1: colección zonas + subcolección dependencias (nueva estructura)
+        try {
+          const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonas').get();
+          if (zonasSnap.size > 0) {
+            for (const zDoc of zonasSnap.docs) {
+              const zData = zDoc.data();
+              const depsSnap = await zDoc.ref.collection('dependencias').get();
+              depsSnap.docs.forEach(d => {
+                const dep = d.data();
+                habitacionesData.push({ id: d.id, zona: zData.nombre, ...dep });
+              });
+            }
+          }
+        } catch (e) { console.log('Sin colección zonas:', e.message); }
+        
+        // Fuente 2: subcolección habitaciones (estructura intermedia)
+        if (habitacionesData.length === 0) {
+          try {
+            const habSnap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
+            habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          } catch (e) { console.log('Sin subcolección habitaciones:', e.message); }
+        }
+        
+        // Fuente 3: array en documento del bien (estructura legacy)
+        if (habitacionesData.length === 0 && bienData.habitaciones?.length) {
+          habitacionesData = bienData.habitaciones.map((h, i) => ({
+            id: `legacy-${i}`,
+            nombre: typeof h === 'string' ? h : h.nombre,
+            tipo: h.tipo || 'otro',
+            zona: h.zona || ''
+          }));
+        }
 
         // Normalizar tipos legacy → nuevos
         const TIPO_LEGACY = { salas: 'salon', funcional: 'otro', otros: 'otro', servicio: 'aseo', vestuario: 'dormitorio', comedor: 'salon', camara: 'almacen', taller: 'almacen' };
@@ -719,8 +749,11 @@
         // 5. Render
         document.getElementById('loading').classList.add('hidden');
 
-        if (habitacionesData.length === 0) {
+        if (habitacionesData.length === 0 && Object.keys(tareasTipoData).length === 0) {
+          // Sin dependencias Y sin tareas previas: mostrar empty con opción de continuar
           document.getElementById('empty-state').classList.remove('hidden');
+          document.getElementById('content').classList.remove('hidden');
+          renderTipos(); // Mostrar tipos predefinidos igualmente
         } else {
           document.getElementById('content').classList.remove('hidden');
           renderTipos();
@@ -740,12 +773,14 @@
       let tiposConTareas = 0;
       let totalTareas = 0;
 
-      // Solo renderizar los 9 tipos oficiales que tengan dependencias o tareas configuradas
+      // Solo renderizar tipos que tengan dependencias, tareas, o mostrar todos si no hay ninguno
       const tiposOficiales = Object.keys(TIPOS_DEPENDENCIA);
+      const hayAlgunaDep = tiposEnBien.length > 0;
       const tiposARenderizar = tiposOficiales.filter(tipo => {
         const tieneDeps = tiposEnBien.includes(tipo);
         const tieneTareas = tareasTipoData[tipo] && tareasTipoData[tipo].some(t => t.activo);
-        return tieneDeps || tieneTareas;
+        // Si hay dependencias, mostrar solo los relevantes; si no hay, mostrar todos
+        return tieneDeps || tieneTareas || !hayAlgunaDep;
       });
 
       container.innerHTML = tiposARenderizar.map(tipo => {
