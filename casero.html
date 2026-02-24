@@ -1196,6 +1196,60 @@
       text-align: right;
     }
 
+    /* Tabla 3 columnas toma */
+    .toma-table-header {
+      display: grid;
+      grid-template-columns: 1fr 58px 62px 58px;
+      gap: 4px;
+      padding: 6px 8px;
+      background: var(--mayordomo-muted);
+      border-radius: var(--radius-sm);
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--mayordomo-dark);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .toma-table-header span:not(:first-child) { text-align: center; }
+    .toma-row {
+      display: grid;
+      grid-template-columns: 1fr 58px 62px 58px;
+      gap: 4px;
+      align-items: center;
+      padding: 5px 8px;
+      border-bottom: 1px solid var(--cream-dark);
+      font-size: 0.82rem;
+    }
+    .toma-row:last-child { border-bottom: none; }
+    .toma-row-name { 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      white-space: nowrap; 
+    }
+    .toma-row-name small { 
+      display: block; 
+      font-size: 0.7rem; 
+      color: var(--text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .toma-cell { text-align: center; font-weight: 600; font-size: 0.8rem; }
+    .toma-cell.basico { color: var(--text-muted); }
+    .toma-diff { 
+      text-align: center; 
+      font-weight: 700; 
+      font-size: 0.8rem; 
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+    .toma-diff.positivo { color: var(--success); background: rgba(125,181,154,0.1); }
+    .toma-diff.negativo { color: var(--error); background: rgba(212,105,90,0.1); }
+    .toma-diff.cero { color: var(--text-muted); }
+
     .no-access-icon { font-size: 4rem; opacity: 0.3; margin-bottom: 16px; }
     .no-access h2 { font-family: 'Quicksand', sans-serif; margin-bottom: 8px; }
     .no-access p { color: var(--text-muted); }
@@ -1514,9 +1568,12 @@
           <p style="text-align:center; padding:24px; color:var(--text-muted);">Cargando inventario...</p>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" onclick="cerrarModalToma()">Cancelar</button>
-        <button class="btn btn-primary" onclick="guardarToma()">Guardar toma</button>
+      <div class="modal-footer" style="display:flex;justify-content:space-between;">
+        <button class="btn btn-secondary" onclick="exportarTomaPDF()" style="font-size:0.8rem;">📄 Exportar PDF</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="cerrarModalToma()">Cancelar</button>
+          <button class="btn btn-primary" onclick="guardarToma()">Guardar toma</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3801,29 +3858,44 @@
                 <span>${numArticulos} art.</span>
               </div>
               <div class="toma-articulos" id="grupo-${lugarKey}-${grupoKey}">
-                <div class="item-list">`;
+                <div class="toma-table-header">
+                  <span>Artículo</span>
+                  <span>Básico</span>
+                  <span>Toma</span>
+                  <span>Dif.</span>
+                </div>`;
             
             if (grupo.articulos && grupo.articulos.length > 0) {
               grupo.articulos.forEach((art, idx) => {
                 const dataKey = `${lugarKey}.${grupoKey}.${idx}`;
                 const valorActual = art.actual || 0;
+                const basico = art.minimo || 0;
                 const unidad = art.unidad || 'uds';
+                const diff = valorActual - basico;
+                const diffClass = diff > 0 ? 'positivo' : diff < 0 ? 'negativo' : 'cero';
+                const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
                 tomaData[dataKey] = valorActual;
                 
-                html += `<div class="item-row no-hover">
-                  <div class="item-content">
-                    <div class="item-title">${art.nombre}</div>
-                    <div class="item-subtitle">${art.formato || ''}</div>
+                html += `<div class="toma-row">
+                  <div class="toma-row-name">
+                    ${art.nombre}
+                    ${art.formato ? `<small>${art.formato}</small>` : ''}
                   </div>
-                  <div class="toma-min">min ${art.minimo} ${unidad}</div>
-                  <input type="number" class="toma-cantidad" id="input-${dataKey}" value="${valorActual}" min="0" data-key="${dataKey}" data-min="${art.minimo}" onchange="actualizarCantidadToma(this)" oninput="colorearInputToma(this)">
+                  <div class="toma-cell basico">${basico} <small>${unidad}</small></div>
+                  <div class="toma-cell">
+                    <input type="number" class="toma-cantidad" id="input-${dataKey}" 
+                      value="${valorActual}" min="0" 
+                      data-key="${dataKey}" data-min="${basico}" data-unidad="${unidad}"
+                      onchange="actualizarCantidadToma(this)" oninput="actualizarDiffToma(this)">
+                  </div>
+                  <div class="toma-diff ${diffClass}" id="diff-${dataKey}">${diffStr}</div>
                 </div>`;
               });
             } else {
-              html += '<div class="item-row no-hover" style="justify-content:center; color:var(--text-muted);">Sin artículos</div>';
+              html += '<div style="text-align:center; padding:10px; color:var(--text-muted); font-size:0.82rem;">Sin artículos</div>';
             }
             
-            html += '</div></div></div>';
+            html += '</div></div>';
           }
         }
         
@@ -3864,6 +3936,21 @@
       const minimo = parseInt(input.dataset.min) || 0;
       input.classList.remove('bajo', 'ok');
       input.classList.add(valor < minimo ? 'bajo' : 'ok');
+    }
+
+    function actualizarDiffToma(input) {
+      const key = input.dataset.key;
+      const valor = parseInt(input.value) || 0;
+      const basico = parseInt(input.dataset.min) || 0;
+      const diff = valor - basico;
+      const diffEl = document.getElementById(`diff-${key}`);
+      if (diffEl) {
+        diffEl.textContent = diff > 0 ? `+${diff}` : `${diff}`;
+        diffEl.className = `toma-diff ${diff > 0 ? 'positivo' : diff < 0 ? 'negativo' : 'cero'}`;
+      }
+      colorearInputToma(input);
+      tomaData[key] = valor;
+      calcularEstadisticasToma();
     }
 
     function calcularEstadisticasToma() {
@@ -3944,6 +4031,127 @@
     function cerrarModalToma() {
       document.getElementById('modal-toma').classList.remove('active');
       tomaData = {};
+    }
+
+    function exportarTomaPDF() {
+      if (!inventarioToma || Object.keys(inventarioToma).length === 0) {
+        alert('No hay datos de inventario para exportar');
+        return;
+      }
+      if (typeof html2pdf === 'undefined') { alert('Generador PDF cargando, intenta de nuevo.'); return; }
+
+      const bienNombre = bienActual?.nombre || 'Bien';
+      const fecha = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+      const hora = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+      // Calcular estadísticas
+      let totalArt = 0, totalOk = 0, totalBajo = 0, totalAgotado = 0;
+
+      // Construir tabla HTML
+      let tablaHtml = '';
+      for (const [lugarKey, lugar] of Object.entries(inventarioToma)) {
+        tablaHtml += `<tr><td colspan="5" style="background:#5B8BA0;color:white;font-weight:700;padding:8px 10px;font-size:11px;">📍 ${lugar.nombre}</td></tr>`;
+        
+        if (lugar.grupos) {
+          for (const [grupoKey, grupo] of Object.entries(lugar.grupos)) {
+            tablaHtml += `<tr><td colspan="5" style="background:#EDE8E1;font-weight:600;padding:5px 10px;font-size:10px;color:#4A7285;">${grupo.nombre}</td></tr>`;
+            
+            if (grupo.articulos && grupo.articulos.length > 0) {
+              grupo.articulos.forEach((art, idx) => {
+                const dataKey = `${lugarKey}.${grupoKey}.${idx}`;
+                const basico = art.minimo || 0;
+                const actual = tomaData[dataKey] !== undefined ? tomaData[dataKey] : (art.actual || 0);
+                const diff = actual - basico;
+                const diffStr = diff > 0 ? `+${diff}` : `${diff}`;
+                const diffColor = diff > 0 ? '#7DB59A' : diff < 0 ? '#D4695A' : '#9A9A9A';
+                const bgColor = diff < 0 ? 'rgba(212,105,90,0.06)' : 'transparent';
+                const unidad = art.unidad || 'uds';
+                totalArt++;
+                if (actual <= 0) totalAgotado++;
+                else if (actual < basico) totalBajo++;
+                else totalOk++;
+
+                tablaHtml += `<tr style="background:${bgColor};">
+                  <td style="padding:4px 10px;font-size:10px;border-bottom:1px solid #f0ebe5;">
+                    ${art.nombre}${art.formato ? ' <span style="color:#9A9A9A;font-size:8px;">(' + art.formato + ')</span>' : ''}
+                  </td>
+                  <td style="text-align:center;font-size:10px;color:#9A9A9A;border-bottom:1px solid #f0ebe5;">${basico} ${unidad}</td>
+                  <td style="text-align:center;font-size:10px;font-weight:700;border-bottom:1px solid #f0ebe5;">${actual} ${unidad}</td>
+                  <td style="text-align:center;font-size:10px;font-weight:700;color:${diffColor};border-bottom:1px solid #f0ebe5;">${diffStr}</td>
+                  <td style="text-align:center;font-size:9px;border-bottom:1px solid #f0ebe5;">
+                    ${diff < 0 ? '⚠️' : diff === 0 ? '✅' : '🟢'}
+                  </td>
+                </tr>`;
+              });
+            }
+          }
+        }
+      }
+
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:'Nunito',sans-serif;padding:16px;max-width:580px;">
+          <!-- Header -->
+          <div style="text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #5B8BA0;">
+            <div style="font-family:'Quicksand',sans-serif;font-size:18px;font-weight:700;color:#5B8BA0;">FAMILYNK</div>
+            <div style="font-size:14px;font-weight:700;color:#3D3D3D;margin-top:4px;">📋 Toma de Inventario</div>
+            <div style="font-size:10px;color:#9A9A9A;">${bienNombre} · ${fecha} · ${hora}</div>
+          </div>
+
+          <!-- Resumen -->
+          <div style="display:flex;justify-content:center;gap:16px;margin-bottom:14px;padding:10px;background:#FAF5EF;border-radius:8px;">
+            <div style="text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:#7DB59A;">${totalOk}</div>
+              <div style="font-size:8px;color:#9A9A9A;text-transform:uppercase;">En stock</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:#E8B44D;">${totalBajo}</div>
+              <div style="font-size:8px;color:#9A9A9A;text-transform:uppercase;">Bajo mín.</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:#D4695A;">${totalAgotado}</div>
+              <div style="font-size:8px;color:#9A9A9A;text-transform:uppercase;">Agotados</div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:#3D3D3D;">${totalArt}</div>
+              <div style="font-size:8px;color:#9A9A9A;text-transform:uppercase;">Total</div>
+            </div>
+          </div>
+
+          <!-- Tabla -->
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#8B7355;color:white;">
+                <th style="padding:6px 10px;text-align:left;font-size:9px;font-weight:700;">ARTÍCULO</th>
+                <th style="padding:6px 6px;text-align:center;font-size:9px;font-weight:700;width:60px;">BÁSICO</th>
+                <th style="padding:6px 6px;text-align:center;font-size:9px;font-weight:700;width:60px;">TOMA</th>
+                <th style="padding:6px 6px;text-align:center;font-size:9px;font-weight:700;width:50px;">DIF.</th>
+                <th style="padding:6px 4px;text-align:center;font-size:9px;font-weight:700;width:28px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tablaHtml}
+            </tbody>
+          </table>
+
+          <!-- Footer -->
+          <div style="margin-top:14px;padding-top:8px;border-top:1px solid #eee;display:flex;justify-content:space-between;font-size:8px;color:#9A9A9A;">
+            <span>Generado: ${fecha} ${hora}</span>
+            <span>FAMILYNK · Toma de Inventario</span>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(div);
+
+      const fechaStr = new Date().toISOString().slice(0, 10);
+      const filename = `Toma-Inventario_${bienNombre.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '').trim().replace(/ +/g, '-')}_${fechaStr}.pdf`;
+
+      html2pdf().set({
+        margin: [6, 6, 6, 6],
+        filename: filename,
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save().then(() => document.body.removeChild(div));
     }
 
     // ========== REPARACIONES ==========
