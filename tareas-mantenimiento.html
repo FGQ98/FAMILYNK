@@ -663,12 +663,19 @@
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
 
-      await PermisosExt.init(db, user, bienId);
+      try {
+        if (typeof PermisosExt !== 'undefined') {
+          await PermisosExt.init(db, user, bienId);
+        }
+      } catch (e) { console.log('PermisosExt no disponible:', e.message); }
+
       await cargarDatos();
 
-      if (PermisosExt.esExterno) {
-        PermisosExt.aplicarUI('mantenimiento_tareas');
-      }
+      try {
+        if (typeof PermisosExt !== 'undefined' && PermisosExt.esExterno) {
+          PermisosExt.aplicarUI('mantenimiento_tareas');
+        }
+      } catch (e) { console.log('PermisosExt UI error:', e.message); }
     });
 
     // =============================================
@@ -682,33 +689,15 @@
         bienData = { id: bienDoc.id, ...bienDoc.data() };
         document.getElementById('bien-nombre').textContent = `· ${bienData.nombre || 'Sin nombre'}`;
 
-        // 2. Cargar dependencias: intentar zonas→dependencias, luego habitaciones subcolección, luego array
+        // 2. Cargar dependencias desde colección habitaciones (fuente: zonas.html)
         habitacionesData = [];
-        
-        // Fuente 1: colección zonas + subcolección dependencias (nueva estructura)
         try {
-          const zonasSnap = await db.collection('bienes').doc(bienId).collection('zonas').get();
-          if (zonasSnap.size > 0) {
-            for (const zDoc of zonasSnap.docs) {
-              const zData = zDoc.data();
-              const depsSnap = await zDoc.ref.collection('dependencias').get();
-              depsSnap.docs.forEach(d => {
-                const dep = d.data();
-                habitacionesData.push({ id: d.id, zona: zData.nombre, ...dep });
-              });
-            }
-          }
-        } catch (e) { console.log('Sin colección zonas:', e.message); }
+          const habSnap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
+          habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          console.log('✅ Habitaciones cargadas:', habitacionesData.length);
+        } catch (e) { console.log('Error cargando habitaciones:', e.message); }
         
-        // Fuente 2: subcolección habitaciones (estructura intermedia)
-        if (habitacionesData.length === 0) {
-          try {
-            const habSnap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
-            habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-          } catch (e) { console.log('Sin subcolección habitaciones:', e.message); }
-        }
-        
-        // Fuente 3: array en documento del bien (estructura legacy)
+        // Fallback: array en documento del bien (estructura legacy)
         if (habitacionesData.length === 0 && bienData.habitaciones?.length) {
           habitacionesData = bienData.habitaciones.map((h, i) => ({
             id: `legacy-${i}`,
@@ -716,6 +705,7 @@
             tipo: h.tipo || 'otro',
             zona: h.zona || ''
           }));
+          console.log('✅ Habitaciones legacy:', habitacionesData.length);
         }
 
         // Normalizar tipos legacy → nuevos
@@ -812,12 +802,32 @@
               <div class="tipo-card-content">
                 ${depsDeEsteTipo.length > 0 ? `
                   <div class="deps-en-bien">
-                    ${depsDeEsteTipo.map(d => `
-                      <span class="dep-chip">
-                        ${d.nombre || 'Sin nombre'}
-                        ${d.zona ? `<span class="dep-chip-zona">· ${d.zona}</span>` : ''}
-                      </span>
-                    `).join('')}
+                    ${(() => {
+                      // Agrupar por zona
+                      const porZona = {};
+                      depsDeEsteTipo.forEach(d => {
+                        const z = d.zona || 'Sin zona';
+                        if (!porZona[z]) porZona[z] = [];
+                        porZona[z].push(d);
+                      });
+                      const zonas = Object.keys(porZona);
+                      if (zonas.length <= 1 && zonas[0] === 'Sin zona') {
+                        // Sin zonas definidas, mostrar chips planos
+                        return depsDeEsteTipo.map(d => `
+                          <span class="dep-chip">${d.nombre || d.numero || 'Sin nombre'}</span>
+                        `).join('');
+                      }
+                      return zonas.map(z => `
+                        <div style="margin-bottom:6px;">
+                          <div style="font-size:0.72rem;font-weight:600;color:var(--mto-dark);margin-bottom:3px;">📍 ${z}</div>
+                          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                            ${porZona[z].map(d => `
+                              <span class="dep-chip">${d.nombre || d.numero || 'Sin nombre'}</span>
+                            `).join('')}
+                          </div>
+                        </div>
+                      `).join('');
+                    })()}
                   </div>
                 ` : ''}
                 ${tareas.length > 0 ? `
