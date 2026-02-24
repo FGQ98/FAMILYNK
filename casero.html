@@ -101,6 +101,48 @@
 
     .btn-logout:hover { background: rgba(255,255,255,0.25); }
 
+    /* Barra de navegación por vista */
+    .vista-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 8px 0;
+    }
+    .vista-nav-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--sage-dark);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      transition: background 0.2s;
+    }
+    .vista-nav-back:hover { background: var(--cream-medium); }
+    .vista-nav-back .nav-arrow { font-size: 1rem; }
+    .vista-nav-exit {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: 1.5px solid var(--terracotta);
+      color: var(--terracotta);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      transition: all 0.2s;
+    }
+    .vista-nav-exit:hover { background: var(--terracotta); color: white; }
+
     .btn-normas {
       background: rgba(255,255,255,0.15);
       border: none;
@@ -1265,6 +1307,10 @@
 
     <!-- VISTA 1: Landing de Compromisos -->
     <div id="vista-compromisos" class="hidden">
+      <div class="vista-nav">
+        <span></span>
+        <button class="vista-nav-exit" onclick="logout()">Salir ✕</button>
+      </div>
       <div class="compromisos-header">
         <h2 class="compromisos-titulo">Le recordamos sus compromisos:</h2>
       </div>
@@ -1328,9 +1374,12 @@
 
     <!-- VISTA 2: Selección de Bien -->
     <div id="vista-bienes" class="hidden">
-      <button class="btn-volver" onclick="volverACompromisos()">
-        ← Volver a compromisos
-      </button>
+      <div class="vista-nav">
+        <button class="vista-nav-back" onclick="volverACompromisos()">
+          <span class="nav-arrow">←</span> Compromisos
+        </button>
+        <button class="vista-nav-exit" onclick="logout()">Salir ✕</button>
+      </div>
       
       <h2 class="bienes-titulo">🏠 Bienes asignados</h2>
       <p class="bienes-subtitulo">Selecciona un bien para gestionar</p>
@@ -1340,9 +1389,12 @@
 
     <!-- VISTA 3: Panel del Bien (pestañas) -->
     <div id="vista-panel" class="hidden">
-      <button class="btn-volver" onclick="volverAListaBienes()">
-        ← Volver a la lista
-      </button>
+      <div class="vista-nav">
+        <button class="vista-nav-back" onclick="volverAListaBienes()">
+          <span class="nav-arrow">←</span> Mis bienes
+        </button>
+        <button class="vista-nav-exit" onclick="logout()">Salir ✕</button>
+      </div>
 
       <!-- Info del bien actual -->
       <div class="bien-info" id="bien-info">
@@ -1593,7 +1645,8 @@
         <button class="modal-close" onclick="document.getElementById('modal-reserva-detalle').classList.remove('active')">×</button>
       </div>
       <div class="modal-body" id="reserva-detalle-body" style="max-height: 60vh; overflow-y: auto;"></div>
-      <div class="modal-footer">
+      <div class="modal-footer" style="display:flex;justify-content:space-between;">
+        <button class="btn btn-secondary" onclick="generarPDFDetalleReserva()" style="font-size:0.8rem;">📄 Descargar PDF</button>
         <button class="btn btn-secondary" onclick="document.getElementById('modal-reserva-detalle').classList.remove('active')">Cerrar</button>
       </div>
     </div>
@@ -4382,10 +4435,13 @@
       });
     });
 
+    let reservaDetalleActual = null; // Reserva visualizada en modal
+
     // ========== VER DETALLE RESERVA ==========
     function verDetalleReserva(id) {
       const r = datosModulos.reservas.find(x => x.id === id);
       if (!r) return;
+      reservaDetalleActual = r;
       const inicio = parseDate(r.fechaInicio) || parseDate(r.entrada);
       const fin = parseDate(r.fechaFin) || parseDate(r.salida);
       const fmtFecha = (d) => d ? d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '—';
@@ -4566,6 +4622,41 @@
 
       document.getElementById('reserva-detalle-body').innerHTML = html;
       document.getElementById('modal-reserva-detalle').classList.add('active');
+    }
+
+    function generarPDFDetalleReserva() {
+      if (!reservaDetalleActual) return;
+      if (typeof html2pdf === 'undefined') { alert('Generador PDF cargando, intenta de nuevo en un momento.'); return; }
+      const r = reservaDetalleActual;
+      const contenido = document.getElementById('reserva-detalle-body').innerHTML;
+      const nombre = r.nombre || r.titulo || r.tipoNombre || 'Reserva';
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:'Nunito',sans-serif;padding:20px;max-width:600px;">
+          <div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #7A9E7E;">
+            <div style="font-family:'Quicksand',sans-serif;font-size:20px;font-weight:700;color:#7A9E7E;">FAMILYNK</div>
+            <div style="font-size:11px;color:#9A9A9A;">${bienNombre}</div>
+          </div>
+          <div style="font-size:16px;font-weight:700;color:#3D3D3D;margin-bottom:14px;">📅 ${nombre}</div>
+          <div style="font-size:13px;line-height:1.6;">${contenido}</div>
+          <div style="margin-top:20px;padding-top:10px;border-top:1px solid #eee;font-size:10px;color:#9A9A9A;text-align:center;">
+            Generado: ${new Date().toLocaleDateString('es-ES')} · FAMILYNK
+          </div>
+        </div>
+      `;
+      document.body.appendChild(div);
+      
+      const fechaStr = new Date().toISOString().slice(0,10);
+      const filename = `${nombre.replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '').trim().replace(/ +/g, '-')}_${fechaStr}.pdf`;
+      
+      html2pdf().set({
+        margin: [8, 8, 8, 8],
+        filename: filename,
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save().then(() => document.body.removeChild(div));
     }
 
     // ========== PDF GENERATORS ==========
@@ -5271,6 +5362,13 @@
       .onboarding-acciones { grid-template-columns: 1fr; }
       .inventario-item { padding: 8px 10px; }
       .inventario-nombre { font-size: 0.85rem; }
+      .header { padding: 12px 14px; }
+      .header-brand h1 { font-size: 1rem; }
+      .header-user-name { display: none; }
+      .btn-normas { font-size: 0.72rem; padding: 6px 10px; }
+      .btn-logout { padding: 6px 10px; font-size: 0.75rem; }
+      .vista-nav-back { font-size: 0.8rem; padding: 6px 10px; }
+      .vista-nav-exit { font-size: 0.75rem; padding: 5px 12px; }
     }
   </style>
 </body>
