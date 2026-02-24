@@ -189,6 +189,27 @@
       background: var(--cream-dark);
       color: var(--text-muted);
     }
+    .btn-editar-header {
+      margin-left: 8px;
+      background: var(--mto);
+      color: white;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      font-size: 1rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      box-shadow: 0 2px 6px rgba(91,139,160,0.3);
+    }
+    .btn-editar-header:hover { 
+      background: var(--mto-dark); 
+      transform: scale(1.1);
+    }
     .tipo-card-toggle {
       margin-left: 12px;
       font-size: 0.8rem;
@@ -659,40 +680,23 @@
       window.location.href = 'cgi.html';
     }
 
-    // Debug banner visible (quitar cuando funcione)
-    const _dbg = document.createElement('div');
-    _dbg.id = 'debug-banner';
-    _dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#222;color:#0f0;font-family:monospace;font-size:11px;padding:6px 10px;z-index:9999;max-height:120px;overflow-y:auto;';
-    _dbg.innerHTML = '🔧 v1020 | bienId=' + bienId + ' | estado: init...';
-    document.body.appendChild(_dbg);
-    function dbg(msg) { 
-      console.log('🔧', msg);
-      const el = document.getElementById('debug-banner');
-      if (el) el.innerHTML += '<br>' + msg;
-    }
-
     auth.onAuthStateChanged(async (user) => {
       if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
-      dbg('✅ Auth OK: ' + user.email);
 
       try {
         if (typeof PermisosExt !== 'undefined') {
           await PermisosExt.init(db, user, bienId);
-          dbg('✅ PermisosExt init OK, esExterno=' + PermisosExt.esExterno);
-        } else {
-          dbg('ℹ️ PermisosExt no cargado');
         }
-      } catch (e) { dbg('⚠️ PermisosExt error: ' + e.message); }
+      } catch (e) { console.log('PermisosExt no disponible:', e.message); }
 
       await cargarDatos();
 
       try {
         if (typeof PermisosExt !== 'undefined' && PermisosExt.esExterno) {
           PermisosExt.aplicarUI('mantenimiento_tareas');
-          dbg('⚠️ PermisosExt.aplicarUI ejecutado');
         }
-      } catch (e) { dbg('⚠️ PermisosExt UI error: ' + e.message); }
+      } catch (e) { console.log('PermisosExt UI error:', e.message); }
     });
 
     // =============================================
@@ -701,11 +705,9 @@
     async function cargarDatos() {
       try {
         // 1. Cargar bien
-        dbg('📥 Cargando bien ' + bienId + '...');
         const bienDoc = await db.collection('bienes').doc(bienId).get();
-        if (!bienDoc.exists) { dbg('❌ Bien NO existe'); alert('Bien no encontrado'); return; }
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
         bienData = { id: bienDoc.id, ...bienDoc.data() };
-        dbg('✅ Bien: ' + (bienData.nombre || 'sin nombre'));
         document.getElementById('bien-nombre').textContent = `· ${bienData.nombre || 'Sin nombre'}`;
 
         // 2. Cargar dependencias desde colección habitaciones (fuente: zonas.html)
@@ -714,7 +716,7 @@
           const habSnap = await db.collection('bienes').doc(bienId).collection('habitaciones').get();
           habitacionesData = habSnap.docs.map(d => ({ id: d.id, ...d.data() }));
           console.log('✅ Habitaciones cargadas:', habitacionesData.length);
-        } catch (e) { console.log('Error cargando habitaciones:', e.message); dbg('⚠️ Error hab: ' + e.message); }
+        } catch (e) { console.log('Error cargando habitaciones:', e.message); }
         
         // Fallback: array en documento del bien (estructura legacy)
         if (habitacionesData.length === 0 && bienData.habitaciones?.length) {
@@ -740,13 +742,11 @@
           const keys = Object.keys(TIPOS_DEPENDENCIA);
           return keys.indexOf(a) - keys.indexOf(b);
         });
-        dbg('🏠 Habs: ' + habitacionesData.length + ' | Tipos: ' + (tiposEnBien.join(',') || 'ninguno'));
 
         // 4. Cargar catálogo de tareas por tipo (colección configMto)
         const configDoc = await db.collection('bienes').doc(bienId)
           .collection('configMto').doc('tareasPorTipo').get();
         tareasTipoData = configDoc.exists ? configDoc.data() : {};
-        dbg('📋 Config: ' + (configDoc.exists ? Object.keys(tareasTipoData).length + ' tipos guardados' : 'vacío'));
 
         // Normalizar keys legacy en tareasTipoData
         Object.keys(tareasTipoData).forEach(k => {
@@ -759,7 +759,6 @@
 
         // 5. Render
         document.getElementById('loading').classList.add('hidden');
-        dbg('🎨 Rendering... hayDeps=' + (habitacionesData.length > 0) + ' hayTareas=' + (Object.keys(tareasTipoData).length > 0));
 
         if (habitacionesData.length === 0 && Object.keys(tareasTipoData).length === 0) {
           // Sin dependencias Y sin tareas previas: mostrar empty con opción de continuar
@@ -773,7 +772,6 @@
 
       } catch (error) {
         console.error('Error cargando datos:', error);
-        dbg('❌ ERROR GLOBAL: ' + error.message + ' | line: ' + (error.stack || '').split('\n')[1]);
         alert('Error al cargar: ' + error.message);
       }
     }
@@ -819,6 +817,7 @@
               <div class="tipo-card-badge ${tareas.length === 0 ? 'empty' : ''}">
                 ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''}
               </div>
+              <button class="btn-editar-header" onclick="event.stopPropagation(); abrirModal('${tipo}')" title="Configurar tareas">⚙️</button>
               <span class="tipo-card-toggle">▼</span>
             </div>
             <div class="tipo-card-body">
@@ -991,8 +990,7 @@
     // GUARDAR
     // =============================================
     async function guardarTareas() {
-      if (!editandoTipo) { dbg('❌ guardar: editandoTipo es null'); return; }
-      dbg('💾 Guardando tareas para: ' + editandoTipo);
+      if (!editandoTipo) return;
 
       try {
         // Recoger predefinidas
@@ -1016,11 +1014,9 @@
         tareasTipoData[editandoTipo] = tareas;
 
         // Guardar en Firebase (colección configMto)
-        dbg('📤 Guardando en Firebase... ' + tareas.length + ' tareas');
         await db.collection('bienes').doc(bienId)
           .collection('configMto').doc('tareasPorTipo')
           .set(tareasTipoData);
-        dbg('✅ Guardado OK');
 
         cerrarModal();
         renderTipos();
@@ -1028,7 +1024,6 @@
 
       } catch (error) {
         console.error('Error guardando:', error);
-        dbg('❌ Error guardando: ' + error.message);
         showToast('❌ Error al guardar', 'error');
       }
     }

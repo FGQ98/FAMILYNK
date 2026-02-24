@@ -4573,13 +4573,51 @@
 
       // === SERVICIO (formato por pase-día → roles) ===
       if (Object.keys(servicio).length > 0) {
-        let servicioHtml = '<div style="display:grid;gap:4px;">';
-        Object.entries(servicio).forEach(([k, v]) => {
-          const roles = Array.isArray(v) ? v.join(', ') : (typeof v === 'boolean' ? (v ? '✅' : '—') : v);
-          if (roles) servicioHtml += `<div style="font-size:0.82rem;padding:3px 8px;background:var(--cream-medium);border-radius:4px;"><b>${k}:</b> ${roles}</div>`;
-        });
-        servicioHtml += '</div>';
-        html += section('🧹', 'Servicio', servicioHtml);
+        const PASE_ICONS = { desayuno: '🍳', aperitivo: '🥂', comida: '🍽️', cena: '🌙' };
+        const PASE_LABELS = { desayuno: 'Desayuno', aperitivo: 'Aperitivo', comida: 'Comida', cena: 'Cena' };
+        
+        // Filtrar solo los que tienen roles asignados
+        const entradas = Object.entries(servicio)
+          .filter(([k, v]) => Array.isArray(v) && v.length > 0)
+          .sort(([a], [b]) => a.localeCompare(b));
+        
+        if (entradas.length > 0) {
+          // Agrupar por fecha
+          const porFecha = {};
+          entradas.forEach(([k, v]) => {
+            // Key format: "pase-YYYY-MM-DD" → split first segment as pase, rest as date
+            const firstDash = k.indexOf('-');
+            let pase, fecha;
+            if (firstDash > 0 && k.length > firstDash + 1) {
+              pase = k.substring(0, firstDash);
+              fecha = k.substring(firstDash + 1);
+            } else {
+              pase = k; fecha = '';
+            }
+            if (!porFecha[fecha]) porFecha[fecha] = [];
+            porFecha[fecha].push({ pase, roles: v });
+          });
+
+          let servicioHtml = '<div style="display:grid;gap:8px;">';
+          Object.entries(porFecha).sort(([a],[b]) => a.localeCompare(b)).forEach(([fecha, pases]) => {
+            const fechaStr = fecha && fecha.length === 10 
+              ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }) 
+              : fecha || '';
+            servicioHtml += `<div style="padding:6px 10px;background:var(--cream-medium);border-radius:6px;">`;
+            if (fechaStr) servicioHtml += `<div style="font-size:0.75rem;font-weight:700;color:var(--sage-dark);margin-bottom:4px;">📅 ${fechaStr}</div>`;
+            pases.forEach(({ pase, roles }) => {
+              const icon = PASE_ICONS[pase] || '🍴';
+              const label = PASE_LABELS[pase] || pase;
+              const rolesChips = roles.map(r => 
+                `<span style="display:inline-block;padding:1px 6px;background:white;border-radius:3px;font-size:0.75rem;margin:1px;">${r}</span>`
+              ).join('');
+              servicioHtml += `<div style="font-size:0.82rem;padding:2px 0;">${icon} <b>${label}:</b> ${rolesChips}</div>`;
+            });
+            servicioHtml += '</div>';
+          });
+          servicioHtml += '</div>';
+          html += section('🧹', `Servicio (${entradas.length} turnos)`, servicioHtml);
+        }
       }
 
       // === MENAJE ===
