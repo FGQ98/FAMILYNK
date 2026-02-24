@@ -4586,8 +4586,9 @@
       const todoMenaje = [...menaje, ...menajeAjuar];
       if (todoMenaje.length > 0) {
         const menajeHtml = todoMenaje.map(m => {
-          const label = typeof m === 'string' ? m : (m.nombre || m.item || '—');
-          return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${label}</span>`;
+          const label = typeof m === 'string' ? m : (m.articulo || m.nombre || m.item || '—');
+          const cant = (typeof m === 'object' && m.cantidad && m.cantidad > 1) ? ' ×' + m.cantidad : '';
+          return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${label}${cant}</span>`;
         }).join('');
         html += section('🍴', `Menaje (${todoMenaje.length})`, menajeHtml);
       }
@@ -4597,11 +4598,21 @@
         let prodHtml = '';
         if (productosAp.length > 0) {
           prodHtml += '<div style="font-size:0.78rem;font-weight:600;color:var(--sage-dark);margin-bottom:4px;">Aportan:</div>';
-          prodHtml += productosAp.map(p => `<div style="font-size:0.85rem;padding:2px 0;">✅ ${typeof p === 'string' ? p : (p.nombre || p.item || '—')}</div>`).join('');
+          prodHtml += productosAp.map(p => {
+            if (typeof p === 'string') return `<div style="font-size:0.85rem;padding:2px 0;">✅ ${p}</div>`;
+            const nombre = p.descripcion || p.nombre || p.item || '—';
+            const meta = [p.cantidad, p.notas].filter(Boolean).join(' · ');
+            return `<div style="font-size:0.85rem;padding:2px 0;">✅ ${nombre}${meta ? ' <span style="color:var(--text-muted);font-size:0.78rem;">(' + meta + ')</span>' : ''}</div>`;
+          }).join('');
         }
         if (productosSol.length > 0) {
           prodHtml += '<div style="font-size:0.78rem;font-weight:600;color:var(--terracotta);margin-top:6px;margin-bottom:4px;">Solicitan:</div>';
-          prodHtml += productosSol.map(p => `<div style="font-size:0.85rem;padding:2px 0;">🛒 ${typeof p === 'string' ? p : (p.nombre || p.item || '—')}</div>`).join('');
+          prodHtml += productosSol.map(p => {
+            if (typeof p === 'string') return `<div style="font-size:0.85rem;padding:2px 0;">🛒 ${p}</div>`;
+            const nombre = p.descripcion || p.nombre || p.item || '—';
+            const meta = [p.cantidad, p.notas].filter(Boolean).join(' · ');
+            return `<div style="font-size:0.85rem;padding:2px 0;">🛒 ${nombre}${meta ? ' <span style="color:var(--text-muted);font-size:0.78rem;">(' + meta + ')</span>' : ''}</div>`;
+          }).join('');
         }
         html += section('🛒', 'Productos', prodHtml);
       }
