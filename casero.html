@@ -2033,7 +2033,7 @@
       console.log('Cargando datos para bienId:', bienId);
       console.log('Permisos actuales:', permisosActuales);
 
-      // Reservas + Estancias + Solicitudes (permiso: calendario)
+      // Reservas + Estancias (permiso: calendario)
       if (permisosActuales.calendario?.ver || permisosActuales.reservas?.ver) {
         try {
           const snap = await db.collection('bienes').doc(bienId).collection('reservas').orderBy('fechaInicio', 'asc').get();
@@ -2057,32 +2057,6 @@
             console.log('✅ Estancias cargadas:', estSnap.size);
           }
         } catch (e) { console.log('Sin colección estancias:', e.message); }
-        
-        // También cargar solicitudes aprobadas/pendientes que afecten a este bien
-        try {
-          // Intentar con bienId
-          let solSnap = await db.collection('solicitudes')
-            .where('bienId', '==', bienId).get();
-          // Si no encuentra, intentar con bien.id
-          if (solSnap.size === 0) {
-            solSnap = await db.collection('solicitudes')
-              .where('bien', '==', bienId).get();
-          }
-          if (solSnap.size > 0) {
-            const idsExistentes = new Set(datosModulos.reservas.map(r => r.id));
-            solSnap.docs.forEach(d => {
-              if (!idsExistentes.has(d.id)) {
-                const data = d.data();
-                datosModulos.reservas.push({ 
-                  id: d.id, ...data, _col: 'solicitudes',
-                  estado: data.estado || 'borrador',
-                  nombre: data.nombre || data.titulo || data.motivo || 'Solicitud'
-                });
-              }
-            });
-            console.log('✅ Solicitudes cargadas:', solSnap.size);
-          }
-        } catch (e) { console.log('Sin solicitudes o error:', e.message); }
       }
 
       // Inventario (permiso: tomaInventario)
@@ -4453,94 +4427,132 @@
       // === DATOS BÁSICOS ===
       let html = '';
       html += field('Quién / Nombre', quien);
-      if (r.motivo) html += field('Motivo', r.motivo);
+      if (r.solicitadoPorNombre) html += field('Solicitado por', r.solicitadoPorNombre + (r.solicitadoPorNido ? ` (${r.solicitadoPorNido})` : ''));
+      if (r.motivo || r.descripcion) html += field('Motivo', r.motivo || r.descripcion);
       html += field('Entrada', fmtFecha(inicio) + (r.horaInicio ? ` · ${r.horaInicio}h` : ''));
       html += field('Salida', fmtFecha(fin) + (r.horaFin ? ` · ${r.horaFin}h` : ''));
       if (nochesStr) html += field('Duración', nochesStr);
       if (r.numPersonas) html += field('Nº personas', r.numPersonas);
       if (estadoLabel) html += field('Estado', estadoLabel);
+      if (r.tipoReservaNombre) html += field('Tipo', r.tipoReservaNombre);
+
+      // Resolver datos de preparación (pueden estar en raíz O dentro de r.preparacion)
+      const prep = r.preparacion || {};
+      const zonas = r.zonas || prep.zonas || [];
+      const zonasDesglose = r.zonasDesglose || prep.zonasDesglose || {};
+      const personas = r.personas || prep.personas || {};
+      const menus = r.menus || prep.menus || {};
+      const servicio = r.servicio || prep.servicio || {};
+      const menaje = r.menaje || prep.menaje || [];
+      const menajeAjuar = prep.menajeAjuar || [];
+      const productosSol = prep.productosSolicitados || r.productos || [];
+      const productosAp = prep.productosAportados || [];
+      const tareas = r.tareas || prep.tareas || [];
+      const notas = r.notas || prep.notas || '';
 
       // === ZONAS ===
-      if (r.zonas && r.zonas.length > 0) {
-        const zonasHtml = r.zonas.map(z => {
-          if (typeof z === 'string') return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${z}</span>`;
-          return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${z.nombre || z.zona || z.id || '—'}</span>`;
+      if (zonas.length > 0) {
+        const zonasHtml = zonas.map(z => {
+          const label = typeof z === 'string' ? z : (z.nombre || z.id || '—');
+          const deps = zonasDesglose[typeof z === 'string' ? z : z.id];
+          const depsStr = deps && deps.length > 0 ? ` <span style="font-size:0.7rem;color:var(--text-muted);">(${deps.length} dep.)</span>` : '';
+          return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${label}${depsStr}</span>`;
         }).join('');
-        html += section('🏠', 'Zonas / Habitaciones', zonasHtml);
-      }
-      if (r.zonasDesglose && Object.keys(r.zonasDesglose).length > 0) {
-        const desglose = Object.entries(r.zonasDesglose).map(([zona, info]) => {
-          const detalle = typeof info === 'object' ? JSON.stringify(info).replace(/[{}"]/g, '').replace(/,/g, ', ') : info;
-          return `<div style="font-size:0.82rem;padding:2px 0;"><b>${zona}:</b> ${detalle}</div>`;
-        }).join('');
-        html += section('📋', 'Desglose por zona', desglose);
+        html += section('🏠', 'Zonas', zonasHtml);
       }
 
-      // === PERSONAS ===
-      if (r.personas && Object.keys(r.personas).length > 0) {
-        const p = r.personas;
+      // === PERSONAS (formato por día) ===
+      if (Object.keys(personas).length > 0) {
         let personasHtml = '';
-        if (p.adultos) personasHtml += `<div style="font-size:0.85rem;">Adultos: <b>${p.adultos}</b></div>`;
-        if (p.ninos) personasHtml += `<div style="font-size:0.85rem;">Niños: <b>${p.ninos}</b></div>`;
-        if (p.bebes) personasHtml += `<div style="font-size:0.85rem;">Bebés: <b>${p.bebes}</b></div>`;
-        if (p.total) personasHtml += `<div style="font-size:0.85rem;">Total: <b>${p.total}</b></div>`;
-        // Campos extra
-        Object.entries(p).forEach(([k, v]) => {
-          if (!['adultos','ninos','bebes','total'].includes(k) && v) {
-            personasHtml += `<div style="font-size:0.85rem;">${k}: <b>${v}</b></div>`;
-          }
-        });
+        // Formato solicitud: { 'dateKey': { familiares, desayuno, comida, cena, duermen } }
+        const keys = Object.keys(personas).sort();
+        const esPorDia = keys.length > 0 && typeof personas[keys[0]] === 'object' && personas[keys[0]] !== null;
+        
+        if (esPorDia) {
+          personasHtml = '<div style="display:grid;gap:6px;">';
+          keys.forEach(k => {
+            const d = personas[k];
+            const fecha = k.length === 10 ? new Date(k + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }) : k;
+            const items = [];
+            if (d.familiares) items.push(`👥 ${d.familiares}`);
+            if (d.desayuno) items.push(`🌅 Desayuno: ${d.desayuno}`);
+            if (d.comida) items.push(`🍽️ Comida: ${d.comida}`);
+            if (d.cena) items.push(`🌙 Cena: ${d.cena}`);
+            if (d.duermen) items.push(`🛏️ Duermen: ${d.duermen}`);
+            if (items.length > 0) personasHtml += `<div style="font-size:0.82rem;padding:4px 8px;background:var(--cream-medium);border-radius:4px;"><b>${fecha}</b> — ${items.join(' · ')}</div>`;
+          });
+          personasHtml += '</div>';
+        } else {
+          // Formato simple: { adultos, ninos, ... }
+          Object.entries(personas).forEach(([k, v]) => {
+            if (v) personasHtml += `<div style="font-size:0.85rem;">${k}: <b>${v}</b></div>`;
+          });
+        }
         if (personasHtml) html += section('👥', 'Personas', personasHtml);
       }
 
-      // === MENÚS ===
-      if (r.menus && Object.keys(r.menus).length > 0) {
-        let menusHtml = '';
-        if (Array.isArray(r.menus)) {
-          menusHtml = r.menus.map(m => `<div style="font-size:0.85rem;padding:2px 0;">${typeof m === 'string' ? m : (m.nombre || m.dia || JSON.stringify(m))}</div>`).join('');
-        } else {
-          menusHtml = Object.entries(r.menus).map(([dia, info]) => {
-            const detalle = typeof info === 'object' ? Object.entries(info).map(([k,v]) => `${k}: ${v}`).join(' · ') : info;
-            return `<div style="font-size:0.85rem;padding:2px 0;"><b>${dia}:</b> ${detalle}</div>`;
-          }).join('');
-        }
-        if (menusHtml) html += section('🍽️', 'Menús', menusHtml);
+      // === MENÚS (formato por pase-día) ===
+      if (Object.keys(menus).length > 0) {
+        let menusHtml = '<div style="display:grid;gap:4px;">';
+        const menuKeys = Object.keys(menus).sort();
+        menuKeys.forEach(k => {
+          const m = menus[k];
+          if (typeof m === 'object' && m !== null) {
+            // Formato: 'comida-2026-03-15' → { especial: true, descripcion: '...' }
+            const parts = k.split('-');
+            const pase = parts[0] || k;
+            const fecha = parts.length > 1 ? parts.slice(1).join('-') : '';
+            const fechaStr = fecha ? new Date(fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+            const label = `${pase}${fechaStr ? ' · ' + fechaStr : ''}`;
+            const desc = m.descripcion || '';
+            const especial = m.especial ? ' ⭐' : '';
+            if (desc || m.especial) menusHtml += `<div style="font-size:0.82rem;padding:3px 8px;background:var(--cream-medium);border-radius:4px;"><b>${label}</b>${especial}${desc ? ': ' + desc : ''}</div>`;
+          } else {
+            menusHtml += `<div style="font-size:0.82rem;padding:2px 0;">${k}: ${m}</div>`;
+          }
+        });
+        menusHtml += '</div>';
+        html += section('🍽️', 'Menús', menusHtml);
       }
 
-      // === SERVICIO ===
-      if (r.servicio && Object.keys(r.servicio).length > 0) {
-        let servicioHtml = '';
-        if (typeof r.servicio === 'string') {
-          servicioHtml = `<div style="font-size:0.85rem;">${r.servicio}</div>`;
-        } else {
-          servicioHtml = Object.entries(r.servicio).map(([k, v]) => 
-            `<div style="font-size:0.85rem;padding:2px 0;"><b>${k}:</b> ${typeof v === 'boolean' ? (v ? '✅' : '—') : v}</div>`
-          ).join('');
-        }
-        if (servicioHtml) html += section('🧹', 'Servicio', servicioHtml);
+      // === SERVICIO (formato por pase-día → roles) ===
+      if (Object.keys(servicio).length > 0) {
+        let servicioHtml = '<div style="display:grid;gap:4px;">';
+        Object.entries(servicio).forEach(([k, v]) => {
+          const roles = Array.isArray(v) ? v.join(', ') : (typeof v === 'boolean' ? (v ? '✅' : '—') : v);
+          if (roles) servicioHtml += `<div style="font-size:0.82rem;padding:3px 8px;background:var(--cream-medium);border-radius:4px;"><b>${k}:</b> ${roles}</div>`;
+        });
+        servicioHtml += '</div>';
+        html += section('🧹', 'Servicio', servicioHtml);
       }
 
       // === MENAJE ===
-      if (r.menaje && r.menaje.length > 0) {
-        const menajeHtml = r.menaje.map(m => {
-          if (typeof m === 'string') return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${m}</span>`;
-          return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${m.nombre || m.item || '—'}${m.cantidad ? ' ×' + m.cantidad : ''}</span>`;
+      const todoMenaje = [...menaje, ...menajeAjuar];
+      if (todoMenaje.length > 0) {
+        const menajeHtml = todoMenaje.map(m => {
+          const label = typeof m === 'string' ? m : (m.nombre || m.item || '—');
+          return `<span style="display:inline-block;padding:3px 8px;background:var(--cream-medium);border-radius:4px;font-size:0.82rem;margin:2px;">${label}</span>`;
         }).join('');
-        html += section('🍴', 'Menaje', menajeHtml);
+        html += section('🍴', `Menaje (${todoMenaje.length})`, menajeHtml);
       }
 
       // === PRODUCTOS ===
-      if (r.productos && r.productos.length > 0) {
-        const prodHtml = r.productos.map(p => {
-          if (typeof p === 'string') return `<div style="font-size:0.85rem;padding:2px 0;">· ${p}</div>`;
-          return `<div style="font-size:0.85rem;padding:2px 0;">· ${p.nombre || p.item || '—'}${p.cantidad ? ' ×' + p.cantidad : ''}</div>`;
-        }).join('');
+      if (productosSol.length > 0 || productosAp.length > 0) {
+        let prodHtml = '';
+        if (productosAp.length > 0) {
+          prodHtml += '<div style="font-size:0.78rem;font-weight:600;color:var(--sage-dark);margin-bottom:4px;">Aportan:</div>';
+          prodHtml += productosAp.map(p => `<div style="font-size:0.85rem;padding:2px 0;">✅ ${typeof p === 'string' ? p : (p.nombre || p.item || '—')}</div>`).join('');
+        }
+        if (productosSol.length > 0) {
+          prodHtml += '<div style="font-size:0.78rem;font-weight:600;color:var(--terracotta);margin-top:6px;margin-bottom:4px;">Solicitan:</div>';
+          prodHtml += productosSol.map(p => `<div style="font-size:0.85rem;padding:2px 0;">🛒 ${typeof p === 'string' ? p : (p.nombre || p.item || '—')}</div>`).join('');
+        }
         html += section('🛒', 'Productos', prodHtml);
       }
 
       // === TAREAS ===
-      if (r.tareas && r.tareas.length > 0) {
-        const tareasHtml = r.tareas.map(t => {
+      if (tareas.length > 0) {
+        const tareasHtml = tareas.map(t => {
           if (typeof t === 'string') return `<div style="font-size:0.85rem;padding:2px 0;">☐ ${t}</div>`;
           return `<div style="font-size:0.85rem;padding:2px 0;">☐ ${t.nombre || t.titulo || t.descripcion || '—'}${t.asignado ? ' → ' + t.asignado : ''}</div>`;
         }).join('');
@@ -4548,8 +4560,8 @@
       }
 
       // === NOTAS ===
-      if (r.notas) {
-        html += field('Notas', `<span style="font-weight:400;white-space:pre-wrap;">${r.notas}</span>`);
+      if (notas) {
+        html += field('Notas', `<span style="font-weight:400;white-space:pre-wrap;">${notas}</span>`);
       }
 
       document.getElementById('reserva-detalle-body').innerHTML = html;
