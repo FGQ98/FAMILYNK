@@ -209,6 +209,42 @@
     .reparto-nombre-input { margin-top: 8px; }
     .select-all-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--cream-medium); border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
     .select-all-bar:hover { background: var(--cream-dark); }
+
+    /* Reparto: importe calculado y datos de pago */
+    .reparto-participante-importe {
+      font-family: 'Quicksand'; font-weight: 700; font-size: 0.85rem;
+      color: var(--addon-color); min-width: 75px; text-align: right; white-space: nowrap;
+    }
+    .reparto-pago-row {
+      display: flex; align-items: center; gap: 8px; margin-top: 6px; width: 100%;
+    }
+    .reparto-pago-tipo {
+      padding: 5px 8px; border: 1px solid var(--cream-dark); border-radius: var(--radius-sm);
+      font-family: 'Nunito'; font-size: 0.8rem; background: var(--cream-medium); min-width: 90px;
+    }
+    .reparto-pago-tipo:focus { outline: none; border-color: var(--addon-color); }
+    .reparto-pago-input {
+      flex: 1; padding: 5px 8px; border: 1px solid var(--cream-dark); border-radius: var(--radius-sm);
+      font-family: 'Nunito'; font-size: 0.82rem; background: var(--cream-medium);
+    }
+    .reparto-pago-input:focus { outline: none; border-color: var(--addon-color); }
+    .reparto-pago-input.pago-error { border-color: var(--error); background: var(--error-muted); }
+    .reparto-pago-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* Historial: chips con importe y pago */
+    .reparto-chip-importe { font-family: 'Quicksand'; font-weight: 700; color: var(--addon-color); font-size: 0.76rem; }
+    .reparto-chip-pago { font-size: 0.68rem; color: var(--text-muted); display: block; margin-top: 1px; }
+
+    /* Botón PDF en tarjeta reparto */
+    .reparto-card-actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+    .btn-pdf-reparto {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 10px; background: white; color: var(--addon-color);
+      border: 1.5px solid var(--addon-color); border-radius: 6px;
+      font-family: 'Nunito'; font-size: 0.75rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .btn-pdf-reparto:hover { background: var(--addon-color); color: white; }
   </style>
 </head>
 <body>
@@ -971,9 +1007,15 @@
 
       container.innerHTML = repartosGuardados.map(r => {
         const fecha = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate().toLocaleDateString('es-ES') : '';
-        const participantes = (r.participantes || []).map(p =>
-          `<span class="reparto-chip">${p.nombre} <span class="reparto-chip-pct">${p.porcentaje}%</span></span>`
-        ).join('');
+        const participantes = (r.participantes || []).map(p => {
+          const importeStr = p.importe ? fN(p.importe) + ' €' : '';
+          const pagoIcon = p.tipoPago === 'bizum' ? '📱' : '🏦';
+          const pagoStr = p.datosPago ? (p.tipoPago === 'iban' ? formatIBAN(p.datosPago) : p.datosPago) : '';
+          return `<span class="reparto-chip" style="flex-direction:column;align-items:flex-start;gap:1px;">
+            <span>${p.nombre} <span class="reparto-chip-pct">${p.porcentaje}%</span> <span class="reparto-chip-importe">${importeStr}</span></span>
+            ${pagoStr ? `<span class="reparto-chip-pago">${pagoIcon} ${pagoStr}</span>` : ''}
+          </span>`;
+        }).join('');
 
         return `<div class="reparto-card" onclick="editarReparto('${r.id}')">
           <div class="reparto-card-header">
@@ -982,6 +1024,9 @@
           </div>
           <div class="reparto-card-fecha">${fecha} · ${(r.gastosIds || []).length} gastos</div>
           <div class="reparto-card-participantes" style="margin-top:6px;">${participantes}</div>
+          <div class="reparto-card-actions">
+            <button class="btn-pdf-reparto" onclick="event.stopPropagation(); generarPDFReparto('${r.id}')">📄 PDF Liquidación</button>
+          </div>
         </div>`;
       }).join('');
     }
@@ -1011,7 +1056,11 @@
       if (!r) return;
 
       editandoRepartoId = id;
-      repartoParticipantes = (r.participantes || []).map(p => ({ ...p }));
+      repartoParticipantes = (r.participantes || []).map(p => ({
+        ...p,
+        tipoPago: p.tipoPago || 'iban',
+        datosPago: p.datosPago || ''
+      }));
 
       // Seleccionar los gastos del reparto
       repartoSeleccionados.clear();
@@ -1123,15 +1172,36 @@
         return;
       }
 
+      // Calcular total de gastos seleccionados
+      const selGastos = gastos.filter(g => repartoSeleccionados.has(g.id));
+      const totalImporte = selGastos.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
+
       let html = '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="btn btn-secondary btn-sm" onclick="repartoLineal()">↔️ Lineal</button></div>';
 
       repartoParticipantes.forEach((p, i) => {
-        html += `<div class="reparto-participante-row">
+        const pct = parseFloat(p.porcentaje) || 0;
+        const importeCalc = parseFloat(((totalImporte * pct) / 100).toFixed(2));
+        const tipoPago = p.tipoPago || 'iban';
+        const datosPago = p.datosPago || '';
+
+        html += `<div class="reparto-participante-row" style="flex-wrap:wrap;">
           <span class="reparto-participante-nombre">${p.nombre}</span>
           <input type="number" class="reparto-participante-pct" value="${p.porcentaje}" min="0" max="100" step="0.5"
             onchange="updatePorcentaje(${i}, this.value)" oninput="updatePorcentaje(${i}, this.value)">
           <span style="font-size:0.85rem;color:var(--text-muted);">%</span>
+          <span class="reparto-participante-importe">${pct > 0 ? fN(importeCalc) + ' €' : '—'}</span>
           <button class="reparto-participante-remove" onclick="removeParticipante(${i})">✕</button>
+          <div class="reparto-pago-row">
+            <select class="reparto-pago-tipo" onchange="updateTipoPago(${i}, this.value)">
+              <option value="iban" ${tipoPago === 'iban' ? 'selected' : ''}>🏦 IBAN</option>
+              <option value="bizum" ${tipoPago === 'bizum' ? 'selected' : ''}>📱 Bizum</option>
+            </select>
+            <input type="text" class="reparto-pago-input" id="pago-input-${i}"
+              value="${tipoPago === 'iban' ? formatIBAN(datosPago) : datosPago}"
+              placeholder="${tipoPago === 'iban' ? 'ES00 0000 0000 0000 0000' : 'Nº móvil (9 dígitos)'}"
+              oninput="updateDatosPago(${i}, this.value)">
+          </div>
+          <div class="reparto-pago-hint">${tipoPago === 'iban' ? 'IBAN: código país + 20 dígitos' : 'Teléfono móvil para Bizum'}</div>
         </div>`;
       });
 
@@ -1144,6 +1214,50 @@
       const el = document.getElementById('reparto-sum-pct');
       el.textContent = total.toFixed(1).replace('.0', '') + '%';
       el.className = 'reparto-sum-valor ' + (Math.abs(total - 100) < 0.01 ? 'ok' : 'error');
+    }
+
+    // ===== REPARTO: DATOS DE PAGO =====
+    function updateTipoPago(index, valor) {
+      repartoParticipantes[index].tipoPago = valor;
+      repartoParticipantes[index].datosPago = '';
+      renderParticipantesModal();
+    }
+
+    function updateDatosPago(index, valor) {
+      const tipo = repartoParticipantes[index].tipoPago || 'iban';
+      let limpio;
+      if (tipo === 'iban') {
+        limpio = valor.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (limpio.length > 24) limpio = limpio.substring(0, 24);
+      } else {
+        limpio = valor.replace(/[^0-9]/g, '');
+        if (limpio.length > 9) limpio = limpio.substring(0, 9);
+      }
+      repartoParticipantes[index].datosPago = limpio;
+
+      // Feedback visual sin re-render (no perder foco)
+      const inp = document.getElementById('pago-input-' + index);
+      if (inp) {
+        if (tipo === 'iban') inp.value = formatIBAN(limpio);
+        else inp.value = limpio;
+        inp.classList.toggle('pago-error', limpio.length > 0 && !validarDatosPago(tipo, limpio));
+      }
+    }
+
+    function validarDatosPago(tipo, valor) {
+      if (!valor) return false;
+      if (tipo === 'iban') {
+        const limpio = valor.replace(/\s/g, '').toUpperCase();
+        return /^[A-Z]{2}\d{20,22}$/.test(limpio);
+      } else {
+        return /^[6-9]\d{8}$/.test(valor);
+      }
+    }
+
+    function formatIBAN(valor) {
+      if (!valor) return '';
+      const limpio = valor.replace(/\s/g, '').toUpperCase();
+      return limpio.match(/.{1,4}/g)?.join(' ') || limpio;
     }
 
     // ===== REPARTO: GUARDAR / ELIMINAR =====
@@ -1168,7 +1282,9 @@
         participantes: repartoParticipantes.map(p => ({
           nombre: p.nombre,
           porcentaje: parseFloat(p.porcentaje) || 0,
-          importe: parseFloat(((totalImporte * (parseFloat(p.porcentaje) || 0)) / 100).toFixed(2))
+          importe: parseFloat(((totalImporte * (parseFloat(p.porcentaje) || 0)) / 100).toFixed(2)),
+          tipoPago: p.tipoPago || 'iban',
+          datosPago: (p.datosPago || '').replace(/\s/g, '').toUpperCase()
         })),
         fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
       };
@@ -1201,6 +1317,122 @@
         await cargarRepartos();
         renderRepartoHistorial();
       } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    // ========== PDF LIQUIDACIÓN DE REPARTO ==========
+    function generarPDFReparto(repartoId) {
+      const r = repartosGuardados.find(x => x.id === repartoId);
+      if (!r) { alert('Reparto no encontrado'); return; }
+
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      const fecha = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate().toLocaleDateString('es-ES') : new Date().toLocaleDateString('es-ES');
+      const selGastos = gastos.filter(g => (r.gastosIds || []).includes(g.id));
+      const totalImporte = r.totalImporte || selGastos.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
+
+      // ── BLOQUE 1: Identificación ──
+      const bloque1 = `
+        <div style="margin-bottom:24px;">
+          <div style="background:#8B7355;color:white;padding:10px 16px;border-radius:6px 6px 0 0;font-weight:700;font-size:14px;">
+            📋 Identificación del reparto
+          </div>
+          <div style="border:1px solid #E5DDD3;border-top:none;border-radius:0 0 6px 6px;padding:14px 16px;">
+            <table style="width:100%;font-size:12px;border-collapse:collapse;">
+              <tr><td style="padding:4px 0;color:#888;width:140px;">Nombre del reparto</td><td style="padding:4px 0;font-weight:700;">${r.nombre || 'Sin nombre'}</td></tr>
+              <tr><td style="padding:4px 0;color:#888;">Bien asociado</td><td style="padding:4px 0;">${bienNombre}</td></tr>
+              <tr><td style="padding:4px 0;color:#888;">Fecha de creación</td><td style="padding:4px 0;">${fecha}</td></tr>
+              <tr><td style="padding:4px 0;color:#888;">Nº de gastos incluidos</td><td style="padding:4px 0;">${selGastos.length}</td></tr>
+              <tr><td style="padding:4px 0;color:#888;font-weight:700;">Importe total</td><td style="padding:4px 0;font-weight:700;font-size:14px;color:#8B7355;">${fN(totalImporte)} €</td></tr>
+            </table>
+          </div>
+        </div>`;
+
+      // ── BLOQUE 2: Detalle de gastos ──
+      let filasGastos = selGastos.map(g => `<tr>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:11px;">${g.fecha || '-'}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;">${g.concepto || '-'}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:11px;">${CAT_LABELS[g.categoria] || g.categoria || '-'}</td>
+        <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${fN(parseFloat(g.importe) || 0)} €</td>
+      </tr>`).join('');
+
+      if (!filasGastos) {
+        filasGastos = '<tr><td colspan="4" style="padding:12px;text-align:center;color:#aaa;">Gastos no disponibles en la sesión actual</td></tr>';
+      }
+
+      const bloque2 = `
+        <div style="margin-bottom:24px;">
+          <div style="background:#7A9E7E;color:white;padding:10px 16px;border-radius:6px 6px 0 0;font-weight:700;font-size:14px;">
+            💶 Detalle de gastos incluidos
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #E5DDD3;border-top:none;">
+            <thead><tr style="background:#F5F0E8;">
+              <th style="padding:6px 8px;text-align:left;font-size:11px;">Fecha</th>
+              <th style="padding:6px 8px;text-align:left;">Concepto</th>
+              <th style="padding:6px 8px;text-align:left;font-size:11px;">Categoría</th>
+              <th style="padding:6px 8px;text-align:right;">Importe</th>
+            </tr></thead>
+            <tbody>${filasGastos}</tbody>
+            <tfoot><tr style="background:#F5F0E8;font-weight:700;">
+              <td colspan="3" style="padding:8px;text-align:right;">TOTAL</td>
+              <td style="padding:8px;text-align:right;color:#8B7355;">${fN(totalImporte)} €</td>
+            </tr></tfoot>
+          </table>
+        </div>`;
+
+      // ── BLOQUE 3: Asignación por participante ──
+      let filasParticipantes = (r.participantes || []).map(p => {
+        const pagoIcon = p.tipoPago === 'bizum' ? '📱 Bizum' : '🏦 IBAN';
+        const pagoStr = p.datosPago ? (p.tipoPago === 'iban' ? formatIBAN(p.datosPago) : p.datosPago) : '—';
+        return `<tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;font-weight:600;">${p.nombre}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${p.porcentaje}%</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;font-weight:700;color:#8B7355;">${fN(p.importe || 0)} €</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;font-size:11px;">${pagoIcon}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;font-size:11px;font-family:monospace;">${pagoStr}</td>
+        </tr>`;
+      }).join('');
+
+      const bloque3 = `
+        <div style="margin-bottom:24px;">
+          <div style="background:#C17757;color:white;padding:10px 16px;border-radius:6px 6px 0 0;font-weight:700;font-size:14px;">
+            👥 Asignación del reparto
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid #E5DDD3;border-top:none;">
+            <thead><tr style="background:#F5F0E8;">
+              <th style="padding:6px 8px;text-align:left;">Participante</th>
+              <th style="padding:6px 8px;text-align:center;">%</th>
+              <th style="padding:6px 8px;text-align:right;">Importe</th>
+              <th style="padding:6px 8px;text-align:left;">Medio</th>
+              <th style="padding:6px 8px;text-align:left;">Cuenta / Teléfono</th>
+            </tr></thead>
+            <tbody>${filasParticipantes}</tbody>
+          </table>
+        </div>`;
+
+      // ── Montar PDF ──
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <h2 style="margin:0;color:#8B7355;">📊 Liquidación de Reparto</h2>
+            <p style="margin:4px 0;font-size:13px;color:#888;">${bienNombre}</p>
+            <p style="margin:2px 0;font-size:11px;color:#aaa;">Generado: ${new Date().toLocaleDateString('es-ES')}</p>
+          </div>
+          ${bloque1}
+          ${bloque2}
+          ${bloque3}
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Liquidación de Reparto</div>
+        </div>
+      `;
+
+      const nombreArchivo = 'liquidacion-' + (r.nombre || 'reparto').replace(/[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ ]/g, '').replace(/\s+/g, '_');
+
+      html2pdf().set({
+        margin: [10, 10, 15, 10],
+        filename: nombreArchivo + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save();
     }
 
     // ========== PDF DESCARGA DIRECTA ==========
