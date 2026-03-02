@@ -446,7 +446,7 @@
         <div style="overflow-x:auto;">
           <table class="lineas-table" id="prop-lineas-table">
             <thead><tr>
-              <th style="min-width:160px;">Concepto</th><th>Uds</th><th>Días</th><th>Precio</th><th>Dto%</th><th>IVA%</th><th>Total</th><th></th>
+              <th style="min-width:320px;">Concepto</th><th>Uds</th><th>Días</th><th>Precio</th><th>Dto%</th><th>IVA%</th><th>Total</th><th></th>
             </tr></thead>
             <tbody id="prop-lineas-body"></tbody>
             <tfoot>
@@ -501,7 +501,7 @@
         <div style="overflow-x:auto;">
           <table class="lineas-table" id="fact-lineas-table">
             <thead><tr>
-              <th style="min-width:160px;">Concepto</th><th>Uds</th><th>Días</th><th>Precio</th><th>Dto%</th><th>IVA%</th><th>Total</th><th></th>
+              <th style="min-width:320px;">Concepto</th><th>Uds</th><th>Días</th><th>Precio</th><th>Dto%</th><th>IVA%</th><th>Total</th><th></th>
             </tr></thead>
             <tbody id="fact-lineas-body"></tbody>
             <tfoot>
@@ -963,7 +963,7 @@
       const tbody = document.getElementById('prop-lineas-body');
       const srvOptions = servicios.map(s => `<option value="${s.nombre}">${s.icono||''} ${s.nombre}</option>`).join('');
       tbody.innerHTML = propLineas.map((l, i) => `<tr>
-        <td><input list="srv-list" class="form-input" value="${l.concepto}" onchange="propLineas[${i}].concepto=this.value" style="min-width:140px;"></td>
+        <td><input list="srv-list" class="form-input" value="${l.concepto}" onchange="propLineas[${i}].concepto=this.value;importarPrecioProp(${i})" style="min-width:300px;"></td>
         <td><input type="number" min="0" step="1" value="${l.uds}" onchange="propLineas[${i}].uds=+this.value;calcPropTotales()"></td>
         <td><input type="number" min="0" step="1" value="${l.dias}" onchange="propLineas[${i}].dias=+this.value;calcPropTotales()"></td>
         <td><input type="number" min="0" step="0.01" value="${l.precio}" onchange="propLineas[${i}].precio=+this.value;calcPropTotales()"></td>
@@ -982,6 +982,40 @@
       const base = (l.uds || 1) * (l.dias || 1) * (l.precio || 0) * (1 - (l.descuento || 0) / 100);
       const iva = base * (l.iva || 0) / 100;
       return { base, iva, total: base + iva };
+    }
+
+    // Buscar precio de tarifa para un servicio por nombre
+    function buscarPrecioServicio(nombre) {
+      const srv = servicios.find(s => s.nombre === nombre);
+      if (!srv) return null;
+      // Buscar primer precio disponible en cualquier columna
+      let precio = 0;
+      for (const col of columnas) {
+        const v = precios[srv.id + '_' + col.id];
+        if (v && parseFloat(v) > 0) { precio = parseFloat(v); break; }
+      }
+      return { precio, iva: srv.iva ? parseInt(srv.iva) : 21 };
+    }
+
+    function importarPrecioProp(i) {
+      const datos = buscarPrecioServicio(propLineas[i].concepto);
+      if (!datos) return;
+      // Solo importar si el precio está vacío o es 0
+      if (!propLineas[i].precio || propLineas[i].precio === 0) {
+        propLineas[i].precio = datos.precio;
+      }
+      propLineas[i].iva = datos.iva;
+      renderLineasProp();
+    }
+
+    function importarPrecioFact(i) {
+      const datos = buscarPrecioServicio(factLineas[i].concepto);
+      if (!datos) return;
+      if (!factLineas[i].precio || factLineas[i].precio === 0) {
+        factLineas[i].precio = datos.precio;
+      }
+      factLineas[i].iva = datos.iva;
+      renderLineasFact();
     }
 
     function calcTotalLineas(lineas) {
@@ -1038,6 +1072,7 @@
       v.style.display = 'none';
       c.innerHTML = facturas.sort((a,b) => (b.fecha||'').localeCompare(a.fecha||'')).map(f => {
         const total = calcTotalLineas(f.lineas || []);
+        const puedeEliminar = f.estado === 'pendiente' || !f.estado;
         return `<div class="fact-card" onclick="editarFactura('${f.id}')">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div>
@@ -1045,7 +1080,10 @@
               <div style="font-size:0.85rem;">${f.cliente || ''}</div>
               <div class="prop-fechas">${f.fecha ? fFecha(f.fecha) : ''}${f.vencimiento ? ' · Vto: ' + fFecha(f.vencimiento) : ''}</div>
             </div>
-            <span class="fact-estado ${f.estado || 'pendiente'}">${estadoFactLabel(f.estado)}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="fact-estado ${f.estado || 'pendiente'}">${estadoFactLabel(f.estado)}</span>
+              ${puedeEliminar ? `<button class="btn-ghost" style="color:var(--error);font-size:0.85rem;" onclick="event.stopPropagation();eliminarFacturaDirecta('${f.id}')" title="Eliminar factura">🗑️</button>` : ''}
+            </div>
           </div>
           <div class="prop-bottom">
             <span class="prop-lineas-info">${(f.lineas||[]).length} partida${(f.lineas||[]).length!==1?'s':''}</span>
@@ -1111,7 +1149,7 @@
     function renderLineasFact() {
       const tbody = document.getElementById('fact-lineas-body');
       tbody.innerHTML = factLineas.map((l, i) => `<tr>
-        <td><input list="srv-list" class="form-input" value="${l.concepto}" onchange="factLineas[${i}].concepto=this.value" style="min-width:140px;"></td>
+        <td><input list="srv-list" class="form-input" value="${l.concepto}" onchange="factLineas[${i}].concepto=this.value;importarPrecioFact(${i})" style="min-width:300px;"></td>
         <td><input type="number" min="0" step="1" value="${l.uds}" onchange="factLineas[${i}].uds=+this.value;calcFactTotales()"></td>
         <td><input type="number" min="0" step="1" value="${l.dias}" onchange="factLineas[${i}].dias=+this.value;calcFactTotales()"></td>
         <td><input type="number" min="0" step="0.01" value="${l.precio}" onchange="factLineas[${i}].precio=+this.value;calcFactTotales()"></td>
@@ -1162,6 +1200,15 @@
       facturas = facturas.filter(f => f.id !== editFactId);
       await guardarTarifas();
       cerrarModal('modal-factura');
+      renderFacturas();
+    }
+
+    async function eliminarFacturaDirecta(id) {
+      const f = facturas.find(x => x.id === id);
+      if (!f) return;
+      if (!confirm('¿Eliminar factura ' + (f.numero || '') + '?')) return;
+      facturas = facturas.filter(x => x.id !== id);
+      await guardarTarifas();
       renderFacturas();
     }
 
