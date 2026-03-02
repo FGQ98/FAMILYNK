@@ -402,7 +402,7 @@
         </div>
 
         <!-- Datos de pago de la casa -->
-        <div id="reparto-pago-section" style="margin-top:16px;padding-top:16px;border-top:2px solid var(--cream-dark);">
+        <div style="margin-top:16px;padding-top:16px;border-top:2px solid var(--cream-dark);">
           <label class="form-label" style="font-size:0.9rem;color:var(--addon-color);margin-bottom:8px;">🏦 Cuenta para ingresos</label>
           <div style="display:flex;gap:12px;margin-bottom:8px;">
             <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.85rem;font-weight:600;cursor:pointer;">
@@ -1017,6 +1017,9 @@
           <div class="reparto-card-fecha">${fecha} · ${(r.gastosIds || []).length} gastos</div>
           <div class="reparto-card-participantes" style="margin-top:6px;">${participantes}</div>
           ${pagoHtml}
+          <div style="margin-top:10px;text-align:right;">
+            <button class="btn-pdf" onclick="generarPDFReparto('${r.id}')" style="font-size:0.78rem;padding:6px 10px;">📄 PDF</button>
+          </div>
         </div>`;
       }).join('');
     }
@@ -1049,7 +1052,6 @@
       editandoRepartoId = id;
       repartoParticipantes = (r.participantes || []).map(p => ({ ...p }));
 
-      // Seleccionar los gastos del reparto
       repartoSeleccionados.clear();
       (r.gastosIds || []).forEach(gid => repartoSeleccionados.add(gid));
       renderRepartoGastos();
@@ -1139,7 +1141,6 @@
     function updatePorcentaje(index, valor) {
       repartoParticipantes[index].porcentaje = parseFloat(valor) || 0;
       actualizarSumReparto();
-      // Actualizar importes sin perder foco del input
       const selGastos = gastos.filter(g => repartoSeleccionados.has(g.id));
       const totalImporte = selGastos.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
       document.querySelectorAll('.reparto-importe-calc').forEach((span, i) => {
@@ -1198,42 +1199,32 @@
       el.className = 'reparto-sum-valor ' + (Math.abs(total - 100) < 0.01 ? 'ok' : 'error');
     }
 
-    // ===== REPARTO: DATOS DE PAGO =====
+    // ===== DATOS DE PAGO =====
     function toggleTipoPago() {
       const tipo = document.querySelector('input[name="reparto-pago-tipo"]:checked').value;
       document.getElementById('reparto-pago-iban-wrap').style.display = tipo === 'iban' ? '' : 'none';
       document.getElementById('reparto-pago-bizum-wrap').style.display = tipo === 'bizum' ? '' : 'none';
     }
-
     function formatIBAN(input) {
       let v = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
       if (v.length > 24) v = v.substring(0, 24);
       let f = '';
-      for (let i = 0; i < v.length; i++) {
-        if (i > 0 && i % 4 === 0) f += ' ';
-        f += v[i];
-      }
+      for (let i = 0; i < v.length; i++) { if (i > 0 && i % 4 === 0) f += ' '; f += v[i]; }
       input.value = f;
     }
-
     function formatBizum(input) {
       let v = input.value.replace(/[^0-9]/g, '');
       if (v.length > 9) v = v.substring(0, 9);
       let f = '';
-      for (let i = 0; i < v.length; i++) {
-        if (i > 0 && i % 3 === 0) f += ' ';
-        f += v[i];
-      }
+      for (let i = 0; i < v.length; i++) { if (i > 0 && i % 3 === 0) f += ' '; f += v[i]; }
       input.value = f;
     }
-
     function resetPagoFields() {
       document.querySelector('input[name="reparto-pago-tipo"][value="iban"]').checked = true;
       document.getElementById('reparto-pago-iban').value = '';
       document.getElementById('reparto-pago-bizum').value = '';
       toggleTipoPago();
     }
-
     function cargarPagoFields(r) {
       if (r.pagoTipo === 'bizum') {
         document.querySelector('input[name="reparto-pago-tipo"][value="bizum"]').checked = true;
@@ -1246,13 +1237,108 @@
       }
       toggleTipoPago();
     }
-
     function getPagoData() {
       const tipo = document.querySelector('input[name="reparto-pago-tipo"]:checked').value;
       const dato = tipo === 'iban'
         ? document.getElementById('reparto-pago-iban').value.replace(/\s/g, '')
         : document.getElementById('reparto-pago-bizum').value.replace(/\s/g, '');
       return { pagoTipo: tipo, pagoDato: dato };
+    }
+
+    // ===== PDF DE REPARTO =====
+    function generarPDFReparto(repartoId) {
+      event.stopPropagation(); // No abrir modal de edición
+      const r = repartosGuardados.find(x => x.id === repartoId);
+      if (!r) return;
+
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      const fecha = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate().toLocaleDateString('es-ES') : new Date().toLocaleDateString('es-ES');
+
+      // Tabla de participantes
+      let filasParticipantes = (r.participantes || []).map(p => `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600;">${p.nombre}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${p.porcentaje}%</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:700;color:#8B7355;">${(p.importe || 0).toFixed(2)} EUR</td>
+      </tr>`).join('');
+
+      // Datos de pago
+      let pagoHtml = '';
+      if (r.pagoDato) {
+        if (r.pagoTipo === 'bizum') {
+          pagoHtml = `<div style="margin-top:20px;padding:12px 16px;background:#F0F7F2;border-radius:8px;border-left:4px solid #7A9E7E;">
+            <b>Ingreso por Bizum:</b> ${r.pagoDato.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}</div>`;
+        } else {
+          const iban = r.pagoDato.replace(/(.{4})/g, '$1 ').trim();
+          pagoHtml = `<div style="margin-top:20px;padding:12px 16px;background:#F0F7F2;border-radius:8px;border-left:4px solid #7A9E7E;">
+            <b>Ingreso en cuenta:</b> ${iban}</div>`;
+        }
+      }
+
+      // Detalle de gastos incluidos
+      const gastosDelReparto = gastos.filter(g => (r.gastosIds || []).includes(g.id));
+      let filasGastos = gastosDelReparto.map(g => `<tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${g.fecha || '-'}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;">${g.concepto || '-'}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${CAT_LABELS[g.categoria] || g.categoria || '-'}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${(parseFloat(g.importe) || 0).toFixed(2)} EUR</td>
+      </tr>`).join('');
+
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:fixed;left:0;top:0;width:800px;background:white;z-index:-1;pointer-events:none;';
+      wrapper.innerHTML = `
+        <div style="font-family:Helvetica,Arial,sans-serif;padding:20px;color:#333;width:760px;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <h2 style="margin:0;color:#8B7355;">Reparto de Gastos</h2>
+            <p style="margin:4px 0;color:#888;font-size:14px;">${bienNombre}</p>
+            <p style="margin:2px 0;font-size:18px;font-weight:700;color:#333;">${r.nombre || 'Reparto'}</p>
+            <p style="margin:4px 0;font-size:11px;color:#aaa;">${fecha}</p>
+          </div>
+
+          <div style="text-align:center;padding:12px;background:#8B7355;color:white;border-radius:8px;font-size:18px;font-weight:700;margin-bottom:20px;">
+            Total: ${(r.totalImporte || 0).toFixed(2)} EUR
+          </div>
+
+          <h3 style="margin:0 0 10px;font-size:14px;color:#555;">Reparto entre participantes</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px;">
+            <thead><tr style="background:#8B7355;color:white;">
+              <th style="padding:8px 12px;text-align:left;">Participante</th>
+              <th style="padding:8px 12px;text-align:center;">%</th>
+              <th style="padding:8px 12px;text-align:right;">Importe</th>
+            </tr></thead>
+            <tbody>${filasParticipantes}</tbody>
+          </table>
+
+          ${pagoHtml}
+
+          <h3 style="margin:24px 0 10px;font-size:14px;color:#555;">Gastos incluidos (${gastosDelReparto.length})</h3>
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="background:#7A9E7E;color:white;">
+              <th style="padding:6px 8px;text-align:left;">Fecha</th>
+              <th style="padding:6px 8px;text-align:left;">Concepto</th>
+              <th style="padding:6px 8px;text-align:left;">Categoria</th>
+              <th style="padding:6px 8px;text-align:right;">Importe</th>
+            </tr></thead>
+            <tbody>${filasGastos}</tbody>
+          </table>
+
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK - Reparto de Gastos</div>
+        </div>
+      `;
+      document.body.appendChild(wrapper);
+
+      setTimeout(() => {
+        html2pdf().set({
+          margin: [10, 10, 15, 10],
+          filename: 'reparto-' + (r.nombre || 'reparto').replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, width: 800, windowWidth: 800 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).from(wrapper).save().then(() => {
+          document.body.removeChild(wrapper);
+        }).catch(() => {
+          try { document.body.removeChild(wrapper); } catch(e) {}
+        });
+      }, 100);
     }
 
     // ===== REPARTO: GUARDAR / ELIMINAR =====
@@ -1330,7 +1416,6 @@
       const total = items.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
       const media = items.length > 0 ? total / items.length : 0;
       
-      // Agrupar por mes
       const meses = {};
       items.forEach(g => {
         const mes = g.fecha ? g.fecha.substring(0, 7) : 'sin-fecha';
@@ -1351,19 +1436,19 @@
           <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${CAT_LABELS[g.categoria] || g.categoria || '-'}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${MEDIO_LABELS[g.medio || g.medioPago] || '-'}</td>
           <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;">${g.anotador || g.pagadorNombre || '-'}</td>
-          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${(parseFloat(g.importe) || 0).toFixed(2)} €</td>
+          <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">${(parseFloat(g.importe) || 0).toFixed(2)} EUR</td>
         </tr>`).join('');
         
         tablas += `
           <div style="margin-bottom:20px;">
-            <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#F5F0E8;border-radius:6px;margin-bottom:8px;font-weight:700;font-size:13px;text-transform:capitalize;">
-              <span>${mesLabel}</span><span>${totalMes.toFixed(2)} €</span>
+            <div style="padding:8px 12px;background:#F5F0E8;border-radius:6px;margin-bottom:8px;font-weight:700;font-size:13px;text-transform:capitalize;">
+              <table style="width:100%;"><tr><td>${mesLabel}</td><td style="text-align:right;">${totalMes.toFixed(2)} EUR</td></tr></table>
             </div>
             <table style="width:100%;border-collapse:collapse;font-size:12px;">
               <thead><tr style="background:#7A9E7E;color:white;">
                 <th style="padding:6px 8px;text-align:left;">Fecha</th>
                 <th style="padding:6px 8px;text-align:left;">Concepto</th>
-                <th style="padding:6px 8px;text-align:left;">Categoría</th>
+                <th style="padding:6px 8px;text-align:left;">Categoria</th>
                 <th style="padding:6px 8px;text-align:left;">Medio</th>
                 <th style="padding:6px 8px;text-align:left;">Anotador</th>
                 <th style="padding:6px 8px;text-align:right;">Importe</th>
@@ -1372,10 +1457,8 @@
             </table>
           </div>`;
       });
-
-      // Crear contenedor en el DOM (necesario para html2canvas)
+      
       const wrapper = document.createElement('div');
-      wrapper.id = 'pdf-render-area';
       wrapper.style.cssText = 'position:fixed;left:0;top:0;width:800px;background:white;z-index:-1;pointer-events:none;';
       wrapper.innerHTML = `
         <div style="font-family:Helvetica,Arial,sans-serif;padding:20px;color:#333;width:760px;">
@@ -1386,18 +1469,17 @@
           </div>
           <table style="width:100%;margin-bottom:20px;font-size:13px;border-collapse:collapse;">
             <tr>
-              <td style="text-align:center;padding:8px;">Total: <b>${total.toFixed(2)} €</b></td>
+              <td style="text-align:center;padding:8px;">Total: <b>${total.toFixed(2)} EUR</b></td>
               <td style="text-align:center;padding:8px;">Registros: <b>${items.length}</b></td>
-              <td style="text-align:center;padding:8px;">Media: <b>${media.toFixed(2)} €</b></td>
+              <td style="text-align:center;padding:8px;">Media: <b>${media.toFixed(2)} EUR</b></td>
             </tr>
           </table>
           ${tablas || '<p style="text-align:center;color:#aaa;">Sin gastos registrados</p>'}
-          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Gastos</div>
+          <div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK - Gastos</div>
         </div>
       `;
       document.body.appendChild(wrapper);
-
-      // Pequeño delay para que el navegador renderice el layout
+      
       setTimeout(() => {
         html2pdf().set({
           margin: [10, 10, 15, 10],
