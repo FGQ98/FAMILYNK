@@ -2061,6 +2061,18 @@
             </div>
           </div>
 
+          <!-- Tarifas (Gerente - visible para todos) -->
+          <div class="collapsible-section hidden" id="section-tarifas">
+            <div class="collapsible-header" onclick="toggleSection('tarifas')">
+              <div class="collapsible-title"><span>💶</span><span>Tarifas</span><span class="collapsible-count" id="count-tarifas">0</span></div>
+              <span class="collapsible-toggle">▼</span>
+            </div>
+            <div class="collapsible-body">
+              <div id="resumen-tarifas"><div class="empty-mini">Sin tarifas</div></div>
+              <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" id="btn-ver-tarifas" onclick="window.location.href='tarifas.html?id='+bienId+'&origen=gerente'">📄 Ver tarifas completas</button>
+            </div>
+          </div>
+
           <div class="collapsible-section" id="section-personal">
             <div class="collapsible-header" onclick="toggleSection('personal')">
               <div class="collapsible-title"><span>👷</span><span>Refuerzos</span><span class="collapsible-count" id="count-personal">0</span></div>
@@ -3301,7 +3313,7 @@
           const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
           if (userDoc.exists) {
             const userData = userDoc.data();
-            esAdminRama = userData.rol === 'adminRama' || userData.rol === 'adminSistema';
+            esAdminRama = userData.rol === 'adminRama' || userData.rol === 'admin-rama' || userData.rol === 'adminSistema';
           }
         } catch (e) { console.error('Error verificando rol:', e); }
         
@@ -3771,6 +3783,7 @@
       const botonesContainer = document.getElementById('modulos-botones');
       const sectionCaseros = document.getElementById('section-caseros');
       const sectionHosters = document.getElementById('section-hosters');
+      const sectionTarifas = document.getElementById('section-tarifas');
       const sectionNormasExternos = document.getElementById('section-normas');
 
       const mayordomoActivo = bienData.mayordomoActivo;
@@ -3802,6 +3815,7 @@
         renderModulosBotones('mayordomo');
         if (sectionCaseros) sectionCaseros.classList.remove('hidden');
         if (sectionHosters) sectionHosters.classList.add('hidden');
+        if (sectionTarifas) sectionTarifas.classList.add('hidden');
         if (sectionNormasExternos) {
           sectionNormasExternos.classList.remove('hidden');
           document.getElementById('titulo-normas-externos').textContent = 'Normas para Caseros';
@@ -3821,12 +3835,14 @@
         gestionTitulo.className = 'gestion-modulos-title gerente';
         renderModulosBotones('gerente');
         if (sectionHosters) sectionHosters.classList.remove('hidden');
+        if (sectionTarifas) sectionTarifas.classList.remove('hidden');
         if (sectionCaseros) sectionCaseros.classList.add('hidden');
         if (sectionNormasExternos) {
           sectionNormasExternos.classList.remove('hidden');
           document.getElementById('titulo-normas-externos').textContent = 'Normas para Hosters';
         }
         cargarHosters();
+        renderResumenTarifas();
       } else if (capatazActivo) {
         cardCapataz.classList.add('active');
         cardCapataz.classList.remove('disabled');
@@ -3843,6 +3859,7 @@
         renderModulosBotones('capataz');
         if (sectionCaseros) sectionCaseros.classList.remove('hidden');
         if (sectionHosters) sectionHosters.classList.add('hidden');
+        if (sectionTarifas) sectionTarifas.classList.add('hidden');
         if (sectionNormasExternos) {
           sectionNormasExternos.classList.remove('hidden');
           document.getElementById('titulo-normas-externos').textContent = 'Normas para Guardas';
@@ -3861,6 +3878,7 @@
         gestionModulos.classList.add('hidden');
         if (sectionCaseros) sectionCaseros.classList.add('hidden');
         if (sectionHosters) sectionHosters.classList.add('hidden');
+        if (sectionTarifas) sectionTarifas.classList.add('hidden');
         if (sectionNormasExternos) sectionNormasExternos.classList.add('hidden');
       }
 
@@ -4050,6 +4068,7 @@
         // Mostrar Caseros, ocultar Hosters
         document.getElementById('section-caseros')?.classList.remove('hidden');
         document.getElementById('section-hosters')?.classList.add('hidden');
+        document.getElementById('section-tarifas')?.classList.add('hidden');
         
         renderGestionCards();
       } catch (error) {
@@ -4096,10 +4115,12 @@
         
         // Mostrar Hosters, ocultar Caseros
         document.getElementById('section-hosters')?.classList.remove('hidden');
+        document.getElementById('section-tarifas')?.classList.remove('hidden');
         document.getElementById('section-caseros')?.classList.add('hidden');
         
         renderGestionCards();
         cargarHosters();
+        renderResumenTarifas();
       } catch (error) {
         console.error('Error:', error);
         alert('Error al activar Gerente');
@@ -4145,6 +4166,7 @@
         // Mostrar Caseros (trabajadores de finca), ocultar Hosters
         document.getElementById('section-caseros')?.classList.remove('hidden');
         document.getElementById('section-hosters')?.classList.add('hidden');
+        document.getElementById('section-tarifas')?.classList.add('hidden');
         
         renderGestionCards();
       } catch (error) {
@@ -6337,6 +6359,58 @@
         alert('Error');
       }
     });
+
+    // ========== RESUMEN TARIFAS (Sidebar) ==========
+    function renderResumenTarifas() {
+      const container = document.getElementById('resumen-tarifas');
+      const countEl = document.getElementById('count-tarifas');
+      if (!container) return;
+
+      const cats = bienData.tarifasCategorias || [];
+      const srvs = bienData.tarifasServicios || [];
+      const cols = bienData.tarifasColumnas || [];
+      const prcs = bienData.tarifasPrecios || {};
+
+      if (countEl) countEl.textContent = srvs.length || '0';
+
+      if (!srvs.length) {
+        container.innerHTML = '<div class="empty-mini">Sin servicios definidos</div>';
+        return;
+      }
+
+      // Formatear número
+      const fN = n => (parseFloat(n)||0).toLocaleString('es-ES', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+      let html = '';
+      cats.sort((a,b) => (a.orden||0) - (b.orden||0)).forEach(cat => {
+        const items = srvs.filter(s => s.categoriaId === cat.id);
+        if (!items.length) return;
+        html += '<div style="margin-bottom:12px;">';
+        html += '<div style="font-family:Quicksand;font-weight:700;font-size:0.82rem;color:var(--text);margin-bottom:4px;">' + (cat.icono||'📁') + ' ' + cat.nombre + '</div>';
+        items.forEach(s => {
+          // Buscar precio de la primera columna con valor
+          let precioStr = '';
+          for (const col of cols) {
+            const v = prcs[s.id + '_' + col.id];
+            if (v && parseFloat(v) > 0) {
+              precioStr = fN(v) + ' €/' + (s.unidad||'ud');
+              if (cols.length > 1) precioStr += ' <span style="color:var(--text-muted);font-size:0.68rem;">(' + col.nombre + ')</span>';
+              break;
+            }
+          }
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:0.82rem;border-bottom:1px solid var(--cream-dark);">';
+          html += '<span>' + (s.icono||'•') + ' ' + s.nombre + (s.iva ? ' <span style="color:var(--text-muted);font-size:0.68rem;">' + s.iva + '%</span>' : '') + '</span>';
+          html += '<span style="font-weight:600;white-space:nowrap;">' + (precioStr || '<span style="color:var(--text-muted);">—</span>') + '</span>';
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+
+      // Aviso IVA
+      html += '<div style="font-size:0.72rem;color:#8B6914;background:rgba(232,180,77,0.15);padding:6px 8px;border-radius:6px;margin-top:4px;">⚠️ Precios sin IVA</div>';
+
+      container.innerHTML = html;
+    }
 
     // ========== GUARDAS (Capataz) ==========
     let guardasData = [];
