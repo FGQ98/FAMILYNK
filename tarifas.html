@@ -443,7 +443,12 @@
         </div>
         <hr style="border:none;border-top:1px solid var(--cream-dark);margin:16px 0 12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <label class="form-label" style="margin:0;font-weight:700;">Partidas</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label class="form-label" style="margin:0;font-weight:700;">Partidas</label>
+            <select class="form-select" id="prop-tarifa-col" style="width:auto;padding:4px 10px;font-size:0.8rem;" title="Tarifa para importar precios">
+              <option value="">— Tarifa —</option>
+            </select>
+          </div>
           <button class="btn btn-sm btn-secondary" onclick="addLineaProp()">+ Línea</button>
         </div>
         <div style="overflow-x:auto;">
@@ -498,7 +503,12 @@
         </div>
         <hr style="border:none;border-top:1px solid var(--cream-dark);margin:16px 0 12px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <label class="form-label" style="margin:0;font-weight:700;">Partidas</label>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <label class="form-label" style="margin:0;font-weight:700;">Partidas</label>
+            <select class="form-select" id="fact-tarifa-col" style="width:auto;padding:4px 10px;font-size:0.8rem;" title="Tarifa para importar precios">
+              <option value="">— Tarifa —</option>
+            </select>
+          </div>
           <button class="btn btn-sm btn-secondary" onclick="addLineaFact()">+ Línea</button>
         </div>
         <div style="overflow-x:auto;">
@@ -953,6 +963,8 @@
       document.getElementById('prop-notas').value = data?.notas || '';
       propLineas = data?.lineas ? JSON.parse(JSON.stringify(data.lineas)) : [];
       if (!propLineas.length) addLineaProp();
+      // Poblar selector de tarifa con las columnas de precios
+      poblarSelectorTarifa('prop-tarifa-col');
       renderLineasProp();
       document.getElementById('modal-propuesta').classList.add('active');
     }
@@ -991,24 +1003,34 @@
       return { base, iva, total: base + iva };
     }
 
-    // Buscar precio de tarifa para un servicio por nombre
-    function buscarPrecioServicio(nombre) {
+    // Poblar selector de columna de tarifa
+    function poblarSelectorTarifa(selectId) {
+      const sel = document.getElementById(selectId);
+      if (!sel) return;
+      sel.innerHTML = '<option value="">— Tarifa —</option>' +
+        columnas.map(c => '<option value="' + c.id + '">' + c.nombre + '</option>').join('');
+      // Si solo hay una columna, seleccionarla automáticamente
+      if (columnas.length === 1) sel.value = columnas[0].id;
+    }
+
+    // Buscar precio de tarifa para un servicio por nombre y columna
+    function buscarPrecioServicio(nombre, colId) {
       const srv = servicios.find(s => s.nombre === nombre);
       if (!srv) return null;
-      // Buscar primer precio disponible en cualquier columna
       let precio = 0;
-      for (const col of columnas) {
-        const v = precios[srv.id + '_' + col.id];
-        if (v && parseFloat(v) > 0) { precio = parseFloat(v); break; }
+      if (colId) {
+        // Columna específica seleccionada
+        const v = precios[srv.id + '_' + colId];
+        if (v && parseFloat(v) > 0) precio = parseFloat(v);
       }
       return { precio, iva: srv.iva ? parseInt(srv.iva) : 21 };
     }
 
     function importarPrecioProp(i) {
-      const datos = buscarPrecioServicio(propLineas[i].concepto);
+      const colId = document.getElementById('prop-tarifa-col').value;
+      const datos = buscarPrecioServicio(propLineas[i].concepto, colId);
       if (!datos) return;
-      // Solo importar si el precio está vacío o es 0
-      if (!propLineas[i].precio || propLineas[i].precio === 0) {
+      if (datos.precio > 0 && (!propLineas[i].precio || propLineas[i].precio === 0)) {
         propLineas[i].precio = datos.precio;
       }
       propLineas[i].iva = datos.iva;
@@ -1016,9 +1038,10 @@
     }
 
     function importarPrecioFact(i) {
-      const datos = buscarPrecioServicio(factLineas[i].concepto);
+      const colId = document.getElementById('fact-tarifa-col').value;
+      const datos = buscarPrecioServicio(factLineas[i].concepto, colId);
       if (!datos) return;
-      if (!factLineas[i].precio || factLineas[i].precio === 0) {
+      if (datos.precio > 0 && (!factLineas[i].precio || factLineas[i].precio === 0)) {
         factLineas[i].precio = datos.precio;
       }
       factLineas[i].iva = datos.iva;
@@ -1123,6 +1146,8 @@
       sel.value = data?.propuestaId || '';
       factLineas = data?.lineas ? JSON.parse(JSON.stringify(data.lineas)) : [];
       if (!factLineas.length) addLineaFact();
+      // Poblar selector de tarifa con las columnas de precios
+      poblarSelectorTarifa('fact-tarifa-col');
       renderLineasFact();
       document.getElementById('modal-factura').classList.add('active');
     }
