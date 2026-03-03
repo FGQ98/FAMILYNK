@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6B8E23">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="FAMILYNK">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Informes Capataz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sage: #7A9E7E; --cream: #FDF8F3; --cream-dark: #F5EDE4; --cream-medium: #FAF5EF;
+      --terracotta: #C17757; --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A; --white: #FFFFFF;
+      --capataz: #6B8E23; --capataz-light: #8FBC3C; --capataz-dark: #4A6B10; --capataz-muted: rgba(107,142,35,0.15);
+      --success: #7DB59A; --success-muted: rgba(125,181,154,0.15);
+      --warning: #E8B44D; --warning-muted: rgba(232,180,77,0.15);
+      --error: #D4695A; --error-muted: rgba(212,105,90,0.15);
+      --info: #5B9BD5; --info-muted: rgba(91,155,213,0.15);
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-full: 50px;
+      --addon-color: var(--capataz); --addon-light: var(--capataz-light);
+      --addon-dark: var(--capataz-dark); --addon-muted: var(--capataz-muted);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Nunito',sans-serif; background:var(--cream); color:var(--text); min-height:100vh; }
+
+    .header {
+      background: linear-gradient(135deg, var(--addon-color) 0%, var(--addon-dark) 100%);
+      padding:16px 24px; display:flex; align-items:center; justify-content:space-between;
+      box-shadow:var(--shadow-medium); position:sticky; top:0; z-index:100;
+    }
+    .header-left { display:flex; align-items:center; gap:16px; }
+    .back-btn { display:flex; align-items:center; gap:8px; padding:8px 14px; background:rgba(255,255,255,0.15); border:none; border-radius:var(--radius-md); color:white; font-family:'Nunito'; font-size:0.85rem; cursor:pointer; text-decoration:none; transition:all 0.2s; }
+    .back-btn:hover { background:rgba(255,255,255,0.25); }
+    .header-info h1 { color:white; font-family:'Quicksand'; font-size:1.2rem; font-weight:700; }
+    .header-info p { color:rgba(255,255,255,0.7); font-size:0.8rem; }
+
+    .main { max-width:960px; margin:0 auto; padding:24px; }
+    .card { background:var(--white); border-radius:var(--radius-lg); padding:20px; margin-bottom:20px; box-shadow:var(--shadow-soft); }
+    .card-title { font-family:'Quicksand'; font-weight:700; font-size:1rem; margin-bottom:16px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+    /* Tabs */
+    .tabs { display:flex; gap:4px; margin-bottom:20px; background:var(--white); padding:4px; border-radius:var(--radius-full); box-shadow:var(--shadow-soft); }
+    .tab { flex:1; padding:12px 16px; border:none; background:none; border-radius:var(--radius-full); font-family:'Nunito'; font-size:0.9rem; font-weight:600; cursor:pointer; transition:all 0.2s; color:var(--text-muted); }
+    .tab:hover { color:var(--text); }
+    .tab.active { background:var(--addon-color); color:white; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+
+    /* Ejercicio select */
+    .ejercicio-bar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+    .ejercicio-select { flex:1; min-width:200px; padding:12px 14px; border:2px solid var(--cream-dark); border-radius:var(--radius-md); font-family:'Nunito'; font-size:0.95rem; font-weight:600; background:var(--white); }
+    .ejercicio-select:focus { outline:none; border-color:var(--addon-color); }
+
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:var(--radius-md); font-family:'Nunito'; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; transition:all 0.2s; text-decoration:none; }
+    .btn-addon { background:var(--addon-color); color:white; }
+    .btn-addon:hover { background:var(--addon-dark); }
+    .btn-secondary { background:var(--cream); color:var(--text); }
+    .btn-sm { padding:7px 12px; font-size:0.8rem; }
+
+    /* KPIs */
+    .kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px; }
+    .kpi { background:var(--white); border-radius:var(--radius-md); padding:14px 10px; text-align:center; box-shadow:var(--shadow-soft); border-top:3px solid var(--cream-dark); }
+    .kpi.ventas { border-top-color:var(--success); }
+    .kpi.costes { border-top-color:var(--warning); }
+    .kpi.personal { border-top-color:var(--info); }
+    .kpi.otros { border-top-color:var(--error); }
+    .kpi.resultado { border-top-color:var(--addon-color); }
+    .kpi-label { font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px; }
+    .kpi-valor { font-family:'Quicksand'; font-size:0.95rem; font-weight:700; }
+    .kpi-sub { font-size:0.62rem; color:var(--text-muted); }
+
+    /* Tabla comparativa */
+    .tabla-comp { width:100%; border-collapse:collapse; }
+    .tabla-comp th {
+      text-align:left; padding:8px 10px; font-size:0.7rem; text-transform:uppercase;
+      letter-spacing:0.5px; color:var(--text-muted); background:var(--cream-medium); border-bottom:2px solid var(--cream-dark);
+    }
+    .tabla-comp th.num { text-align:right; }
+    .tabla-comp td { padding:8px 10px; border-bottom:1px solid var(--cream-dark); font-size:0.85rem; }
+    .tabla-comp td.num { text-align:right; font-family:'Quicksand'; font-weight:600; font-variant-numeric:tabular-nums; }
+
+    .fila-grupo { cursor:pointer; transition:background 0.15s; }
+    .fila-grupo:hover { filter:brightness(0.97); }
+    .fila-grupo.ventas td { background:var(--success-muted); }
+    .fila-grupo.costes td { background:var(--warning-muted); }
+    .fila-grupo.personal td { background:var(--info-muted); }
+    .fila-grupo.otros td { background:var(--error-muted); }
+    .fila-grupo td:first-child { font-family:'Quicksand'; font-weight:700; font-size:0.9rem; }
+
+    .fila-sub { cursor:pointer; }
+    .fila-sub:hover { background:var(--cream); }
+    .fila-sub td:first-child { padding-left:28px; font-weight:700; font-size:0.84rem; }
+
+    .fila-partida td:first-child { padding-left:48px; font-weight:400; color:var(--text-light); font-size:0.82rem; }
+
+    .fila-resultado td {
+      background:var(--addon-muted); font-family:'Quicksand'; font-weight:700; font-size:0.95rem;
+      border-top:2px solid var(--addon-color);
+    }
+
+    .desv-pos { color:var(--success); }
+    .desv-neg { color:var(--error); }
+    .pct-cell { font-size:0.75rem; }
+
+    /* Barra desviación inline */
+    .bar-wrap { display:inline-block; width:50px; height:6px; background:var(--cream-dark); border-radius:3px; vertical-align:middle; margin-left:4px; }
+    .bar-fill { height:100%; border-radius:3px; }
+    .bar-fill.ok { background:var(--success); }
+    .bar-fill.warn { background:var(--warning); }
+    .bar-fill.over { background:var(--error); }
+
+    /* Actividad cards */
+    .act-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:16px; }
+    .act-card { background:var(--white); border-radius:var(--radius-md); padding:20px; box-shadow:var(--shadow-soft); border:2px solid transparent; transition:all 0.2s; text-decoration:none; color:var(--text); display:block; }
+    .act-card:hover { border-color:var(--addon-light); transform:translateY(-2px); box-shadow:var(--shadow-medium); }
+    .act-card-icon { font-size:2rem; margin-bottom:8px; }
+    .act-card-title { font-family:'Quicksand'; font-weight:700; font-size:1rem; color:var(--addon-color); margin-bottom:4px; }
+    .act-card-desc { font-size:0.83rem; color:var(--text-muted); line-height:1.4; }
+    .act-card-stat { margin-top:10px; padding-top:10px; border-top:1px solid var(--cream-dark); font-size:0.78rem; color:var(--text-light); }
+    .act-card-stat strong { color:var(--addon-color); }
+
+    .empty-state { text-align:center; padding:40px 20px; }
+    .empty-state-icon { font-size:3rem; opacity:0.3; margin-bottom:12px; }
+    .empty-state-title { font-family:'Quicksand'; font-weight:700; margin-bottom:8px; }
+    .empty-state-text { color:var(--text-muted); font-size:0.9rem; }
+    .loading { display:flex; align-items:center; justify-content:center; min-height:200px; }
+    .spinner { width:40px; height:40px; border:3px solid var(--cream-dark); border-top-color:var(--addon-color); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    @media (max-width:768px) {
+      .kpi-grid { grid-template-columns:repeat(3,1fr); }
+      .act-grid { grid-template-columns:1fr; }
+      .tabla-comp { font-size:0.8rem; }
+      .tabla-comp th, .tabla-comp td { padding:6px 8px; }
+    }
+    @media (max-width:480px) {
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+    }
+
+    /* Evolución */
+    .evo-bar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+    .evo-bar-left { display:flex; align-items:center; gap:8px; }
+    .evo-bar-right { display:flex; gap:8px; }
+    .form-label-inline { font-size:0.85rem; font-weight:600; white-space:nowrap; }
+
+    .evo-scroll { overflow-x:auto; border-radius:var(--radius-md); box-shadow:var(--shadow-soft); }
+    .tabla-evo { width:100%; border-collapse:collapse; min-width:600px; background:var(--white); }
+    .tabla-evo th { padding:10px 14px; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); background:var(--cream-medium); border-bottom:2px solid var(--cream-dark); text-align:right; white-space:nowrap; }
+    .tabla-evo th:first-child { text-align:left; position:sticky; left:0; background:var(--cream-medium); z-index:2; min-width:180px; }
+    .tabla-evo td { padding:8px 14px; border-bottom:1px solid var(--cream-dark); font-size:0.85rem; text-align:right; font-family:'Quicksand'; font-weight:600; font-variant-numeric:tabular-nums; }
+    .tabla-evo td:first-child { text-align:left; position:sticky; left:0; background:var(--white); z-index:1; font-family:'Nunito'; }
+
+    .evo-section td { background:var(--cream-medium) !important; font-family:'Quicksand' !important; font-weight:700 !important; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .evo-row-ventas td:first-child { padding-left:16px; }
+    .evo-row-costes td:first-child { padding-left:16px; }
+    .evo-row-personal td:first-child { padding-left:16px; }
+    .evo-row-otros td:first-child { padding-left:16px; }
+    .evo-row-resultado td { font-weight:700; border-top:2px solid var(--addon-color); background:var(--addon-muted) !important; font-size:0.9rem; }
+    .evo-row-resultado td:first-child { background:var(--addon-muted) !important; }
+    .evo-row-tesoreria td { font-weight:700; background:rgba(91,155,213,0.08) !important; font-size:0.88rem; border-top:1px dashed var(--info); }
+    .evo-row-tesoreria td:first-child { background:rgba(91,155,213,0.08) !important; }
+    .evo-row-kpi td:first-child { padding-left:16px; font-size:0.82rem; }
+    .evo-row-kpi-actions { display:inline-flex; gap:4px; margin-left:6px; }
+    .evo-row-kpi-actions button { background:none; border:none; cursor:pointer; font-size:0.7rem; opacity:0.4; transition:opacity 0.2s; padding:0; }
+    .evo-row-kpi-actions button:hover { opacity:1; }
+
+    .evo-cerrado { font-size:0.6rem; color:var(--success); margin-left:4px; }
+    .evo-manual { font-size:0.6rem; color:var(--warning); margin-left:4px; }
+    .evo-live { font-size:0.6rem; color:var(--text-muted); margin-left:4px; }
+
+    .evo-legend { margin-top:12px; padding:10px 14px; background:var(--cream-medium); border-radius:var(--radius-sm); font-size:0.72rem; color:var(--text-muted); }
+    .evo-legend code { background:var(--white); padding:1px 5px; border-radius:4px; font-size:0.7rem; }
+
+    .evo-trend-up { color:var(--success); font-size:0.7rem; }
+    .evo-trend-down { color:var(--error); font-size:0.7rem; }
+
+    /* Modales reutilizables */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; align-items:center; justify-content:center; padding:20px; }
+    .modal-overlay.active { display:flex; }
+    .modal { background:var(--white); border-radius:var(--radius-lg); width:100%; overflow:hidden; box-shadow:var(--shadow-medium); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; background:var(--cream-medium); }
+    .modal-title { font-family:'Quicksand'; font-size:1rem; font-weight:700; }
+    .modal-close { background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--text-muted); padding:0 4px; }
+    .modal-body { padding:20px; }
+    .modal-footer { display:flex; justify-content:flex-end; gap:10px; padding:16px 20px; border-top:1px solid var(--cream-dark); }
+    .form-group { margin-bottom:14px; }
+    .form-label { display:block; font-size:0.8rem; font-weight:600; margin-bottom:4px; }
+    .form-input, .form-select { width:100%; padding:10px 12px; border:2px solid var(--cream-dark); border-radius:var(--radius-sm); font-family:'Nunito'; font-size:0.9rem; background:var(--white); }
+    .form-input:focus, .form-select:focus { outline:none; border-color:var(--addon-color); }
+    .form-hint { font-size:0.72rem; color:var(--text-muted); margin-top:4px; line-height:1.4; }
+    .form-row { display:flex; gap:12px; }
+    .btn-danger { background:var(--error); color:white; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <a id="btn-volver" class="back-btn">← Volver</a>
+      <div class="header-info">
+        <h1>🌾 Informes Capataz</h1>
+        <p id="nombre-bien">Cargando...</p>
+      </div>
+    </div>
+    <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:white;" onclick="exportarPDF()">📄 PDF</button>
+  </header>
+
+  <main class="main">
+    <div id="loading" class="loading"><div class="spinner"></div></div>
+    <div id="contenido" style="display:none;">
+
+      <div class="tabs">
+        <button class="tab active" onclick="cambiarTab('actividad')">📊 Actividad</button>
+        <button class="tab" onclick="cambiarTab('financieros')">💰 Financieros</button>
+        <button class="tab" onclick="cambiarTab('evolucion')">📈 Evolución</button>
+      </div>
+
+      <!-- ============ TAB ACTIVIDAD ============ -->
+      <div class="tab-content active" id="tab-actividad">
+        <div class="act-grid" id="act-grid"></div>
+      </div>
+
+      <!-- ============ TAB FINANCIEROS ============ -->
+      <div class="tab-content" id="tab-financieros">
+        <div class="ejercicio-bar">
+          <select class="ejercicio-select" id="sel-ej-inf" onchange="seleccionarEjInf()"></select>
+        </div>
+        <div id="fin-contenido" style="display:none;">
+          <div class="kpi-grid" id="kpi-fin"></div>
+          <div class="card">
+            <div class="card-title">📊 Presupuesto vs Realizado <span style="flex:1"></span>
+              <span class="btn btn-sm btn-secondary" id="lbl-ej-nombre"></span>
+            </div>
+            <table class="tabla-comp">
+              <thead>
+                <tr>
+                  <th>Concepto</th>
+                  <th class="num">Presupuesto</th>
+                  <th class="num">Realizado</th>
+                  <th class="num">Desviación</th>
+                  <th class="num">%</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-comp"></tbody>
+            </table>
+          </div>
+        </div>
+        <div id="fin-vacio" style="display:none;">
+          <div class="empty-state">
+            <div class="empty-state-icon">💰</div>
+            <div class="empty-state-title">Sin ejercicios</div>
+            <div class="empty-state-text">Crea un ejercicio en Finanzas para ver el comparativo aquí</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TAB EVOLUCIÓN ============ -->
+      <div class="tab-content" id="tab-evolucion">
+        <div class="evo-bar">
+          <div class="evo-bar-left">
+            <label class="form-label-inline">Serie desde:</label>
+            <select class="ejercicio-select" id="sel-serie-desde" style="min-width:160px;flex:0;" onchange="guardarSerieDesde()"></select>
+          </div>
+          <div class="evo-bar-right">
+            <button class="btn btn-sm btn-secondary" onclick="abrirModalKpi()">+ KPI</button>
+            <button class="btn btn-sm btn-secondary" onclick="abrirModalManual()">✏️ Dato histórico</button>
+          </div>
+        </div>
+
+        <div class="evo-scroll">
+          <table class="tabla-evo" id="tabla-evo">
+            <thead><tr id="evo-thead-tr"></tr></thead>
+            <tbody id="tbody-evo"></tbody>
+          </table>
+        </div>
+
+        <div id="evo-vacio" style="display:none;">
+          <div class="empty-state">
+            <div class="empty-state-icon">📈</div>
+            <div class="empty-state-title">Sin datos de evolución</div>
+            <div class="empty-state-text">Cierra ejercicios en Finanzas o añade datos históricos</div>
+          </div>
+        </div>
+
+        <div class="evo-legend">
+          <span>📐 Fórmulas KPI — Variables: <code>ventas</code> <code>costes</code> <code>personal</code> <code>otros</code> <code>resultado</code> <code>gastos</code> <code>tesoreria</code> · Anterior: <code>ventas_ant</code> etc. · Valores en base imponible (excepto tesorería = líquidos)</span>
+        </div>
+      </div>
+
+      <!-- Modal KPI -->
+      <div class="modal-overlay" id="modal-kpi">
+        <div class="modal" style="max-width:480px;">
+          <div class="modal-header"><h3 class="modal-title" id="modal-kpi-title">📐 Nuevo KPI</h3><button class="modal-close" onclick="cerrarModalKpi()">×</button></div>
+          <div class="modal-body">
+            <div class="form-group"><label class="form-label">Nombre *</label><input type="text" class="form-input" id="kpi-nombre" placeholder="Ej: Margen neto"></div>
+            <div class="form-group">
+              <label class="form-label">Fórmula *</label>
+              <input type="text" class="form-input" id="kpi-formula" placeholder="Ej: resultado/ventas*100" style="font-family:monospace;">
+              <div class="form-hint">💡 resultado/ventas*100 · (ventas-ventas_ant)/ventas_ant*100 · tesoreria/resultado</div>
+            </div>
+            <div class="form-row" style="display:flex;gap:12px;">
+              <div class="form-group" style="flex:1;">
+                <label class="form-label">Unidad</label>
+                <select class="form-select" id="kpi-unidad">
+                  <option value="%">%</option><option value="€">€</option>
+                  <option value="kg">kg</option><option value="uds">uds</option>
+                  <option value="días">días</option><option value="ratio">ratio</option>
+                  <option value="">sin unidad</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1;">
+                <label class="form-label">Decimales</label>
+                <select class="form-select" id="kpi-decimales">
+                  <option value="0">0</option><option value="1">1</option><option value="2" selected>2</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModalKpi()">Cancelar</button>
+            <button class="btn btn-danger btn-sm" id="btn-del-kpi" onclick="eliminarKpi()" style="display:none;">Eliminar</button>
+            <button class="btn btn-addon" onclick="guardarKpi()">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Dato Histórico -->
+      <div class="modal-overlay" id="modal-manual">
+        <div class="modal" style="max-width:420px;">
+          <div class="modal-header"><h3 class="modal-title">✏️ Dato histórico</h3><button class="modal-close" onclick="cerrarModalManual()">×</button></div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Ejercicio *</label>
+              <select class="form-select" id="man-ejercicio"></select>
+            </div>
+            <div class="form-group"><label class="form-label">💚 Ventas</label><input type="number" class="form-input" id="man-ventas" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label class="form-label">🟡 Costes</label><input type="number" class="form-input" id="man-costes" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label class="form-label">🔵 Personal</label><input type="number" class="form-input" id="man-personal" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label class="form-label">🔴 Otros gastos</label><input type="number" class="form-input" id="man-otros" step="0.01" placeholder="0.00"></div>
+            <div class="form-group"><label class="form-label">🏦 Tesorería</label><input type="number" class="form-input" id="man-tesoreria" step="0.01" placeholder="Cobros − Pagos (líquidos)"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="cerrarModalManual()">Cancelar</button>
+            <button class="btn btn-addon" onclick="guardarManual()">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    // ===== CONFIG =====
+    const GRUPOS = {
+      ventas:   { icon:'💚', nombre:'Ventas',       color:'#7DB59A' },
+      costes:   { icon:'🟡', nombre:'Costes',       color:'#E8B44D' },
+      personal: { icon:'🔵', nombre:'Personal',     color:'#5B9BD5' },
+      otros:    { icon:'🔴', nombre:'Otros gastos',  color:'#D4695A' }
+    };
+    const GK = ['ventas','costes','personal','otros'];
+
+    const params = new URLSearchParams(window.location.search);
+    const bienId = params.get('id');
+    const origen = 'capataz';
+
+    let currentUser = null, bienData = null, ejercicios = [], ejInf = null;
+    let expanded = {};
+
+    if (!bienId) { alert('Falta bien'); window.location.href = 'lo-comun.html'; }
+    document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarBien();
+      await cargarEjerciciosInf();
+      await cargarEvoConfig();
+      renderActividad();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('contenido').style.display = '';
+    });
+
+    // ===== DATA =====
+    async function cargarBien() {
+      try {
+        const d = await db.collection('bienes').doc(bienId).get();
+        if (d.exists) { bienData = d.data(); document.getElementById('nombre-bien').textContent = bienData.nombre || ''; }
+      } catch(e) { console.error(e); }
+    }
+
+    async function cargarEjerciciosInf() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('ejercicios').orderBy('inicio','desc').get();
+        ejercicios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const sel = document.getElementById('sel-ej-inf');
+        sel.innerHTML = '<option value="">— Selecciona ejercicio —</option>';
+        ejercicios.forEach(e => { sel.innerHTML += `<option value="${e.id}">${e.nombre} (${fD(e.inicio)} → ${fD(e.fin)})</option>`; });
+        if (ejercicios.length) { sel.value = ejercicios[0].id; }
+        seleccionarEjInf();
+      } catch(e) { console.error(e); }
+    }
+
+    // ===== TABS =====
+    function cambiarTab(t) {
+      const tabs = ['actividad','financieros','evolucion'];
+      document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', tabs[i] === t));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + t).classList.add('active');
+      if (t === 'evolucion') renderEvolucion();
+    }
+
+    // ===== TAB ACTIVIDAD =====
+    function renderActividad() {
+      const g = document.getElementById('act-grid');
+      let html = '';
+      html += actCard('🌾','Parcelas','Superficies, aprovechamientos y estado de cada parcela', `parcelas.html?id=${bienId}&origen=informes`);
+      html += actCard('📋','Labores','Histórico de labores realizadas: roturar, sembrar, tratar, cosechar', `labores.html?id=${bienId}&origen=informes`);
+      html += actCard('🌻','Cosechas','Producción recogida por parcela, cultivo y temporada', `cosechas.html?id=${bienId}&origen=informes`);
+      html += actCard('🚜','Maquinaria','Estado de la maquinaria, revisiones y horas de uso', `maquinaria.html?id=${bienId}&origen=informes`);
+      html += actCard('🏭','Instalaciones','Naves, almacenes, bodegas e infraestructuras de la finca', `instalaciones.html?id=${bienId}&origen=informes`);
+      html += actCard('🔧','Mantenimiento','Tareas programadas, averías reportadas y reparaciones', `mantenimiento.html?id=${bienId}&origen=informes`);
+      html += actCard('📅','Reservas','Estancias registradas, calendario de uso y ocupación', `reservas.html?id=${bienId}&origen=informes`);
+      html += actCard('📦','Inventario','Stock de productos, herramientas y consumibles', `inventario-config.html?id=${bienId}&origen=informes`);
+      g.innerHTML = html;
+    }
+
+    function actCard(icon, title, desc, href) {
+      return `<a class="act-card" href="${href}">
+        <div class="act-card-icon">${icon}</div>
+        <div class="act-card-title">${title}</div>
+        <div class="act-card-desc">${desc}</div>
+      </a>`;
+    }
+
+    // ===== TAB FINANCIEROS =====
+    function seleccionarEjInf() {
+      const id = document.getElementById('sel-ej-inf').value;
+      ejInf = ejercicios.find(e => e.id === id) || null;
+      if (!ejInf) {
+        document.getElementById('fin-contenido').style.display = 'none';
+        document.getElementById('fin-vacio').style.display = ejercicios.length ? 'none' : '';
+        return;
+      }
+      document.getElementById('fin-contenido').style.display = '';
+      document.getElementById('fin-vacio').style.display = 'none';
+      document.getElementById('lbl-ej-nombre').textContent = `${ejInf.nombre} · ${fD(ejInf.inicio)} → ${fD(ejInf.fin)}`;
+      GK.forEach(g => { if (expanded[g] === undefined) expanded[g] = true; });
+      renderFinancieros();
+    }
+
+    function PP() { return ejInf?.partidas || []; }
+    function RR() { return ejInf?.registros || []; }
+    function ptoGrupo(g) { return PP().filter(p => p.grupo === g).reduce((s,p) => s + (parseFloat(p.importe)||0), 0); }
+    function realByPart(pid) { return RR().filter(r => r.partidaId === pid).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0); }
+    function realGrupo(g) { let t=0; PP().filter(p => p.grupo === g).forEach(p => { t += realByPart(p.id); }); return t; }
+    function subsDeGrupo(g) { const s=new Set(); PP().filter(p => p.grupo === g).forEach(p => { if(p.subgrupo) s.add(p.subgrupo); }); return Array.from(s).sort(); }
+    function resultado(sums) { return (sums.ventas||0) - (sums.costes||0) - (sums.personal||0) - (sums.otros||0); }
+
+    function renderFinancieros() {
+      if (!ejInf) return;
+      const partidas = PP();
+
+      // KPIs
+      const sPto={}, sReal={};
+      GK.forEach(g => { sPto[g] = ptoGrupo(g); sReal[g] = realGrupo(g); });
+      const resPto = resultado(sPto), resReal = resultado(sReal);
+
+      document.getElementById('kpi-fin').innerHTML = GK.map(g => {
+        const desv = sReal[g] - sPto[g];
+        return `<div class="kpi ${g}"><div class="kpi-label">${GRUPOS[g].nombre}</div>
+          <div class="kpi-valor">${fN(sReal[g])}</div>
+          <div class="kpi-sub">Pto: ${fN(sPto[g])} · <span class="${desv >= 0 ? 'desv-pos' : 'desv-neg'}">${desv >= 0 ? '+' : ''}${fN(desv)}</span></div></div>`;
+      }).join('') + `<div class="kpi resultado"><div class="kpi-label">Resultado</div>
+        <div class="kpi-valor" style="color:${resReal >= 0 ? 'var(--success)' : 'var(--error)'}">${fN(resReal)}</div>
+        <div class="kpi-sub">Pto: ${fN(resPto)}</div></div>`;
+
+      // Tabla
+      const tbody = document.getElementById('tbody-comp');
+      if (!partidas.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Sin partidas en este ejercicio</td></tr>'; return; }
+
+      let html = '';
+      GK.forEach(g => {
+        const items = partidas.filter(p => p.grupo === g);
+        if (!items.length) return;
+        const gPto = sPto[g], gReal = sReal[g];
+        const gDesv = gReal - gPto, gPct = gPto > 0 ? (gReal/gPto*100) : (gReal > 0 ? 100 : 0);
+        const gExp = expanded[g] !== false;
+
+        // Fila grupo
+        html += `<tr class="fila-grupo ${g}" onclick="togInf('${g}')">
+          <td>${gExp ? '▾' : '▸'} ${GRUPOS[g].icon} ${GRUPOS[g].nombre}</td>
+          <td class="num">${fN(gPto)}</td>
+          <td class="num">${fN(gReal)}</td>
+          <td class="num ${gDesv >= 0 ? 'desv-pos' : 'desv-neg'}">${gDesv >= 0 ? '+' : ''}${fN(gDesv)}</td>
+          <td class="num pct-cell">${gPct.toFixed(0)}% ${barHtml(gPct)}</td>
+        </tr>`;
+
+        if (!gExp) return;
+
+        // Subgrupos
+        const subs = subsDeGrupo(g);
+        subs.forEach(sub => {
+          const si = items.filter(p => p.subgrupo === sub);
+          const subPto = si.reduce((s,p) => s + (parseFloat(p.importe)||0), 0);
+          const subReal = si.reduce((s,p) => s + realByPart(p.id), 0);
+          const subDesv = subReal - subPto;
+          const subPct = subPto > 0 ? (subReal/subPto*100) : (subReal > 0 ? 100 : 0);
+          const sk = g+'/'+sub;
+          const sExp = expanded[sk] !== false;
+
+          html += `<tr class="fila-sub" onclick="togInf('${sk}')">
+            <td>${sExp ? '▾' : '▸'} 📁 ${sub}</td>
+            <td class="num">${fN(subPto)}</td>
+            <td class="num">${fN(subReal)}</td>
+            <td class="num ${subDesv >= 0 ? 'desv-pos' : 'desv-neg'}">${subDesv >= 0 ? '+' : ''}${fN(subDesv)}</td>
+            <td class="num pct-cell">${subPct.toFixed(0)}%</td>
+          </tr>`;
+
+          if (!sExp) return;
+
+          si.sort((a,b) => (a.concepto||'').localeCompare(b.concepto||'')).forEach(p => {
+            const pPto = parseFloat(p.importe)||0;
+            const pReal = realByPart(p.id);
+            const pDesv = pReal - pPto;
+            const pPct = pPto > 0 ? (pReal/pPto*100) : (pReal > 0 ? 100 : 0);
+            html += `<tr class="fila-partida">
+              <td>${p.concepto}</td>
+              <td class="num">${fN(pPto)}</td>
+              <td class="num">${fN(pReal)}</td>
+              <td class="num ${pDesv >= 0 ? 'desv-pos' : 'desv-neg'}">${pDesv >= 0 ? '+' : ''}${fN(pDesv)}</td>
+              <td class="num pct-cell">${pPct.toFixed(0)}% ${barHtml(pPct)}</td>
+            </tr>`;
+          });
+        });
+      });
+
+      // Resultado
+      const desRes = resReal - resPto;
+      html += `<tr class="fila-resultado">
+        <td>📊 RESULTADO</td>
+        <td class="num">${fN(resPto)}</td>
+        <td class="num">${fN(resReal)}</td>
+        <td class="num ${desRes >= 0 ? 'desv-pos' : 'desv-neg'}">${desRes >= 0 ? '+' : ''}${fN(desRes)}</td>
+        <td class="num"></td>
+      </tr>`;
+
+      tbody.innerHTML = html;
+    }
+
+    function barHtml(pct) {
+      const w = Math.min(pct, 100);
+      const c = pct <= 75 ? 'ok' : pct <= 100 ? 'warn' : 'over';
+      return `<span class="bar-wrap"><span class="bar-fill ${c}" style="width:${w}%"></span></span>`;
+    }
+
+    function togInf(key) { expanded[key] = expanded[key] === false; renderFinancieros(); }
+
+    // ===== PDF =====
+    function exportarPDF() {
+      const isAct = document.querySelectorAll('.tab')[0]?.classList.contains('active');
+      const isEvo = document.querySelectorAll('.tab')[2]?.classList.contains('active');
+      if (isAct) { alert('La exportación PDF aplica a Financieros o Evolución.\nCambia de tab y vuelve a pulsar.'); return; }
+      if (isEvo) { exportarPDFEvolucion(); return; }
+      if (!ejInf) { alert('Selecciona ejercicio'); return; }
+
+      const ac = '#6B8E23';
+      const partidas = PP();
+      const sPto={}, sReal={};
+      GK.forEach(g => { sPto[g] = ptoGrupo(g); sReal[g] = realGrupo(g); });
+      const resPto = resultado(sPto), resReal = resultado(sReal);
+
+      let rows = '';
+      GK.forEach(g => {
+        const items = partidas.filter(p => p.grupo === g);
+        if (!items.length) return;
+        const gP = sPto[g], gR = sReal[g], gD = gR - gP, gPct = gP > 0 ? (gR/gP*100) : 0;
+        rows += `<tr style="background:${GRUPOS[g].color}15;font-weight:700;">
+          <td style="padding:8px 10px;">${GRUPOS[g].icon} ${GRUPOS[g].nombre}</td>
+          <td style="text-align:right;">${fN(gP)}</td><td style="text-align:right;">${fN(gR)}</td>
+          <td style="text-align:right;color:${gD >= 0 ? '#7DB59A' : '#D4695A'};">${gD >= 0 ? '+' : ''}${fN(gD)}</td>
+          <td style="text-align:right;">${gPct.toFixed(0)}%</td></tr>`;
+
+        subsDeGrupo(g).forEach(sub => {
+          const si = items.filter(p => p.subgrupo === sub);
+          const sP = si.reduce((s,p) => s + (parseFloat(p.importe)||0), 0);
+          const sR = si.reduce((s,p) => s + realByPart(p.id), 0);
+          const sD = sR - sP, sPc = sP > 0 ? (sR/sP*100) : 0;
+          rows += `<tr style="font-weight:600;"><td style="padding-left:24px;">📁 ${sub}</td>
+            <td style="text-align:right;">${fN(sP)}</td><td style="text-align:right;">${fN(sR)}</td>
+            <td style="text-align:right;color:${sD >= 0 ? '#7DB59A' : '#D4695A'};">${sD >= 0 ? '+' : ''}${fN(sD)}</td>
+            <td style="text-align:right;">${sPc.toFixed(0)}%</td></tr>`;
+
+          si.forEach(p => {
+            const pP = parseFloat(p.importe)||0, pR = realByPart(p.id), pD = pR - pP, pPc = pP > 0 ? (pR/pP*100) : 0;
+            rows += `<tr><td style="padding-left:44px;color:#6B6B6B;">${p.concepto}</td>
+              <td style="text-align:right;">${fN(pP)}</td><td style="text-align:right;">${fN(pR)}</td>
+              <td style="text-align:right;color:${pD >= 0 ? '#7DB59A' : '#D4695A'};">${pD >= 0 ? '+' : ''}${fN(pD)}</td>
+              <td style="text-align:right;">${pPc.toFixed(0)}%</td></tr>`;
+          });
+        });
+      });
+
+      const dR = resReal - resPto;
+      rows += `<tr style="font-weight:700;border-top:3px solid ${ac};background:${ac}10;">
+        <td style="padding:10px;">📊 RESULTADO</td>
+        <td style="text-align:right;">${fN(resPto)}</td><td style="text-align:right;">${fN(resReal)}</td>
+        <td style="text-align:right;color:${dR >= 0 ? '#7DB59A' : '#D4695A'};">${dR >= 0 ? '+' : ''}${fN(dR)}</td><td></td></tr>`;
+
+      const pdf = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe Financiero - ${ejInf.nombre}</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Nunito',sans-serif;color:#3D3D3D;padding:40px;max-width:900px;margin:0 auto}
+table{width:100%;border-collapse:collapse}th{text-align:left;padding:8px 10px;font-size:0.72rem;text-transform:uppercase;color:#9A9A9A;border-bottom:2px solid #F5EDE4;}
+td{padding:6px 10px;border-bottom:1px solid #F5EDE4;font-size:0.85rem}
+@media print{body{padding:20px}}</style></head><body>
+<div style="display:flex;justify-content:space-between;margin-bottom:24px;padding-bottom:14px;border-bottom:3px solid ${ac};">
+  <div><h1 style="font-family:'Quicksand';font-size:1.4rem;color:${ac};">INFORME FINANCIERO — PTO vs REALIZADO</h1>
+  <div style="font-size:0.88rem;color:#6B6B6B;">${bienData?.nombre || ''}</div></div>
+  <div style="text-align:right;font-size:0.85rem;color:#6B6B6B;"><strong>${ejInf.nombre}</strong><br>${fD(ejInf.inicio)} → ${fD(ejInf.fin)}</div>
+</div>
+<table><thead><tr><th>Concepto</th><th style="text-align:right">Presupuesto</th><th style="text-align:right">Realizado</th><th style="text-align:right">Desviación</th><th style="text-align:right">%</th></tr></thead>
+<tbody>${rows}</tbody></table>
+<div style="margin-top:40px;text-align:center;font-size:0.7rem;color:#9A9A9A;">FAMILYNK · ${new Date().toLocaleDateString('es-ES')}</div>
+<script>window.onload = () => window.print();<\/script></body></html>`;
+      const v = window.open('','_blank'); v.document.write(pdf); v.document.close();
+    }
+
+    // ===== TAB EVOLUCIÓN =====
+    let evoConfig = { serieDesde: '', kpis: [] };
+    let editKpiId = null;
+
+    async function cargarEvoConfig() {
+      try {
+        const doc = await db.collection('bienes').doc(bienId).get();
+        if (doc.exists && doc.data().evolucionConfig) {
+          evoConfig = doc.data().evolucionConfig;
+        }
+      } catch(e) { console.error(e); }
+
+      // Poblar selects
+      const selDesde = document.getElementById('sel-serie-desde');
+      const selMan = document.getElementById('man-ejercicio');
+      const ejsAsc = [...ejercicios].reverse(); // cronológico
+      selDesde.innerHTML = '<option value="">— Desde el primero —</option>';
+      selMan.innerHTML = '<option value="">— Selecciona —</option>';
+      ejsAsc.forEach(e => {
+        selDesde.innerHTML += `<option value="${e.id}" ${evoConfig.serieDesde === e.id ? 'selected' : ''}>${e.nombre}</option>`;
+        selMan.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+      });
+    }
+
+    async function guardarSerieDesde() {
+      evoConfig.serieDesde = document.getElementById('sel-serie-desde').value;
+      await guardarEvoConfig();
+      renderEvolucion();
+    }
+
+    async function guardarEvoConfig() {
+      try {
+        await db.collection('bienes').doc(bienId).update({ evolucionConfig: evoConfig });
+      } catch(e) { console.error(e); }
+    }
+
+    function getEjSerie() {
+      const ejsAsc = [...ejercicios].reverse();
+      if (!evoConfig.serieDesde) return ejsAsc;
+      const idx = ejsAsc.findIndex(e => e.id === evoConfig.serieDesde);
+      return idx >= 0 ? ejsAsc.slice(idx) : ejsAsc;
+    }
+
+    function ejResultados(ej) {
+      // Si tiene snapshot (cerrado o manual), usarlo
+      if (ej.snapshot) {
+        const s = ej.snapshot;
+        const res = { ventas: s.ventas||0, costes: s.costes||0, personal: s.personal||0, otros: s.otros||0, tesoreria: s.tesoreria||0 };
+        res.resultado = res.ventas - res.costes - res.personal - res.otros;
+        res.gastos = res.costes + res.personal + res.otros;
+        return res;
+      }
+      // Si tiene partidas, calcular en vivo
+      const pp = ej.partidas || [];
+      const rr = ej.registros || [];
+      const res = {};
+      // Resultados = suma de BASES por grupo
+      GK.forEach(g => {
+        const pids = pp.filter(p => p.grupo === g).map(p => p.id);
+        res[g] = rr.filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.base ?? r.importe)||0), 0);
+      });
+      // Tesorería = cobros (líquidos ventas) - pagos (líquidos costes+personal+otros)
+      let cobros = 0, pagos = 0;
+      GK.forEach(g => {
+        const pids = pp.filter(p => p.grupo === g).map(p => p.id);
+        const sumLiq = rr.filter(r => pids.includes(r.partidaId)).reduce((s,r) => s + (parseFloat(r.liquido ?? r.importe)||0), 0);
+        if (g === 'ventas') cobros += sumLiq;
+        else pagos += sumLiq;
+      });
+      res.tesoreria = cobros - pagos;
+      res.ventas = res.ventas || 0; res.costes = res.costes || 0;
+      res.personal = res.personal || 0; res.otros = res.otros || 0;
+      res.resultado = res.ventas - res.costes - res.personal - res.otros;
+      res.gastos = res.costes + res.personal + res.otros;
+      return res;
+    }
+
+    function evalFormula(formula, data, dataAnt) {
+      if (!formula) return null;
+      let expr = formula.trim();
+      const vars = ['ventas','costes','personal','otros','resultado','gastos','tesoreria'];
+      // Reemplazar variables _ant primero
+      vars.forEach(v => { expr = expr.replace(new RegExp(v + '_ant', 'g'), String(dataAnt ? (dataAnt[v]||0) : 0)); });
+      // Reemplazar variables actuales
+      vars.forEach(v => { expr = expr.replace(new RegExp('\\b' + v + '\\b', 'g'), String(data[v]||0)); });
+      if (!/^[\d\s\+\-\*\/\(\)\.]+$/.test(expr)) return null;
+      try { const val = Function('"use strict"; return (' + expr + ')')(); return isFinite(val) ? val : null; } catch(e) { return null; }
+    }
+
+    function trendHtml(curr, prev) {
+      if (prev === null || prev === undefined || curr === null || curr === undefined) return '';
+      if (curr > prev) return ' <span class="evo-trend-up">▲</span>';
+      if (curr < prev) return ' <span class="evo-trend-down">▼</span>';
+      return '';
+    }
+
+    // KPIs predefinidos del sistema (siempre visibles)
+    const KPIS_SISTEMA = [
+      { id:'sys_margen',     nombre:'Margen neto',         formula:'resultado/ventas*100',                        unidad:'%',    decimales:'1' },
+      { id:'sys_crec',       nombre:'Crecimiento ventas',  formula:'(ventas-ventas_ant)/ventas_ant*100',           unidad:'%',    decimales:'1' },
+      { id:'sys_peso_cost',  nombre:'Peso costes',         formula:'costes/ventas*100',                            unidad:'%',    decimales:'1' },
+      { id:'sys_peso_pers',  nombre:'Peso personal',       formula:'personal/ventas*100',                          unidad:'%',    decimales:'1' },
+    ];
+    const MAX_KPIS_USUARIO = 10;
+
+    function renderEvolucion() {
+      const serie = getEjSerie();
+      if (!serie.length) {
+        document.getElementById('tabla-evo').style.display = 'none';
+        document.getElementById('evo-vacio').style.display = '';
+        return;
+      }
+      document.getElementById('tabla-evo').style.display = '';
+      document.getElementById('evo-vacio').style.display = 'none';
+
+      // Calcular resultados por ejercicio
+      const datos = serie.map(ej => ({ ej, res: ejResultados(ej) }));
+      // Añadir gastos derivado
+      datos.forEach(d => { d.res.gastos = (d.res.costes||0) + (d.res.personal||0) + (d.res.otros||0); });
+
+      // Thead
+      const thead = document.getElementById('evo-thead-tr');
+      let th = '<th>Concepto</th>';
+      serie.forEach(ej => {
+        const tag = ej.cerrado ? '<span class="evo-cerrado">🔒</span>' :
+                    ej.snapshot ? '<span class="evo-manual">✏️</span>' :
+                    (ej.partidas?.length ? '<span class="evo-live">⚡</span>' : '');
+        th += `<th>${ej.nombre}${tag}</th>`;
+      });
+      thead.innerHTML = th;
+
+      // Tbody
+      let html = '';
+
+      // SECCIÓN RESULTADOS
+      html += `<tr class="evo-section"><td colspan="${serie.length + 1}">📊 Resultados</td></tr>`;
+
+      const rows = [
+        { key:'ventas',    label:'💚 Ventas',       cls:'evo-row-ventas' },
+        { key:'costes',    label:'🟡 Costes',       cls:'evo-row-costes' },
+        { key:'personal',  label:'🔵 Personal',     cls:'evo-row-personal' },
+        { key:'otros',     label:'🔴 Otros gastos', cls:'evo-row-otros' },
+        { key:'resultado', label:'📊 Resultado',    cls:'evo-row-resultado' },
+        { key:'tesoreria', label:'🏦 Tesorería',    cls:'evo-row-tesoreria' }
+      ];
+
+      rows.forEach(row => {
+        html += `<tr class="${row.cls}"><td>${row.label}</td>`;
+        datos.forEach((d, i) => {
+          const v = d.res[row.key] || 0;
+          const prev = i > 0 ? (datos[i-1].res[row.key]||0) : null;
+          const color = (row.key === 'resultado' || row.key === 'tesoreria') ? (v >= 0 ? 'var(--success)' : 'var(--error)') : '';
+          html += `<td${color ? ` style="color:${color}"` : ''}>${fN(v)} €${trendHtml(v, prev)}</td>`;
+        });
+        html += '</tr>';
+      });
+
+      // SECCIÓN KPIs: sistema + usuario
+      const allKpis = [...KPIS_SISTEMA, ...(evoConfig.kpis || [])];
+      if (allKpis.length) {
+        html += `<tr class="evo-section"><td colspan="${serie.length + 1}">📐 KPIs</td></tr>`;
+        allKpis.forEach(kpi => {
+          const esSistema = kpi.id.startsWith('sys_');
+          html += `<tr class="evo-row-kpi"><td>${kpi.nombre} <span style="color:var(--text-muted);font-size:0.7rem;">(${kpi.unidad||''})</span>`;
+          if (!esSistema) {
+            html += `<span class="evo-row-kpi-actions"><button onclick="editarKpi('${kpi.id}')" title="Editar">✏️</button></span>`;
+          }
+          html += `</td>`;
+          datos.forEach((d, i) => {
+            const dataAnt = i > 0 ? datos[i-1].res : null;
+            const val = evalFormula(kpi.formula, d.res, dataAnt);
+            const prev = i > 0 ? evalFormula(kpi.formula, datos[i-1].res, i > 1 ? datos[i-2].res : null) : null;
+            const dec = parseInt(kpi.decimales) || 0;
+            if (val === null) {
+              html += '<td style="color:var(--text-muted);font-size:0.75rem;">—</td>';
+            } else {
+              html += `<td>${val.toLocaleString('es-ES', { minimumFractionDigits:dec, maximumFractionDigits:dec })} ${kpi.unidad||''}${trendHtml(val, prev)}</td>`;
+            }
+          });
+          html += '</tr>';
+        });
+      }
+
+      document.getElementById('tbody-evo').innerHTML = html;
+    }
+
+    // KPI CRUD
+    function abrirModalKpi(kpiData) {
+      if (!kpiData && (evoConfig.kpis || []).length >= MAX_KPIS_USUARIO) {
+        alert(`Máximo ${MAX_KPIS_USUARIO} KPIs personalizados alcanzado`); return;
+      }
+      editKpiId = kpiData ? kpiData.id : null;
+      document.getElementById('modal-kpi-title').textContent = kpiData ? '✏️ Editar KPI' : '📐 Nuevo KPI';
+      document.getElementById('btn-del-kpi').style.display = kpiData ? '' : 'none';
+      document.getElementById('kpi-nombre').value = kpiData?.nombre || '';
+      document.getElementById('kpi-formula').value = kpiData?.formula || '';
+      document.getElementById('kpi-unidad').value = kpiData?.unidad ?? '%';
+      document.getElementById('kpi-decimales').value = kpiData?.decimales ?? '2';
+      document.getElementById('modal-kpi').classList.add('active');
+    }
+
+    function editarKpi(id) {
+      const kpi = evoConfig.kpis.find(k => k.id === id);
+      if (kpi) abrirModalKpi(kpi);
+    }
+
+    function cerrarModalKpi() { document.getElementById('modal-kpi').classList.remove('active'); }
+
+    async function guardarKpi() {
+      const nombre = document.getElementById('kpi-nombre').value.trim();
+      const formula = document.getElementById('kpi-formula').value.trim();
+      const unidad = document.getElementById('kpi-unidad').value;
+      const decimales = document.getElementById('kpi-decimales').value;
+      if (!nombre || !formula) { alert('Nombre y fórmula obligatorios'); return; }
+
+      // Validar fórmula con datos dummy
+      const dummy = { ventas:100, costes:50, personal:20, otros:10, resultado:20, gastos:80, tesoreria:18 };
+      const test = evalFormula(formula, dummy, dummy);
+      if (test === null) { alert('Fórmula inválida. Revisa la sintaxis.\nVariables: ventas, costes, personal, otros, resultado, gastos\nPara anterior: ventas_ant, costes_ant, etc.'); return; }
+
+      if (editKpiId) {
+        const idx = evoConfig.kpis.findIndex(k => k.id === editKpiId);
+        if (idx >= 0) evoConfig.kpis[idx] = { ...evoConfig.kpis[idx], nombre, formula, unidad, decimales };
+      } else {
+        evoConfig.kpis.push({ id: 'kpi_' + Date.now(), nombre, formula, unidad, decimales });
+      }
+      await guardarEvoConfig();
+      cerrarModalKpi();
+      renderEvolucion();
+    }
+
+    async function eliminarKpi() {
+      if (!editKpiId || !confirm('¿Eliminar este KPI?')) return;
+      evoConfig.kpis = evoConfig.kpis.filter(k => k.id !== editKpiId);
+      await guardarEvoConfig();
+      cerrarModalKpi();
+      renderEvolucion();
+    }
+
+    // DATO MANUAL / HISTÓRICO
+    function abrirModalManual() {
+      document.getElementById('man-ventas').value = '';
+      document.getElementById('man-costes').value = '';
+      document.getElementById('man-personal').value = '';
+      document.getElementById('man-otros').value = '';
+      document.getElementById('man-tesoreria').value = '';
+      document.getElementById('man-ejercicio').value = '';
+      document.getElementById('modal-manual').classList.add('active');
+    }
+
+    function cerrarModalManual() { document.getElementById('modal-manual').classList.remove('active'); }
+
+    async function guardarManual() {
+      const ejId = document.getElementById('man-ejercicio').value;
+      if (!ejId) { alert('Selecciona ejercicio'); return; }
+      const snapshot = {
+        ventas: parseFloat(document.getElementById('man-ventas').value) || 0,
+        costes: parseFloat(document.getElementById('man-costes').value) || 0,
+        personal: parseFloat(document.getElementById('man-personal').value) || 0,
+        otros: parseFloat(document.getElementById('man-otros').value) || 0,
+        tesoreria: parseFloat(document.getElementById('man-tesoreria').value) || 0
+      };
+      try {
+        await db.collection('bienes').doc(bienId).collection('ejercicios').doc(ejId).update({ snapshot });
+        // Actualizar local
+        const ej = ejercicios.find(e => e.id === ejId);
+        if (ej) ej.snapshot = snapshot;
+        cerrarModalManual();
+        renderEvolucion();
+      } catch(e) { console.error(e); alert('Error al guardar'); }
+    }
+
+    function exportarPDFEvolucion() {
+      const serie = getEjSerie();
+      if (!serie.length) { alert('Sin datos'); return; }
+      const datos = serie.map(ej => ({ ej, res: ejResultados(ej) }));
+      datos.forEach(d => { d.res.gastos = (d.res.costes||0) + (d.res.personal||0) + (d.res.otros||0); });
+      const ac = '#6B8E23';
+
+      let ths = '<th style="text-align:left;padding:8px;">Concepto</th>';
+      serie.forEach(ej => { ths += `<th style="text-align:right;padding:8px;">${ej.nombre}</th>`; });
+
+      let rows = '';
+      const rDefs = [
+        { key:'ventas', label:'💚 Ventas' }, { key:'costes', label:'🟡 Costes' },
+        { key:'personal', label:'🔵 Personal' }, { key:'otros', label:'🔴 Otros gastos' },
+        { key:'resultado', label:'📊 Resultado' }, { key:'tesoreria', label:'🏦 Tesorería' }
+      ];
+      rows += `<tr style="background:#f0f0f0;"><td colspan="${serie.length+1}" style="padding:8px;font-weight:700;font-size:0.8rem;">RESULTADOS</td></tr>`;
+      rDefs.forEach(r => {
+        const isBold = r.key === 'resultado' || r.key === 'tesoreria';
+        rows += `<tr${isBold ? ` style="border-top:2px solid ${ac};font-weight:700;"` : ''}><td style="padding:6px 8px;${!isBold ? 'padding-left:16px;' : ''}">${r.label}</td>`;
+        datos.forEach(d => {
+          const v = d.res[r.key]||0;
+          const col = (r.key === 'resultado' || r.key === 'tesoreria') ? (v >= 0 ? '#7DB59A' : '#D4695A') : '';
+          rows += `<td style="text-align:right;padding:6px 8px;${col ? 'color:'+col+';' : ''}">${fN(v)} €</td>`;
+        });
+        rows += '</tr>';
+      });
+
+      const allKpis = [...KPIS_SISTEMA, ...(evoConfig.kpis || [])];
+      if (allKpis.length) {
+        rows += `<tr style="background:#f0f0f0;"><td colspan="${serie.length+1}" style="padding:8px;font-weight:700;font-size:0.8rem;">KPIs</td></tr>`;
+        allKpis.forEach(kpi => {
+          rows += `<tr><td style="padding:6px 8px;padding-left:16px;">${kpi.nombre} (${kpi.unidad||''})</td>`;
+          datos.forEach((d,i) => {
+            const val = evalFormula(kpi.formula, d.res, i > 0 ? datos[i-1].res : null);
+            const dec = parseInt(kpi.decimales)||0;
+            rows += `<td style="text-align:right;padding:6px 8px;">${val !== null ? val.toLocaleString('es-ES',{minimumFractionDigits:dec,maximumFractionDigits:dec})+' '+(kpi.unidad||'') : '—'}</td>`;
+          });
+          rows += '</tr>';
+        });
+      }
+
+      const pdf = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Evolución - ${bienData?.nombre||''}</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Nunito',sans-serif;color:#3D3D3D;padding:40px;max-width:1100px;margin:0 auto}
+table{width:100%;border-collapse:collapse}th{padding:8px;font-size:0.72rem;text-transform:uppercase;color:#9A9A9A;border-bottom:2px solid #F5EDE4;}
+td{border-bottom:1px solid #F5EDE4;font-size:0.85rem;}
+@media print{body{padding:20px}}</style></head><body>
+<div style="display:flex;justify-content:space-between;margin-bottom:24px;padding-bottom:14px;border-bottom:3px solid ${ac};">
+  <div><h1 style="font-family:'Quicksand';font-size:1.4rem;color:${ac};">INFORME DE EVOLUCIÓN</h1>
+  <div style="font-size:0.88rem;color:#6B6B6B;">${bienData?.nombre||''}</div></div>
+  <div style="text-align:right;font-size:0.85rem;color:#6B6B6B;">${serie.length} ejercicios<br>${new Date().toLocaleDateString('es-ES')}</div>
+</div>
+<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>
+<div style="margin-top:40px;text-align:center;font-size:0.7rem;color:#9A9A9A;">FAMILYNK · ${new Date().toLocaleDateString('es-ES')}</div>
+<script>window.onload=()=>window.print();<\/script></body></html>`;
+      const v = window.open('','_blank'); v.document.write(pdf); v.document.close();
+    }
+
+    // ===== UTILS =====
+    function fD(f) { if(!f) return '—'; const d = new Date(f + 'T00:00:00'); return d.toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' }); }
+    function fN(n) { return (parseFloat(n)||0).toLocaleString('es-ES', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+  </script>
+</body>
+</html>
