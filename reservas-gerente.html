@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Reservas</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2D4A5C">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #FDF8F3;
+      --cream-dark: #F5EDE4;
+      --cream-medium: #FAF5EF;
+      --gerente: #2D4A5C;
+      --gerente-light: #4A6B7C;
+      --gerente-dark: #1D3544;
+      --gerente-muted: rgba(45, 74, 92, 0.12);
+      --text: #3D3D3D;
+      --text-light: #6B6B6B;
+      --text-muted: #9A9A9A;
+      --white: #FFFFFF;
+      --success: #7DB59A;
+      --warning: #E8B44D;
+      --error: #D4695A;
+      /* Colores por tipo de reserva */
+      --familiar: #9C27B0;
+      --familiar-light: #CE93D8;
+      --familiar-bg: #F3E5F5;
+      --huesped: #C17757;
+      --huesped-light: #DCAB97;
+      --huesped-bg: #FBE9E1;
+      --actividad: #42A5F5;
+      --actividad-light: #90CAF9;
+      --actividad-bg: #E3F2FD;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --shadow-float: 0 8px 30px rgba(0,0,0,0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; }
+
+    /* ===== HEADER ===== */
+    .header {
+      background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%);
+      padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: var(--shadow-medium); position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      display: flex; align-items: center; gap: 6px; padding: 8px 14px;
+      background: rgba(255,255,255,0.15); border: none; border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-size: 0.85rem; color: white;
+      cursor: pointer; text-decoration: none; transition: all 0.2s;
+    }
+    .back-btn:hover { background: rgba(255,255,255,0.25); }
+    .header-title { display: flex; align-items: center; gap: 10px; color: white; }
+    .header-icon { width: 36px; height: 36px; background: rgba(255,255,255,0.2); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .header-info h1 { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; }
+    .header-info p { font-size: 0.75rem; opacity: 0.85; }
+
+    /* ===== LAYOUT ===== */
+    .main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+
+    /* ===== CALENDARIO ===== */
+    .calendario-card { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .calendario-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--cream-medium); border-bottom: 1px solid var(--cream-dark); }
+    .calendario-mes { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 700; }
+    .calendario-nav button { width: 32px; height: 32px; border: none; background: white; border-radius: var(--radius-sm); cursor: pointer; font-size: 1.2rem; transition: all 0.2s; }
+    .calendario-nav button:hover { background: var(--gerente); color: white; }
+    .calendario-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--cream-dark); padding: 1px; }
+    .calendario-dia-header { background: var(--cream-medium); padding: 10px; text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--text-light); }
+    .calendario-dia { background: white; min-height: 90px; padding: 6px; cursor: pointer; transition: background 0.2s; }
+    .calendario-dia:hover { background: var(--cream-medium); }
+    .calendario-dia.hoy { background: var(--gerente-muted); }
+    .calendario-dia.otro-mes { background: var(--cream-medium); }
+    .calendario-dia.otro-mes .calendario-dia-numero { color: var(--text-muted); }
+    .calendario-dia-numero { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+    .calendario-dia.hoy .calendario-dia-numero { color: var(--gerente-dark); font-weight: 700; }
+    .calendario-dia-eventos { display: flex; flex-direction: column; gap: 2px; }
+    .calendario-evento {
+      font-size: 0.65rem; padding: 2px 4px; border-radius: 3px;
+      color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+    }
+
+    /* Colores calendario por tipo */
+    .calendario-evento.familiar.borrador { background: var(--familiar-light) !important; color: var(--text) !important; border: 1px dashed var(--familiar); }
+    .calendario-evento.familiar.confirmado { background: var(--familiar) !important; color: white !important; }
+    .calendario-evento.huesped.borrador { background: var(--huesped-light) !important; color: var(--text) !important; border: 1px dashed var(--huesped); }
+    .calendario-evento.huesped.confirmado { background: var(--huesped) !important; color: white !important; }
+    .calendario-evento.actividad.borrador { background: var(--actividad-light) !important; color: var(--text) !important; border: 1px dashed var(--actividad); }
+    .calendario-evento.actividad.confirmado { background: var(--actividad) !important; color: white !important; }
+    /* Fallback */
+    .calendario-evento.borrador { background: var(--familiar-light) !important; color: var(--text) !important; border: 1px dashed var(--familiar); }
+    .calendario-evento.confirmado { background: var(--familiar) !important; color: white !important; }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar { display: flex; flex-direction: column; gap: 16px; }
+    .sidebar-card { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-soft); overflow: hidden; }
+    .sidebar-card-header { padding: 14px 16px; background: var(--cream-medium); border-bottom: 1px solid var(--cream-dark); }
+    .sidebar-card-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 0.95rem; }
+    .sidebar-card-body { padding: 16px; }
+
+    /* Leyenda */
+    .leyenda { display: flex; flex-direction: column; gap: 10px; }
+    .leyenda-item { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+    .leyenda-color { width: 24px; height: 16px; border-radius: 3px; }
+    .leyenda-color.familiar-conf { background: var(--familiar); }
+    .leyenda-color.familiar-borr { background: var(--familiar-light); border: 1px dashed var(--familiar); }
+    .leyenda-color.huesped-conf { background: var(--huesped); }
+    .leyenda-color.huesped-borr { background: var(--huesped-light); border: 1px dashed var(--huesped); }
+    .leyenda-color.actividad-conf { background: var(--actividad); }
+    .leyenda-color.actividad-borr { background: var(--actividad-light); border: 1px dashed var(--actividad); }
+
+    /* Lista próximas */
+    .reserva-item {
+      display: flex; align-items: center; gap: 12px; padding: 12px;
+      border-radius: var(--radius-md); margin-bottom: 10px; cursor: pointer;
+      transition: all 0.2s; background: var(--cream-medium);
+    }
+    .reserva-item:hover { background: var(--cream-dark); transform: translateX(4px); }
+    .reserva-item.familiar.borrador { border-left: 3px solid var(--familiar-light); }
+    .reserva-item.familiar.confirmado { border-left: 3px solid var(--familiar); }
+    .reserva-item.huesped.borrador { border-left: 3px solid var(--huesped-light); }
+    .reserva-item.huesped.confirmado { border-left: 3px solid var(--huesped); }
+    .reserva-item.actividad.borrador { border-left: 3px solid var(--actividad-light); }
+    .reserva-item.actividad.confirmado { border-left: 3px solid var(--actividad); }
+    .reserva-item.borrador { border-left: 3px solid var(--familiar-light); }
+    .reserva-item.confirmado { border-left: 3px solid var(--familiar); }
+    .reserva-info { flex: 1; }
+    .reserva-nombre { font-weight: 600; font-size: 0.9rem; }
+    .reserva-fechas { font-size: 0.75rem; color: var(--text-light); }
+    .reserva-estado { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; }
+    .reserva-estado.borrador { background: var(--cream-dark); color: var(--text); }
+    .reserva-estado.confirmado { background: var(--gerente); color: white; }
+    .reserva-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 20px 0; }
+
+    /* Dropdown nueva */
+    .dropdown-nueva { position: relative; width: 100%; }
+    .dropdown-menu {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: white; border-radius: var(--radius-md);
+      box-shadow: var(--shadow-soft); overflow: hidden; display: none; z-index: 100;
+    }
+    .dropdown-menu.show { display: block; }
+    .dropdown-item { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; transition: background 0.2s; }
+    .dropdown-item:hover { background: var(--cream-medium); }
+    .dropdown-item-color { width: 12px; height: 12px; border-radius: 3px; }
+    .dropdown-item-color.familiar { background: var(--familiar); }
+    .dropdown-item-color.huesped { background: var(--huesped); }
+    .dropdown-item-color.actividad { background: var(--actividad); }
+    .dropdown-separator { height: 1px; background: var(--cream-dark); margin: 4px 16px; }
+
+    .btn { padding: 12px 20px; border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; border: none; }
+    .btn-gerente { background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%); color: white; width: 100%; }
+    .btn-gerente:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+    .btn-pdf {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: white; color: var(--gerente);
+      border: 2px solid var(--gerente-light); border-radius: 8px;
+      font-family: 'Nunito', sans-serif; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-pdf:hover { background: var(--gerente); color: white; }
+
+    .loading { display: flex; align-items: center; justify-content: center; padding: 60px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--gerente); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: white; border-radius: var(--radius-lg); width: 90%; max-width: 520px;
+      max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-float);
+    }
+    .modal-header {
+      padding: 18px 24px; border-bottom: 1px solid var(--cream-dark);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-weight: 700; font-size: 1.1rem; }
+    .modal-close { width: 32px; height: 32px; border: none; background: var(--cream); border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .modal-close:hover { background: var(--cream-dark); }
+    .modal-body { padding: 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--cream-dark); display: flex; gap: 10px; justify-content: flex-end; }
+
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text-light); margin-bottom: 6px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--cream-dark); border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif; font-size: 0.9rem; color: var(--text); background: white;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--gerente-light); }
+    .form-textarea { resize: vertical; min-height: 70px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .tipo-badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+      border-radius: 20px; font-size: 0.82rem; font-weight: 600; margin-bottom: 16px;
+    }
+    .tipo-badge.familiar { background: var(--familiar-bg); color: var(--familiar); }
+    .tipo-badge.huesped { background: var(--huesped-bg); color: var(--huesped); }
+    .tipo-badge.actividad { background: var(--actividad-bg); color: var(--actividad); }
+
+    .btn-save { background: linear-gradient(135deg, var(--gerente) 0%, var(--gerente-dark) 100%); color: white; padding: 10px 24px; border: none; border-radius: var(--radius-md); font-family: 'Nunito'; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .btn-save:hover { box-shadow: var(--shadow-float); }
+    .btn-cancel { background: var(--cream); color: var(--text); padding: 10px 20px; border: 1px solid var(--cream-dark); border-radius: var(--radius-md); font-family: 'Nunito'; font-weight: 600; font-size: 0.9rem; cursor: pointer; }
+    .btn-cancel:hover { background: var(--cream-dark); }
+    .btn-delete { background: none; color: var(--error); padding: 10px 16px; border: 1px solid var(--error); border-radius: var(--radius-md); font-family: 'Nunito'; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+    .btn-delete:hover { background: var(--error); color: white; }
+
+    .estado-select { display: flex; gap: 8px; flex-wrap: wrap; }
+    .estado-opt { padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 2px solid var(--cream-dark); background: white; transition: all 0.2s; }
+    .estado-opt:hover { border-color: var(--gerente-light); }
+    .estado-opt.active { border-color: var(--gerente); background: var(--gerente-muted); color: var(--gerente); }
+
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .sidebar { order: -1; } }
+    @media (max-width: 600px) { .header { padding: 12px 16px; } .main { padding: 16px; } .calendario-dia { min-height: 60px; } .form-row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Gerente</a>
+      <div class="header-title">
+        <div class="header-icon">📅</div>
+        <div class="header-info">
+          <h1>Reservas</h1>
+          <p id="bien-nombre">Cargando...</p>
+        </div>
+      </div>
+    </div>
+    <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="main">
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+
+    <div class="layout hidden" id="content">
+      <!-- CALENDARIO -->
+      <div class="calendario-card">
+        <div class="calendario-header">
+          <div class="calendario-nav"><button onclick="mesAnterior()">‹</button></div>
+          <div class="calendario-mes" id="calendario-mes">Marzo 2026</div>
+          <div class="calendario-nav"><button onclick="mesSiguiente()">›</button></div>
+        </div>
+        <div class="calendario-grid" id="calendario-grid"></div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <div class="sidebar">
+        <!-- Dropdown Nueva reserva -->
+        <div class="dropdown-nueva">
+          <button class="btn btn-gerente" onclick="toggleDropdown()">+ Nueva reserva ▾</button>
+          <div class="dropdown-menu" id="dropdown-menu">
+            <div class="dropdown-item" onclick="abrirModal('familiar')">
+              <div class="dropdown-item-color familiar"></div>
+              <span>👨‍👩‍👧 Reserva familiar</span>
+            </div>
+            <div class="dropdown-separator"></div>
+            <div class="dropdown-item" onclick="abrirModal('huesped')">
+              <div class="dropdown-item-color huesped"></div>
+              <span>🏠 Reserva de huéspedes</span>
+            </div>
+            <div class="dropdown-separator"></div>
+            <div class="dropdown-item" onclick="abrirModal('actividad')">
+              <div class="dropdown-item-color actividad"></div>
+              <span>📌 Actividad</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leyenda -->
+        <div class="sidebar-card">
+          <div class="sidebar-card-header"><div class="sidebar-card-title">📋 Leyenda</div></div>
+          <div class="sidebar-card-body">
+            <div class="leyenda">
+              <div class="leyenda-item"><div class="leyenda-color familiar-conf"></div><span>👨‍👩‍👧 Familiar (confirmada)</span></div>
+              <div class="leyenda-item"><div class="leyenda-color familiar-borr"></div><span>Familiar (borrador)</span></div>
+              <div class="leyenda-item"><div class="leyenda-color huesped-conf"></div><span>🏠 Huéspedes (confirmada)</span></div>
+              <div class="leyenda-item"><div class="leyenda-color huesped-borr"></div><span>Huéspedes (borrador)</span></div>
+              <div class="leyenda-item"><div class="leyenda-color actividad-conf"></div><span>📌 Actividad (confirmada)</span></div>
+              <div class="leyenda-item"><div class="leyenda-color actividad-borr"></div><span>Actividad (borrador)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Próximas reservas -->
+        <div class="sidebar-card">
+          <div class="sidebar-card-header"><div class="sidebar-card-title">📆 Próximas reservas</div></div>
+          <div class="sidebar-card-body" id="proximas-reservas">
+            <div class="reserva-empty">Cargando...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== MODAL RESERVA ===== -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-titulo">Nueva reserva</h3>
+        <button class="modal-close" onclick="cerrarModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Badge de tipo -->
+        <div id="modal-tipo-badge" class="tipo-badge familiar">👨‍👩‍👧 Reserva familiar</div>
+
+        <!-- CAMPOS FAMILIARES: nido + representado -->
+        <div id="campos-familiar">
+          <div class="form-group">
+            <label class="form-label">¿Quiénes?</label>
+            <select class="form-select" id="f-quienes">
+              <option value="">Seleccionar...</option>
+            </select>
+          </div>
+          <div class="form-group" id="grupo-representado" style="display:none;">
+            <label class="form-label">¿Representado por?</label>
+            <input type="text" class="form-input" id="f-representado" placeholder="Nombre de contacto">
+          </div>
+        </div>
+
+        <!-- CAMPOS HUÉSPEDES: grupo + pax -->
+        <div id="campos-huesped" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">Nombre del grupo / titular</label>
+            <input type="text" class="form-input" id="f-grupo" placeholder="Ej: Familia Martínez, Grupo Aventura...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nº de personas (PAX)</label>
+            <input type="number" class="form-input" id="f-pax" min="1" max="99" placeholder="Ej: 4">
+          </div>
+        </div>
+
+        <!-- CAMPOS ACTIVIDAD: nombre -->
+        <div id="campos-actividad" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">Nombre de la actividad</label>
+            <input type="text" class="form-input" id="f-actividad-nombre" placeholder="Ej: Cata de vinos, Retiro yoga...">
+          </div>
+        </div>
+
+        <!-- CAMPOS COMUNES -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha entrada</label>
+            <input type="date" class="form-input" id="f-fecha-entrada">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora entrada</label>
+            <input type="time" class="form-input" id="f-hora-entrada" value="16:00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha salida</label>
+            <input type="date" class="form-input" id="f-fecha-salida">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora salida</label>
+            <input type="time" class="form-input" id="f-hora-salida" value="11:00">
+          </div>
+        </div>
+
+        <!-- Estado -->
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <div class="estado-select" id="estado-select">
+            <div class="estado-opt active" data-val="borrador" onclick="selEstado(this)">📝 Borrador</div>
+            <div class="estado-opt" data-val="confirmada" onclick="selEstado(this)">✅ Confirmada</div>
+            <div class="estado-opt" data-val="cancelada" onclick="selEstado(this)">❌ Cancelada</div>
+          </div>
+        </div>
+
+        <!-- Notas -->
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-textarea" id="f-notas" placeholder="Observaciones, peticiones especiales..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-delete hidden" id="btn-eliminar" onclick="eliminarReserva()">🗑️ Eliminar</button>
+        <div style="flex:1;"></div>
+        <button class="btn-cancel" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn-save" onclick="guardarReserva()">💾 Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let reservas = [];
+    let nidosRama = [];
+    let mesActual = new Date();
+    let editId = null;
+    let tipoActual = 'familiar';
+    let estadoActual = 'borrador';
+
+    const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const DIAS_SEMANA = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+
+    const TIPOS_INFO = {
+      familiar:  { emoji: '👨‍👩‍👧', nombre: 'Reserva familiar', color: '#9C27B0' },
+      huesped:   { emoji: '🏠',  nombre: 'Reserva de huéspedes', color: '#C17757' },
+      actividad: { emoji: '📌',  nombre: 'Actividad', color: '#42A5F5' }
+    };
+
+    // ========== INIT ==========
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('id');
+    if (!bienId) { alert('No se especificó el bien'); window.location.href = 'lo-comun.html'; }
+
+    document.getElementById('btn-volver').href = `gerente.html?id=${bienId}`;
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    // ========== CARGAR DATOS ==========
+    async function cargarDatos() {
+      try {
+        const bienDoc = await db.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); window.location.href = 'lo-comun.html'; return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+        document.getElementById('bien-nombre').textContent = bienData.nombre;
+
+        // Cargar nidos de la rama para el selector "¿Quiénes?"
+        await cargarNidosRama();
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+
+        await cargarReservas();
+      } catch (e) {
+        console.error('Error cargando datos:', e);
+        alert('Error al cargar datos');
+      }
+    }
+
+    async function cargarNidosRama() {
+      try {
+        const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+        const familiaId = userDoc.data()?.familiaId;
+        if (!familiaId) return;
+
+        const nidosSnap = await db.collection('familias').doc(familiaId).collection('nidos').get();
+        nidosRama = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (a.orden || 0) - (b.orden || 0));
+
+        // Poblar selector
+        const sel = document.getElementById('f-quienes');
+        sel.innerHTML = '<option value="">Seleccionar...</option>';
+        nidosRama.forEach(n => {
+          const nombre = n.apellidos || n.nombre || `Nido ${n.id.substring(0,4)}`;
+          sel.innerHTML += `<option value="nido:${n.id}" data-nombre="${nombre}">🏠 ${nombre}</option>`;
+        });
+        sel.innerHTML += '<option disabled>───────────</option>';
+        sel.innerHTML += '<option value="otros">📌 Otros</option>';
+      } catch (e) { console.warn('Error cargando nidos:', e); }
+    }
+
+    async function cargarReservas() {
+      try {
+        const snap = await db.collection('bienes').doc(bienId).collection('reservas')
+          .orderBy('fechaInicio', 'asc').get();
+
+        reservas = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .filter(r => {
+            const addon = r.addon || r.addonActivo;
+            return !addon || addon === 'gerente';
+          });
+
+        console.log('✅ Reservas gerente:', reservas.length);
+        renderCalendario();
+        renderProximas();
+      } catch (e) {
+        console.error('Error cargando reservas:', e);
+        reservas = [];
+      }
+    }
+
+    // ========== HELPERS ==========
+    function toFechaStr(val) {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (val.toDate) val = val.toDate();
+      return `${val.getFullYear()}-${String(val.getMonth()+1).padStart(2,'0')}-${String(val.getDate()).padStart(2,'0')}`;
+    }
+
+    function formatFecha(str) {
+      if (!str) return '—';
+      const [y, m, d] = str.split('-');
+      return `${parseInt(d)}/${parseInt(m)}`;
+    }
+
+    function getTipo(r) {
+      if (r.tipoReserva) return r.tipoReserva;
+      const tid = r.tipoId || r.tipo || '';
+      if (tid.includes('huesped') || tid.includes('huésped')) return 'huesped';
+      if (tid.includes('actividad')) return 'actividad';
+      if (tid.includes('familiar')) return 'familiar';
+      return 'familiar';
+    }
+
+    function getEstadoCSS(r) {
+      const e = r.estado || 'borrador';
+      return (e === 'confirmada' || e === 'aprobada') ? 'confirmado' : 'borrador';
+    }
+
+    function getEstadoLabel(r) {
+      const e = r.estado || 'borrador';
+      if (e === 'confirmada' || e === 'aprobada') return 'Confirmada';
+      if (e === 'cancelada') return 'Cancelada';
+      return 'Borrador';
+    }
+
+    function getNombreReserva(r) {
+      if (r.titulo) return r.titulo;
+      if (r.nombreGrupo) return r.nombreGrupo;
+      if (r.quienesNombre) return r.quienesNombre;
+      if (r.nombre) return r.nombre;
+      const t = TIPOS_INFO[getTipo(r)];
+      return t ? t.nombre : 'Reserva';
+    }
+
+    function getIconTipo(r) {
+      const t = TIPOS_INFO[getTipo(r)];
+      return t ? t.emoji : '📅';
+    }
+
+    // ========== RENDER CALENDARIO ==========
+    function renderCalendario() {
+      const grid = document.getElementById('calendario-grid');
+      if (!grid) return;
+      const year = mesActual.getFullYear();
+      const month = mesActual.getMonth();
+      document.getElementById('calendario-mes').textContent = `${MESES[month]} ${year}`;
+
+      let html = DIAS_SEMANA.map(d => `<div class="calendario-dia-header">${d}</div>`).join('');
+
+      const primerDia = new Date(year, month, 1);
+      let diaInicio = primerDia.getDay();
+      diaInicio = diaInicio === 0 ? 6 : diaInicio - 1;
+
+      const diasMesAnt = new Date(year, month, 0).getDate();
+      for (let i = diaInicio - 1; i >= 0; i--) {
+        html += `<div class="calendario-dia otro-mes"><div class="calendario-dia-numero">${diasMesAnt - i}</div></div>`;
+      }
+
+      const diasMes = new Date(year, month + 1, 0).getDate();
+      const hoy = new Date();
+
+      for (let dia = 1; dia <= diasMes; dia++) {
+        const fecha = new Date(year, month, dia);
+        const fechaStr = `${year}-${String(month+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+        const esHoy = fecha.toDateString() === hoy.toDateString();
+
+        const resDia = reservas.filter(r => {
+          const ini = toFechaStr(r.fechaInicio);
+          const fin = toFechaStr(r.fechaFin);
+          return fechaStr >= ini && fechaStr <= fin;
+        });
+
+        const eventosHtml = resDia.map(r => {
+          const tipo = getTipo(r);
+          const estado = getEstadoCSS(r);
+          const icon = getIconTipo(r);
+          const nombre = getNombreReserva(r);
+          return `<div class="calendario-evento ${tipo} ${estado}" onclick="event.stopPropagation();abrirModalEditar('${r.id}')" title="${TIPOS_INFO[tipo]?.nombre || 'Reserva'}: ${nombre}">${icon} ${nombre}</div>`;
+        }).join('');
+
+        html += `<div class="calendario-dia ${esHoy ? 'hoy' : ''}" onclick="abrirModalFecha('${fechaStr}')">
+          <div class="calendario-dia-numero">${dia}</div>
+          <div class="calendario-dia-eventos">${eventosHtml}</div>
+        </div>`;
+      }
+
+      const totalCeldas = diaInicio + diasMes;
+      const rest = totalCeldas % 7 === 0 ? 0 : 7 - (totalCeldas % 7);
+      for (let i = 1; i <= rest; i++) {
+        html += `<div class="calendario-dia otro-mes"><div class="calendario-dia-numero">${i}</div></div>`;
+      }
+      grid.innerHTML = html;
+    }
+
+    // ========== RENDER PRÓXIMAS ==========
+    function renderProximas() {
+      const container = document.getElementById('proximas-reservas');
+      const hoy = new Date().toISOString().split('T')[0];
+      const prox = reservas
+        .filter(r => toFechaStr(r.fechaFin) >= hoy && r.estado !== 'cancelada')
+        .sort((a, b) => toFechaStr(a.fechaInicio).localeCompare(toFechaStr(b.fechaInicio)))
+        .slice(0, 6);
+
+      if (!prox.length) { container.innerHTML = '<div class="reserva-empty">No hay reservas próximas</div>'; return; }
+
+      container.innerHTML = prox.map(r => {
+        const tipo = getTipo(r);
+        const estado = getEstadoCSS(r);
+        const nombre = getNombreReserva(r);
+        const icon = getIconTipo(r);
+        const hE = r.horaEntrada || '';
+        const hS = r.horaSalida || '';
+        const fechas = `${formatFecha(toFechaStr(r.fechaInicio))}${hE ? ' '+hE : ''} → ${formatFecha(toFechaStr(r.fechaFin))}${hS ? ' '+hS : ''}`;
+        const pax = r.pax ? ` · 👤 ${r.pax} pax` : '';
+        return `<div class="reserva-item ${tipo} ${estado}" onclick="abrirModalEditar('${r.id}')">
+          <div class="reserva-info">
+            <div class="reserva-nombre">${icon} ${nombre}</div>
+            <div class="reserva-fechas">📅 ${fechas}${pax}</div>
+          </div>
+          <span class="reserva-estado ${estado}">${getEstadoLabel(r)}</span>
+        </div>`;
+      }).join('');
+    }
+
+    // ========== NAVEGACIÓN CALENDARIO ==========
+    function mesAnterior() { mesActual.setMonth(mesActual.getMonth() - 1); renderCalendario(); }
+    function mesSiguiente() { mesActual.setMonth(mesActual.getMonth() + 1); renderCalendario(); }
+
+    // ========== DROPDOWN ==========
+    function toggleDropdown() { document.getElementById('dropdown-menu').classList.toggle('show'); }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.dropdown-nueva')) document.getElementById('dropdown-menu')?.classList.remove('show');
+    });
+
+    // ========== MODAL ==========
+    function abrirModal(tipo, fecha) {
+      document.getElementById('dropdown-menu')?.classList.remove('show');
+      editId = null;
+      tipoActual = tipo || 'familiar';
+      estadoActual = 'borrador';
+
+      // Título y badge
+      const info = TIPOS_INFO[tipoActual];
+      document.getElementById('modal-titulo').textContent = 'Nueva reserva';
+      const badge = document.getElementById('modal-tipo-badge');
+      badge.className = `tipo-badge ${tipoActual}`;
+      badge.textContent = `${info.emoji} ${info.nombre}`;
+
+      // Mostrar/ocultar campos según tipo
+      document.getElementById('campos-familiar').style.display = tipoActual === 'familiar' ? 'block' : 'none';
+      document.getElementById('campos-huesped').style.display = tipoActual === 'huesped' ? 'block' : 'none';
+      document.getElementById('campos-actividad').style.display = tipoActual === 'actividad' ? 'block' : 'none';
+
+      // Limpiar campos
+      document.getElementById('f-quienes').value = '';
+      document.getElementById('grupo-representado').style.display = 'none';
+      document.getElementById('f-representado').value = '';
+      document.getElementById('f-grupo').value = '';
+      document.getElementById('f-pax').value = '';
+      document.getElementById('f-actividad-nombre').value = '';
+      document.getElementById('f-fecha-entrada').value = fecha || '';
+      document.getElementById('f-hora-entrada').value = '16:00';
+      document.getElementById('f-fecha-salida').value = '';
+      document.getElementById('f-hora-salida').value = '11:00';
+      document.getElementById('f-notas').value = '';
+
+      // Estado
+      document.querySelectorAll('.estado-opt').forEach(o => o.classList.toggle('active', o.dataset.val === 'borrador'));
+
+      // Botón eliminar
+      document.getElementById('btn-eliminar').classList.add('hidden');
+
+      document.getElementById('modal-overlay').classList.add('show');
+    }
+
+    function abrirModalFecha(fecha) { abrirModal('familiar', fecha); }
+
+    function abrirModalEditar(id) {
+      const r = reservas.find(x => x.id === id);
+      if (!r) return;
+
+      editId = id;
+      tipoActual = getTipo(r);
+      estadoActual = r.estado || 'borrador';
+
+      const info = TIPOS_INFO[tipoActual];
+      document.getElementById('modal-titulo').textContent = 'Editar reserva';
+      const badge = document.getElementById('modal-tipo-badge');
+      badge.className = `tipo-badge ${tipoActual}`;
+      badge.textContent = `${info.emoji} ${info.nombre}`;
+
+      // Campos por tipo
+      document.getElementById('campos-familiar').style.display = tipoActual === 'familiar' ? 'block' : 'none';
+      document.getElementById('campos-huesped').style.display = tipoActual === 'huesped' ? 'block' : 'none';
+      document.getElementById('campos-actividad').style.display = tipoActual === 'actividad' ? 'block' : 'none';
+
+      // Rellenar según tipo
+      if (tipoActual === 'familiar') {
+        document.getElementById('f-quienes').value = r.quienes || '';
+        if (r.quienes && (r.quienes.startsWith('nido:') || r.quienes === 'otros')) {
+          document.getElementById('grupo-representado').style.display = 'block';
+          document.getElementById('f-representado').value = r.representadoPor || '';
+        }
+      } else if (tipoActual === 'huesped') {
+        document.getElementById('f-grupo').value = r.nombreGrupo || r.titulo || '';
+        document.getElementById('f-pax').value = r.pax || '';
+      } else {
+        document.getElementById('f-actividad-nombre').value = r.titulo || r.nombre || '';
+      }
+
+      document.getElementById('f-fecha-entrada').value = toFechaStr(r.fechaInicio);
+      document.getElementById('f-hora-entrada').value = r.horaEntrada || '16:00';
+      document.getElementById('f-fecha-salida').value = toFechaStr(r.fechaFin);
+      document.getElementById('f-hora-salida').value = r.horaSalida || '11:00';
+      document.getElementById('f-notas').value = r.notas || '';
+
+      // Estado
+      document.querySelectorAll('.estado-opt').forEach(o => o.classList.toggle('active', o.dataset.val === estadoActual));
+
+      // Botón eliminar
+      document.getElementById('btn-eliminar').classList.remove('hidden');
+
+      document.getElementById('modal-overlay').classList.add('show');
+    }
+
+    function cerrarModal() { document.getElementById('modal-overlay').classList.remove('show'); }
+
+    function selEstado(el) {
+      document.querySelectorAll('.estado-opt').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      estadoActual = el.dataset.val;
+    }
+
+    // Mostrar/ocultar "Representado por" según selector quiénes
+    document.getElementById('f-quienes').addEventListener('change', function() {
+      const val = this.value;
+      document.getElementById('grupo-representado').style.display =
+        (val.startsWith('nido:') || val === 'otros') ? 'block' : 'none';
+    });
+
+    // ========== GUARDAR ==========
+    async function guardarReserva() {
+      const fechaEntrada = document.getElementById('f-fecha-entrada').value;
+      const fechaSalida = document.getElementById('f-fecha-salida').value;
+      if (!fechaEntrada || !fechaSalida) { alert('Las fechas son obligatorias'); return; }
+      if (fechaSalida < fechaEntrada) { alert('La fecha de salida debe ser posterior a la entrada'); return; }
+
+      let titulo = '';
+      const data = {
+        addon: 'gerente',
+        tipoReserva: tipoActual,
+        fechaInicio: fechaEntrada,
+        fechaFin: fechaSalida,
+        horaEntrada: document.getElementById('f-hora-entrada').value || '',
+        horaSalida: document.getElementById('f-hora-salida').value || '',
+        estado: estadoActual,
+        notas: document.getElementById('f-notas').value.trim(),
+        bienId: bienId,
+        modificadoPor: currentUser.uid,
+        modificadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (tipoActual === 'familiar') {
+        const quienes = document.getElementById('f-quienes').value;
+        if (!quienes) { alert('Selecciona quiénes realizan la reserva'); return; }
+        data.quienes = quienes;
+        // Guardar nombre legible
+        const selOpt = document.getElementById('f-quienes').selectedOptions[0];
+        data.quienesNombre = selOpt?.dataset?.nombre || quienes;
+        data.representadoPor = document.getElementById('f-representado').value.trim();
+        titulo = data.quienesNombre;
+      } else if (tipoActual === 'huesped') {
+        const grupo = document.getElementById('f-grupo').value.trim();
+        if (!grupo) { alert('El nombre del grupo es obligatorio'); return; }
+        data.nombreGrupo = grupo;
+        data.pax = parseInt(document.getElementById('f-pax').value) || 0;
+        titulo = grupo;
+      } else {
+        const nombre = document.getElementById('f-actividad-nombre').value.trim();
+        if (!nombre) { alert('El nombre de la actividad es obligatorio'); return; }
+        titulo = nombre;
+      }
+      data.titulo = titulo;
+
+      try {
+        const ref = db.collection('bienes').doc(bienId).collection('reservas');
+        if (editId) {
+          await ref.doc(editId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.creadoPorNombre = currentUser.displayName || currentUser.email;
+          data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+          await ref.add(data);
+        }
+        cerrarModal();
+        await cargarReservas();
+      } catch (e) {
+        console.error('Error guardando:', e);
+        alert('Error al guardar la reserva');
+      }
+    }
+
+    // ========== ELIMINAR ==========
+    async function eliminarReserva() {
+      if (!editId) return;
+      if (!confirm('¿Eliminar esta reserva? Esta acción no se puede deshacer.')) return;
+      try {
+        await db.collection('bienes').doc(bienId).collection('reservas').doc(editId).delete();
+        cerrarModal();
+        await cargarReservas();
+      } catch (e) {
+        console.error('Error eliminando:', e);
+        alert('Error al eliminar');
+      }
+    }
+
+    // ========== PDF ==========
+    function generarPDF() {
+      const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
+      const mes = MESES[mesActual.getMonth()] + ' ' + mesActual.getFullYear();
+
+      let filas = reservas.map(r => {
+        const tipo = TIPOS_INFO[getTipo(r)]?.nombre || 'Reserva';
+        const nombre = getNombreReserva(r);
+        const estado = getEstadoLabel(r);
+        const fi = toFechaStr(r.fechaInicio);
+        const ff = toFechaStr(r.fechaFin);
+        const pax = r.pax || '—';
+        return `<tr>
+          <td style="padding:8px;border-bottom:1px solid #eee;">${nombre}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${tipo}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${pax}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(fi)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(ff)}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${estado}</td>
+        </tr>`;
+      }).join('');
+
+      const w = window.open('', '_blank');
+      w.document.write(`<!DOCTYPE html><html><head><title>\u00A0</title>
+<style>
+@page{margin:0;size:A4;}
+@media print{body{padding:0;}}
+body{font-family:Helvetica,Arial,sans-serif;padding:30px 40px;color:#333;}
+h2{margin:0;color:#2D4A5C;text-align:center;}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:20px;}
+thead tr{background:#2D4A5C;color:white;}
+th,td{padding:8px;}
+.foot{text-align:center;margin-top:30px;font-size:10px;color:#bbb;}
+</style></head><body>
+<h2>📅 Reservas — ${bienNombre}</h2>
+<p style="text-align:center;font-size:11px;color:#888;">${mes} · Total: ${reservas.length}</p>
+<table><thead><tr>
+<th style="text-align:left;">Nombre</th><th>Tipo</th><th>PAX</th><th>Entrada</th><th>Salida</th><th>Estado</th>
+</tr></thead><tbody>${filas || '<tr><td colspan="6" style="padding:20px;text-align:center;">Sin reservas</td></tr>'}</tbody></table>
+<div class="foot">FAMILYNK · Reservas Gerente · ${new Date().toLocaleDateString('es-ES')}</div>
+</body></html>`);
+      w.document.close();
+      setTimeout(() => w.print(), 300);
+    }
+  </script>
+</body>
+</html>
