@@ -207,6 +207,7 @@
     .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--gerente-light); }
     .form-textarea { resize: vertical; min-height: 70px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
     .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
     .tipo-badge {
       display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
@@ -337,7 +338,7 @@
           </div>
         </div>
 
-        <!-- CAMPOS HUÉSPEDES: grupo + pax -->
+        <!-- CAMPOS HUÉSPEDES: grupo + pax + habitaciones + comensales -->
         <div id="campos-huesped" style="display:none;">
           <div class="form-group">
             <label class="form-label">Nombre del grupo / titular</label>
@@ -346,6 +347,39 @@
           <div class="form-group">
             <label class="form-label">Nº de personas (PAX)</label>
             <input type="number" class="form-input" id="f-pax" min="1" max="99" placeholder="Ej: 4">
+          </div>
+          <div class="form-group" style="margin-top:14px;">
+            <label class="form-label" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--huesped);">🛏️ Habitaciones</label>
+          </div>
+          <div class="form-row form-row-3">
+            <div class="form-group">
+              <label class="form-label">Doble (sep.)</label>
+              <input type="number" class="form-input" id="f-hab-doble-sep" min="0" max="50" placeholder="0">
+              <div class="form-hint">Camas separadas</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Doble (juntas)</label>
+              <input type="number" class="form-input" id="f-hab-doble-jun" min="0" max="50" placeholder="0">
+              <div class="form-hint">Cama doble</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Individual</label>
+              <input type="number" class="form-input" id="f-hab-individual" min="0" max="50" placeholder="0">
+              <div class="form-hint">Uso individual</div>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:14px;">
+            <label class="form-label" style="font-size:0.78rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--huesped);">🍽️ Comensales</label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Cenas</label>
+              <input type="number" class="form-input" id="f-comensales-cenas" min="0" max="99" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Desayunos</label>
+              <input type="number" class="form-input" id="f-comensales-desayunos" min="0" max="99" placeholder="0">
+            </div>
           </div>
         </div>
 
@@ -590,9 +624,8 @@
         const eventosHtml = resDia.map(r => {
           const tipo = getTipo(r);
           const estado = getEstadoCSS(r);
-          const icon = getIconTipo(r);
           const nombre = getNombreReserva(r);
-          return `<div class="calendario-evento ${tipo} ${estado}" onclick="event.stopPropagation();abrirModalEditar('${r.id}')" title="${TIPOS_INFO[tipo]?.nombre || 'Reserva'}: ${nombre}">${icon} ${nombre}</div>`;
+          return `<div class="calendario-evento ${tipo} ${estado}" onclick="event.stopPropagation();abrirModalEditar('${r.id}')" title="${TIPOS_INFO[tipo]?.nombre || 'Reserva'}: ${nombre}">${nombre}</div>`;
         }).join('');
 
         html += `<div class="calendario-dia ${esHoy ? 'hoy' : ''}" onclick="abrirModalFecha('${fechaStr}')">
@@ -674,6 +707,11 @@
       document.getElementById('f-representado').value = '';
       document.getElementById('f-grupo').value = '';
       document.getElementById('f-pax').value = '';
+      document.getElementById('f-hab-doble-sep').value = '';
+      document.getElementById('f-hab-doble-jun').value = '';
+      document.getElementById('f-hab-individual').value = '';
+      document.getElementById('f-comensales-cenas').value = '';
+      document.getElementById('f-comensales-desayunos').value = '';
       document.getElementById('f-actividad-nombre').value = '';
       document.getElementById('f-fecha-entrada').value = fecha || '';
       document.getElementById('f-hora-entrada').value = '16:00';
@@ -721,6 +759,11 @@
       } else if (tipoActual === 'huesped') {
         document.getElementById('f-grupo').value = r.nombreGrupo || r.titulo || '';
         document.getElementById('f-pax').value = r.pax || '';
+        document.getElementById('f-hab-doble-sep').value = r.habDobleSep || '';
+        document.getElementById('f-hab-doble-jun').value = r.habDobleJun || '';
+        document.getElementById('f-hab-individual').value = r.habIndividual || '';
+        document.getElementById('f-comensales-cenas').value = r.comensalesCenas || '';
+        document.getElementById('f-comensales-desayunos').value = r.comensalesDesayunos || '';
       } else {
         document.getElementById('f-actividad-nombre').value = r.titulo || r.nombre || '';
       }
@@ -791,6 +834,11 @@
         if (!grupo) { alert('El nombre del grupo es obligatorio'); return; }
         data.nombreGrupo = grupo;
         data.pax = parseInt(document.getElementById('f-pax').value) || 0;
+        data.habDobleSep = parseInt(document.getElementById('f-hab-doble-sep').value) || 0;
+        data.habDobleJun = parseInt(document.getElementById('f-hab-doble-jun').value) || 0;
+        data.habIndividual = parseInt(document.getElementById('f-hab-individual').value) || 0;
+        data.comensalesCenas = parseInt(document.getElementById('f-comensales-cenas').value) || 0;
+        data.comensalesDesayunos = parseInt(document.getElementById('f-comensales-desayunos').value) || 0;
         titulo = grupo;
       } else {
         const nombre = document.getElementById('f-actividad-nombre').value.trim();
@@ -843,10 +891,14 @@
         const fi = toFechaStr(r.fechaInicio);
         const ff = toFechaStr(r.fechaFin);
         const pax = r.pax || '—';
+        const habs = (r.habDobleSep || r.habDobleJun || r.habIndividual)
+          ? `${r.habDobleSep||0}D/${r.habDobleJun||0}M/${r.habIndividual||0}I`
+          : '—';
         return `<tr>
           <td style="padding:8px;border-bottom:1px solid #eee;">${nombre}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${tipo}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${pax}</td>
+          <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;font-size:11px;">${habs}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(fi)}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${formatFecha(ff)}</td>
           <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${estado}</td>
@@ -868,8 +920,8 @@ th,td{padding:8px;}
 <h2>📅 Reservas — ${bienNombre}</h2>
 <p style="text-align:center;font-size:11px;color:#888;">${mes} · Total: ${reservas.length}</p>
 <table><thead><tr>
-<th style="text-align:left;">Nombre</th><th>Tipo</th><th>PAX</th><th>Entrada</th><th>Salida</th><th>Estado</th>
-</tr></thead><tbody>${filas || '<tr><td colspan="6" style="padding:20px;text-align:center;">Sin reservas</td></tr>'}</tbody></table>
+<th style="text-align:left;">Nombre</th><th>Tipo</th><th>PAX</th><th>Habs</th><th>Entrada</th><th>Salida</th><th>Estado</th>
+</tr></thead><tbody>${filas || '<tr><td colspan="7" style="padding:20px;text-align:center;">Sin reservas</td></tr>'}</tbody></table>
 <div class="foot">FAMILYNK · Reservas Gerente · ${new Date().toLocaleDateString('es-ES')}</div>
 </body></html>`);
       w.document.close();
