@@ -3348,8 +3348,8 @@
       <div class="welcome">
         <h1 class="welcome-title" id="welcome-title">Buenos días 👋</h1>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <button class="btn-video-bienvenida" onclick="abrirVideoBienvenida()" title="Ver presentación de Familynk">
-            <span>📹</span> Presentación
+          <button class="btn-video-bienvenida" onclick="window.location.href='guia-primeros-pasos.html'" title="Ver primeros pasos de Familynk">
+            <span>📖</span> Primeros pasos
           </button>
           <div class="admin-buttons" id="admin-buttons"></div>
         </div>
@@ -10730,72 +10730,11 @@
     }
 
     // ============ PRIMEROS PASOS ============
-    function cerrarPrimerosPasos() {
-      document.getElementById('modal-primeros-pasos').classList.remove('active');
-      const video = document.getElementById('video-bienvenida');
-      if (video) { video.pause(); video.currentTime = 0; }
-    }
-
-    function noMostrarPrimerosPasos() {
-      localStorage.setItem('familynk_no_mostrar_primeros_pasos', 'true');
-      cerrarPrimerosPasos();
-    }
-
-    // URL del vídeo en Firebase Storage
-    const VIDEO_BIENVENIDA_URL = 'https://firebasestorage.googleapis.com/v0/b/PROYECTO_ID/o/videos%2Fbienvenida-familynk.mp4?alt=media';
-
-    function cargarVideoBienvenida() {
-      const src = document.getElementById('video-src-bienvenida');
-      const video = document.getElementById('video-bienvenida');
-      if (src && !src.getAttribute('src')) {
-        src.setAttribute('src', VIDEO_BIENVENIDA_URL);
-        video.load();
-      }
-    }
-
-    function verVideoPrimerosPasos() {
-      // Scroll al vídeo dentro del modal
-      const video = document.getElementById('video-bienvenida');
-      if (video) { video.scrollIntoView({ behavior: 'smooth' }); video.play(); }
-    }
-
-    function abrirVideoBienvenida() {
-      // Abrir modal de primeros pasos con el vídeo
-      cargarVideoBienvenida();
-      document.getElementById('modal-primeros-pasos').classList.add('active');
-      // Detectar rol como en mostrarPrimerosPasos
-      const esCreador = esAdminRama;
-      document.getElementById('pasos-creador').style.display = esCreador ? 'block' : 'none';
-      document.getElementById('pasos-invitado').style.display = esCreador ? 'none' : 'block';
-      document.getElementById('primeros-pasos-titulo').textContent = esCreador 
-        ? '👋 ¡Bienvenido, creador!' 
-        : '👋 ¡Bienvenido a la familia!';
-      setTimeout(() => { const v = document.getElementById('video-bienvenida'); if (v) v.play(); }, 300);
-    }
-
-    function mostrarPrimerosPasos() {
-      // Detectar si es creador (AdminRama) o invitado
-      const esCreador = esAdminRama;
-      
-      // Ocultar/mostrar secciones según rol
-      document.getElementById('pasos-creador').style.display = esCreador ? 'block' : 'none';
-      document.getElementById('pasos-invitado').style.display = esCreador ? 'none' : 'block';
-      
-      // Actualizar título
-      document.getElementById('primeros-pasos-titulo').textContent = esCreador 
-        ? '👋 ¡Bienvenido, creador!' 
-        : '👋 ¡Bienvenido a la familia!';
-      
-      // Cargar vídeo de bienvenida
-      cargarVideoBienvenida();
-      
-      document.getElementById('modal-primeros-pasos').classList.add('active');
-    }
-
     function verificarPrimerosPasos() {
-      const noMostrar = localStorage.getItem('familynk_no_mostrar_primeros_pasos');
-      if (noMostrar !== 'true') {
-        mostrarPrimerosPasos();
+      // Si no ha visto la guía, redirigir automáticamente
+      var visto = localStorage.getItem('familynk_primeros_pasos_visto');
+      if (visto !== 'true') {
+        window.location.href = 'guia-primeros-pasos.html';
       }
     }
   </script>
@@ -10839,180 +10778,8 @@
     function irApostar(tipo) { cerrarModales(); window.location.href = 'herramienta-jugar.html?tipo=' + tipo; }
   </script>
 
-  <!-- Modal Primeros Pasos -->
-  <div class="modal-overlay" id="modal-primeros-pasos">
-    <div class="modal" style="max-width: 520px;">
-      <div class="modal-header" style="background: linear-gradient(135deg, var(--sage) 0%, var(--sage-dark) 100%);">
-        <div class="modal-logo">🏠</div>
-        <div class="modal-header-info">
-          <h2 class="modal-title" id="primeros-pasos-titulo">👋 ¡Bienvenido!</h2>
-          <p class="modal-subtitle">Tu espacio familiar te espera</p>
-        </div>
-        <button class="modal-close" onclick="cerrarPrimerosPasos()">&times;</button>
-      </div>
-      
-      <div class="modal-body" style="padding: 20px;">
-        
-        <!-- VÍDEO DE BIENVENIDA -->
-        <div class="video-bienvenida">
-          <video id="video-bienvenida" controls playsinline preload="metadata" poster="">
-            <source id="video-src-bienvenida" src="" type="video/mp4">
-            Tu navegador no soporta vídeo HTML5.
-          </video>
-          <p class="video-caption">📹 Presentación de Familynk · 5 min</p>
-        </div>
-
-        <!-- GUÍA PARA CREADOR -->
-        <div id="pasos-creador" style="display: none;">
-          <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
-            Has creado tu rama familiar. Estos son tus primeros pasos:
-          </p>
-          
-          <div class="pasos-lista">
-            <div class="paso-item">
-              <div class="paso-numero">1</div>
-              <div class="paso-contenido">
-                <strong>Configura tu nido</strong>
-                <p>Ve a <em>Mi Nido</em> y completa los datos de tu hogar</p>
-              </div>
-            </div>
-            
-            <div class="paso-item">
-              <div class="paso-numero">2</div>
-              <div class="paso-contenido">
-                <strong>Invita a tu familia</strong>
-                <p>Desde <em>Admin Rama → Herramientas</em> invita a los miembros</p>
-              </div>
-            </div>
-            
-            <div class="paso-item">
-              <div class="paso-numero">3</div>
-              <div class="paso-contenido">
-                <strong>Añade bienes compartidos</strong>
-                <p>En <em>Bienes Compartidos</em> registra casas, vehículos o propiedades</p>
-              </div>
-            </div>
-            
-            <div class="paso-item">
-              <div class="paso-numero">4</div>
-              <div class="paso-contenido">
-                <strong>Personaliza secciones</strong>
-                <p>En <em>Admin Rama → Secciones</em> activa solo lo que necesites</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="paso-tip">
-            💡 <strong>Consejo:</strong> Empieza simple. Puedes activar más funciones cuando las necesites.
-          </div>
-        </div>
-        
-        <!-- GUÍA PARA INVITADO -->
-        <div id="pasos-invitado" style="display: none;">
-          <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">
-            Te han invitado a unirte. Esto es lo que puedes hacer:
-          </p>
-          
-          <div class="pasos-lista">
-            <div class="paso-item">
-              <div class="paso-numero">1</div>
-              <div class="paso-contenido">
-                <strong>Completa tu perfil</strong>
-                <p>Pulsa en <em>Mi Nido</em> para ver y editar tus datos</p>
-              </div>
-            </div>
-            
-            <div class="paso-item">
-              <div class="paso-numero">2</div>
-              <div class="paso-contenido">
-                <strong>Explora el Árbol</strong>
-                <p>Descubre a todos los miembros de la familia</p>
-              </div>
-            </div>
-            
-            <div class="paso-item">
-              <div class="paso-numero">3</div>
-              <div class="paso-contenido">
-                <strong>Revisa Bienes Compartidos</strong>
-                <p>Mira los bienes compartidos y haz reservas si lo necesitas</p>
-              </div>
-            </div>
-            
-            <div class="paso-item">
-              <div class="paso-numero">4</div>
-              <div class="paso-contenido">
-                <strong>Usa los botones de acción</strong>
-                <p>Reporta averías, propón ideas o convoca reuniones</p>
-              </div>
-            </div>
-          </div>
-          
-          <div class="paso-tip">
-            💡 <strong>Consejo:</strong> Consulta el <em>Tablón</em> para ver avisos y notificaciones pendientes.
-          </div>
-        </div>
-        
-      </div>
-      
-      <div class="modal-footer" style="flex-direction: column; gap: 12px;">
-        <button class="btn btn-primary" onclick="cerrarPrimerosPasos()" style="width: 100%;">
-          ✨ ¡Entendido, empezar!
-        </button>
-        <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-size: 0.85rem; color: var(--text-muted);">
-          <input type="checkbox" onchange="if(this.checked) noMostrarPrimerosPasos()">
-          No volver a mostrar
-        </label>
-      </div>
-    </div>
-  </div>
-  
+  <!-- Primeros pasos: redirige a guia-primeros-pasos.html -->
   <style>
-    .pasos-lista { display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px; }
-    .paso-item { display: flex; gap: 14px; align-items: flex-start; }
-    .paso-numero {
-      width: 28px; height: 28px; min-width: 28px;
-      background: var(--sage);
-      color: white;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 0.85rem;
-    }
-    .paso-contenido strong { display: block; margin-bottom: 2px; color: var(--text); }
-    .paso-contenido p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
-    .paso-contenido em { color: var(--sage-dark); font-style: normal; font-weight: 600; }
-    .paso-tip {
-      background: var(--cream);
-      padding: 12px 16px;
-      border-radius: var(--radius-md);
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-    .paso-tip strong { color: var(--terracotta); }
-
-    /* Vídeo de bienvenida */
-    .video-bienvenida {
-      margin-bottom: 20px;
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      background: #000;
-    }
-    .video-bienvenida video {
-      width: 100%;
-      display: block;
-      border-radius: var(--radius-md);
-      max-height: 280px;
-      object-fit: contain;
-      background: #000;
-    }
-    .video-caption {
-      text-align: center;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      padding: 6px 0 2px;
-      background: var(--white);
-    }
-
-    /* Botón permanente presentación */
     .btn-video-bienvenida {
       display: inline-flex;
       align-items: center;
