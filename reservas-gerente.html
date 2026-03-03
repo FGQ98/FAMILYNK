@@ -503,17 +503,18 @@
         const familiaId = userDoc.data()?.familiaId;
         if (!familiaId) { console.warn('⚠️ Sin familiaId'); return; }
 
-        const nidosSnap = await db.collection('familias').doc(familiaId).collection('nidos').get();
+        // Nidos están en colección RAÍZ 'nidos' con campo familiaId
+        const nidosSnap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
         nidosRama = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
-        console.log('🏠 Nidos cargados:', nidosRama.length, nidosRama.map(n => n.apellidos || n.nombre || n.id));
+        console.log('🏠 Nidos cargados:', nidosRama.length, nidosRama.map(n => n.nombre || n.id));
 
         // Poblar selector
         const sel = document.getElementById('f-quienes');
         sel.innerHTML = '<option value="">Seleccionar...</option>';
         nidosRama.forEach(n => {
-          const nombre = n.apellidos || n.nombreNido || n.nombre || n.titulo || `Nido ${n.id.substring(0,6)}`;
+          const nombre = n.nombre || n.apellidos || n.nombreNido || `Nido ${n.id.substring(0,6)}`;
           sel.innerHTML += `<option value="nido:${n.id}" data-nombre="${nombre}">🏠 ${nombre}</option>`;
         });
         sel.innerHTML += '<option disabled>───────────</option>';
