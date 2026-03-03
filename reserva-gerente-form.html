@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAMILYNK — Reserva Gerente</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta name="theme-color" content="#2D4A5C">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #FDF8F3; --cream-dark: #F5EDE4; --cream-medium: #FAF5EF;
+      --gerente: #2D4A5C; --gerente-light: #4A6B7C; --gerente-dark: #1D3544;
+      --gerente-muted: rgba(45,74,92,0.12);
+      --familiar: #9C27B0; --familiar-bg: #F3E5F5;
+      --huesped: #C17757; --huesped-bg: #FBE9E1;
+      --actividad: #42A5F5; --actividad-bg: #E3F2FD;
+      --text: #3D3D3D; --text-light: #6B6B6B; --text-muted: #9A9A9A;
+      --white: #FFFFFF; --success: #7DB59A; --warning: #E8B44D; --error: #D4695A;
+      --shadow-soft: 0 2px 8px rgba(0,0,0,0.06); --shadow-medium: 0 4px 16px rgba(0,0,0,0.08);
+      --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; padding-bottom: 100px; }
+
+    /* ===== HEADER ===== */
+    .header {
+      background: var(--white); padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: var(--shadow-soft); position: sticky; top: 0; z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .back-btn {
+      padding: 8px 14px; background: var(--cream); border-radius: var(--radius-md);
+      font-size: 0.85rem; color: var(--text-light); text-decoration: none;
+    }
+    .back-btn:hover { background: var(--cream-dark); }
+    .page-title { font-family: 'Quicksand', sans-serif; font-size: 1.2rem; font-weight: 600; }
+    .header-badge {
+      padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-familiar { background: var(--familiar-bg); color: var(--familiar); }
+    .badge-huesped { background: var(--huesped-bg); color: var(--huesped); }
+    .badge-actividad { background: var(--actividad-bg); color: var(--actividad); }
+    .badge-borrador { background: var(--cream-dark); color: var(--text-muted); }
+
+    /* ===== LAYOUT ===== */
+    .main { max-width: 860px; margin: 0 auto; padding: 24px; }
+    .loading { display: flex; align-items: center; justify-content: center; padding: 80px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--gerente); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+
+    /* ===== INFO CARD ===== */
+    .info-card {
+      background: var(--white); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft); padding: 24px; margin-bottom: 24px;
+    }
+    .info-card-title {
+      font-family: 'Quicksand', sans-serif; font-size: 1.05rem; font-weight: 600;
+      margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+      padding-bottom: 12px; border-bottom: 2px solid var(--cream-dark);
+    }
+
+    /* ===== SECCIONES ===== */
+    .seccion {
+      background: var(--white); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-soft); margin-bottom: 20px; overflow: hidden;
+    }
+    .seccion-header {
+      padding: 16px 20px; background: var(--cream);
+      display: flex; align-items: center; justify-content: space-between; cursor: pointer;
+    }
+    .seccion-titulo {
+      font-family: 'Quicksand', sans-serif; font-size: 1rem; font-weight: 600;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .seccion-count {
+      background: var(--gerente); color: var(--white);
+      padding: 2px 8px; border-radius: 10px; font-size: 0.75rem;
+    }
+    .seccion-toggle { color: var(--text-muted); font-size: 0.8rem; transition: transform 0.3s; }
+    .seccion-body { padding: 20px; }
+    .seccion-helper {
+      font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;
+      padding: 10px 14px; background: var(--gerente-muted); border-radius: var(--radius-sm);
+      border-left: 3px solid var(--gerente);
+    }
+
+    /* ===== FORMS ===== */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 12px 14px; border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md); font-family: 'Nunito', sans-serif; font-size: 0.95rem;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--gerente-light); }
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ===== TIPO SELECTOR ===== */
+    .tipo-selector { display: flex; gap: 10px; flex-wrap: wrap; }
+    .tipo-opt {
+      flex: 1; min-width: 120px; display: flex; flex-direction: column; align-items: center;
+      gap: 6px; padding: 14px 10px; border: 2px solid var(--cream-dark); border-radius: var(--radius-md);
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .tipo-opt:hover { border-color: var(--text-muted); }
+    .tipo-opt.active.familiar { border-color: var(--familiar); background: var(--familiar-bg); }
+    .tipo-opt.active.huesped { border-color: var(--huesped); background: var(--huesped-bg); }
+    .tipo-opt.active.actividad { border-color: var(--actividad); background: var(--actividad-bg); }
+    .tipo-opt-icon { font-size: 1.5rem; }
+    .tipo-opt-label { font-size: 0.8rem; font-weight: 600; }
+
+    /* ===== MATRIZ ===== */
+    .matriz { width: 100%; margin-top: 12px; overflow-x: auto; }
+    .matriz table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .matriz th, .matriz td { padding: 10px 8px; text-align: center; border: 1px solid var(--cream-dark); }
+    .matriz th {
+      background: var(--gerente); color: var(--white); font-weight: 600; font-size: 0.78rem; white-space: nowrap;
+    }
+    .matriz th:first-child { background: var(--cream-dark); color: var(--text); text-align: left; min-width: 110px; }
+    .matriz td:first-child { background: var(--cream); font-weight: 600; text-align: left; white-space: nowrap; }
+    .matriz input[type="number"] {
+      width: 48px; padding: 6px; border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-sm); text-align: center; font-size: 0.9rem;
+    }
+    .matriz input[type="number"]:focus { outline: none; border-color: var(--gerente-light); }
+    .matriz-placeholder {
+      text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.9rem;
+      background: var(--cream); border-radius: var(--radius-md);
+    }
+
+    /* ===== SLIDER TOGGLE ===== */
+    .slider-toggle { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+    .slider-toggle input[type="checkbox"] {
+      position: relative; width: 50px; height: 24px; appearance: none;
+      background: var(--cream-dark); border-radius: 12px; cursor: pointer; transition: all 0.3s;
+    }
+    .slider-toggle input[type="checkbox"]::before {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; background: var(--white); border-radius: 50%;
+      transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .slider-toggle input[type="checkbox"]:checked { background: var(--huesped); }
+    .slider-toggle input[type="checkbox"]:checked::before { left: 28px; }
+    .slider-label { font-size: 0.7rem; color: var(--text-muted); }
+    .especial-input { margin-top: 6px; display: none; }
+    .especial-input.visible { display: block; }
+    .especial-input input {
+      width: 100%; padding: 6px 8px; border: 1px solid var(--cream-dark);
+      border-radius: var(--radius-sm); font-size: 0.8rem;
+    }
+
+    /* ===== ITEMS LIST ===== */
+    .item-card {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 16px; background: var(--cream); border-radius: var(--radius-sm);
+      margin-bottom: 10px; border-left: 3px solid var(--gerente);
+    }
+    .item-card.compra { border-left-color: var(--huesped); }
+    .item-card.tarea { border-left-color: var(--actividad); }
+    .item-card.limpieza { border-left-color: var(--success); }
+    .item-icon { font-size: 1.2rem; }
+    .item-content { flex: 1; }
+    .item-titulo { font-weight: 600; font-size: 0.9rem; }
+    .item-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .item-actions { display: flex; gap: 4px; }
+    .item-btn {
+      padding: 6px 10px; background: transparent; border: none;
+      border-radius: var(--radius-sm); cursor: pointer; color: var(--text-muted); font-size: 0.9rem;
+    }
+    .item-btn:hover { background: var(--cream-dark); color: var(--text); }
+    .item-btn.delete:hover { color: var(--error); }
+    .add-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 14px; border: 2px dashed var(--cream-dark);
+      background: transparent; border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif; font-size: 0.9rem; color: var(--text-muted); cursor: pointer;
+    }
+    .add-btn:hover { border-color: var(--gerente); color: var(--gerente); background: var(--gerente-muted); }
+    .empty-state { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.9rem; }
+
+    /* ===== ESTADO SELECTOR ===== */
+    .estado-select { display: flex; gap: 8px; flex-wrap: wrap; }
+    .estado-opt {
+      padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; border: 2px solid var(--cream-dark); background: white; transition: all 0.2s;
+    }
+    .estado-opt:hover { border-color: var(--gerente-light); }
+    .estado-opt.active { border-color: var(--gerente); background: var(--gerente-muted); color: var(--gerente); }
+
+    /* ===== FOOTER ===== */
+    .footer-actions {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--white); padding: 14px 24px;
+      display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.08); z-index: 50;
+    }
+    .btn {
+      padding: 12px 20px; border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif; font-weight: 600; font-size: 0.9rem;
+      cursor: pointer; border: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--gerente); color: var(--white); }
+    .btn-primary:hover:not(:disabled) { background: var(--gerente-dark); }
+    .btn-secondary { background: var(--cream-dark); color: var(--text); }
+    .btn-secondary:hover { background: var(--cream); }
+    .btn-pdf { background: white; color: var(--gerente); border: 2px solid var(--gerente-light); }
+    .btn-pdf:hover { background: var(--gerente); color: white; }
+    .btn-enviar { background: var(--success); color: white; }
+    .btn-enviar:hover:not(:disabled) { background: #5C9A7E; }
+    .btn-danger { background: white; color: var(--error); border: 2px solid var(--error); }
+    .btn-danger:hover { background: var(--error); color: white; }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+      z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s;
+    }
+    .modal-overlay.active { opacity: 1; visibility: visible; }
+    .modal {
+      background: var(--white); border-radius: var(--radius-lg);
+      width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      padding: 20px 24px; border-bottom: 1px solid var(--cream-dark);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-title { font-family: 'Quicksand', sans-serif; font-size: 1.1rem; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      padding: 16px 24px; border-top: 1px solid var(--cream-dark);
+      display: flex; gap: 12px; justify-content: flex-end;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .main { padding: 16px; }
+      .form-row { grid-template-columns: 1fr; }
+      .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+      .matriz table { min-width: 400px; }
+      .tipo-selector { flex-direction: column; }
+      .footer-actions { gap: 6px; padding: 10px 16px; }
+      .btn { padding: 10px 14px; font-size: 0.82rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <a href="#" class="back-btn" id="btn-volver">← Reservas</a>
+      <h1 class="page-title" id="page-title">📋 Nueva reserva</h1>
+    </div>
+    <span class="header-badge badge-borrador" id="header-badge">Borrador</span>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="main">
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+
+    <div id="content" class="hidden">
+
+      <!-- ===== 1. DATOS BÁSICOS ===== -->
+      <div class="info-card">
+        <div class="info-card-title">📋 Datos básicos</div>
+
+        <!-- Tipo -->
+        <div class="form-group">
+          <label class="form-label">Tipo de reserva</label>
+          <div class="tipo-selector">
+            <div class="tipo-opt familiar active" onclick="selTipo('familiar')">
+              <div class="tipo-opt-icon">👨‍👩‍👧</div>
+              <div class="tipo-opt-label">Familiar</div>
+            </div>
+            <div class="tipo-opt huesped" onclick="selTipo('huesped')">
+              <div class="tipo-opt-icon">🏠</div>
+              <div class="tipo-opt-label">Huéspedes</div>
+            </div>
+            <div class="tipo-opt actividad" onclick="selTipo('actividad')">
+              <div class="tipo-opt-icon">📌</div>
+              <div class="tipo-opt-label">Actividad</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campos por tipo -->
+        <div id="campos-familiar">
+          <div class="form-group">
+            <label class="form-label">¿Quiénes?</label>
+            <select class="form-select" id="f-quienes"><option value="">Seleccionar nido...</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Representado por</label>
+            <input type="text" class="form-input" id="f-representado" placeholder="Nombre de contacto">
+          </div>
+        </div>
+        <div id="campos-huesped" class="hidden">
+          <div class="form-group">
+            <label class="form-label">Nombre del grupo / titular</label>
+            <input type="text" class="form-input" id="f-grupo" placeholder="Ej: Familia Martínez, Grupo Aventura...">
+          </div>
+        </div>
+        <div id="campos-actividad" class="hidden">
+          <div class="form-group">
+            <label class="form-label">Nombre de la actividad</label>
+            <input type="text" class="form-input" id="f-actividad-nombre" placeholder="Ej: Cata de vinos, Retiro yoga...">
+          </div>
+        </div>
+
+        <!-- Fechas y horas -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha entrada *</label>
+            <input type="date" class="form-input" id="f-fecha-entrada" onchange="generarDias()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora entrada</label>
+            <input type="time" class="form-input" id="f-hora-entrada" value="16:00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fecha salida *</label>
+            <input type="date" class="form-input" id="f-fecha-salida" onchange="generarDias()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hora salida</label>
+            <input type="time" class="form-input" id="f-hora-salida" value="11:00">
+          </div>
+        </div>
+
+        <div id="dias-badge" class="hidden" style="text-align:center;padding:8px;background:var(--gerente-muted);border-radius:var(--radius-sm);font-size:0.85rem;color:var(--gerente);font-weight:600;margin-top:4px;"></div>
+      </div>
+
+      <!-- ===== 2. PERSONAS ===== -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('personas')">
+          <div class="seccion-titulo"><span>👥</span> Personas</div>
+          <span class="seccion-toggle" id="toggle-personas">▼</span>
+        </div>
+        <div class="seccion-body" id="body-personas">
+          <div class="seccion-helper">Indica cuántas personas hay cada día: cuántos vienen, comen, cenan, duermen.</div>
+          <div id="personas-container"><div class="matriz-placeholder">Rellena las fechas para ver los días</div></div>
+        </div>
+      </div>
+
+      <!-- ===== 3. ALOJAMIENTO ===== -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('alojamiento')">
+          <div class="seccion-titulo"><span>🛏️</span> Alojamiento</div>
+          <span class="seccion-toggle" id="toggle-alojamiento">▼</span>
+        </div>
+        <div class="seccion-body" id="body-alojamiento">
+          <div class="seccion-helper">Habitaciones necesarias por tipo y día.</div>
+          <div id="alojamiento-container"><div class="matriz-placeholder">Rellena las fechas para ver los días</div></div>
+        </div>
+      </div>
+
+      <!-- ===== 4. COMENSALES ===== -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('comensales')">
+          <div class="seccion-titulo"><span>🍽️</span> Comensales</div>
+          <span class="seccion-toggle" id="toggle-comensales">▼</span>
+        </div>
+        <div class="seccion-body" id="body-comensales">
+          <div class="seccion-helper">Nº de comensales por pase y día. Activa "Especial" si hay menú concreto.</div>
+          <div id="comensales-container"><div class="matriz-placeholder">Rellena las fechas para ver los días</div></div>
+        </div>
+      </div>
+
+      <!-- ===== 5. MENAJE ===== -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('menaje')">
+          <div class="seccion-titulo"><span>🍷</span> Menaje <span class="seccion-count" id="count-menaje">0</span></div>
+          <span class="seccion-toggle" id="toggle-menaje">▼</span>
+        </div>
+        <div class="seccion-body" id="body-menaje">
+          <div class="seccion-helper">Vajilla especial, ropa de cama, toallas, mantelería...</div>
+          <div id="menaje-list"></div>
+          <button class="add-btn" onclick="abrirModalItem('menaje')">+ Añadir menaje</button>
+        </div>
+      </div>
+
+      <!-- ===== 6. LIMPIEZA ===== -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('limpieza')">
+          <div class="seccion-titulo"><span>🧹</span> Limpieza <span class="seccion-count" id="count-limpieza">0</span></div>
+          <span class="seccion-toggle" id="toggle-limpieza">▼</span>
+        </div>
+        <div class="seccion-body" id="body-limpieza">
+          <div class="seccion-helper">Zonas y dependencias que preparar o limpiar.</div>
+          <div id="limpieza-list"></div>
+          <button class="add-btn" onclick="abrirModalItem('limpieza')">+ Añadir zona/tarea</button>
+        </div>
+      </div>
+
+      <!-- ===== 7. COMPRAS ===== -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('compras')">
+          <div class="seccion-titulo"><span>🛒</span> Compras <span class="seccion-count" id="count-compras">0</span></div>
+          <span class="seccion-toggle" id="toggle-compras">▼</span>
+        </div>
+        <div class="seccion-body" id="body-compras">
+          <div class="seccion-helper">Lista de compras necesarias para la estancia.</div>
+          <div id="compras-list"></div>
+          <button class="add-btn" onclick="abrirModalItem('compras')">+ Añadir compra</button>
+        </div>
+      </div>
+
+      <!-- ===== 8. TAREAS ===== -->
+      <div class="seccion">
+        <div class="seccion-header" onclick="toggleSeccion('tareas')">
+          <div class="seccion-titulo"><span>✅</span> Tareas <span class="seccion-count" id="count-tareas">0</span></div>
+          <span class="seccion-toggle" id="toggle-tareas">▼</span>
+        </div>
+        <div class="seccion-body" id="body-tareas">
+          <div class="seccion-helper">Encargos previos a la llegada.</div>
+          <div id="tareas-list"></div>
+          <button class="add-btn" onclick="abrirModalItem('tareas')">+ Añadir tarea</button>
+        </div>
+      </div>
+
+      <!-- ===== 9. NOTAS Y ESTADO ===== -->
+      <div class="info-card">
+        <div class="info-card-title">📝 Notas y estado</div>
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <div class="estado-select">
+            <div class="estado-opt active" data-val="borrador" onclick="selEstado(this)">📝 Borrador</div>
+            <div class="estado-opt" data-val="confirmada" onclick="selEstado(this)">✅ Confirmada</div>
+            <div class="estado-opt" data-val="cancelada" onclick="selEstado(this)">❌ Cancelada</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas generales</label>
+          <textarea class="form-textarea" id="f-notas" placeholder="Observaciones, peticiones especiales, instrucciones..."></textarea>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </main>
+
+  <!-- FOOTER ACTIONS -->
+  <div class="footer-actions hidden" id="footer">
+    <button class="btn btn-danger" id="btn-eliminar" onclick="eliminarReserva()" style="display:none;">🗑️ Eliminar</button>
+    <div style="flex:1;"></div>
+    <button class="btn btn-secondary" onclick="guardar('borrador')">💾 Guardar</button>
+    <button class="btn btn-pdf" onclick="generarPDF()">📄 PDF</button>
+    <button class="btn btn-enviar" onclick="enviarExterno()">📤 Enviar externo</button>
+  </div>
+
+  <!-- MODAL ITEM (menaje/limpieza/compras/tareas) -->
+  <div class="modal-overlay" id="modal-item">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="modal-item-title">Añadir</h3>
+        <button class="modal-close" onclick="cerrarModalItem()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" id="modal-item-label">Descripción</label>
+          <input type="text" class="form-input" id="modal-item-nombre" placeholder="">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cantidad</label>
+          <input type="number" class="form-input" id="modal-item-cantidad" min="1" value="1" placeholder="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <input type="text" class="form-input" id="modal-item-notas" placeholder="Detalles adicionales...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="cerrarModalItem()">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarItem()">Añadir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script>
+    // =============================================
+    // STATE
+    // =============================================
+    let currentUser = null;
+    let bienId = null;
+    let bienData = null;
+    let editId = null;
+    let tipoActual = 'familiar';
+    let estadoActual = 'borrador';
+    let diasReserva = []; // [{ key:'2026-03-06', label:'Vie 6/3' }, ...]
+
+    let prep = {
+      personas: {},    // { '2026-03-06': { pax:0, desayunan:0, comen:0, cenan:0, duermen:0 }, ... }
+      alojamiento: {}, // { '2026-03-06': { dobleSep:0, dobleJun:0, individual:0 }, ... }
+      comensales: {},  // { 'desayuno-2026-03-06': { cantidad:0, especial:false, descripcion:'' }, ... }
+      menaje: [],      // [{ nombre, cantidad, notas }]
+      limpieza: [],
+      compras: [],
+      tareas: []
+    };
+
+    let modalItemTipo = null;
+    let modalItemEditIdx = null;
+
+    const DIAS_CORTOS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+    // =============================================
+    // INIT
+    // =============================================
+    const params = new URLSearchParams(window.location.search);
+    bienId = params.get('bienId') || params.get('id');
+    editId = params.get('reservaId') || null;
+    tipoActual = params.get('tipo') || 'familiar';
+
+    if (!bienId) { alert('No se especificó el bien'); window.location.href = 'lo-comun.html'; }
+
+    document.getElementById('btn-volver').href = `reservas-gerente.html?id=${bienId}`;
+
+    firebase.auth().onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'login.html'; return; }
+      currentUser = user;
+      await cargarDatos();
+    });
+
+    // =============================================
+    // CARGAR DATOS
+    // =============================================
+    async function cargarDatos() {
+      try {
+        const firestore = firebase.firestore();
+
+        // Bien
+        const bienDoc = await firestore.collection('bienes').doc(bienId).get();
+        if (!bienDoc.exists) { alert('Bien no encontrado'); return; }
+        bienData = { id: bienDoc.id, ...bienDoc.data() };
+
+        // Nidos
+        const uid = firebase.auth().currentUser.uid;
+        const userDoc = await firestore.collection('usuarios').doc(uid).get();
+        const familiaId = userDoc.data()?.familiaId;
+        if (familiaId) {
+          const nidosSnap = await firestore.collection('nidos').where('familiaId', '==', familiaId).get();
+          const nidos = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const sel = document.getElementById('f-quienes');
+          sel.innerHTML = '<option value="">Seleccionar nido...</option>';
+          nidos.forEach(n => {
+            const nombre = n.nombre || n.apellidos || `Nido ${n.id.substring(0,6)}`;
+            sel.innerHTML += `<option value="nido:${n.id}" data-nombre="${nombre}">🏠 ${nombre}</option>`;
+          });
+          sel.innerHTML += '<option disabled>───────────</option><option value="otros">📌 Otros</option>';
+        }
+
+        // Pre-rellenar representado
+        document.getElementById('f-representado').value = currentUser.displayName || '';
+
+        // Si editamos, cargar reserva existente
+        if (editId) {
+          const resDoc = await firestore.collection('bienes').doc(bienId).collection('reservas').doc(editId).get();
+          if (resDoc.exists) cargarReservaEnForm(resDoc.data());
+        } else {
+          selTipo(tipoActual);
+        }
+
+        // Show
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+        document.getElementById('footer').classList.remove('hidden');
+        if (editId) document.getElementById('btn-eliminar').style.display = '';
+        document.getElementById('page-title').textContent = editId ? '✏️ Editar reserva' : '📋 Nueva reserva';
+      } catch (e) {
+        console.error('Error cargando:', e);
+        alert('Error al cargar datos');
+      }
+    }
+
+    function cargarReservaEnForm(r) {
+      tipoActual = r.tipoReserva || 'familiar';
+      selTipo(tipoActual);
+
+      if (tipoActual === 'familiar') {
+        document.getElementById('f-quienes').value = r.quienes || '';
+        document.getElementById('f-representado').value = r.representadoPor || '';
+      } else if (tipoActual === 'huesped') {
+        document.getElementById('f-grupo').value = r.nombreGrupo || r.titulo || '';
+      } else {
+        document.getElementById('f-actividad-nombre').value = r.titulo || r.nombre || '';
+      }
+
+      document.getElementById('f-fecha-entrada').value = toFechaStr(r.fechaInicio);
+      document.getElementById('f-fecha-salida').value = toFechaStr(r.fechaFin);
+      document.getElementById('f-hora-entrada').value = r.horaEntrada || '16:00';
+      document.getElementById('f-hora-salida').value = r.horaSalida || '11:00';
+      document.getElementById('f-notas').value = r.notas || '';
+
+      estadoActual = r.estado || 'borrador';
+      document.querySelectorAll('.estado-opt').forEach(o => o.classList.toggle('active', o.dataset.val === estadoActual));
+      actualizarBadgeEstado();
+
+      // Preparación
+      if (r.preparacion) {
+        prep.personas = r.preparacion.personas || {};
+        prep.alojamiento = r.preparacion.alojamiento || {};
+        prep.comensales = r.preparacion.comensales || {};
+        prep.menaje = r.preparacion.menaje || [];
+        prep.limpieza = r.preparacion.limpieza || [];
+        prep.compras = r.preparacion.compras || [];
+        prep.tareas = r.preparacion.tareas || [];
+      }
+
+      generarDias();
+      renderListas();
+    }
+
+    // =============================================
+    // TIPO SELECTOR
+    // =============================================
+    function selTipo(tipo) {
+      tipoActual = tipo;
+      document.querySelectorAll('.tipo-opt').forEach(o => o.classList.remove('active'));
+      document.querySelector(`.tipo-opt.${tipo}`)?.classList.add('active');
+      document.getElementById('campos-familiar').classList.toggle('hidden', tipo !== 'familiar');
+      document.getElementById('campos-huesped').classList.toggle('hidden', tipo !== 'huesped');
+      document.getElementById('campos-actividad').classList.toggle('hidden', tipo !== 'actividad');
+      actualizarBadgeEstado();
+    }
+
+    function selEstado(el) {
+      document.querySelectorAll('.estado-opt').forEach(o => o.classList.remove('active'));
+      el.classList.add('active');
+      estadoActual = el.dataset.val;
+      actualizarBadgeEstado();
+    }
+
+    function actualizarBadgeEstado() {
+      const badge = document.getElementById('header-badge');
+      const labels = { borrador: 'Borrador', confirmada: 'Confirmada', cancelada: 'Cancelada' };
+      badge.textContent = labels[estadoActual] || 'Borrador';
+      badge.className = 'header-badge';
+      if (estadoActual === 'confirmada') badge.classList.add('badge-huesped');
+      else if (estadoActual === 'cancelada') badge.classList.add('badge-actividad');
+      else badge.classList.add('badge-borrador');
+    }
+
+    // =============================================
+    // GENERAR DÍAS (matrices)
+    // =============================================
+    function generarDias() {
+      const inicio = document.getElementById('f-fecha-entrada').value;
+      const fin = document.getElementById('f-fecha-salida').value;
+      if (!inicio || !fin || fin < inicio) {
+        diasReserva = [];
+        renderMatrices();
+        document.getElementById('dias-badge').classList.add('hidden');
+        return;
+      }
+
+      diasReserva = [];
+      let d = new Date(inicio);
+      const dFin = new Date(fin);
+      while (d <= dFin) {
+        const key = d.toISOString().split('T')[0];
+        const label = `${DIAS_CORTOS[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}`;
+        diasReserva.push({ key, label });
+        d.setDate(d.getDate() + 1);
+      }
+
+      const badge = document.getElementById('dias-badge');
+      badge.textContent = `📅 ${diasReserva.length} día${diasReserva.length > 1 ? 's' : ''} de estancia`;
+      badge.classList.remove('hidden');
+
+      renderMatrices();
+    }
+
+    // =============================================
+    // RENDER MATRICES
+    // =============================================
+    function renderMatrices() {
+      renderPersonas();
+      renderAlojamiento();
+      renderComensales();
+    }
+
+    function renderPersonas() {
+      const c = document.getElementById('personas-container');
+      if (!diasReserva.length) { c.innerHTML = '<div class="matriz-placeholder">Rellena las fechas para ver los días</div>'; return; }
+      const filas = [
+        { key: 'pax', label: '👥 PAX total' },
+        { key: 'desayunan', label: '🍳 Desayunan' },
+        { key: 'comen', label: '🍽️ Comen' },
+        { key: 'cenan', label: '🌙 Cenan' },
+        { key: 'duermen', label: '🛏️ Duermen' }
+      ];
+      let html = '<div class="matriz"><table><thead><tr><th></th>';
+      diasReserva.forEach(d => { html += `<th>${d.label}</th>`; });
+      html += '</tr></thead><tbody>';
+      filas.forEach(f => {
+        html += `<tr><td>${f.label}</td>`;
+        diasReserva.forEach(d => {
+          const val = prep.personas[d.key]?.[f.key] || 0;
+          html += `<td><input type="number" min="0" value="${val}" onchange="setPrep('personas','${d.key}','${f.key}',this.value)"></td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      c.innerHTML = html;
+    }
+
+    function renderAlojamiento() {
+      const c = document.getElementById('alojamiento-container');
+      if (!diasReserva.length) { c.innerHTML = '<div class="matriz-placeholder">Rellena las fechas para ver los días</div>'; return; }
+      const filas = [
+        { key: 'dobleSep', label: '🛏️ Doble (sep.)' },
+        { key: 'dobleJun', label: '🛏️ Doble (juntas)' },
+        { key: 'individual', label: '🛏️ Individual' }
+      ];
+      let html = '<div class="matriz"><table><thead><tr><th></th>';
+      diasReserva.forEach(d => { html += `<th>${d.label}</th>`; });
+      html += '</tr></thead><tbody>';
+      filas.forEach(f => {
+        html += `<tr><td>${f.label}</td>`;
+        diasReserva.forEach(d => {
+          const val = prep.alojamiento[d.key]?.[f.key] || 0;
+          html += `<td><input type="number" min="0" value="${val}" onchange="setPrep('alojamiento','${d.key}','${f.key}',this.value)"></td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      c.innerHTML = html;
+    }
+
+    function renderComensales() {
+      const c = document.getElementById('comensales-container');
+      if (!diasReserva.length) { c.innerHTML = '<div class="matriz-placeholder">Rellena las fechas para ver los días</div>'; return; }
+      const pases = [
+        { key: 'desayuno', label: '🍳 Desayuno' },
+        { key: 'comida', label: '🍽️ Comida' },
+        { key: 'cena', label: '🌙 Cena' }
+      ];
+      let html = '<div class="matriz"><table><thead><tr><th></th>';
+      diasReserva.forEach(d => { html += `<th>${d.label}</th>`; });
+      html += '</tr></thead><tbody>';
+      pases.forEach(p => {
+        html += `<tr><td>${p.label}</td>`;
+        diasReserva.forEach(d => {
+          const mk = `${p.key}-${d.key}`;
+          const data = prep.comensales[mk] || {};
+          const checked = data.especial ? 'checked' : '';
+          html += `<td>
+            <input type="number" min="0" value="${data.cantidad || 0}" style="margin-bottom:4px;"
+              onchange="setComensal('${mk}','cantidad',this.value)">
+            <div class="slider-toggle" style="justify-content:center;">
+              <span class="slider-label">Prev</span>
+              <input type="checkbox" ${checked} onchange="toggleEspecial('${p.key}','${d.key}')">
+              <span class="slider-label">Esp</span>
+            </div>
+            <div class="especial-input ${data.especial ? 'visible' : ''}" id="esp-${mk}">
+              <input type="text" placeholder="¿Menú?" value="${data.descripcion || ''}"
+                onchange="setComensal('${mk}','descripcion',this.value)">
+            </div>
+          </td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      c.innerHTML = html;
+    }
+
+    // =============================================
+    // SETTERS MATRICES
+    // =============================================
+    function setPrep(seccion, diaKey, campo, valor) {
+      if (!prep[seccion][diaKey]) {
+        if (seccion === 'personas') prep[seccion][diaKey] = { pax:0, desayunan:0, comen:0, cenan:0, duermen:0 };
+        else prep[seccion][diaKey] = { dobleSep:0, dobleJun:0, individual:0 };
+      }
+      prep[seccion][diaKey][campo] = parseInt(valor) || 0;
+    }
+
+    function setComensal(mk, campo, valor) {
+      if (!prep.comensales[mk]) prep.comensales[mk] = { cantidad: 0, especial: false, descripcion: '' };
+      if (campo === 'cantidad') prep.comensales[mk].cantidad = parseInt(valor) || 0;
+      else prep.comensales[mk][campo] = valor;
+    }
+
+    function toggleEspecial(pase, diaKey) {
+      const mk = `${pase}-${diaKey}`;
+      if (!prep.comensales[mk]) prep.comensales[mk] = { cantidad: 0, especial: false, descripcion: '' };
+      prep.comensales[mk].especial = !prep.comensales[mk].especial;
+      const el = document.getElementById(`esp-${mk}`);
+      if (el) el.classList.toggle('visible', prep.comensales[mk].especial);
+    }
+
+    // =============================================
+    // LISTAS (menaje, limpieza, compras, tareas)
+    // =============================================
+    function renderListas() {
+      ['menaje','limpieza','compras','tareas'].forEach(tipo => {
+        const container = document.getElementById(`${tipo}-list`);
+        const items = prep[tipo] || [];
+        document.getElementById(`count-${tipo}`).textContent = items.length;
+        if (!items.length) { container.innerHTML = '<div class="empty-state">Sin elementos</div>'; return; }
+        const iconos = { menaje: '🍷', limpieza: '🧹', compras: '🛒', tareas: '✅' };
+        container.innerHTML = items.map((item, i) => `
+          <div class="item-card ${tipo}">
+            <div class="item-icon">${iconos[tipo]}</div>
+            <div class="item-content">
+              <div class="item-titulo">${item.nombre}${item.cantidad > 1 ? ` (×${item.cantidad})` : ''}</div>
+              ${item.notas ? `<div class="item-meta">${item.notas}</div>` : ''}
+            </div>
+            <div class="item-actions">
+              <button class="item-btn" onclick="editarItem('${tipo}',${i})">✏️</button>
+              <button class="item-btn delete" onclick="borrarItem('${tipo}',${i})">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      });
+    }
+
+    function abrirModalItem(tipo, idx) {
+      modalItemTipo = tipo;
+      modalItemEditIdx = idx !== undefined ? idx : null;
+      const labels = { menaje: 'Menaje', limpieza: 'Zona/Tarea limpieza', compras: 'Compra', tareas: 'Tarea' };
+      const placeholders = { menaje: 'Ej: Vajilla para 12, Toallas...', limpieza: 'Ej: Salón principal, Terraza...', compras: 'Ej: Agua 24 botellas, Fruta...', tareas: 'Ej: Revisar caldera, Montar camas...' };
+      document.getElementById('modal-item-title').textContent = idx !== undefined ? `Editar ${labels[tipo]}` : `Añadir ${labels[tipo]}`;
+      document.getElementById('modal-item-label').textContent = labels[tipo];
+      document.getElementById('modal-item-nombre').placeholder = placeholders[tipo];
+
+      if (idx !== undefined && prep[tipo][idx]) {
+        document.getElementById('modal-item-nombre').value = prep[tipo][idx].nombre || '';
+        document.getElementById('modal-item-cantidad').value = prep[tipo][idx].cantidad || 1;
+        document.getElementById('modal-item-notas').value = prep[tipo][idx].notas || '';
+      } else {
+        document.getElementById('modal-item-nombre').value = '';
+        document.getElementById('modal-item-cantidad').value = 1;
+        document.getElementById('modal-item-notas').value = '';
+      }
+      document.getElementById('modal-item').classList.add('active');
+    }
+
+    function cerrarModalItem() { document.getElementById('modal-item').classList.remove('active'); }
+
+    function guardarItem() {
+      const nombre = document.getElementById('modal-item-nombre').value.trim();
+      if (!nombre) { alert('El nombre es obligatorio'); return; }
+      const item = {
+        nombre,
+        cantidad: parseInt(document.getElementById('modal-item-cantidad').value) || 1,
+        notas: document.getElementById('modal-item-notas').value.trim()
+      };
+      if (modalItemEditIdx !== null) {
+        prep[modalItemTipo][modalItemEditIdx] = item;
+      } else {
+        prep[modalItemTipo].push(item);
+      }
+      cerrarModalItem();
+      renderListas();
+    }
+
+    function editarItem(tipo, idx) { abrirModalItem(tipo, idx); }
+    function borrarItem(tipo, idx) {
+      if (!confirm('¿Eliminar este elemento?')) return;
+      prep[tipo].splice(idx, 1);
+      renderListas();
+    }
+
+    // =============================================
+    // SECCIONES COLAPSABLES
+    // =============================================
+    function toggleSeccion(id) {
+      const body = document.getElementById(`body-${id}`);
+      body.classList.toggle('hidden');
+      const toggle = document.getElementById(`toggle-${id}`);
+      if (toggle) toggle.textContent = body.classList.contains('hidden') ? '▶' : '▼';
+    }
+
+    // =============================================
+    // HELPERS
+    // =============================================
+    function toFechaStr(val) {
+      if (!val) return '';
+      if (typeof val === 'string') return val;
+      if (val.toDate) val = val.toDate();
+      return `${val.getFullYear()}-${String(val.getMonth()+1).padStart(2,'0')}-${String(val.getDate()).padStart(2,'0')}`;
+    }
+
+    // =============================================
+    // GUARDAR
+    // =============================================
+    async function guardar(estadoOverride) {
+      const fechaEntrada = document.getElementById('f-fecha-entrada').value;
+      const fechaSalida = document.getElementById('f-fecha-salida').value;
+      if (!fechaEntrada || !fechaSalida) { alert('Las fechas son obligatorias'); return; }
+      if (fechaSalida < fechaEntrada) { alert('La salida debe ser posterior a la entrada'); return; }
+
+      let titulo = '';
+      const data = {
+        addon: 'gerente',
+        tipoReserva: tipoActual,
+        fechaInicio: fechaEntrada,
+        fechaFin: fechaSalida,
+        horaEntrada: document.getElementById('f-hora-entrada').value || '',
+        horaSalida: document.getElementById('f-hora-salida').value || '',
+        estado: estadoOverride || estadoActual,
+        notas: document.getElementById('f-notas').value.trim(),
+        bienId: bienId,
+        preparacion: { ...prep },
+        modificadoPor: currentUser.uid,
+        modificadoEn: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (tipoActual === 'familiar') {
+        const quienes = document.getElementById('f-quienes').value;
+        data.quienes = quienes;
+        const selOpt = document.getElementById('f-quienes').selectedOptions[0];
+        data.quienesNombre = selOpt?.dataset?.nombre || quienes;
+        data.representadoPor = document.getElementById('f-representado').value.trim();
+        titulo = data.quienesNombre || 'Reserva familiar';
+      } else if (tipoActual === 'huesped') {
+        const grupo = document.getElementById('f-grupo').value.trim();
+        if (!grupo) { alert('Nombre del grupo obligatorio'); return; }
+        data.nombreGrupo = grupo;
+        titulo = grupo;
+      } else {
+        const nombre = document.getElementById('f-actividad-nombre').value.trim();
+        if (!nombre) { alert('Nombre de la actividad obligatorio'); return; }
+        titulo = nombre;
+      }
+      data.titulo = titulo;
+
+      try {
+        const ref = firebase.firestore().collection('bienes').doc(bienId).collection('reservas');
+        if (editId) {
+          await ref.doc(editId).update(data);
+        } else {
+          data.creadoPor = currentUser.uid;
+          data.creadoPorNombre = currentUser.displayName || currentUser.email;
+          data.creadoEn = firebase.firestore.FieldValue.serverTimestamp();
+          const newDoc = await ref.add(data);
+          editId = newDoc.id;
+          document.getElementById('btn-eliminar').style.display = '';
+          document.getElementById('page-title').textContent = '✏️ Editar reserva';
+          // Update URL sin recargar
+          history.replaceState(null, '', `reserva-gerente-form.html?bienId=${bienId}&reservaId=${editId}`);
+        }
+        alert('✅ Reserva guardada');
+      } catch (e) {
+        console.error('Error guardando:', e);
+        alert('Error al guardar');
+      }
+    }
+
+    // =============================================
+    // ELIMINAR
+    // =============================================
+    async function eliminarReserva() {
+      if (!editId || !confirm('¿Eliminar esta reserva? No se puede deshacer.')) return;
+      try {
+        await firebase.firestore().collection('bienes').doc(bienId).collection('reservas').doc(editId).delete();
+        alert('Reserva eliminada');
+        window.location.href = `reservas-gerente.html?id=${bienId}`;
+      } catch (e) {
+        console.error('Error eliminando:', e);
+        alert('Error al eliminar');
+      }
+    }
+
+    // =============================================
+    // ENVIAR EXTERNO
+    // =============================================
+    async function enviarExterno() {
+      if (!editId) {
+        await guardar();
+        if (!editId) return;
+      }
+      // TODO: integrar con portal externo / EmailJS
+      alert('📤 Funcionalidad de envío al externo — próximamente.\nDe momento, puedes descargar el PDF y enviarlo manualmente.');
+      generarPDF();
+    }
+
+    // =============================================
+    // PDF
+    // =============================================
+    function generarPDF() {
+      const titulo = getTitulo();
+      const bienNombre = bienData?.nombre || 'Bien';
+      const fi = document.getElementById('f-fecha-entrada').value;
+      const ff = document.getElementById('f-fecha-salida').value;
+      const hE = document.getElementById('f-hora-entrada').value;
+      const hS = document.getElementById('f-hora-salida').value;
+
+      // Personas matrix
+      let personasHtml = '';
+      if (diasReserva.length) {
+        const filas = ['pax','desayunan','comen','cenan','duermen'];
+        const labels = { pax:'PAX', desayunan:'Desayunan', comen:'Comen', cenan:'Cenan', duermen:'Duermen' };
+        personasHtml = '<h3 style="margin:16px 0 8px;color:#2D4A5C;">👥 Personas</h3><table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#2D4A5C;color:white;"><th style="padding:6px;text-align:left;"></th>';
+        diasReserva.forEach(d => { personasHtml += `<th style="padding:6px;">${d.label}</th>`; });
+        personasHtml += '</tr></thead><tbody>';
+        filas.forEach(f => {
+          personasHtml += `<tr><td style="padding:6px;font-weight:bold;background:#f5f0eb;">${labels[f]}</td>`;
+          diasReserva.forEach(d => { personasHtml += `<td style="padding:6px;text-align:center;border:1px solid #eee;">${prep.personas[d.key]?.[f] || 0}</td>`; });
+          personasHtml += '</tr>';
+        });
+        personasHtml += '</tbody></table>';
+      }
+
+      // Alojamiento matrix
+      let alojHtml = '';
+      if (diasReserva.length) {
+        const filas = ['dobleSep','dobleJun','individual'];
+        const labels = { dobleSep:'Doble sep.', dobleJun:'Doble jun.', individual:'Individual' };
+        alojHtml = '<h3 style="margin:16px 0 8px;color:#2D4A5C;">🛏️ Alojamiento</h3><table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:#2D4A5C;color:white;"><th style="padding:6px;text-align:left;"></th>';
+        diasReserva.forEach(d => { alojHtml += `<th style="padding:6px;">${d.label}</th>`; });
+        alojHtml += '</tr></thead><tbody>';
+        filas.forEach(f => {
+          alojHtml += `<tr><td style="padding:6px;font-weight:bold;background:#f5f0eb;">${labels[f]}</td>`;
+          diasReserva.forEach(d => { alojHtml += `<td style="padding:6px;text-align:center;border:1px solid #eee;">${prep.alojamiento[d.key]?.[f] || 0}</td>`; });
+          alojHtml += '</tr>';
+        });
+        alojHtml += '</tbody></table>';
+      }
+
+      // Listas
+      const listHtml = (items, icon, titulo) => {
+        if (!items.length) return '';
+        return `<h3 style="margin:16px 0 8px;color:#2D4A5C;">${icon} ${titulo}</h3><ul style="font-size:12px;padding-left:20px;">` +
+          items.map(i => `<li>${i.nombre}${i.cantidad > 1 ? ` (×${i.cantidad})` : ''}${i.notas ? ` — ${i.notas}` : ''}</li>`).join('') + '</ul>';
+      };
+
+      const w = window.open('', '_blank');
+      w.document.write(`<!DOCTYPE html><html><head><title>\u00A0</title>
+<style>@page{margin:0;size:A4;}body{font-family:Helvetica,Arial,sans-serif;padding:30px 40px;color:#333;font-size:13px;}</style></head><body>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+  <div><h2 style="margin:0;color:#2D4A5C;">📋 ${titulo}</h2><p style="color:#888;margin:4px 0;">${bienNombre}</p></div>
+  <div style="text-align:right;"><div style="background:#2D4A5C;color:white;padding:6px 14px;border-radius:8px;font-weight:bold;">RESERVA</div>
+  <div style="font-size:11px;color:#888;margin-top:4px;">${new Date().toLocaleDateString('es-ES')}</div></div>
+</div>
+<div style="display:flex;gap:20px;margin-bottom:16px;">
+  <div><strong>Entrada:</strong> ${fi} ${hE}</div>
+  <div><strong>Salida:</strong> ${ff} ${hS}</div>
+  <div><strong>Estado:</strong> ${estadoActual}</div>
+</div>
+${personasHtml}${alojHtml}
+${listHtml(prep.menaje, '🍷', 'Menaje')}
+${listHtml(prep.limpieza, '🧹', 'Limpieza')}
+${listHtml(prep.compras, '🛒', 'Compras')}
+${listHtml(prep.tareas, '✅', 'Tareas')}
+${document.getElementById('f-notas').value ? `<h3 style="margin:16px 0 8px;color:#2D4A5C;">📝 Notas</h3><p>${document.getElementById('f-notas').value}</p>` : ''}
+<div style="text-align:center;margin-top:30px;font-size:10px;color:#bbb;">FAMILYNK · Reserva Gerente</div>
+</body></html>`);
+      w.document.close();
+      setTimeout(() => w.print(), 300);
+    }
+
+    function getTitulo() {
+      if (tipoActual === 'familiar') {
+        const sel = document.getElementById('f-quienes');
+        return sel.selectedOptions[0]?.dataset?.nombre || 'Reserva familiar';
+      }
+      if (tipoActual === 'huesped') return document.getElementById('f-grupo').value || 'Huéspedes';
+      return document.getElementById('f-actividad-nombre').value || 'Actividad';
+    }
+
+    // Cerrar modales con click fuera
+    document.getElementById('modal-item').addEventListener('click', e => {
+      if (e.target.id === 'modal-item') cerrarModalItem();
+    });
+  </script>
+</body>
+</html>
