@@ -482,6 +482,12 @@
         <div class="form-row">
           <div class="form-group" style="flex:0 0 140px;"><label class="form-label">Nº Factura *</label><input type="text" class="form-input" id="fact-numero" placeholder="F-2026/001"></div>
           <div class="form-group" style="flex:1;"><label class="form-label">Cliente *</label><input type="text" class="form-input" id="fact-cliente" placeholder="Nombre del cliente"></div>
+          <div class="form-group" style="flex:0 0 140px;"><label class="form-label">CIF / NIF</label><input type="text" class="form-input" id="fact-nif" placeholder="B12345678" style="text-transform:uppercase;"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1;"><label class="form-label">Dirección</label><input type="text" class="form-input" id="fact-direccion" placeholder="Calle, nº, piso..."></div>
+          <div class="form-group" style="flex:0 0 100px;"><label class="form-label">C.P.</label><input type="text" class="form-input" id="fact-cp" placeholder="28001" maxlength="10"></div>
+          <div class="form-group" style="flex:0 0 160px;"><label class="form-label">Población</label><input type="text" class="form-input" id="fact-poblacion" placeholder="Ciudad"></div>
         </div>
         <div class="form-row">
           <div class="form-group" style="flex:1;"><label class="form-label">Fecha emisión</label><input type="date" class="form-input" id="fact-fecha"></div>
@@ -1150,6 +1156,10 @@
       document.getElementById('btn-pdf-fact').style.display = data ? '' : 'none';
       document.getElementById('fact-numero').value = data?.numero || autoNumeroFactura();
       document.getElementById('fact-cliente').value = data?.cliente || '';
+      document.getElementById('fact-nif').value = data?.nif || '';
+      document.getElementById('fact-direccion').value = data?.direccion || '';
+      document.getElementById('fact-cp').value = data?.cp || '';
+      document.getElementById('fact-poblacion').value = data?.poblacion || '';
       document.getElementById('fact-fecha').value = data?.fecha || new Date().toISOString().split('T')[0];
       document.getElementById('fact-vence').value = data?.vencimiento || '';
       document.getElementById('fact-estado').value = data?.estado || 'pendiente';
@@ -1183,6 +1193,10 @@
       const prop = propuestas.find(p => p.id === propId);
       if (!prop) return;
       document.getElementById('fact-cliente').value = prop.cliente || '';
+      if (prop.nif) document.getElementById('fact-nif').value = prop.nif;
+      if (prop.direccion) document.getElementById('fact-direccion').value = prop.direccion;
+      if (prop.cp) document.getElementById('fact-cp').value = prop.cp;
+      if (prop.poblacion) document.getElementById('fact-poblacion').value = prop.poblacion;
       factLineas = JSON.parse(JSON.stringify(prop.lineas || []));
       if (!factLineas.length) addLineaFact();
       renderLineasFact();
@@ -1226,6 +1240,10 @@
       if (!numero || !cliente) { alert('Nº Factura y Cliente obligatorios'); return; }
       const data = {
         numero, cliente,
+        nif: document.getElementById('fact-nif').value.trim().toUpperCase(),
+        direccion: document.getElementById('fact-direccion').value.trim(),
+        cp: document.getElementById('fact-cp').value.trim(),
+        poblacion: document.getElementById('fact-poblacion').value.trim(),
         fecha: document.getElementById('fact-fecha').value,
         vencimiento: document.getElementById('fact-vence').value,
         estado: document.getElementById('fact-estado').value,
@@ -1379,6 +1397,8 @@ thead th:last-child{text-align:right;}
     <div class="meta-box">
       <h3>📋 Facturar a</h3>
       <p style="font-weight:700;">${f.cliente || '—'}</p>
+      ${f.nif ? `<p style="font-size:0.82rem;color:#3D3D3D;margin-top:4px;">NIF/CIF: <strong>${f.nif}</strong></p>` : ''}
+      ${f.direccion || f.cp || f.poblacion ? `<p style="font-size:0.82rem;color:#3D3D3D;margin-top:2px;">${f.direccion || ''}${f.cp || f.poblacion ? (f.direccion ? ' - ' : '') + [f.cp, f.poblacion].filter(Boolean).join(' ') : ''}</p>` : ''}
     </div>
   </div>
 
