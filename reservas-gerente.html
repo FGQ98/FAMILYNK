@@ -501,17 +501,19 @@
       try {
         const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
         const familiaId = userDoc.data()?.familiaId;
-        if (!familiaId) return;
+        if (!familiaId) { console.warn('⚠️ Sin familiaId'); return; }
 
         const nidosSnap = await db.collection('familias').doc(familiaId).collection('nidos').get();
         nidosRama = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
+        console.log('🏠 Nidos cargados:', nidosRama.length, nidosRama.map(n => n.apellidos || n.nombre || n.id));
+
         // Poblar selector
         const sel = document.getElementById('f-quienes');
         sel.innerHTML = '<option value="">Seleccionar...</option>';
         nidosRama.forEach(n => {
-          const nombre = n.apellidos || n.nombre || `Nido ${n.id.substring(0,4)}`;
+          const nombre = n.apellidos || n.nombreNido || n.nombre || n.titulo || `Nido ${n.id.substring(0,6)}`;
           sel.innerHTML += `<option value="nido:${n.id}" data-nombre="${nombre}">🏠 ${nombre}</option>`;
         });
         sel.innerHTML += '<option disabled>───────────</option>';
@@ -704,7 +706,7 @@
       // Limpiar campos
       document.getElementById('f-quienes').value = '';
       document.getElementById('grupo-representado').style.display = 'none';
-      document.getElementById('f-representado').value = '';
+      document.getElementById('f-representado').value = currentUser.displayName || '';
       document.getElementById('f-grupo').value = '';
       document.getElementById('f-pax').value = '';
       document.getElementById('f-hab-doble-sep').value = '';
