@@ -499,12 +499,14 @@
 
     async function cargarNidosRama() {
       try {
-        const userDoc = await db.collection('usuarios').doc(currentUser.uid).get();
+        const firestore = firebase.firestore();
+        const uid = firebase.auth().currentUser.uid;
+        const userDoc = await firestore.collection('usuarios').doc(uid).get();
         const familiaId = userDoc.data()?.familiaId;
+        console.log('🔑 familiaId para nidos:', familiaId);
         if (!familiaId) { console.warn('⚠️ Sin familiaId'); return; }
 
-        // Nidos están en colección RAÍZ 'nidos' con campo familiaId
-        const nidosSnap = await db.collection('nidos').where('familiaId', '==', familiaId).get();
+        const nidosSnap = await firestore.collection('nidos').where('familiaId', '==', familiaId).get();
         nidosRama = nidosSnap.docs.map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
@@ -519,7 +521,7 @@
         });
         sel.innerHTML += '<option disabled>───────────</option>';
         sel.innerHTML += '<option value="otros">📌 Otros</option>';
-      } catch (e) { console.warn('Error cargando nidos:', e); }
+      } catch (e) { console.error('❌ Error cargando nidos:', e); }
     }
 
     async function cargarReservas() {
