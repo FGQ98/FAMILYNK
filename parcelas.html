@@ -472,6 +472,8 @@
               <option value="pastos">🐄 Pastos</option>
               <option value="forestal">🌲 Forestal</option>
               <option value="monte-bajo">🌿 Monte bajo</option>
+              <option value="retamar">🌼 Retamar</option>
+              <option value="construcciones">🏗️ Construcciones</option>
               <option value="erial">🏜️ Erial</option>
             </select>
           </div>
@@ -481,8 +483,11 @@
               <option value="">— Seleccionar —</option>
               <option value="olivar">🫒 Olivar</option>
               <option value="vinedo">🍇 Viñedo</option>
+              <option value="almendros">🌸 Almendros</option>
+              <option value="pistachos">🌰 Pistachos</option>
               <option value="frutal">🍊 Frutal</option>
               <option value="cereal">🌾 Cereal</option>
+              <option value="retamar-cultivo">🌼 Retamar</option>
               <option value="huerta">🥬 Huerta</option>
               <option value="otro">📦 Otro</option>
             </select>
@@ -520,14 +525,19 @@
       'pastos': '🐄 Pastos',
       'forestal': '🌲 Forestal',
       'monte-bajo': '🌿 Monte bajo',
+      'retamar': '🌼 Retamar',
+      'construcciones': '🏗️ Construcciones',
       'erial': '🏜️ Erial'
     };
 
     const cultivoLabels = {
       'olivar': '🫒 Olivar',
       'vinedo': '🍇 Viñedo',
+      'almendros': '🌸 Almendros',
+      'pistachos': '🌰 Pistachos',
       'frutal': '🍊 Frutal',
       'cereal': '🌾 Cereal',
+      'retamar-cultivo': '🌼 Retamar',
       'huerta': '🥬 Huerta',
       'otro': '📦 Otro'
     };
@@ -558,14 +568,15 @@
       try {
         const snap = await db.collection('bienes').doc(bienId)
           .collection('parcelas')
-          .orderBy('finca')
-          .orderBy('numero')
           .get();
 
         parcelas = snap.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        })).sort((a, b) => {
+          const fA = (a.finca || '').localeCompare(b.finca || '');
+          return fA !== 0 ? fA : (a.numero || 0) - (b.numero || 0);
+        });
 
         renderParcelas();
         renderStats();
