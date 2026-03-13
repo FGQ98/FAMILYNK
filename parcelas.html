@@ -7,6 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <!-- Leaflet-Geoman -->
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.css"/>
   <style>
     :root {
       --sage: #7A9E7E;
@@ -105,6 +109,13 @@
     }
 
     .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); }
+
+    .btn-map {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.35);
+    }
+    .btn-map:hover { background: rgba(255,255,255,0.28); transform: none; }
 
     .btn-secondary {
       background: var(--cream);
@@ -233,6 +244,18 @@
       color: var(--terracotta);
     }
 
+    .badge-geo {
+      display: inline-block;
+      background: rgba(107,142,35,0.12);
+      color: var(--capataz);
+      font-size: 0.65rem;
+      padding: 2px 5px;
+      border-radius: 4px;
+      margin-left: 5px;
+      vertical-align: middle;
+      font-weight: 600;
+    }
+
     .td-nota {
       color: var(--text-muted);
       font-size: 0.8rem;
@@ -357,11 +380,223 @@
       gap: 12px;
     }
 
+    .geo-badge-modal {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--capataz-muted);
+      color: var(--capataz);
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
     .loading { display: flex; align-items: center; justify-content: center; padding: 60px; }
     .spinner { width: 40px; height: 40px; border: 3px solid var(--cream-dark); border-top-color: var(--capataz); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .hidden { display: none !important; }
+
+    /* ─── MAPA PANEL ─────────────────────────────────────────── */
+    .mapa-panel {
+      position: fixed;
+      inset: 0;
+      background: var(--cream);
+      z-index: 800;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s, visibility 0.25s;
+    }
+
+    .mapa-panel.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .mapa-header {
+      background: linear-gradient(135deg, var(--capataz) 0%, var(--capataz-light) 100%);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+      box-shadow: var(--shadow-medium);
+      flex-wrap: wrap;
+    }
+
+    .mapa-header-izq {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: white;
+    }
+
+    .mapa-titulo {
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .mapa-subtitulo {
+      font-size: 0.75rem;
+      opacity: 0.8;
+    }
+
+    .mapa-header-acc {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .mapa-input-buscar {
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.15);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      outline: none;
+      width: 170px;
+    }
+
+    .mapa-input-buscar::placeholder { color: rgba(255,255,255,0.65); }
+    .mapa-input-buscar:focus { border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.22); }
+
+    .mapa-btn {
+      padding: 6px 13px;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .mapa-btn-outline {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .mapa-btn-outline:hover { background: rgba(255,255,255,0.28); }
+    .mapa-btn-outline.activo { background: rgba(255,255,255,0.32); border-color: rgba(255,255,255,0.7); }
+
+    .mapa-btn-dibujar {
+      background: white;
+      color: var(--capataz);
+    }
+
+    .mapa-btn-dibujar:hover { background: var(--cream); }
+    .mapa-btn-dibujar.activo { background: var(--capataz-muted); color: var(--capataz); outline: 2px solid white; }
+
+    .mapa-btn-cerrar {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 6px 10px;
+      font-size: 1rem;
+    }
+
+    .mapa-btn-cerrar:hover { background: rgba(220,60,60,0.4); }
+
+    #mapa-container {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+
+    .mapa-barra-info {
+      background: white;
+      border-top: 1px solid var(--cream-dark);
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 0.82rem;
+      min-height: 44px;
+      flex-shrink: 0;
+    }
+
+    .mapa-area-num {
+      color: var(--capataz);
+      font-weight: 700;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 1rem;
+      white-space: nowrap;
+    }
+
+    .mapa-hint {
+      color: var(--text-muted);
+      flex: 1;
+      font-size: 0.8rem;
+    }
+
+    .mapa-acciones-poligono {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Leyenda Leaflet custom */
+    .mapa-leyenda {
+      background: white;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-medium);
+      padding: 10px 13px;
+      font-size: 0.74rem;
+      min-width: 130px;
+    }
+
+    .leyenda-titulo {
+      font-weight: 700;
+      margin-bottom: 7px;
+      font-family: 'Quicksand', sans-serif;
+      font-size: 0.8rem;
+      color: var(--text);
+    }
+
+    .leyenda-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 4px;
+      color: var(--text-light);
+    }
+
+    .leyenda-swatch {
+      width: 16px;
+      height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.12);
+    }
+
+    /* Popup de parcela en mapa */
+    .parcela-popup { font-family: 'Nunito', sans-serif; min-width: 150px; }
+    .parcela-popup-nombre { font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; color: var(--capataz); }
+    .parcela-popup-dato { font-size: 0.8rem; color: #6B6B6B; margin-bottom: 2px; }
+    .parcela-popup-btn {
+      margin-top: 8px;
+      padding: 5px 10px;
+      background: var(--capataz);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+    }
 
     @media (max-width: 768px) {
       .form-row, .form-row-3 { grid-template-columns: 1fr; }
@@ -369,6 +604,8 @@
       .stat-card { min-width: 100%; }
       th, td { padding: 10px 12px; font-size: 0.8rem; }
       .table-responsive { overflow-x: auto; }
+      .mapa-input-buscar { width: 120px; }
+      .mapa-header-acc { gap: 5px; }
     }
   </style>
 </head>
@@ -382,6 +619,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="btn btn-map" onclick="abrirMapa()">🛰️ Mapa</button>
       <button class="btn btn-primary" onclick="abrirModal()">+ Nueva parcela</button>
     </div>
   </header>
@@ -398,6 +636,10 @@
         <div class="stat-card">
           <div class="stat-value" id="stat-superficie">0</div>
           <div class="stat-label">Hectáreas totales</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="stat-geo">0</div>
+          <div class="stat-label">Georeferenciadas</div>
         </div>
       </div>
 
@@ -442,6 +684,11 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="parcela-id">
+
+        <!-- Indicador de geometría pendiente -->
+        <div id="geo-pendiente-aviso" class="geo-badge-modal hidden">
+          📍 Polígono del mapa adjunto · superficie calculada automáticamente
+        </div>
         
         <div class="form-row">
           <div class="form-group">
@@ -462,7 +709,7 @@
         <div class="form-row-3">
           <div class="form-group">
             <label class="form-label">Superficie (ha) *</label>
-            <input type="number" step="0.01" class="form-input" id="parcela-superficie" placeholder="0.00">
+            <input type="number" step="0.0001" class="form-input" id="parcela-superficie" placeholder="0.0000">
           </div>
           <div class="form-group">
             <label class="form-label">Aprovechamiento</label>
@@ -508,20 +755,73 @@
     </div>
   </div>
 
+  <!-- ─── PANEL MAPA ──────────────────────────────────────────── -->
+  <div class="mapa-panel" id="mapa-panel">
+    <div class="mapa-header">
+      <div class="mapa-header-izq">
+        <span style="font-size:1.3rem">🛰️</span>
+        <div>
+          <div class="mapa-titulo">Mapa de parcelas</div>
+          <div class="mapa-subtitulo" id="mapa-subtitulo-bien"></div>
+        </div>
+      </div>
+      <div class="mapa-header-acc">
+        <input type="text" class="mapa-input-buscar" id="mapa-buscar-input"
+          placeholder="Buscar municipio..."
+          onkeypress="if(event.key==='Enter')buscarMunicipio()">
+        <button class="mapa-btn mapa-btn-outline" onclick="buscarMunicipio()" title="Buscar municipio">🔍</button>
+        <button class="mapa-btn mapa-btn-outline activo" id="btn-toggle-sigpac" onclick="toggleSIGPAC()" title="Mostrar/ocultar recintos catastrales SIGPAC">📋 SIGPAC</button>
+        <button class="mapa-btn mapa-btn-outline" id="btn-centrar-parcelas" onclick="centrarEnParcelas()" title="Centrar mapa en las parcelas">⊙ Centrar</button>
+        <button class="mapa-btn mapa-btn-dibujar" id="btn-dibujar-poligono" onclick="iniciarDibujo()">✏️ Dibujar parcela</button>
+        <button class="mapa-btn mapa-btn-cerrar" onclick="cerrarMapa()" title="Cerrar mapa">✕</button>
+      </div>
+    </div>
+
+    <div id="mapa-container"></div>
+
+    <div class="mapa-barra-info">
+      <span class="mapa-area-num" id="mapa-area-texto">—</span>
+      <span class="mapa-hint" id="mapa-hint-texto">Navega al área de la finca. Usa SIGPAC para ver los recintos catastrales. Con "Dibujar parcela" traza el perímetro de un recinto.</span>
+      <div class="mapa-acciones-poligono hidden" id="mapa-acciones-poligono">
+        <button class="btn btn-primary btn-sm" style="background:var(--capataz);color:white;" onclick="confirmarPoligono()">✓ Usar este polígono</button>
+        <button class="btn btn-secondary btn-sm" onclick="cancelarPoligono(false)">✕ Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" async></script>
+  <!-- Leaflet -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <!-- Leaflet-Geoman (dibujo de polígonos) -->
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js"></script>
+  <!-- Turf.js (cálculo de áreas geográficas) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
 
   <script>
+    /* ─── ESTADO GLOBAL ──────────────────────────────────────── */
     let currentUser = null;
     let bienId = null;
     let parcelas = [];
     let editingId = null;
     let bienNombre = '';
 
+    /* ─── ESTADO MAPA ────────────────────────────────────────── */
+    let mapaIniciado = false;
+    let mapa = null;
+    let capaSIGPAC = null;
+    let capaParcelasGeo = null;
+    let capaDibujoTemp = null;
+    let sigpacVisible = true;
+    let poligonoTemp = null;
+    let _geometriaPendiente = null;
+    let _superficiePendiente = null;
+
+    /* ─── LABELS ─────────────────────────────────────────────── */
     const aprovechamientoLabels = {
       'secano': '🌾 Secano',
       'regadio': '💧 Regadío',
@@ -545,7 +845,18 @@
       'otro': '📦 Otro'
     };
 
-    // Obtener bienId de URL
+    const coloresPorAprovechamiento = {
+      'secano':         '#c8a96e',
+      'regadio':        '#4a9eca',
+      'pastos':         '#7bc47f',
+      'forestal':       '#2d6a4f',
+      'monte-bajo':     '#95b77d',
+      'retamar':        '#d4b840',
+      'construcciones': '#95a5a6',
+      'erial':          '#d4956a'
+    };
+
+    /* ─── INIT ───────────────────────────────────────────────── */
     const urlParams = new URLSearchParams(window.location.search);
     bienId = urlParams.get('id') || urlParams.get('bien');
 
@@ -554,28 +865,22 @@
       window.location.href = 'lo-comun.html';
     }
 
-    // Configurar botón volver
     const origen = urlParams.get('origen') || 'bien';
     document.getElementById('btn-volver').href = `${origen}.html?id=${bienId}`;
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        window.location.href = 'login.html';
-        return;
-      }
+      if (!user) { window.location.href = 'login.html'; return; }
       currentUser = user;
       await cargarParcelas();
     });
 
+    /* ─── DATOS ──────────────────────────────────────────────── */
     async function cargarParcelas() {
       try {
-        // Cargar nombre del bien
         const bienDoc = await db.collection('bienes').doc(bienId).get();
         if (bienDoc.exists) bienNombre = bienDoc.data().nombre || '';
 
-        const snap = await db.collection('bienes').doc(bienId)
-          .collection('parcelas')
-          .get();
+        const snap = await db.collection('bienes').doc(bienId).collection('parcelas').get();
 
         parcelas = snap.docs.map(doc => ({
           id: doc.id,
@@ -587,6 +892,9 @@
 
         renderParcelas();
         renderStats();
+
+        // Si el mapa ya está abierto, actualizar sus capas
+        if (mapaIniciado && capaParcelasGeo) renderParcelasEnMapa();
 
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('content').classList.remove('hidden');
@@ -614,8 +922,11 @@
         <tr onclick="editarParcela('${p.id}')">
           <td class="td-numero">${p.numero || '-'}</td>
           <td>${p.finca || '-'}</td>
-          <td class="td-nombre">${p.nombre || '-'}</td>
-          <td class="td-superficie">${p.superficie ? p.superficie.toFixed(2) + ' ha' : '-'}</td>
+          <td class="td-nombre">
+            ${p.nombre || '-'}
+            ${p.geometria ? '<span class="badge-geo">📍</span>' : ''}
+          </td>
+          <td class="td-superficie">${p.superficie ? p.superficie.toFixed(4) + ' ha' : '-'}</td>
           <td>${p.aprovechamiento ? `<span class="badge badge-aprovechamiento">${aprovechamientoLabels[p.aprovechamiento] || p.aprovechamiento}</span>` : '-'}</td>
           <td>${p.cultivo ? `<span class="badge badge-cultivo">${cultivoLabels[p.cultivo] || p.cultivo}</span>` : '-'}</td>
           <td class="td-nota" title="${p.nota || ''}">${p.nota || '-'}</td>
@@ -624,12 +935,14 @@
     }
 
     function renderStats() {
-      document.getElementById('stat-total').textContent = parcelas.length;
-      
       const totalSuperficie = parcelas.reduce((sum, p) => sum + (p.superficie || 0), 0);
+      const totalGeo = parcelas.filter(p => p.geometria).length;
+      document.getElementById('stat-total').textContent = parcelas.length;
       document.getElementById('stat-superficie').textContent = totalSuperficie.toFixed(2);
+      document.getElementById('stat-geo').textContent = totalGeo;
     }
 
+    /* ─── MODAL PARCELA ──────────────────────────────────────── */
     function abrirModal() {
       editingId = null;
       document.getElementById('parcela-id').value = '';
@@ -642,7 +955,16 @@
       document.getElementById('parcela-nota').value = '';
       document.getElementById('btn-eliminar').classList.add('hidden');
       document.getElementById('modal-title').textContent = '🗺️ Nueva parcela';
+      document.getElementById('geo-pendiente-aviso').classList.add('hidden');
       document.getElementById('modal-parcela').classList.add('active');
+    }
+
+    function abrirModalDesdeMapa() {
+      abrirModal();
+      if (_superficiePendiente) {
+        document.getElementById('parcela-superficie').value = _superficiePendiente;
+        document.getElementById('geo-pendiente-aviso').classList.remove('hidden');
+      }
     }
 
     function editarParcela(id) {
@@ -660,11 +982,16 @@
       document.getElementById('parcela-nota').value = parcela.nota || '';
       document.getElementById('btn-eliminar').classList.remove('hidden');
       document.getElementById('modal-title').textContent = '✏️ Editar parcela';
+      document.getElementById('geo-pendiente-aviso').classList.add('hidden');
       document.getElementById('modal-parcela').classList.add('active');
     }
 
     function cerrarModal() {
       document.getElementById('modal-parcela').classList.remove('active');
+      // Si cancela, limpiar geometría pendiente
+      _geometriaPendiente = null;
+      _superficiePendiente = null;
+      document.getElementById('geo-pendiente-aviso').classList.add('hidden');
     }
 
     async function guardarParcela() {
@@ -693,6 +1020,11 @@
         actualizadoEn: firebase.firestore.FieldValue.serverTimestamp()
       };
 
+      // Adjuntar geometría si viene del mapa (solo en creación)
+      if (_geometriaPendiente && !editingId) {
+        data.geometria = _geometriaPendiente;
+      }
+
       try {
         if (editingId) {
           await db.collection('bienes').doc(bienId).collection('parcelas').doc(editingId).update(data);
@@ -701,6 +1033,10 @@
           data.creadoPor = currentUser.uid;
           await db.collection('bienes').doc(bienId).collection('parcelas').add(data);
         }
+
+        // Limpiar geometría pendiente tras guardar
+        _geometriaPendiente = null;
+        _superficiePendiente = null;
 
         cerrarModal();
         await cargarParcelas();
@@ -724,31 +1060,328 @@
       }
     }
 
-    // Cerrar modal con Escape
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') cerrarModal();
+      if (e.key === 'Escape') {
+        if (document.getElementById('mapa-panel').classList.contains('active')) {
+          cerrarMapa();
+        } else {
+          cerrarModal();
+        }
+      }
     });
 
-    // Cerrar modal al hacer clic fuera
     document.getElementById('modal-parcela').addEventListener('click', (e) => {
       if (e.target.classList.contains('modal-overlay')) cerrarModal();
     });
 
+    /* ─── MAPA: APERTURA / CIERRE ────────────────────────────── */
+    function abrirMapa() {
+      document.getElementById('mapa-panel').classList.add('active');
+      document.getElementById('mapa-subtitulo-bien').textContent = bienNombre || '';
+
+      if (!mapaIniciado) {
+        // Pequeño delay para que el panel sea visible antes de inicializar Leaflet
+        setTimeout(initMapa, 80);
+      } else {
+        renderParcelasEnMapa();
+        setTimeout(() => mapa.invalidateSize(), 100);
+      }
+    }
+
+    function cerrarMapa() {
+      cancelarPoligono(true);
+      document.getElementById('mapa-panel').classList.remove('active');
+    }
+
+    /* ─── MAPA: INICIALIZACIÓN ───────────────────────────────── */
+    function initMapa() {
+      mapaIniciado = true;
+
+      mapa = L.map('mapa-container', {
+        center: [40.0, -3.7],
+        zoom: 7,
+        zoomControl: true
+      });
+
+      // Capa base: IGN PNOA ortofoto aérea oficial España
+      const capaPNOA = L.tileLayer(
+        'https://www.ign.es/wmts/pnoa-ma?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
+        '&LAYER=OI.OrthoimageCoverage&STYLE=default&FORMAT=image/jpeg' +
+        '&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+        {
+          attribution: '© IGN España — PNOA MA',
+          maxZoom: 20,
+          maxNativeZoom: 19
+        }
+      );
+
+      // Capa base alternativa: OpenStreetMap
+      const capaOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+      });
+
+      // Intentar PNOA, si falla silenciosamente usar OSM
+      capaPNOA.addTo(mapa);
+      let pnoaFallo = false;
+      capaPNOA.on('tileerror', () => {
+        if (!pnoaFallo) {
+          pnoaFallo = true;
+          console.info('PNOA no disponible, usando OpenStreetMap');
+          mapa.removeLayer(capaPNOA);
+          capaOSM.addTo(mapa);
+        }
+      });
+
+      // Overlay SIGPAC: recintos catastrales del Ministerio de Agricultura
+      capaSIGPAC = L.tileLayer.wms('https://wms.mapa.gob.es/sigpac/wms', {
+        layers: 'AU.Sigpac:recinto',
+        format: 'image/png',
+        transparent: true,
+        opacity: 0.55,
+        attribution: '© FEGA — SIGPAC',
+        maxZoom: 20
+      });
+      capaSIGPAC.addTo(mapa);
+
+      // Capa de parcelas del usuario (GeoJSON desde Firestore)
+      capaParcelasGeo = L.featureGroup().addTo(mapa);
+
+      // Capa temporal para polígono en edición
+      capaDibujoTemp = L.featureGroup().addTo(mapa);
+
+      // Configurar Geoman (sin toolbar visible — usamos nuestros propios botones)
+      mapa.pm.setGlobalOptions({ snappable: true, snapDistance: 15 });
+
+      // Evento: polígono completado
+      mapa.on('pm:create', onPoligonoCreado);
+
+      // Leyenda
+      crearLeyenda();
+
+      // Render parcelas con geometría
+      renderParcelasEnMapa();
+
+      // Si hay parcelas georreferenciadas, centrar en ellas
+      setTimeout(() => {
+        if (capaParcelasGeo.getLayers().length > 0) {
+          mapa.fitBounds(capaParcelasGeo.getBounds(), { padding: [50, 50] });
+        }
+      }, 200);
+    }
+
+    /* ─── MAPA: RENDER PARCELAS ──────────────────────────────── */
+    function renderParcelasEnMapa() {
+      if (!capaParcelasGeo) return;
+      capaParcelasGeo.clearLayers();
+
+      parcelas.forEach(p => {
+        if (!p.geometria) return;
+        try {
+          const geo = (typeof p.geometria === 'string') ? JSON.parse(p.geometria) : p.geometria;
+          const color = coloresPorAprovechamiento[p.aprovechamiento] || '#6B8E23';
+
+          const layer = L.geoJSON(geo, {
+            style: {
+              color: color,
+              weight: 2.5,
+              fillColor: color,
+              fillOpacity: 0.22
+            }
+          });
+
+          const popupHtml = `
+            <div class="parcela-popup">
+              <div class="parcela-popup-nombre">${p.nombre || ('Parcela ' + (p.numero || ''))}</div>
+              <div class="parcela-popup-dato">📍 ${p.finca || '—'} · Nº ${p.numero || '—'}</div>
+              <div class="parcela-popup-dato">📐 ${p.superficie ? p.superficie.toFixed(4) + ' ha' : '—'}</div>
+              ${p.aprovechamiento ? `<div class="parcela-popup-dato">${aprovechamientoLabels[p.aprovechamiento] || p.aprovechamiento}</div>` : ''}
+              <button class="parcela-popup-btn" onclick="editarParcela('${p.id}');cerrarMapa()">✏️ Editar parcela</button>
+            </div>
+          `;
+
+          layer.bindPopup(popupHtml, { maxWidth: 220 });
+          layer.addTo(capaParcelasGeo);
+        } catch(e) {
+          console.warn('Geometría inválida en parcela', p.id, e);
+        }
+      });
+    }
+
+    /* ─── MAPA: DIBUJO ───────────────────────────────────────── */
+    function iniciarDibujo() {
+      // Si hay polígono temporal previo, cancelar
+      if (poligonoTemp) cancelarPoligono(true);
+
+      mapa.pm.enableDraw('Polygon', {
+        snappable: true,
+        snapDistance: 15,
+        allowSelfIntersection: false,
+        finishOn: 'dblclick'
+      });
+
+      document.getElementById('btn-dibujar-poligono').classList.add('activo');
+      document.getElementById('mapa-hint-texto').textContent =
+        'Haz clic para colocar vértices. Doble clic o clic en el primer punto para cerrar el polígono.';
+    }
+
+    function onPoligonoCreado(e) {
+      const layer = e.layer;
+      poligonoTemp = layer;
+      capaDibujoTemp.addLayer(layer);
+      mapa.pm.disableDraw();
+
+      // Calcular área con Turf
+      const geojson = layer.toGeoJSON();
+      const areaM2 = turf.area(geojson);
+      const areaHa = areaM2 / 10000;
+
+      // Estilo del polígono temporal (línea discontinua para diferenciar de las guardadas)
+      layer.setStyle({
+        color: '#6B8E23',
+        weight: 2.5,
+        fillColor: '#6B8E23',
+        fillOpacity: 0.18,
+        dashArray: '7,5'
+      });
+
+      // Guardar geometría pendiente
+      _geometriaPendiente = geojson;
+      _superficiePendiente = parseFloat(areaHa.toFixed(4));
+
+      // Actualizar barra de info
+      document.getElementById('mapa-area-texto').textContent =
+        `📐 ${areaHa.toFixed(4)} ha · ${Math.round(areaM2).toLocaleString('es-ES')} m²`;
+      document.getElementById('mapa-hint-texto').textContent =
+        'Polígono listo. Pulsa "Usar este polígono" para crear la parcela con esta geometría.';
+      document.getElementById('mapa-acciones-poligono').classList.remove('hidden');
+      document.getElementById('btn-dibujar-poligono').classList.remove('activo');
+    }
+
+    function confirmarPoligono() {
+      if (!_geometriaPendiente) return;
+
+      // Quitar solo el visual temporal (el GeoJSON queda en _geometriaPendiente)
+      if (poligonoTemp && capaDibujoTemp) {
+        capaDibujoTemp.removeLayer(poligonoTemp);
+        poligonoTemp = null;
+      }
+
+      document.getElementById('mapa-acciones-poligono').classList.add('hidden');
+      document.getElementById('mapa-area-texto').textContent = '—';
+
+      cerrarMapa();
+
+      // Abrir modal con superficie pre-rellenada después de que se cierre el mapa
+      setTimeout(() => abrirModalDesdeMapa(), 280);
+    }
+
+    function cancelarPoligono(limpiarGeo) {
+      if (poligonoTemp && capaDibujoTemp) {
+        capaDibujoTemp.removeLayer(poligonoTemp);
+        poligonoTemp = null;
+      }
+
+      if (limpiarGeo) {
+        _geometriaPendiente = null;
+        _superficiePendiente = null;
+      }
+
+      if (mapa) mapa.pm.disableDraw();
+
+      document.getElementById('mapa-acciones-poligono').classList.add('hidden');
+      document.getElementById('mapa-area-texto').textContent = '—';
+      document.getElementById('mapa-hint-texto').textContent =
+        'Navega al área de la finca. Usa SIGPAC para ver los recintos catastrales. Con "Dibujar parcela" traza el perímetro de un recinto.';
+      document.getElementById('btn-dibujar-poligono').classList.remove('activo');
+    }
+
+    /* ─── MAPA: CONTROLES ────────────────────────────────────── */
+    function toggleSIGPAC() {
+      if (!mapa || !capaSIGPAC) return;
+      sigpacVisible = !sigpacVisible;
+      if (sigpacVisible) {
+        capaSIGPAC.addTo(mapa);
+        document.getElementById('btn-toggle-sigpac').classList.add('activo');
+      } else {
+        mapa.removeLayer(capaSIGPAC);
+        document.getElementById('btn-toggle-sigpac').classList.remove('activo');
+      }
+    }
+
+    function centrarEnParcelas() {
+      if (!mapa) return;
+      if (capaParcelasGeo && capaParcelasGeo.getLayers().length > 0) {
+        mapa.fitBounds(capaParcelasGeo.getBounds(), { padding: [50, 50] });
+      } else {
+        alert('No hay parcelas georreferenciadas todavía. Dibuja el polígono de una parcela primero.');
+      }
+    }
+
+    async function buscarMunicipio() {
+      const q = document.getElementById('mapa-buscar-input').value.trim();
+      if (!q || !mapa) return;
+
+      try {
+        const resp = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', España')}&format=json&limit=1`,
+          { headers: { 'Accept-Language': 'es' } }
+        );
+        const data = await resp.json();
+
+        if (data && data.length > 0) {
+          const { lat, lon, display_name } = data[0];
+          mapa.setView([parseFloat(lat), parseFloat(lon)], 14);
+          document.getElementById('mapa-buscar-input').value = '';
+        } else {
+          alert('Municipio no encontrado. Prueba con el nombre completo o la provincia.');
+        }
+      } catch(e) {
+        console.error('Error buscando municipio:', e);
+        alert('Error al buscar. Navega manualmente en el mapa.');
+      }
+    }
+
+    /* ─── MAPA: LEYENDA ──────────────────────────────────────── */
+    function crearLeyenda() {
+      const Leyenda = L.Control.extend({
+        onAdd: function() {
+          const div = L.DomUtil.create('div', 'mapa-leyenda');
+          div.innerHTML = `
+            <div class="leyenda-titulo">Aprovechamiento</div>
+            <div class="leyenda-item"><div class="leyenda-swatch" style="background:#c8a96e"></div>🌾 Secano</div>
+            <div class="leyenda-item"><div class="leyenda-swatch" style="background:#4a9eca"></div>💧 Regadío</div>
+            <div class="leyenda-item"><div class="leyenda-swatch" style="background:#7bc47f"></div>🐄 Pastos</div>
+            <div class="leyenda-item"><div class="leyenda-swatch" style="background:#2d6a4f"></div>🌲 Forestal</div>
+            <div class="leyenda-item"><div class="leyenda-swatch" style="background:#6B8E23"></div>📦 Otros</div>
+            <div style="margin-top:8px;padding-top:6px;border-top:1px solid #eee;">
+              <div class="leyenda-item"><div class="leyenda-swatch" style="background:rgba(60,120,200,0.3);border:1px dashed #3c78c8"></div>SIGPAC catastro</div>
+            </div>
+          `;
+          return div;
+        }
+      });
+      new Leyenda({ position: 'bottomright' }).addTo(mapa);
+    }
+
+    /* ─── PDF ────────────────────────────────────────────────── */
     function generarPDF() {
       if (typeof html2pdf === 'undefined') { alert('Generador PDF cargando, intenta de nuevo.'); return; }
       if (parcelas.length === 0) { alert('No hay parcelas para exportar.'); return; }
 
       const fechaHoy = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
       const totalHa = parcelas.reduce((s, p) => s + (p.superficie || 0), 0);
+      const totalGeo = parcelas.filter(p => p.geometria).length;
 
       let filas = parcelas.map(p => {
         const aprov = aprovechamientoLabels[p.aprovechamiento] || p.aprovechamiento || '-';
         const cult = cultivoLabels[p.cultivo] || p.cultivo || '-';
+        const geoIcon = p.geometria ? '📍' : '';
         return `<tr>
           <td style="padding:3px 5px;text-align:center;font-weight:600;white-space:nowrap;">${p.numero || '-'}</td>
           <td style="padding:3px 5px;white-space:nowrap;">${p.finca || '-'}</td>
-          <td style="padding:3px 5px;font-weight:600;white-space:nowrap;">${p.nombre || '-'}</td>
-          <td style="padding:3px 5px;text-align:right;white-space:nowrap;">${p.superficie ? p.superficie.toFixed(2) + ' ha' : '-'}</td>
+          <td style="padding:3px 5px;font-weight:600;white-space:nowrap;">${p.nombre || '-'} ${geoIcon}</td>
+          <td style="padding:3px 5px;text-align:right;white-space:nowrap;">${p.superficie ? p.superficie.toFixed(4) + ' ha' : '-'}</td>
           <td style="padding:3px 5px;white-space:nowrap;">${aprov}</td>
           <td style="padding:3px 5px;white-space:nowrap;">${cult}</td>
           <td style="padding:3px 5px;font-size:8px;color:#6B6B6B;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.nota || '-'}</td>
@@ -772,6 +1405,10 @@
               <div style="font-size:18px;font-weight:700;color:#2D5A3F;">${totalHa.toFixed(2)}</div>
               <div style="font-size:8px;color:#9A9A9A;text-transform:uppercase;">Hectáreas</div>
             </div>
+            <div style="padding:6px 14px;background:#f0f5eb;border-radius:6px;text-align:center;">
+              <div style="font-size:18px;font-weight:700;color:#2D5A3F;">${totalGeo}</div>
+              <div style="font-size:8px;color:#9A9A9A;text-transform:uppercase;">Georef.</div>
+            </div>
           </div>
           <table style="width:100%;border-collapse:collapse;font-size:9px;">
             <thead>
@@ -788,7 +1425,7 @@
             <tbody>${filas}</tbody>
           </table>
           <div style="margin-top:12px;padding-top:6px;border-top:1px solid #eee;font-size:8px;color:#9A9A9A;text-align:center;">
-            Generado: ${fechaHoy} · FAMILYNK
+            📍 = georeferenciada en mapa · Generado: ${fechaHoy} · FAMILYNK
           </div>
         </div>
       `;
