@@ -767,9 +767,9 @@
       </div>
       <div class="mapa-header-acc">
         <input type="text" class="mapa-input-buscar" id="mapa-buscar-input"
-          placeholder="Buscar municipio..."
-          onkeypress="if(event.key==='Enter')buscarMunicipio()">
-        <button class="mapa-btn mapa-btn-outline" onclick="buscarMunicipio()" title="Buscar municipio">🔍</button>
+          placeholder="Municipio o ref. SIGPAC (prov-mun-pol-par)"
+          onkeypress="if(event.key==='Enter')buscarEnMapa()">
+        <button class="mapa-btn mapa-btn-outline" onclick="buscarEnMapa()" title="Buscar municipio o ref. SIGPAC">🔍</button>
         <button class="mapa-btn mapa-btn-outline activo" id="btn-toggle-sigpac" onclick="toggleSIGPAC()" title="Mostrar/ocultar recintos catastrales SIGPAC">📋 SIGPAC</button>
         <button class="mapa-btn mapa-btn-outline" id="btn-centrar-parcelas" onclick="centrarEnParcelas()" title="Centrar mapa en las parcelas">⊙ Centrar</button>
         <button class="mapa-btn mapa-btn-dibujar" id="btn-dibujar-poligono" onclick="iniciarDibujo()">✏️ Dibujar parcela</button>
@@ -820,6 +820,7 @@
     let poligonoTemp = null;
     let _geometriaPendiente = null;
     let _superficiePendiente = null;
+    let capaSIGPACTemp = null;
 
     /* ─── LABELS ─────────────────────────────────────────────── */
     const aprovechamientoLabels = {
@@ -1318,28 +1319,143 @@
       }
     }
 
-    async function buscarMunicipio() {
+    /* ─── MAPA: BÚSQUEDA (municipio o ref. SIGPAC) ───────────────────────── */
+    const API_BASE = '/api/sigpac';
+
+    async function buscarEnMapa() {
       const q = document.getElementById('mapa-buscar-input').value.trim();
       if (!q || !mapa) return;
 
+      // Detectar si es referencia SIGPAC: "28-079-4-55" / "28/079/4/55" / "28 079 4 55"
+      const partesSIGPAC = q.split(/[-\/\s]+/).filter(Boolean);
+      const esSIGPAC = partesSIGPAC.length >= 4 && partesSIGPAC.every(p => /^\d+$/.test(p));
+
+      if (esSIGPAC) {
+        await buscarPorReferenciaSIGPAC(partesSIGPAC);
+      } else {
+        await buscarPorMunicipio(q);
+      }
+    }
+
+    async function buscarPorMunicipio(nombre) {
       try {
         const resp = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ', España')}&format=json&limit=1`,
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(nombre + ', España')}&format=json&limit=1`,
           { headers: { 'Accept-Language': 'es' } }
         );
         const data = await resp.json();
 
         if (data && data.length > 0) {
-          const { lat, lon, display_name } = data[0];
+          const { lat, lon } = data[0];
           mapa.setView([parseFloat(lat), parseFloat(lon)], 14);
           document.getElementById('mapa-buscar-input').value = '';
         } else {
-          alert('Municipio no encontrado. Prueba con el nombre completo o la provincia.');
+          mostrarToastMapa('Municipio no encontrado. Prueba con el nombre completo o la provincia.');
         }
       } catch(e) {
-        console.error('Error buscando municipio:', e);
-        alert('Error al buscar. Navega manualmente en el mapa.');
+        mostrarToastMapa('Error de conexión. Navega manualmente en el mapa.');
       }
+    }
+
+    async function buscarPorReferenciaSIGPAC(partes) {
+      const [provincia, municipio, poligono, parcela, recinto] = partes;
+      mostrarCargandoMapa(true);
+
+      try {
+        const tipo = recinto ? 'recinto' : 'parcela';
+        let url = `${API_BASE}?tipo=${tipo}&provincia=${provincia}&municipio=${municipio}&poligono=${poligono}&parcela=${parcela}`;
+        if (recinto) url += `&recinto=${recinto}`;
+
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error || `Error ${resp.status} del servidor`);
+        }
+
+        const geojson = await resp.json();
+
+        if (!geojson || !geojson.features || geojson.features.length === 0) {
+          throw new Error('Parcela no encontrada. Verifica la referencia SIGPAC.');
+        }
+
+        mostrarParcelaSIGPACEnMapa(geojson, partes.join('-'));
+        document.getElementById('mapa-buscar-input').value = '';
+
+      } catch(e) {
+        mostrarToastMapa(e.message || 'Error al consultar SIGPAC');
+      } finally {
+        mostrarCargandoMapa(false);
+      }
+    }
+
+    function mostrarParcelaSIGPACEnMapa(geojson, referencia) {
+      if (capaSIGPACTemp) { mapa.removeLayer(capaSIGPACTemp); capaSIGPACTemp = null; }
+
+      capaSIGPACTemp = L.geoJSON(geojson, {
+        style: {
+          color: '#185FA5',
+          weight: 3,
+          fillColor: '#378ADD',
+          fillOpacity: 0.25,
+          dashArray: '6,4'
+        }
+      }).addTo(mapa);
+
+      mapa.fitBounds(capaSIGPACTemp.getBounds(), { padding: [60, 60] });
+
+      const areaM2 = turf.area(geojson);
+      const areaHa = (areaM2 / 10000).toFixed(4);
+      const props = geojson.features[0].properties || {};
+      const usoSIGPAC = props.uso_sigpac || props.uso || '';
+      const coefReg = props.coef_regadio !== undefined ? ` · Coef. regadío: ${props.coef_regadio}` : '';
+
+      capaSIGPACTemp.bindPopup(`
+        <div class="parcela-popup">
+          <div class="parcela-popup-nombre">📋 Ref. SIGPAC: ${referencia}</div>
+          ${usoSIGPAC ? `<div class="parcela-popup-dato">Uso: ${usoSIGPAC}${coefReg}</div>` : ''}
+          <div class="parcela-popup-dato">📐 ${areaHa} ha · ${Math.round(areaM2).toLocaleString('es-ES')} m²</div>
+          <button class="parcela-popup-btn" onclick="usarGeometriaSIGPAC('${referencia}', ${areaHa})">
+            ✓ Usar este polígono
+          </button>
+        </div>
+      `, { maxWidth: 240 }).openPopup();
+
+      document.getElementById('mapa-area-texto').textContent =
+        `📋 SIGPAC ${referencia} · ${areaHa} ha`;
+      document.getElementById('mapa-hint-texto').textContent =
+        'Parcela SIGPAC localizada. Pulsa "Usar este polígono" para crear la parcela con esta geometría.';
+    }
+
+    function usarGeometriaSIGPAC(referencia, areaHa) {
+      if (!capaSIGPACTemp) return;
+      _geometriaPendiente = capaSIGPACTemp.toGeoJSON();
+      _superficiePendiente = areaHa;
+      mapa.removeLayer(capaSIGPACTemp);
+      capaSIGPACTemp = null;
+      document.getElementById('mapa-area-texto').textContent = '—';
+      document.getElementById('mapa-hint-texto').textContent =
+        'Navega al área de la finca. Usa SIGPAC para ver los recintos catastrales.';
+      cerrarMapa();
+      setTimeout(() => {
+        abrirModalDesdeMapa();
+        const notaEl = document.getElementById('parcela-nota');
+        if (notaEl && !notaEl.value) notaEl.value = `Ref. SIGPAC: ${referencia}`;
+      }, 280);
+    }
+
+    function mostrarToastMapa(mensaje) {
+      document.getElementById('mapa-hint-texto').textContent = `⚠️ ${mensaje}`;
+      setTimeout(() => {
+        document.getElementById('mapa-hint-texto').textContent =
+          'Navega al área de la finca. Usa SIGPAC para ver los recintos catastrales.';
+      }, 5000);
+    }
+
+    function mostrarCargandoMapa(activo) {
+      document.getElementById('mapa-area-texto').textContent = activo ? '⏳ Consultando SIGPAC…' : '—';
+      document.getElementById('mapa-hint-texto').textContent = activo
+        ? 'Buscando en los servicios del MAPA, un momento…'
+        : 'Navega al área de la finca. Usa SIGPAC para ver los recintos catastrales.';
     }
 
     /* ─── MAPA: LEYENDA ──────────────────────────────────────── */
