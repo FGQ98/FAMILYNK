@@ -800,7 +800,7 @@
   <!-- Leaflet-Geoman (dibujo de polígonos) -->
   <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.16.0/dist/leaflet-geoman.min.js"></script>
   <!-- Turf.js (cálculo de áreas geográficas) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Turf.js/6.5.0/turf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
 
   <script>
     /* ─── ESTADO GLOBAL ──────────────────────────────────────── */
@@ -1226,16 +1226,40 @@
         'Haz clic para colocar vértices. Doble clic o clic en el primer punto para cerrar el polígono.';
     }
 
+    function calcularAreaHa(geojson) {
+      // Intentar con Turf primero
+      if (typeof turf !== 'undefined') {
+        try { return turf.area(geojson) / 10000; } catch(e) {}
+      }
+      // Fallback: fórmula geodésica de Shoelace esférica (sin dependencias)
+      try {
+        const ring = geojson.features
+          ? geojson.features[0].geometry.coordinates[0]
+          : geojson.geometry ? geojson.geometry.coordinates[0] : geojson.coordinates[0];
+        const R = 6371000;
+        let area = 0;
+        for (let i = 0; i < ring.length - 1; i++) {
+          const lat1 = ring[i][1] * Math.PI / 180;
+          const lat2 = ring[i+1][1] * Math.PI / 180;
+          const dlon = (ring[i+1][0] - ring[i][0]) * Math.PI / 180;
+          area += dlon * (2 + Math.sin(lat1) + Math.sin(lat2));
+        }
+        return Math.abs(area * R * R / 2) / 10000;
+      } catch(e) {
+        return 0;
+      }
+    }
+
     function onPoligonoCreado(e) {
       const layer = e.layer;
       poligonoTemp = layer;
       capaDibujoTemp.addLayer(layer);
       mapa.pm.disableDraw();
 
-      // Calcular área con Turf
+      // Calcular área con fallback incorporado
       const geojson = layer.toGeoJSON();
-      const areaM2 = turf.area(geojson);
-      const areaHa = areaM2 / 10000;
+      const areaHa = calcularAreaHa(geojson);
+      const areaM2 = areaHa * 10000;
 
       // Estilo del polígono temporal (línea discontinua para diferenciar de las guardadas)
       layer.setStyle({
@@ -1252,7 +1276,9 @@
 
       // Actualizar barra de info
       document.getElementById('mapa-area-texto').textContent =
-        `📐 ${areaHa.toFixed(4)} ha · ${Math.round(areaM2).toLocaleString('es-ES')} m²`;
+        areaHa > 0
+          ? `📐 ${areaHa.toFixed(4)} ha · ${Math.round(areaM2).toLocaleString('es-ES')} m²`
+          : '📐 Polígono listo';
       document.getElementById('mapa-hint-texto').textContent =
         'Polígono listo. Pulsa "Usar este polígono" para crear la parcela con esta geometría.';
       document.getElementById('mapa-acciones-poligono').classList.remove('hidden');
