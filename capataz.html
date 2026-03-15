@@ -2288,6 +2288,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
+  <script src="permisos-familia.js"></script>
 
   <script>
     // ========== VARIABLES GLOBALES ==========
@@ -2321,9 +2322,26 @@
       }
 
       await cargarBien();
+      
+      // Permisos de familia
+      try {
+        if (typeof PermisosFamilia !== 'undefined') {
+          await PermisosFamilia.init(db, user, bienId);
+          if (!PermisosFamilia.puedeVer()) {
+            document.querySelector('.main').innerHTML = '<div style="text-align:center;padding:60px 20px;"><div style="font-size:3rem;opacity:0.3;">🔒</div><h2 style="font-family:Quicksand,sans-serif;">Sin acceso</h2><p style="color:#9A9A9A;">No tienes permisos para acceder al módulo Capataz.</p></div>';
+            return;
+          }
+        }
+      } catch (e) { console.log('PermisosFamilia:', e.message); }
+
       await cargarInventario();
       
       initEventListeners();
+
+      // Aplicar restricciones UI
+      try {
+        if (typeof PermisosFamilia !== 'undefined') PermisosFamilia.aplicarUI();
+      } catch (e) { console.log('PermisosFamilia UI:', e.message); }
     });
 
     async function cargarBien() {
