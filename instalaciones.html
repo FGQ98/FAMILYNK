@@ -537,6 +537,7 @@
   <script src="js/firebase-config.js"></script>
   <!-- Sistema de permisos CVEB para externos -->
   <script src="permisos-externos.js"></script>
+  <script src="permisos-familia.js"></script>
 
   <script>
     let currentUser = null;
@@ -646,6 +647,18 @@
       // Verificar permisos de externo
       await PermisosExt.init(db, user, bienId);
       
+      // Permisos de familia (si no es externo)
+      if (!PermisosExt.esExterno && typeof PermisosFamilia !== 'undefined') {
+        try {
+          await PermisosFamilia.init(db, user, bienId);
+          if (!PermisosFamilia.puedeVer()) {
+            document.getElementById('content').innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-titulo">Sin acceso</div><p class="empty-texto">No tienes permisos para ver instalaciones.</p></div>';
+            document.getElementById('btn-add').classList.add('hidden');
+            return;
+          }
+        } catch (e) { console.log('PermisosFamilia:', e.message); }
+      }
+
       await cargarDatos();
       
       // Aplicar permisos CVEB si es externo
@@ -658,6 +671,11 @@
         if (!PermisosExt.puede('instalaciones', 'c')) {
           document.getElementById('btn-add').classList.add('hidden');
         }
+      }
+      
+      // Aplicar permisos familia (solo lectura para no-admins)
+      if (!PermisosExt.esExterno && typeof PermisosFamilia !== 'undefined') {
+        PermisosFamilia.aplicarUI();
       }
     });
 

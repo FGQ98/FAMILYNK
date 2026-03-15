@@ -616,6 +616,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="permisos-externos.js"></script>
+  <script src="permisos-familia.js"></script>
 
   <script>
     // =============================================
@@ -690,13 +691,20 @@
         }
       } catch (e) { console.log('PermisosExt no disponible:', e.message); }
 
+      // Permisos de familia (si no es externo)
+      const esExterno = typeof PermisosExt !== 'undefined' && PermisosExt.esExterno;
+      if (!esExterno && typeof PermisosFamilia !== 'undefined') {
+        try { await PermisosFamilia.init(db, user, bienId); } catch (e) { console.log('PermisosFamilia:', e.message); }
+      }
+
       await cargarDatos();
 
-      try {
-        if (typeof PermisosExt !== 'undefined' && PermisosExt.esExterno) {
-          PermisosExt.aplicarUI('mantenimiento_tareas');
-        }
-      } catch (e) { console.log('PermisosExt UI error:', e.message); }
+      // Aplicar permisos
+      if (esExterno) {
+        try { PermisosExt.aplicarUI('mantenimiento_tareas'); } catch (e) { console.log('PermisosExt UI error:', e.message); }
+      } else if (typeof PermisosFamilia !== 'undefined') {
+        PermisosFamilia.aplicarUI();
+      }
     });
 
     // =============================================
