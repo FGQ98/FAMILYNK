@@ -3585,7 +3585,7 @@
     }
 
     async function loadCaseros() {
-      const snap = await db.collection('bienes').doc(bienId).collection('caseros').get();
+      const snap = await db.collection('bienes').doc(bienId).collection('externos').get();
       caserosData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     }
 
@@ -6118,6 +6118,7 @@
           bienId: bienId,
           bienNombre: bienData.nombre || '',
           familiaId: bienData.familiaId || familiaId,
+          rol: 'casero',
           fechaActualizacion: firebase.firestore.FieldValue.serverTimestamp()
         };
         
@@ -6127,7 +6128,7 @@
           return;
         }
         
-        const ref = db.collection('bienes').doc(bienId).collection('caseros');
+        const ref = db.collection('bienes').doc(bienId).collection('externos');
         
         if (editingCaseroId) {
           await ref.doc(editingCaseroId).update(data);
@@ -6159,7 +6160,7 @@
     document.getElementById('btn-eliminar-casero').addEventListener('click', async () => {
       if (!editingCaseroId || !confirm('¿Eliminar este casero? Perderá acceso a este bien.')) return;
       try {
-        await db.collection('bienes').doc(bienId).collection('caseros').doc(editingCaseroId).delete();
+        await db.collection('bienes').doc(bienId).collection('externos').doc(editingCaseroId).delete();
         modalCasero.classList.remove('active');
         await loadCaseros();
         document.getElementById('count-caseros').textContent = caserosData.length;
