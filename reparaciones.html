@@ -551,6 +551,103 @@
       cursor: pointer; transition: all 0.2s; text-decoration: none;
     }
     .btn-pdf:hover { background: #7A9E7E; color: white; }
+
+    /* ========== ACCIONES BLOQUE ========== */
+    .acciones-bloque {
+      display: none;
+      border: 2px solid var(--mayordomo-muted);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 16px;
+      background: var(--cream-medium);
+    }
+
+    .acciones-bloque.visible { display: block; }
+
+    .acciones-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .acciones-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--mayordomo-dark);
+    }
+
+    .btn-add-accion {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
+      background: var(--mayordomo);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-add-accion:hover { background: var(--mayordomo-dark); }
+
+    .acciones-lista { display: flex; flex-direction: column; gap: 8px; }
+
+    .accion-row {
+      display: grid;
+      grid-template-columns: 1fr 100px 100px 32px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    @media (max-width: 480px) {
+      .accion-row { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; }
+      .accion-row .btn-remove-accion { grid-column: 2; justify-self: end; }
+    }
+
+    .accion-input {
+      padding: 8px 10px;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: var(--radius-sm);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.82rem;
+      background: white;
+      transition: border-color 0.2s;
+    }
+
+    .accion-input:focus {
+      outline: none;
+      border-color: var(--mayordomo);
+    }
+
+    .btn-remove-accion {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: var(--error-muted);
+      color: var(--error);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-remove-accion:hover { background: var(--error); color: white; }
+
+    .accion-empty {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 8px 0;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -688,6 +785,16 @@
               <button type="button" class="foto-preview-remove" onclick="quitarFoto()">×</button>
             </div>
           </div>
+          <!-- Bloque Acciones — visible solo en en-curso y completada -->
+          <div class="acciones-bloque" id="acciones-bloque">
+            <div class="acciones-header">
+              <span class="acciones-label">🛠️ Acciones realizadas</span>
+              <button type="button" class="btn-add-accion" onclick="addAccion()">+ Añadir acción</button>
+            </div>
+            <div class="acciones-lista" id="acciones-lista">
+              <div class="accion-empty">Sin acciones todavía</div>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-danger hidden" id="btn-eliminar" onclick="eliminar()">Eliminar</button>
@@ -724,6 +831,7 @@
     let reparaciones = [];
     let filtroActual = 'todas';
     let fotoFile = null;
+    let accionesTemp = [];
 
     // ========== INIT ==========
     auth.onAuthStateChanged(async (user) => {
@@ -869,8 +977,27 @@
       document.getElementById('modal-titulo').textContent = 'Nueva reparación';
       document.getElementById('btn-eliminar').classList.add('hidden');
       quitarFoto();
+      accionesTemp = [];
+      renderAcciones();
+      document.getElementById('acciones-bloque').classList.remove('visible');
       document.getElementById('modal').classList.add('active');
     }
+
+    // Toggle acciones bloque según estado
+    document.addEventListener('DOMContentLoaded', () => {
+      const estadoSel = document.getElementById('item-estado');
+      if (estadoSel) {
+        estadoSel.addEventListener('change', () => {
+          const v = estadoSel.value;
+          const bloque = document.getElementById('acciones-bloque');
+          if (v === 'en-curso' || v === 'completada') {
+            bloque.classList.add('visible');
+          } else {
+            bloque.classList.remove('visible');
+          }
+        });
+      }
+    });
 
     function editar(id) {
       const r = reparaciones.find(x => x.id === id);
@@ -896,6 +1023,16 @@
         document.getElementById('foto-preview').style.display = 'inline-block';
       } else {
         quitarFoto();
+      }
+
+      // Cargar acciones existentes
+      accionesTemp = Array.isArray(r.acciones) ? r.acciones.map(a => ({ ...a })) : [];
+      renderAcciones();
+      const bloque = document.getElementById('acciones-bloque');
+      if (r.estado === 'en-curso' || r.estado === 'completada') {
+        bloque.classList.add('visible');
+      } else {
+        bloque.classList.remove('visible');
       }
       
       document.getElementById('modal-titulo').textContent = 'Editar reparación';
@@ -939,6 +1076,36 @@
       document.getElementById('modal-foto').classList.remove('active');
     }
 
+    // ========== ACCIONES ==========
+    function addAccion() {
+      accionesTemp.push({ tarea: '', fecha: '', responsable: '' });
+      renderAcciones();
+    }
+
+    function removeAccion(idx) {
+      accionesTemp.splice(idx, 1);
+      renderAcciones();
+    }
+
+    function renderAcciones() {
+      const lista = document.getElementById('acciones-lista');
+      if (accionesTemp.length === 0) {
+        lista.innerHTML = '<div class="accion-empty">Sin acciones todavía</div>';
+        return;
+      }
+      lista.innerHTML = accionesTemp.map((a, i) => `
+        <div class="accion-row">
+          <input class="accion-input" type="text" placeholder="¿Qué se hizo?" value="${a.tarea || ''}"
+            oninput="accionesTemp[${i}].tarea = this.value">
+          <input class="accion-input" type="date" value="${a.fecha || ''}"
+            oninput="accionesTemp[${i}].fecha = this.value">
+          <input class="accion-input" type="text" placeholder="Quién" value="${a.responsable || ''}"
+            oninput="accionesTemp[${i}].responsable = this.value">
+          <button type="button" class="btn-remove-accion" onclick="removeAccion(${i})">✕</button>
+        </div>
+      `).join('');
+    }
+
     // ========== GUARDAR ==========
     async function guardar(e) {
       e.preventDefault();
@@ -970,6 +1137,7 @@
         fechaCompletado: fechaCompVal || null,
         responsable: document.getElementById('item-responsable').value.trim(),
         fotoURL: fotoURL || null,
+        acciones: accionesTemp.filter(a => a.tarea && a.tarea.trim()),
         actualizado: firebase.firestore.FieldValue.serverTimestamp()
       };
       
