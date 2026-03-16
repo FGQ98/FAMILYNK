@@ -552,6 +552,20 @@
     }
     .btn-pdf:hover { background: #7A9E7E; color: white; }
 
+    .sort-select {
+      padding: 8px 12px;
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-md);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text);
+      background: white;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .sort-select:focus { outline: none; border-color: var(--mayordomo); }
+
     /* ========== ACCIONES BLOQUE ========== */
     .acciones-bloque {
       display: none;
@@ -693,6 +707,12 @@
         <button class="filtro" data-estado="completada" onclick="filtrar('completada')">✅ Completadas</button>
       </div>
       <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
+      <select class="sort-select" id="sort-select" onchange="ordenar(this.value)">
+        <option value="fecha-desc">📅 Fecha ↓</option>
+        <option value="fecha-asc">📅 Fecha ↑</option>
+        <option value="alfa-asc">🔤 A → Z</option>
+        <option value="alfa-desc">🔤 Z → A</option>
+      </select>
       <button class="btn btn-mayordomo" onclick="abrirModal()">+ Nueva reparación</button>
     </div>
 
@@ -832,6 +852,7 @@
     let filtroActual = 'todas';
     let fotoFile = null;
     let accionesTemp = [];
+    let ordenActual = 'fecha-desc';
 
     // ========== INIT ==========
     auth.onAuthStateChanged(async (user) => {
@@ -903,9 +924,18 @@
     // ========== RENDER TABLA ==========
     function render() {
       const tbody = document.getElementById('tabla-body');
-      const items = filtroActual === 'todas' 
-        ? reparaciones 
+      let items = filtroActual === 'todas' 
+        ? [...reparaciones] 
         : reparaciones.filter(r => r.estado === filtroActual);
+
+      // Ordenar
+      items.sort((a, b) => {
+        if (ordenActual === 'alfa-asc') return (a.titulo || '').localeCompare(b.titulo || '', 'es');
+        if (ordenActual === 'alfa-desc') return (b.titulo || '').localeCompare(a.titulo || '', 'es');
+        const fa = a.fecha?.toDate ? a.fecha.toDate() : (a.fecha ? new Date(a.fecha) : new Date(0));
+        const fb = b.fecha?.toDate ? b.fecha.toDate() : (b.fecha ? new Date(b.fecha) : new Date(0));
+        return ordenActual === 'fecha-asc' ? fa - fb : fb - fa;
+      });
       
       if (items.length === 0) {
         tbody.innerHTML = `
@@ -959,12 +989,17 @@
       }).join('');
     }
 
-    // ========== FILTROS ==========
+    // ========== FILTROS Y ORDEN ==========
     function filtrar(estado) {
       filtroActual = estado;
       document.querySelectorAll('.filtro').forEach(f => {
         f.classList.toggle('active', f.dataset.estado === estado);
       });
+      render();
+    }
+
+    function ordenar(valor) {
+      ordenActual = valor;
       render();
     }
 
