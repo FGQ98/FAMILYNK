@@ -921,8 +921,9 @@
           </div>
           <div class="liq-card-meta" onclick="verDetalleLiq('${liq.id}')">${fecha} · ${(liq.gastosIds || []).length} gastos${liq.iban ? ' · 🏦 ' + liq.iban.slice(-8) : ''}</div>
           <div class="liq-card-nidos" onclick="verDetalleLiq('${liq.id}')">${nidosChips}</div>
-          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
             <button class="btn-mini" onclick="event.stopPropagation(); generarPDFLiquidacion('${liq.id}')" style="display:flex;align-items:center;gap:4px;">📄 PDF</button>
+            <button class="btn-mini" onclick="event.stopPropagation(); eliminarLiquidacion('${liq.id}')" style="display:flex;align-items:center;gap:4px;color:var(--error);border-color:var(--error);">🗑️ Anular</button>
           </div>
         </div>`;
       }).join('');
@@ -1285,6 +1286,41 @@
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
       }).from(div).save().then(() => document.body.removeChild(div));
+    }
+    // ========== ELIMINAR LIQUIDACIÓN ==========
+    async function eliminarLiquidacion(id) {
+      const liq = liquidaciones.find(l => l.id === id);
+      if (!liq) return;
+      if (!confirm(`¿Anular la liquidación "${liq.nombre}"?\n\nLos ${(liq.gastosIds || []).length} gastos incluidos quedarán disponibles para futuras liquidaciones.`)) return;
+
+      try {
+        // 1. Liberar gastos (quitar liquidacionId)
+        const batch = db.batch();
+        (liq.gastosIds || []).forEach(gId => {
+          batch.update(
+            db.collection('bienes').doc(bienId).collection('gastos').doc(gId),
+            { liquidacionId: firebase.firestore.FieldValue.delete() }
+          );
+        });
+        await batch.commit();
+
+        // 2. Borrar liquidación
+        await db.collection('bienes').doc(bienId).collection('liquidaciones').doc(id).delete();
+
+        // 3. Actualizar estado local
+        (liq.gastosIds || []).forEach(gId => {
+          const g = gastos.find(x => x.id === gId);
+          if (g) delete g.liquidacionId;
+        });
+        liquidaciones = liquidaciones.filter(l => l.id !== id);
+
+        renderHistorialLiq();
+        renderLista();
+        alert('✅ Liquidación anulada. Los gastos están disponibles de nuevo.');
+      } catch (e) {
+        console.error('Error eliminando liquidación:', e);
+        alert('Error al anular: ' + e.message);
+      }
     }
   </script>
 </body>
