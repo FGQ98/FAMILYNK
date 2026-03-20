@@ -308,6 +308,13 @@
           </div>
         </div>
 
+        <!-- Paso 4: Cuenta bancaria -->
+        <div class="form-group">
+          <label class="form-label">Cuenta para ingresos (IBAN)</label>
+          <input type="text" class="form-input" id="liq-iban" placeholder="ES00 0000 0000 0000 0000 0000" style="font-family:monospace;letter-spacing:1px;">
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">Cuenta donde cada nido debe ingresar su parte</div>
+        </div>
+
         <!-- Desglose preview -->
         <div id="liq-desglose-preview"></div>
       </div>
@@ -907,13 +914,16 @@
         const nidosChips = Object.values(liq.nidos || {}).map(n =>
           `<span class="liq-card-nido">${n.nombre} ${n.porcentaje}% · €${n.importe.toFixed(2)}</span>`
         ).join('');
-        return `<div class="liq-card" onclick="verDetalleLiq('${liq.id}')">
-          <div class="liq-card-header">
+        return `<div class="liq-card">
+          <div class="liq-card-header" onclick="verDetalleLiq('${liq.id}')">
             <span class="liq-card-nombre">${liq.nombre || 'Sin nombre'}</span>
             <span class="liq-card-total">€${(liq.total || 0).toFixed(2)}</span>
           </div>
-          <div class="liq-card-meta">${fecha} · ${(liq.gastosIds || []).length} gastos</div>
-          <div class="liq-card-nidos">${nidosChips}</div>
+          <div class="liq-card-meta" onclick="verDetalleLiq('${liq.id}')">${fecha} · ${(liq.gastosIds || []).length} gastos${liq.iban ? ' · 🏦 ' + liq.iban.slice(-8) : ''}</div>
+          <div class="liq-card-nidos" onclick="verDetalleLiq('${liq.id}')">${nidosChips}</div>
+          <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+            <button class="btn-mini" onclick="event.stopPropagation(); generarPDFLiquidacion('${liq.id}')" style="display:flex;align-items:center;gap:4px;">📄 PDF</button>
+          </div>
         </div>`;
       }).join('');
     }
@@ -933,13 +943,16 @@
         </div>` : '';
       }).join('');
       const fecha = liq.creado?.toDate ? liq.creado.toDate().toLocaleDateString('es-ES') : '-';
+      const ibanHtml = liq.iban ? `<div style="margin:12px 0;padding:10px;background:var(--cream-medium);border-radius:8px;font-family:monospace;font-size:0.85rem;letter-spacing:1px;text-align:center;">🏦 ${liq.iban}</div>` : '';
       alert_html(`
         <h3 style="font-family:Quicksand;margin-bottom:4px;">${liq.nombre}</h3>
         <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px;">${fecha} · €${(liq.total || 0).toFixed(2)}</p>
+        ${ibanHtml}
         <div style="font-weight:700;font-size:0.82rem;margin-bottom:6px;">Reparto:</div>
         ${nidosHtml}
         <div style="font-weight:700;font-size:0.82rem;margin:12px 0 6px;">Gastos incluidos (${(liq.gastosIds || []).length}):</div>
         <div style="max-height:150px;overflow-y:auto;">${gastosHtml || '<span style="color:var(--text-muted);">-</span>'}</div>
+        <button onclick="this.closest('div[style*=fixed]').remove(); generarPDFLiquidacion('${id}')" style="margin-top:12px;width:100%;padding:10px;background:white;color:var(--addon-dark);border:2px solid var(--addon-color);border-radius:8px;font-family:Nunito;font-weight:600;cursor:pointer;">📄 Descargar PDF</button>
       `);
     }
 
@@ -957,6 +970,7 @@
     // ========== MODAL NUEVA LIQUIDACIÓN ==========
     function abrirModalLiquidacion() {
       document.getElementById('liq-nombre').value = '';
+      document.getElementById('liq-iban').value = bienData?.ibanLiquidaciones || '';
       liqGastosSeleccionados = new Set();
       liqNidosConfig = {};
       nidosData.forEach(n => { liqNidosConfig[n.id] = { activo: true, porcentaje: 0 }; });
@@ -1112,6 +1126,8 @@
         }
       });
 
+      const iban = document.getElementById('liq-iban').value.trim();
+
       try {
         // 1. Crear liquidación
         const liqRef = await db.collection('bienes').doc(bienId)
@@ -1120,6 +1136,7 @@
             gastosIds,
             total: totalGastos,
             nidos,
+            iban: iban || null,
             creadoPor: currentUser.uid,
             creado: firebase.firestore.FieldValue.serverTimestamp()
           });
@@ -1133,7 +1150,13 @@
         });
         await batch.commit();
 
-        // 3. Actualizar estado local
+        // 3. Guardar IBAN en bien para futuras liquidaciones
+        if (iban) {
+          await db.collection('bienes').doc(bienId).update({ ibanLiquidaciones: iban });
+          bienData.ibanLiquidaciones = iban;
+        }
+
+        // 4. Actualizar estado local
         gastosIds.forEach(gId => {
           const g = gastos.find(x => x.id === gId);
           if (g) g.liquidacionId = liqRef.id;
@@ -1148,6 +1171,120 @@
         console.error('Error guardando liquidación:', e);
         alert('Error al guardar: ' + e.message);
       }
+    }
+
+    // ========== PDF LIQUIDACIÓN ==========
+    function generarPDFLiquidacion(id) {
+      const liq = liquidaciones.find(l => l.id === id);
+      if (!liq) { alert('Liquidación no encontrada'); return; }
+      if (typeof html2pdf === 'undefined') { alert('Generador PDF cargando, intenta de nuevo.'); return; }
+
+      const bienNombre = bienData?.nombre || 'Bien';
+      const fecha = liq.creado?.toDate ? liq.creado.toDate().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('es-ES');
+
+      // Tabla de reparto por nido
+      const nidosRows = Object.values(liq.nidos || {}).map(n =>
+        `<tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${n.nombre}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center;">${n.porcentaje}%</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-weight:700;">€${n.importe.toFixed(2)}</td>
+        </tr>`
+      ).join('');
+
+      // Tabla de gastos incluidos
+      const gastosRows = (liq.gastosIds || []).map(gId => {
+        const g = gastos.find(x => x.id === gId);
+        if (!g) return '';
+        const cat = CAT_LABELS[g.categoria] || g.categoria || '-';
+        const fechaG = g.fecha ? new Date(g.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }) : '-';
+        return `<tr>
+          <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:10px;">${fechaG}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:10px;">${g.concepto || '-'}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:10px;">${cat}</td>
+          <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;font-size:10px;font-weight:600;">€${(parseFloat(g.importe) || 0).toFixed(2)}</td>
+        </tr>`;
+      }).join('');
+
+      const ibanBlock = liq.iban 
+        ? `<div style="margin:16px 0;padding:12px;background:#f0f5eb;border-radius:8px;text-align:center;">
+            <div style="font-size:10px;color:#6B6B6B;text-transform:uppercase;margin-bottom:4px;">Cuenta para ingresos</div>
+            <div style="font-family:monospace;font-size:14px;font-weight:700;letter-spacing:1.5px;color:#3D3D3D;">${liq.iban}</div>
+          </div>` 
+        : '';
+
+      const div = document.createElement('div');
+      div.innerHTML = `
+        <div style="font-family:'Nunito',Helvetica,sans-serif;padding:16px;max-width:600px;">
+          <div style="text-align:center;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #8B7355;">
+            <div style="font-family:'Quicksand',sans-serif;font-size:18px;font-weight:700;color:#8B7355;">FAMILYNK</div>
+            <div style="font-size:14px;font-weight:700;color:#3D3D3D;margin-top:4px;">${liq.nombre}</div>
+            <div style="font-size:10px;color:#9A9A9A;">${bienNombre} · ${fecha}</div>
+          </div>
+
+          <div style="display:flex;gap:16px;margin-bottom:16px;">
+            <div style="flex:1;padding:10px;background:#FDF8F3;border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:#8B7355;">€${(liq.total || 0).toFixed(2)}</div>
+              <div style="font-size:9px;color:#9A9A9A;text-transform:uppercase;">Total a repartir</div>
+            </div>
+            <div style="flex:1;padding:10px;background:#FDF8F3;border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:#8B7355;">${(liq.gastosIds || []).length}</div>
+              <div style="font-size:9px;color:#9A9A9A;text-transform:uppercase;">Gastos incluidos</div>
+            </div>
+            <div style="flex:1;padding:10px;background:#FDF8F3;border-radius:8px;text-align:center;">
+              <div style="font-size:22px;font-weight:700;color:#8B7355;">${Object.keys(liq.nidos || {}).length}</div>
+              <div style="font-size:9px;color:#9A9A9A;text-transform:uppercase;">Nidos</div>
+            </div>
+          </div>
+
+          ${ibanBlock}
+
+          <div style="font-weight:700;font-size:12px;color:#6B5A42;margin-bottom:8px;">📊 REPARTO</div>
+          <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+            <thead>
+              <tr style="background:#8B7355;color:white;">
+                <th style="padding:6px 10px;text-align:left;font-size:10px;">NIDO</th>
+                <th style="padding:6px 10px;text-align:center;font-size:10px;">%</th>
+                <th style="padding:6px 10px;text-align:right;font-size:10px;">IMPORTE</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${nidosRows}
+              <tr style="border-top:2px solid #8B7355;">
+                <td style="padding:8px 10px;font-weight:700;">TOTAL</td>
+                <td style="padding:8px 10px;text-align:center;font-weight:700;">100%</td>
+                <td style="padding:8px 10px;text-align:right;font-weight:700;">€${(liq.total || 0).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="font-weight:700;font-size:12px;color:#6B5A42;margin-bottom:8px;">💶 GASTOS INCLUIDOS</div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#F5EDE4;">
+                <th style="padding:5px 8px;text-align:left;font-size:9px;">FECHA</th>
+                <th style="padding:5px 8px;text-align:left;font-size:9px;">CONCEPTO</th>
+                <th style="padding:5px 8px;text-align:left;font-size:9px;">CATEGORÍA</th>
+                <th style="padding:5px 8px;text-align:right;font-size:9px;">IMPORTE</th>
+              </tr>
+            </thead>
+            <tbody>${gastosRows}</tbody>
+          </table>
+
+          <div style="margin-top:20px;padding-top:10px;border-top:1px solid #eee;font-size:9px;color:#9A9A9A;text-align:center;">
+            Generado: ${new Date().toLocaleDateString('es-ES')} · FAMILYNK
+          </div>
+        </div>
+      `;
+      document.body.appendChild(div);
+
+      const filename = `Liquidacion_${(liq.nombre || 'reparto').replace(/[^a-zA-Z0-9áéíóúñ ]/gi, '').trim().replace(/ +/g, '-')}_${new Date().toISOString().slice(0,10)}.pdf`;
+
+      html2pdf().set({
+        margin: [8, 8, 8, 8],
+        filename: filename,
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).from(div).save().then(() => document.body.removeChild(div));
     }
   </script>
 </body>
