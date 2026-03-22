@@ -344,8 +344,23 @@
     }
 
     function getSubtipoEstancia(e) {
-      if (e.subtipoEstancia) return e.subtipoEstancia;
+      // 1. Check tipoReserva (campo real en Firestore, usa guiones)
+      const tr = e.tipoReserva || '';
+      if (tr === 'nietos-amigos' || tr === 'nietos_amigos') return 'nietos_amigos';
+      if (tr === 'finde-asignado' || tr === 'finde_asignado') return 'finde_asignado';
+      if (tr === 'evento') return 'evento';
+      if (tr === 'otros') return 'otros';
+
+      // 2. Check subtipoEstancia
+      if (e.subtipoEstancia && e.subtipoEstancia !== 'familiar') return e.subtipoEstancia;
+
+      // 3. Check tipoEstancia
       if (e.tipoEstancia === 'nietos_amigos' || e.tipoEstancia === 'finde_asignado') return e.tipoEstancia;
+
+      // 4. Check categoria
+      if (e.categoria === 'evento') return 'evento';
+
+      // 5. Fallback por tipo visual
       const tipo = getTipoEstancia(e);
       if (tipo === 'evento') return 'evento';
       if (tipo === 'otros') return 'otros';
