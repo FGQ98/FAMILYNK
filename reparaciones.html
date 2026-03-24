@@ -419,15 +419,6 @@
       border-radius: var(--radius-lg);
     }
 
-    @media (max-width: 600px) {
-      .header { padding: 12px 16px; }
-      .main { padding: 16px; }
-      .toolbar { flex-direction: column; align-items: stretch; }
-      .filtros { justify-content: center; }
-      .form-row { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: repeat(3, 1fr); }
-    }
-
     /* ========== EMPTY STATE ========== */
     .empty-state {
       text-align: center;
@@ -532,12 +523,13 @@
 
     .hidden { display: none !important; }
 
-    /* ========== RESPONSIVE ========== */
     @media (max-width: 600px) {
       .header { padding: 12px 16px; }
       .main { padding: 16px; }
       .toolbar { flex-direction: column; align-items: stretch; }
       .filtros { justify-content: center; }
+      .toolbar-actions { justify-content: center; }
+      .sort-group { justify-content: center; }
       .form-row { grid-template-columns: 1fr; }
       .grid { grid-template-columns: 1fr; }
       .stats { grid-template-columns: repeat(3, 1fr); }
@@ -551,6 +543,38 @@
       cursor: pointer; transition: all 0.2s; text-decoration: none;
     }
     .btn-pdf:hover { background: #7A9E7E; color: white; }
+
+    /* ========== SORT TOGGLES ========== */
+    .sort-group {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-sort {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 7px 12px;
+      background: var(--white);
+      border: 2px solid var(--cream-dark);
+      border-radius: var(--radius-full);
+      font-family: 'Nunito', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .btn-sort:hover { border-color: var(--mayordomo-light); }
+    .btn-sort.active {
+      background: var(--mayordomo-muted);
+      border-color: var(--mayordomo);
+      color: var(--mayordomo-dark);
+    }
+    .btn-sort .arrow {
+      font-size: 0.7rem;
+      transition: transform 0.2s;
+    }
 
     /* Acciones realizadas */
     .acciones-section {
@@ -660,8 +684,14 @@
         <button class="filtro" data-estado="en-curso" onclick="filtrar('en-curso')">🔨 En curso</button>
         <button class="filtro" data-estado="completada" onclick="filtrar('completada')">✅ Completadas</button>
       </div>
-      <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
-      <button class="btn btn-mayordomo" onclick="abrirModal()">+ Nueva reparación</button>
+      <div class="toolbar-actions" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="sort-group">
+          <button class="btn-sort active" id="sort-fecha" onclick="toggleSort('fecha')" title="Ordenar por fecha">📅 Fecha <span class="arrow">↓</span></button>
+          <button class="btn-sort" id="sort-alfa" onclick="toggleSort('alfa')" title="Ordenar alfabéticamente">🔤 A-Z <span class="arrow">↓</span></button>
+        </div>
+        <button class="btn-pdf" onclick="generarPDF()">📄 PDF</button>
+        <button class="btn btn-mayordomo" onclick="abrirModal()">+ Nueva reparación</button>
+      </div>
     </div>
 
     <!-- Tabla -->
@@ -805,6 +835,7 @@
     let origen = 'mayordomo';
     let reparaciones = [];
     let filtroActual = 'todas';
+    let ordenActual = 'fecha-desc'; // fecha-desc | fecha-asc | alfa-asc | alfa-desc
     let fotoFile = null;
 
     // ========== INIT ==========
@@ -940,9 +971,10 @@
     // ========== RENDER TABLA ==========
     function render() {
       const tbody = document.getElementById('tabla-body');
-      const items = filtroActual === 'todas' 
+      const filtered = filtroActual === 'todas' 
         ? reparaciones 
         : reparaciones.filter(r => r.estado === filtroActual);
+      const items = sortItems(filtered);
       
       if (items.length === 0) {
         tbody.innerHTML = `
@@ -996,13 +1028,51 @@
       }).join('');
     }
 
-    // ========== FILTROS ==========
+    // ========== FILTROS Y ORDEN ==========
     function filtrar(estado) {
       filtroActual = estado;
       document.querySelectorAll('.filtro').forEach(f => {
         f.classList.toggle('active', f.dataset.estado === estado);
       });
       render();
+    }
+
+    function toggleSort(tipo) {
+      const btnFecha = document.getElementById('sort-fecha');
+      const btnAlfa = document.getElementById('sort-alfa');
+
+      if (tipo === 'fecha') {
+        // Si ya está activo fecha, toggle dirección
+        if (ordenActual.startsWith('fecha')) {
+          ordenActual = ordenActual === 'fecha-desc' ? 'fecha-asc' : 'fecha-desc';
+        } else {
+          ordenActual = 'fecha-desc';
+        }
+        btnFecha.classList.add('active');
+        btnAlfa.classList.remove('active');
+        btnFecha.querySelector('.arrow').textContent = ordenActual === 'fecha-desc' ? '↓' : '↑';
+      } else {
+        if (ordenActual.startsWith('alfa')) {
+          ordenActual = ordenActual === 'alfa-asc' ? 'alfa-desc' : 'alfa-asc';
+        } else {
+          ordenActual = 'alfa-asc';
+        }
+        btnAlfa.classList.add('active');
+        btnFecha.classList.remove('active');
+        btnAlfa.querySelector('.arrow').textContent = ordenActual === 'alfa-asc' ? '↓' : '↑';
+        btnAlfa.childNodes[1].textContent = ordenActual === 'alfa-asc' ? ' A-Z ' : ' Z-A ';
+      }
+      render();
+    }
+
+    function sortItems(items) {
+      return [...items].sort((a, b) => {
+        if (ordenActual === 'alfa-asc') return (a.titulo || '').localeCompare(b.titulo || '', 'es');
+        if (ordenActual === 'alfa-desc') return (b.titulo || '').localeCompare(a.titulo || '', 'es');
+        const fa = a.fecha?.toDate ? a.fecha.toDate() : (a.fecha ? new Date(a.fecha) : new Date(0));
+        const fb = b.fecha?.toDate ? b.fecha.toDate() : (b.fecha ? new Date(b.fecha) : new Date(0));
+        return ordenActual === 'fecha-asc' ? fa - fb : fb - fa;
+      });
     }
 
     // ========== MODAL ==========
@@ -1181,7 +1251,8 @@
     // ========== PDF DESCARGA DIRECTA ==========
     function generarPDF() {
       const bienNombre = document.getElementById('bien-nombre')?.textContent || 'Bien';
-      const items = filtroActual === 'todas' ? reparaciones : reparaciones.filter(r => r.estado === filtroActual);
+      const filtered = filtroActual === 'todas' ? reparaciones : reparaciones.filter(r => r.estado === filtroActual);
+      const items = sortItems(filtered);
       
       const pendientes = reparaciones.filter(r => r.estado === 'pendiente').length;
       const enCurso = reparaciones.filter(r => r.estado === 'en-curso').length;
@@ -1203,13 +1274,14 @@
       }).join('');
       
       const filtroLabel = filtroActual === 'todas' ? 'Todas' : filtroActual;
+      const ordenLabel = {'fecha-desc':'Fecha ↓','fecha-asc':'Fecha ↑','alfa-asc':'A→Z','alfa-desc':'Z→A'}[ordenActual] || '';
       
       const div = document.createElement('div');
       div.innerHTML = `
         <div style="font-family:Helvetica,Arial,sans-serif;padding:10px;color:#333;">
           <div style="text-align:center;margin-bottom:20px;">
             <h2 style="margin:0;color:#5C7D5F;">🔧 Reparaciones</h2>
-            <p style="margin:4px 0;color:#888;">${bienNombre} · Filtro: ${filtroLabel}</p>
+            <p style="margin:4px 0;color:#888;">${bienNombre} · Filtro: ${filtroLabel} · Orden: ${ordenLabel}</p>
             <p style="margin:2px 0;font-size:11px;color:#aaa;">${new Date().toLocaleDateString('es-ES')}</p>
           </div>
           <div style="display:flex;gap:20px;justify-content:center;margin-bottom:20px;font-size:13px;">
