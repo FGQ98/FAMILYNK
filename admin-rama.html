@@ -1697,6 +1697,35 @@
           </div>
         </div>
       </div>
+
+      <!-- Auto-borrado de notificaciones internas -->
+      <div class="card">
+        <div class="card-title">🗑️ Auto-borrado de notificaciones</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Las notificaciones internas del buzón se eliminan automáticamente para no acumular datos irrelevantes.
+        </p>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <label class="form-label" style="margin-bottom:8px;">Borrar notificaciones tras:</label>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <input type="range" id="notif-autoborrado-dias" min="7" max="90" value="30" step="1"
+                style="flex:1;accent-color:var(--sage);"
+                oninput="document.getElementById('notif-dias-label').textContent=this.value+' días'">
+              <span id="notif-dias-label" style="min-width:60px;font-weight:700;font-size:0.95rem;color:var(--text);">30 días</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:var(--text-muted);margin-top:4px;">
+              <span>7 días</span>
+              <span>30</span>
+              <span>60</span>
+              <span>90 días</span>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="guardarAutoborrado()">💾 Guardar</button>
+        </div>
+        <p style="font-size:0.75rem;color:var(--text-muted);margin-top:12px;">
+          💡 Las notificaciones del historial de envíos (email/SMS) no se borran, solo las del buzón interno del CGI.
+        </p>
+      </div>
     </section>
 
     <section class="admin-section" id="section-estirpe">
@@ -4376,6 +4405,14 @@
         configNotificaciones = { tipos: JSON.parse(JSON.stringify(NOTIF_DEFAULTS)) };
       }
       renderConfigNotificaciones();
+      // Cargar autoborrado
+      if (configNotificaciones.autoborradoDias) {
+        const slider = document.getElementById('notif-autoborrado-dias');
+        if (slider) {
+          slider.value = configNotificaciones.autoborradoDias;
+          document.getElementById('notif-dias-label').textContent = configNotificaciones.autoborradoDias + ' días';
+        }
+      }
     }
 
     function renderConfigNotificaciones() {
@@ -4480,6 +4517,20 @@
         setTimeout(() => { grid.style.opacity = '1'; }, 300);
       } catch (e) {
         console.error('Error guardando config notificaciones:', e);
+        alert('Error al guardar');
+      }
+    }
+
+    async function guardarAutoborrado() {
+      const dias = parseInt(document.getElementById('notif-autoborrado-dias').value) || 30;
+      try {
+        await db.collection('familias').doc(familiaData.id)
+          .collection('config').doc('notificaciones').set({ autoborradoDias: dias }, { merge: true });
+        const slider = document.getElementById('notif-autoborrado-dias');
+        slider.style.opacity = '0.5';
+        setTimeout(() => { slider.style.opacity = '1'; }, 300);
+      } catch (e) {
+        console.error('Error guardando autoborrado:', e);
         alert('Error al guardar');
       }
     }

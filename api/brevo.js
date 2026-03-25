@@ -100,24 +100,28 @@ function plantillaHTML(tipo, datos) {
 
   const titulo = datos.titulo || datos.asunto || 'Notificación';
   const cuerpo = datos.cuerpo || datos.mensaje || '';
-  const bien = datos.bien ? `<p style="color:#6B6B6B;font-size:13px;">📍 ${datos.bien}</p>` : '';
-  const fechas = datos.fechaInicio
-    ? `<p style="color:#6B6B6B;font-size:13px;">📅 ${datos.fechaInicio}${datos.fechaFin ? ' → ' + datos.fechaFin : ''}</p>`
-    : '';
   const pie = datos.pie || '';
+  const hasBien = !!datos.bien;
 
   return `
-    <div style="font-family:'Nunito',Arial,sans-serif;background-color:#FDF8F3;color:#3D3D3D;max-width:520px;margin:0 auto;padding:24px;">
-      <div style="text-align:center;margin-bottom:20px;">
-        <span style="font-size:24px;">🌿</span>
-        <h2 style="font-family:'Quicksand',sans-serif;color:${headerColor};margin:8px 0 4px;">${titulo}</h2>
-        ${bien}${fechas}
+    <div style="font-family:'Nunito',Arial,sans-serif;background-color:#FDF8F3;color:#3D3D3D;max-width:520px;margin:0 auto;padding:0;">
+      <div style="background:${headerColor};padding:20px 24px;border-radius:12px 12px 0 0;text-align:center;">
+        <img src="https://www.familynk.es/logo_familynk.png" alt="Familynk" style="width:48px;height:48px;margin-bottom:8px;" />
+        <h2 style="font-family:'Quicksand',sans-serif;color:#FFFFFF;margin:0;font-size:18px;">${titulo}</h2>
+        ${hasBien ? `<p style="color:rgba(255,255,255,0.85);font-size:13px;margin:6px 0 0;">${datos.bien}</p>` : ''}
+        ${datos.fechaInicio ? `<p style="color:rgba(255,255,255,0.85);font-size:13px;margin:4px 0 0;">📅 ${datos.fechaInicio}${datos.fechaFin ? ' → ' + datos.fechaFin : ''}</p>` : ''}
       </div>
-      <div style="background:white;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-        <p style="line-height:1.6;font-size:14px;">${cuerpo}</p>
+      <div style="padding:24px;">
+        <div style="background:#FFFFFF;border-radius:10px;padding:20px;border:1px solid #F5EDE4;">
+          <p style="line-height:1.7;font-size:14px;margin:0;color:#3D3D3D;">${cuerpo}</p>
+        </div>
+        ${pie ? `<p style="margin-top:16px;font-size:12px;color:#9A9A9A;text-align:center;">${pie}</p>` : ''}
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #F5EDE4;text-align:center;">
+          <img src="https://www.familynk.es/logo_familynk.png" alt="Familynk" style="width:24px;height:24px;opacity:0.4;margin-bottom:4px;" />
+          <p style="font-size:11px;color:#CACACA;margin:0;">Familynk · Tu familia, bien organizada</p>
+          <p style="font-size:10px;color:#E0DCD6;margin:4px 0 0;">www.familynk.es</p>
+        </div>
       </div>
-      ${pie ? `<p style="margin-top:16px;font-size:12px;color:#9A9A9A;text-align:center;">${pie}</p>` : ''}
-      <p style="margin-top:24px;font-size:11px;color:#CACACA;text-align:center;">Familynk · Tu familia, bien organizada</p>
     </div>
   `;
 }
