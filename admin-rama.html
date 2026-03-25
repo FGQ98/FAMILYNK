@@ -1698,6 +1698,29 @@
         </div>
       </div>
 
+      <!-- Personalización del copy del email -->
+      <div class="card">
+        <div class="card-title">✉️ Textos del email</div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+          Personaliza los textos que aparecen en los emails de notificación
+        </p>
+        <div class="form-group">
+          <label class="form-label">Saludo inicial</label>
+          <input type="text" class="form-input" id="email-saludo" placeholder="Hola desde la familia García" maxlength="80">
+          <span style="font-size:0.7rem;color:var(--text-muted);">Se muestra antes del contenido. Déjalo vacío para omitirlo.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Texto del pie</label>
+          <input type="text" class="form-input" id="email-footer" placeholder="Tu familia, bien organizada" maxlength="80" value="Tu familia, bien organizada">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nombre del remitente</label>
+          <input type="text" class="form-input" id="email-remitente" placeholder="Familynk" maxlength="40" value="Familynk">
+          <span style="font-size:0.7rem;color:var(--text-muted);">Aparece como "De: [nombre]" en la bandeja del destinatario.</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="guardarEmailCopy()">💾 Guardar textos</button>
+      </div>
+
       <!-- Auto-borrado de notificaciones internas -->
       <div class="card">
         <div class="card-title">🗑️ Auto-borrado de notificaciones</div>
@@ -4413,6 +4436,13 @@
           document.getElementById('notif-dias-label').textContent = configNotificaciones.autoborradoDias + ' días';
         }
       }
+      // Cargar email copy
+      if (configNotificaciones.emailCopy) {
+        const c = configNotificaciones.emailCopy;
+        if (c.saludo) document.getElementById('email-saludo').value = c.saludo;
+        if (c.footer) document.getElementById('email-footer').value = c.footer;
+        if (c.remitente) document.getElementById('email-remitente').value = c.remitente;
+      }
     }
 
     function renderConfigNotificaciones() {
@@ -4521,6 +4551,25 @@
       }
     }
 
+    async function guardarEmailCopy() {
+      const copy = {
+        saludo: document.getElementById('email-saludo')?.value.trim() || '',
+        footer: document.getElementById('email-footer')?.value.trim() || 'Tu familia, bien organizada',
+        remitente: document.getElementById('email-remitente')?.value.trim() || 'Familynk'
+      };
+      try {
+        await db.collection('familias').doc(familiaData.id)
+          .collection('config').doc('notificaciones').set({ emailCopy: copy }, { merge: true });
+        if (configNotificaciones) configNotificaciones.emailCopy = copy;
+        const btn = document.querySelector('[onclick="guardarEmailCopy()"]');
+        btn.textContent = '✅ Guardado';
+        setTimeout(() => { btn.textContent = '💾 Guardar textos'; }, 1500);
+      } catch (e) {
+        console.error('Error guardando email copy:', e);
+        alert('Error al guardar');
+      }
+    }
+
     async function guardarAutoborrado() {
       const dias = parseInt(document.getElementById('notif-autoborrado-dias').value) || 30;
       try {
@@ -4588,10 +4637,13 @@
             destinatarios,
             asunto: asunto || 'Familynk · Comunicación',
             mensaje,
+            remitente: configNotificaciones?.emailCopy?.remitente || 'Familynk',
             datos: {
               titulo: asunto,
+              saludo: configNotificaciones?.emailCopy?.saludo || '',
               cuerpo: mensaje.replace(/\n/g, '<br>'),
-              pie: `Enviado por ${userData?.nombre || 'Admin'}`
+              pie: `Enviado por ${userData?.nombre || 'Admin'}`,
+              footer: configNotificaciones?.emailCopy?.footer || 'Tu familia, bien organizada'
             }
           })
         });

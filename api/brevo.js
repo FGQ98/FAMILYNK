@@ -46,13 +46,13 @@ function brevoRequest(path, body, apiKey) {
 }
 
 // ─── ENVIAR EMAIL ────────────────────────────────────────────────
-async function enviarEmail(apiKey, { destinatarios, asunto, html, texto }) {
+async function enviarEmail(apiKey, { destinatarios, asunto, html, texto, sender }) {
   const to = destinatarios.map(d =>
     typeof d === 'string' ? { email: d } : { email: d.email, name: d.nombre || undefined }
   );
 
   const body = {
-    sender: SENDER_EMAIL,
+    sender: sender || SENDER_EMAIL,
     to,
     subject: asunto,
     htmlContent: html || `<p>${texto || ''}</p>`
@@ -101,6 +101,8 @@ function plantillaHTML(tipo, datos) {
   const titulo = datos.titulo || datos.asunto || 'Notificación';
   const cuerpo = datos.cuerpo || datos.mensaje || '';
   const pie = datos.pie || '';
+  const saludo = datos.saludo || '';
+  const footerText = datos.footer || 'Tu familia, bien organizada';
   const hasBien = !!datos.bien;
 
   return `
@@ -112,13 +114,14 @@ function plantillaHTML(tipo, datos) {
         ${datos.fechaInicio ? `<p style="color:rgba(255,255,255,0.85);font-size:13px;margin:4px 0 0;">📅 ${datos.fechaInicio}${datos.fechaFin ? ' → ' + datos.fechaFin : ''}</p>` : ''}
       </div>
       <div style="padding:24px;">
+        ${saludo ? `<p style="font-size:14px;color:#6B6B6B;margin:0 0 12px;">${saludo}</p>` : ''}
         <div style="background:#FFFFFF;border-radius:10px;padding:20px;border:1px solid #F5EDE4;">
           <p style="line-height:1.7;font-size:14px;margin:0;color:#3D3D3D;">${cuerpo}</p>
         </div>
         ${pie ? `<p style="margin-top:16px;font-size:12px;color:#9A9A9A;text-align:center;">${pie}</p>` : ''}
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #F5EDE4;text-align:center;">
           <img src="https://www.familynk.es/logo_familynk.png" alt="Familynk" style="width:24px;height:24px;opacity:0.4;margin-bottom:4px;" />
-          <p style="font-size:11px;color:#CACACA;margin:0;">Familynk · Tu familia, bien organizada</p>
+          <p style="font-size:11px;color:#CACACA;margin:0;">Familynk · ${footerText}</p>
           <p style="font-size:10px;color:#E0DCD6;margin:4px 0 0;">www.familynk.es</p>
         </div>
       </div>
@@ -147,10 +150,14 @@ module.exports = async (req, res) => {
       destinatarios = [],
       asunto = '',
       mensaje = '',
+      remitente = 'Familynk',
       datos = {}
     } = req.body;
 
     if (!destinatarios.length) return res.status(400).json({ error: 'Sin destinatarios' });
+
+    // Sender dinámico
+    const sender = { name: remitente, email: SENDER_EMAIL.email };
 
     let resultado;
 
@@ -160,17 +167,20 @@ module.exports = async (req, res) => {
     } else {
       const html = plantillaHTML(tipo, {
         titulo: datos.titulo || asunto,
+        saludo: datos.saludo || '',
         cuerpo: datos.cuerpo || mensaje,
         bien: datos.bien,
         fechaInicio: datos.fechaInicio,
         fechaFin: datos.fechaFin,
-        pie: datos.pie
+        pie: datos.pie,
+        footer: datos.footer || 'Tu familia, bien organizada'
       });
       resultado = await enviarEmail(apiKey, {
         destinatarios,
         asunto: asunto || `Familynk · ${tipo}`,
         html,
-        texto: mensaje
+        texto: mensaje,
+        sender
       });
     }
 
