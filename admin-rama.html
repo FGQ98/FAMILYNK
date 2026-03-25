@@ -672,28 +672,49 @@
     .notif-grid {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 4px;
     }
+    .notif-grupo-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      margin-top: 12px;
+      font-family: 'Quicksand', sans-serif;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--white);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+    .notif-grupo-header:first-child { margin-top: 0; }
+    .notif-grupo-header.reservas { background: #8B7355; }
+    .notif-grupo-header.eventos { background: #7A9E7E; }
+    .notif-grupo-header.averias { background: #C17757; }
+    .notif-grupo-header.herramientas { background: #2D4A5C; }
+    .notif-grupo-header.pautas { background: #6B8E23; }
+    .notif-grupo-header.comunicaciones { background: #9C27B0; }
+    .notif-grupo-header.sistema { background: #607D8B; }
     .notif-row {
       display: grid;
-      grid-template-columns: 40px 1fr 120px 160px 50px;
-      gap: 12px;
+      grid-template-columns: 32px 1fr 115px 130px 50px;
+      gap: 10px;
       align-items: center;
-      padding: 14px 16px;
+      padding: 10px 16px;
       background: var(--cream);
-      border-radius: var(--radius-md);
+      border-bottom: 1px solid var(--cream-dark);
       transition: all 0.2s;
     }
     .notif-row:hover { background: var(--cream-dark); }
-    .notif-icono { font-size: 1.4rem; text-align: center; }
-    .notif-info .notif-nombre { font-weight: 700; font-size: 0.95rem; }
-    .notif-info .notif-desc { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+    .notif-row:last-child { border-bottom: none; border-radius: 0 0 var(--radius-md) var(--radius-md); }
+    .notif-icono { font-size: 1.1rem; text-align: center; }
+    .notif-info .notif-nombre { font-weight: 600; font-size: 0.88rem; }
+    .notif-info .notif-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
     .notif-select {
-      padding: 8px 10px;
+      padding: 6px 8px;
       border: 2px solid var(--cream-dark);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       font-family: 'Nunito', sans-serif;
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: 600;
       background: var(--white);
       cursor: pointer;
@@ -701,8 +722,8 @@
     .notif-select:focus { outline: none; border-color: var(--sage); }
     @media (max-width: 700px) {
       .notif-row {
-        grid-template-columns: 40px 1fr;
-        gap: 8px;
+        grid-template-columns: 32px 1fr;
+        gap: 6px;
       }
       .notif-row .notif-select,
       .notif-row .toggle-switch { grid-column: 2; }
@@ -4325,20 +4346,56 @@
     }
 
     // ============ NOTIFICACIONES ============
-    const TIPOS_NOTIFICACION = [
-      { id: 'reservas',  nombre: 'Reservas',  icono: '📅', desc: 'Creación, aprobación, rechazo, cambio de reservas' },
-      { id: 'eventos',   nombre: 'Eventos',   icono: '🎉', desc: 'Nuevos eventos, cambios de fecha, cancelaciones' },
-      { id: 'pautas',    nombre: 'Pautas',    icono: '📋', desc: 'Asignación o actualización de pautas y normas' },
-      { id: 'queos',     nombre: 'Queos',     icono: '📣', desc: 'Comunicaciones generales enviadas manualmente' },
-      { id: 'urgentes',  nombre: 'Urgentes',  icono: '🚨', desc: 'Averías, emergencias y avisos críticos' }
+    const GRUPOS_NOTIFICACION = [
+      { grupo: 'reservas', nombre: 'Reservas', color: 'reservas', items: [
+        { id: 'reserva_nueva',      icono: '📅', nombre: 'Solicitud nueva',    desc: 'Un miembro solicita una reserva', defCanal: 'email', defDest: 'admins' },
+        { id: 'reserva_aprobada',   icono: '✅', nombre: 'Aprobada',           desc: 'Se aprueba una solicitud',       defCanal: 'email', defDest: 'todos' },
+        { id: 'reserva_rechazada',  icono: '❌', nombre: 'Rechazada',          desc: 'Se rechaza una solicitud',       defCanal: 'email', defDest: 'todos' },
+        { id: 'reserva_modificada', icono: '✏️', nombre: 'Modificada',         desc: 'Se cambian fechas o datos',      defCanal: 'email', defDest: 'todos' },
+        { id: 'reserva_cancelada',  icono: '🚫', nombre: 'Cancelada',          desc: 'Se cancela una reserva activa',  defCanal: 'email', defDest: 'todos' }
+      ]},
+      { grupo: 'eventos', nombre: 'Eventos', color: 'eventos', items: [
+        { id: 'evento_nuevo',      icono: '🎉', nombre: 'Nuevo evento',       desc: 'Se crea un evento o celebración',  defCanal: 'email', defDest: 'todos' },
+        { id: 'evento_modificado', icono: '✏️', nombre: 'Evento modificado',  desc: 'Cambio de fecha, lugar o detalles',defCanal: 'email', defDest: 'todos' },
+        { id: 'evento_cancelado',  icono: '🚫', nombre: 'Evento cancelado',   desc: 'Se cancela un evento programado',  defCanal: 'email', defDest: 'todos' }
+      ]},
+      { grupo: 'averias', nombre: 'Averías y Reparaciones', color: 'averias', items: [
+        { id: 'averia_nueva',        icono: '🔧', nombre: 'Nueva avería',         desc: 'Se reporta una avería',               defCanal: 'email', defDest: 'admins' },
+        { id: 'averia_urgente',      icono: '🚨', nombre: 'Avería urgente',       desc: 'Avería marcada como urgente',          defCanal: 'sms',   defDest: 'admins' },
+        { id: 'reparacion_estado',   icono: '🔄', nombre: 'Cambio de estado',     desc: 'Reparación pasa a en-curso/completada',defCanal: 'email', defDest: 'admins' },
+        { id: 'reparacion_completa', icono: '✅', nombre: 'Reparación completada',desc: 'Se cierra una reparación',             defCanal: 'email', defDest: 'todos' }
+      ]},
+      { grupo: 'herramientas', nombre: 'Herramientas (La Relación)', color: 'herramientas', items: [
+        { id: 'votacion_nueva',   icono: '🗳️', nombre: 'Nueva votación/encuesta', desc: 'Se abre una votación o encuesta',     defCanal: 'email', defDest: 'todos' },
+        { id: 'votacion_resultado',icono: '📊', nombre: 'Resultado disponible',   desc: 'Se cierra votación con resultado',    defCanal: 'email', defDest: 'todos' },
+        { id: 'lista_nueva',      icono: '📝', nombre: 'Nueva lista compartida',  desc: 'Se crea o comparte una lista',        defCanal: 'email', defDest: 'todos' },
+        { id: 'turno_asignado',   icono: '🔄', nombre: 'Turno asignado',          desc: 'Se asigna o rota un turno',           defCanal: 'email', defDest: 'adultos' }
+      ]},
+      { grupo: 'pautas', nombre: 'Pautas y Normas', color: 'pautas', items: [
+        { id: 'pauta_nueva',       icono: '📋', nombre: 'Nueva pauta',           desc: 'Se asigna una pauta o norma nueva',  defCanal: 'email', defDest: 'admins' },
+        { id: 'pauta_actualizada', icono: '✏️', nombre: 'Pauta actualizada',     desc: 'Se modifica una pauta existente',    defCanal: 'email', defDest: 'admins' }
+      ]},
+      { grupo: 'comunicaciones', nombre: 'Comunicaciones', color: 'comunicaciones', items: [
+        { id: 'queo_general',  icono: '📣', nombre: 'Queo manual',        desc: 'Comunicación enviada por admin',     defCanal: 'email', defDest: 'todos' },
+        { id: 'convocatoria',  icono: '✋', nombre: 'Convocatoria',       desc: 'Llamamiento a miembros',             defCanal: 'email', defDest: 'todos' },
+        { id: 'recordatorio',  icono: '⏰', nombre: 'Recordatorio',       desc: 'Aviso previo a evento o fecha',      defCanal: 'email', defDest: 'todos' }
+      ]},
+      { grupo: 'sistema', nombre: 'Sistema', color: 'sistema', items: [
+        { id: 'invitacion_nueva',  icono: '💌', nombre: 'Invitación enviada',    desc: 'Se invita a un nuevo miembro',      defCanal: 'email', defDest: 'admins' },
+        { id: 'miembro_activo',    icono: '👤', nombre: 'Miembro activado',      desc: 'Un invitado valida su cuenta',      defCanal: 'email', defDest: 'admins' },
+        { id: 'externo_actividad', icono: '🔑', nombre: 'Actividad de externo',  desc: 'Casero/hoster/guarda registra algo',defCanal: 'email', defDest: 'admins' }
+      ]}
     ];
 
+    // Flatten para iteraciones
+    const TODOS_TIPOS_NOTIF = GRUPOS_NOTIFICACION.flatMap(g => g.items);
+
     const NOTIF_DEFAULTS = {};
-    TIPOS_NOTIFICACION.forEach(t => {
+    TODOS_TIPOS_NOTIF.forEach(t => {
       NOTIF_DEFAULTS[t.id] = {
-        canal: t.id === 'urgentes' ? 'sms' : 'email',
+        canal: t.defCanal || 'email',
         activo: true,
-        destinatarios: t.id === 'urgentes' || t.id === 'pautas' ? 'admins' : 'todos'
+        destinatarios: t.defDest || 'todos'
       };
     });
 
@@ -4350,6 +4407,12 @@
           .collection('config').doc('notificaciones').get();
         if (doc.exists) {
           configNotificaciones = doc.data();
+          // Merge con defaults para nuevos tipos
+          TODOS_TIPOS_NOTIF.forEach(t => {
+            if (!configNotificaciones.tipos[t.id]) {
+              configNotificaciones.tipos[t.id] = NOTIF_DEFAULTS[t.id];
+            }
+          });
         } else {
           configNotificaciones = { tipos: JSON.parse(JSON.stringify(NOTIF_DEFAULTS)) };
         }
@@ -4364,31 +4427,35 @@
       const grid = document.getElementById('notif-config-grid');
       if (!configNotificaciones?.tipos) return;
 
-      grid.innerHTML = TIPOS_NOTIFICACION.map(t => {
-        const cfg = configNotificaciones.tipos[t.id] || NOTIF_DEFAULTS[t.id];
-        return `
-          <div class="notif-row">
-            <div class="notif-icono">${t.icono}</div>
-            <div class="notif-info">
-              <div class="notif-nombre">${t.nombre}</div>
-              <div class="notif-desc">${t.desc}</div>
+      grid.innerHTML = GRUPOS_NOTIFICACION.map(g => {
+        const headerHTML = `<div class="notif-grupo-header ${g.color}">${g.nombre}</div>`;
+        const rowsHTML = g.items.map(t => {
+          const cfg = configNotificaciones.tipos[t.id] || NOTIF_DEFAULTS[t.id];
+          return `
+            <div class="notif-row">
+              <div class="notif-icono">${t.icono}</div>
+              <div class="notif-info">
+                <div class="notif-nombre">${t.nombre}</div>
+                <div class="notif-desc">${t.desc}</div>
+              </div>
+              <select class="notif-select" id="notif-canal-${t.id}">
+                <option value="email" ${cfg.canal === 'email' ? 'selected' : ''}>📧 Email</option>
+                <option value="sms" ${cfg.canal === 'sms' ? 'selected' : ''}>📱 SMS</option>
+                <option value="ambos" ${cfg.canal === 'ambos' ? 'selected' : ''}>📧+📱</option>
+              </select>
+              <select class="notif-select" id="notif-dest-${t.id}">
+                <option value="todos" ${cfg.destinatarios === 'todos' ? 'selected' : ''}>👥 Todos</option>
+                <option value="admins" ${cfg.destinatarios === 'admins' ? 'selected' : ''}>👑 Admins</option>
+                <option value="adultos" ${cfg.destinatarios === 'adultos' ? 'selected' : ''}>👤 Adultos</option>
+              </select>
+              <label class="toggle-switch">
+                <input type="checkbox" id="notif-activo-${t.id}" ${cfg.activo ? 'checked' : ''}>
+                <span class="toggle-slider"></span>
+              </label>
             </div>
-            <select class="notif-select" id="notif-canal-${t.id}" title="Canal de envío">
-              <option value="email" ${cfg.canal === 'email' ? 'selected' : ''}>📧 Email</option>
-              <option value="sms" ${cfg.canal === 'sms' ? 'selected' : ''}>📱 SMS</option>
-              <option value="ambos" ${cfg.canal === 'ambos' ? 'selected' : ''}>📧+📱 Ambos</option>
-            </select>
-            <select class="notif-select" id="notif-dest-${t.id}" title="Destinatarios">
-              <option value="todos" ${cfg.destinatarios === 'todos' ? 'selected' : ''}>👥 Todos</option>
-              <option value="admins" ${cfg.destinatarios === 'admins' ? 'selected' : ''}>👑 Admins</option>
-              <option value="adultos" ${cfg.destinatarios === 'adultos' ? 'selected' : ''}>👤 Adultos</option>
-            </select>
-            <label class="toggle-switch" title="Activo/Inactivo">
-              <input type="checkbox" id="notif-activo-${t.id}" ${cfg.activo ? 'checked' : ''}>
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-        `;
+          `;
+        }).join('');
+        return headerHTML + rowsHTML;
       }).join('');
 
       // Queo destinatarios selector
@@ -4420,7 +4487,7 @@
 
     async function guardarConfigNotificaciones() {
       const config = { tipos: {} };
-      TIPOS_NOTIFICACION.forEach(t => {
+      TODOS_TIPOS_NOTIF.forEach(t => {
         config.tipos[t.id] = {
           canal: document.getElementById(`notif-canal-${t.id}`)?.value || 'email',
           destinatarios: document.getElementById(`notif-dest-${t.id}`)?.value || 'todos',
@@ -4432,8 +4499,6 @@
         await db.collection('familias').doc(familiaData.id)
           .collection('config').doc('notificaciones').set(config);
         configNotificaciones = config;
-
-        // Feedback visual
         const grid = document.getElementById('notif-config-grid');
         grid.style.opacity = '0.6';
         setTimeout(() => { grid.style.opacity = '1'; }, 300);
