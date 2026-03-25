@@ -1698,27 +1698,61 @@
         </div>
       </div>
 
-      <!-- Personalización del copy del email -->
+      <!-- Personalización de plantillas email -->
       <div class="card">
-        <div class="card-title">✉️ Textos del email</div>
+        <div class="card-title">✉️ Plantillas de email</div>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
-          Personaliza los textos que aparecen en los emails de notificación
+          Configura los textos globales y el contenido de cada tipo de notificación
         </p>
-        <div class="form-group">
-          <label class="form-label">Saludo inicial</label>
-          <input type="text" class="form-input" id="email-saludo" placeholder="Hola desde la familia García" maxlength="80">
-          <span style="font-size:0.7rem;color:var(--text-muted);">Se muestra antes del contenido. Déjalo vacío para omitirlo.</span>
+
+        <!-- Globales -->
+        <div style="background:var(--cream);border-radius:var(--radius-md);padding:16px;margin-bottom:20px;">
+          <div style="font-weight:700;font-size:0.85rem;margin-bottom:12px;">🌐 Textos globales (aplican a todos los emails)</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Saludo inicial</label>
+              <input type="text" class="form-input" id="email-saludo" placeholder="Hola desde la familia García" maxlength="80">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nombre remitente</label>
+              <input type="text" class="form-input" id="email-remitente" placeholder="Familynk" maxlength="40" value="Familynk">
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Texto del pie</label>
+            <input type="text" class="form-input" id="email-footer" placeholder="Tu familia, bien organizada" maxlength="80" value="Tu familia, bien organizada">
+          </div>
         </div>
+
+        <!-- Editor por tipo -->
+        <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;">📝 Plantilla por tipo de notificación</div>
         <div class="form-group">
-          <label class="form-label">Texto del pie</label>
-          <input type="text" class="form-input" id="email-footer" placeholder="Tu familia, bien organizada" maxlength="80" value="Tu familia, bien organizada">
+          <label class="form-label">Selecciona el tipo</label>
+          <select class="form-select" id="plantilla-tipo-select" onchange="cargarPlantillaTipo()">
+            <option value="">— Elige un tipo —</option>
+          </select>
         </div>
-        <div class="form-group">
-          <label class="form-label">Nombre del remitente</label>
-          <input type="text" class="form-input" id="email-remitente" placeholder="Familynk" maxlength="40" value="Familynk">
-          <span style="font-size:0.7rem;color:var(--text-muted);">Aparece como "De: [nombre]" en la bandeja del destinatario.</span>
+        <div id="plantilla-editor" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">Título del email</label>
+            <input type="text" class="form-input" id="plantilla-titulo" placeholder="Ej: Tu reserva ha sido aprobada" maxlength="120">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cuerpo del mensaje</label>
+            <textarea class="form-textarea" id="plantilla-cuerpo" rows="4" placeholder="Ej: La reserva en {bien} del {fechaInicio} al {fechaFin} ha sido aprobada."></textarea>
+          </div>
+          <div style="padding:10px 14px;background:var(--cream);border-radius:var(--radius-sm);font-size:0.75rem;color:var(--text-muted);margin-bottom:12px;">
+            <strong>Variables disponibles:</strong> <code>{nombre}</code> <code>{bien}</code> <code>{fechaInicio}</code> <code>{fechaFin}</code> <code>{remitente}</code> <code>{estado}</code> <code>{motivo}</code> <code>{responsable}</code>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-primary btn-sm" onclick="guardarPlantillaTipo()">💾 Guardar plantilla</button>
+            <button class="btn btn-secondary btn-sm" onclick="resetPlantillaTipo()">↩️ Restaurar por defecto</button>
+            <span id="plantilla-feedback" style="font-size:0.8rem;color:var(--sage);display:none;">✅ Guardado</span>
+          </div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="guardarEmailCopy()">💾 Guardar textos</button>
+
+        <hr style="border:none;border-top:1px solid var(--cream-dark);margin:20px 0;">
+        <button class="btn btn-primary" onclick="guardarEmailCopy()">💾 Guardar textos globales</button>
       </div>
 
       <!-- Auto-borrado de notificaciones internas -->
@@ -4443,6 +4477,11 @@
         if (c.footer) document.getElementById('email-footer').value = c.footer;
         if (c.remitente) document.getElementById('email-remitente').value = c.remitente;
       }
+      // Cargar plantillas personalizadas
+      if (configNotificaciones.plantillas) {
+        plantillasPersonalizadas = configNotificaciones.plantillas;
+      }
+      initPlantillaSelector();
     }
 
     function renderConfigNotificaciones() {
@@ -4549,6 +4588,98 @@
         console.error('Error guardando config notificaciones:', e);
         alert('Error al guardar');
       }
+    }
+
+    // ============ PLANTILLAS POR TIPO ============
+    const PLANTILLAS_DEFAULT = {
+      reserva_nueva:       { titulo: 'Nueva solicitud de reserva', cuerpo: 'Se ha solicitado una reserva en {bien} del {fechaInicio} al {fechaFin}. Pendiente de aprobación.' },
+      reserva_aprobada:    { titulo: 'Reserva aprobada', cuerpo: 'Tu reserva en {bien} del {fechaInicio} al {fechaFin} ha sido aprobada. ¡Todo listo!' },
+      reserva_rechazada:   { titulo: 'Reserva no aprobada', cuerpo: 'Tu solicitud de reserva en {bien} del {fechaInicio} al {fechaFin} no ha sido aprobada. {motivo}' },
+      reserva_modificada:  { titulo: 'Reserva modificada', cuerpo: 'Se han modificado los datos de la reserva en {bien}. Nuevas fechas: {fechaInicio} al {fechaFin}.' },
+      reserva_cancelada:   { titulo: 'Reserva cancelada', cuerpo: 'La reserva en {bien} del {fechaInicio} al {fechaFin} ha sido cancelada.' },
+      evento_nuevo:        { titulo: 'Nuevo evento: {nombre}', cuerpo: 'Se ha programado un nuevo evento en {bien}. Fecha: {fechaInicio}.' },
+      evento_modificado:   { titulo: 'Evento modificado: {nombre}', cuerpo: 'El evento en {bien} ha cambiado. Nueva fecha: {fechaInicio}.' },
+      evento_cancelado:    { titulo: 'Evento cancelado: {nombre}', cuerpo: 'El evento previsto en {bien} para el {fechaInicio} ha sido cancelado.' },
+      recordatorio:        { titulo: 'Recordatorio: {nombre}', cuerpo: 'Recuerda que tienes programado {nombre} en {bien} el {fechaInicio}.' },
+      averia_nueva:        { titulo: 'Nueva avería en {bien}', cuerpo: 'Se ha reportado una avería: {nombre}. Responsable: {responsable}.' },
+      averia_urgente:      { titulo: '🚨 URGENTE: Avería en {bien}', cuerpo: 'Avería urgente reportada: {nombre}. Requiere atención inmediata.' },
+      reparacion_estado:   { titulo: 'Reparación actualizada en {bien}', cuerpo: 'La reparación "{nombre}" ha cambiado a estado: {estado}.' },
+      reparacion_completa: { titulo: 'Reparación completada en {bien}', cuerpo: 'La reparación "{nombre}" se ha completado.' },
+      obras_programadas:   { titulo: 'Obras programadas en {bien}', cuerpo: 'Se han programado obras/mantenimiento en {bien} del {fechaInicio} al {fechaFin}.' },
+      votacion_nueva:      { titulo: 'Nueva votación: {nombre}', cuerpo: 'Se ha abierto una votación. Participa antes del {fechaFin}.' },
+      votacion_resultado:  { titulo: 'Resultado: {nombre}', cuerpo: 'La votación "{nombre}" se ha cerrado. Consulta los resultados.' },
+      lista_nueva:         { titulo: 'Nueva lista: {nombre}', cuerpo: 'Se ha compartido una nueva lista contigo: {nombre}.' },
+      turno_asignado:      { titulo: 'Turno asignado', cuerpo: 'Se te ha asignado un turno: {nombre}. Fecha: {fechaInicio}.' },
+      pauta_nueva:         { titulo: 'Nueva pauta: {nombre}', cuerpo: 'Se ha publicado una nueva pauta para {bien}: {nombre}.' },
+      pauta_actualizada:   { titulo: 'Pauta actualizada: {nombre}', cuerpo: 'Se ha modificado la pauta "{nombre}" de {bien}.' },
+      queo_general:        { titulo: 'Comunicación familiar', cuerpo: '{nombre}' },
+      convocatoria:        { titulo: 'Convocatoria: {nombre}', cuerpo: '{nombre}' },
+      propuesta:           { titulo: 'Nueva propuesta', cuerpo: '{remitente} ha propuesto una idea: {nombre}.' },
+      invitacion_nueva:    { titulo: 'Te han invitado a Familynk', cuerpo: 'Has recibido una invitación para unirte a la familia en Familynk. Entra con tu email y la contraseña temporal que te han facilitado.' },
+      miembro_activo:      { titulo: 'Nuevo miembro activo', cuerpo: '{nombre} ha activado su cuenta en la familia.' },
+      externo_activo:      { titulo: 'Nuevo externo activo', cuerpo: '{nombre} ha validado su acceso como colaborador externo.' },
+      limite_alcanzado:    { titulo: 'Límite del plan alcanzado', cuerpo: 'Tu familia está alcanzando el límite de {nombre}. Revisa tu plan en la configuración.' },
+      toma_inventario:     { titulo: 'Toma de inventario registrada', cuerpo: '{remitente} ha completado una toma de inventario en {bien}.' },
+      libranza_vac:        { titulo: 'Ausencia registrada', cuerpo: '{remitente} ha registrado una ausencia del {fechaInicio} al {fechaFin}.' },
+      informe_estancia:    { titulo: 'Informe de estancia cerrado', cuerpo: '{remitente} ha cerrado el informe de estancia en {bien}.' }
+    };
+
+    let plantillasPersonalizadas = {};
+
+    function initPlantillaSelector() {
+      const select = document.getElementById('plantilla-tipo-select');
+      if (!select) return;
+      select.innerHTML = '<option value="">— Elige un tipo —</option>';
+      GRUPOS_NOTIFICACION.forEach(g => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = g.nombre;
+        g.items.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.icono} ${t.nombre}`;
+          optgroup.appendChild(opt);
+        });
+        select.appendChild(optgroup);
+      });
+    }
+
+    function cargarPlantillaTipo() {
+      const tipoId = document.getElementById('plantilla-tipo-select').value;
+      const editor = document.getElementById('plantilla-editor');
+      if (!tipoId) { editor.style.display = 'none'; return; }
+      editor.style.display = 'block';
+      const custom = plantillasPersonalizadas[tipoId];
+      const def = PLANTILLAS_DEFAULT[tipoId] || { titulo: '', cuerpo: '' };
+      document.getElementById('plantilla-titulo').value = custom?.titulo ?? def.titulo;
+      document.getElementById('plantilla-cuerpo').value = custom?.cuerpo ?? def.cuerpo;
+      document.getElementById('plantilla-feedback').style.display = 'none';
+    }
+
+    async function guardarPlantillaTipo() {
+      const tipoId = document.getElementById('plantilla-tipo-select').value;
+      if (!tipoId) return;
+      const titulo = document.getElementById('plantilla-titulo').value.trim();
+      const cuerpo = document.getElementById('plantilla-cuerpo').value.trim();
+      plantillasPersonalizadas[tipoId] = { titulo, cuerpo };
+      try {
+        await db.collection('familias').doc(familiaData.id)
+          .collection('config').doc('notificaciones').set({ plantillas: plantillasPersonalizadas }, { merge: true });
+        const fb = document.getElementById('plantilla-feedback');
+        fb.style.display = 'inline';
+        setTimeout(() => { fb.style.display = 'none'; }, 2000);
+      } catch (e) {
+        console.error('Error guardando plantilla:', e);
+        alert('Error al guardar');
+      }
+    }
+
+    function resetPlantillaTipo() {
+      const tipoId = document.getElementById('plantilla-tipo-select').value;
+      if (!tipoId) return;
+      const def = PLANTILLAS_DEFAULT[tipoId] || { titulo: '', cuerpo: '' };
+      document.getElementById('plantilla-titulo').value = def.titulo;
+      document.getElementById('plantilla-cuerpo').value = def.cuerpo;
+      if (plantillasPersonalizadas[tipoId]) delete plantillasPersonalizadas[tipoId];
     }
 
     async function guardarEmailCopy() {
