@@ -753,11 +753,12 @@
       margin-top: 12px;
       font-family: 'Quicksand', sans-serif;
       font-weight: 700;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: var(--white);
       border-radius: var(--radius-md) var(--radius-md) 0 0;
     }
     .notif-grupo-header:first-child { margin-top: 0; }
+    .notif-grupo-header .notif-count { background: rgba(255,255,255,.25); padding: 1px 8px; border-radius: 12px; font-size: 0.7rem; }
     .notif-grupo-header.reservas { background: #8B7355; }
     .notif-grupo-header.eventos { background: #7A9E7E; }
     .notif-grupo-header.averias { background: #C17757; }
@@ -765,36 +766,60 @@
     .notif-grupo-header.pautas { background: #6B8E23; }
     .notif-grupo-header.comunicaciones { background: #9C27B0; }
     .notif-grupo-header.sistema { background: #607D8B; }
+    .notif-grupo-header.externos { background: #795548; }
+    .notif-col-headers {
+      display: grid;
+      grid-template-columns: 28px 1fr 95px 80px 120px 44px;
+      gap: 6px;
+      padding: 5px 14px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: var(--text-muted);
+      background: var(--cream-dark);
+      border-bottom: 1px solid var(--cream-dark);
+    }
     .notif-row {
       display: grid;
-      grid-template-columns: 32px 1fr 115px 130px 50px;
-      gap: 10px;
+      grid-template-columns: 28px 1fr 95px 80px 120px 44px;
+      gap: 6px;
       align-items: center;
-      padding: 10px 16px;
+      padding: 8px 14px;
       background: var(--cream);
       border-bottom: 1px solid var(--cream-dark);
-      transition: all 0.2s;
+      transition: all 0.15s;
     }
     .notif-row:hover { background: var(--cream-dark); }
     .notif-row:last-child { border-bottom: none; border-radius: 0 0 var(--radius-md) var(--radius-md); }
-    .notif-icono { font-size: 1.1rem; text-align: center; }
-    .notif-info .notif-nombre { font-weight: 600; font-size: 0.88rem; }
-    .notif-info .notif-desc { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+    .notif-row.dimmed { opacity: 0.35; }
+    .notif-icono { font-size: 1rem; text-align: center; }
+    .notif-info .notif-nombre { font-weight: 600; font-size: 0.82rem; }
+    .notif-info .notif-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
     .notif-select {
-      padding: 6px 8px;
-      border: 2px solid var(--cream-dark);
-      border-radius: var(--radius-sm);
+      padding: 5px 6px;
+      border: 1.5px solid var(--cream-dark);
+      border-radius: 6px;
       font-family: 'Nunito', sans-serif;
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       font-weight: 600;
       background: var(--white);
       cursor: pointer;
+      width: 100%;
     }
     .notif-select:focus { outline: none; border-color: var(--sage); }
-    @media (max-width: 700px) {
+    .notif-select:disabled { opacity: 0.4; cursor: not-allowed; }
+    @media (max-width: 800px) {
+      .notif-row, .notif-col-headers {
+        grid-template-columns: 28px 1fr 80px 70px 100px 40px;
+        font-size: 0.7rem;
+      }
+    }
+    @media (max-width: 600px) {
+      .notif-col-headers { display: none; }
       .notif-row {
-        grid-template-columns: 32px 1fr;
-        gap: 6px;
+        grid-template-columns: 28px 1fr;
+        gap: 4px;
       }
       .notif-row .notif-select,
       .notif-row .toggle-switch { grid-column: 2; }
@@ -4245,54 +4270,84 @@
     // ============ NOTIFICACIONES ============
     const GRUPOS_NOTIFICACION = [
       { grupo: 'reservas', nombre: 'Reservas', color: 'reservas', items: [
-        { id: 'reserva_nueva',      icono: '📅', nombre: 'Solicitud nueva',    desc: 'Un miembro solicita una reserva', defCanal: 'email', defDest: 'admins' },
-        { id: 'reserva_aprobada',   icono: '✅', nombre: 'Aprobada',           desc: 'Se aprueba una solicitud',       defCanal: 'email', defDest: 'todos' },
-        { id: 'reserva_rechazada',  icono: '❌', nombre: 'Rechazada',          desc: 'Se rechaza una solicitud',       defCanal: 'email', defDest: 'todos' },
-        { id: 'reserva_modificada', icono: '✏️', nombre: 'Modificada',         desc: 'Se cambian fechas o datos',      defCanal: 'email', defDest: 'todos' },
-        { id: 'reserva_cancelada',  icono: '🚫', nombre: 'Cancelada',          desc: 'Se cancela una reserva activa',  defCanal: 'email', defDest: 'todos' }
+        { id: 'reserva_nueva',      icono: '📅', nombre: 'Solicitud nueva',    desc: 'Miembro solicita reserva',          defCanal: 'email', defDisparo: 'auto',   defDest: 'admins' },
+        { id: 'reserva_aprobada',   icono: '✅', nombre: 'Aprobada',           desc: 'Admin aprueba solicitud',           defCanal: 'email', defDisparo: 'auto',   defDest: 'solicitante_ext' },
+        { id: 'reserva_rechazada',  icono: '❌', nombre: 'Rechazada',          desc: 'Admin rechaza solicitud',           defCanal: 'email', defDisparo: 'auto',   defDest: 'solicitante' },
+        { id: 'reserva_modificada', icono: '✏️', nombre: 'Modificada',         desc: 'Cambio de fechas o datos',          defCanal: 'email', defDisparo: 'auto',   defDest: 'afectados_ext' },
+        { id: 'reserva_cancelada',  icono: '🚫', nombre: 'Cancelada',          desc: 'Se cancela reserva activa',         defCanal: 'email', defDisparo: 'auto',   defDest: 'afectados_ext' }
       ]},
-      { grupo: 'eventos', nombre: 'Eventos', color: 'eventos', items: [
-        { id: 'evento_nuevo',      icono: '🎉', nombre: 'Nuevo evento',       desc: 'Se crea un evento o celebración',  defCanal: 'email', defDest: 'todos' },
-        { id: 'evento_modificado', icono: '✏️', nombre: 'Evento modificado',  desc: 'Cambio de fecha, lugar o detalles',defCanal: 'email', defDest: 'todos' },
-        { id: 'evento_cancelado',  icono: '🚫', nombre: 'Evento cancelado',   desc: 'Se cancela un evento programado',  defCanal: 'email', defDest: 'todos' }
+      { grupo: 'eventos', nombre: 'Eventos y Calendario', color: 'eventos', items: [
+        { id: 'evento_nuevo',      icono: '🎉', nombre: 'Nuevo evento',       desc: 'Se crea evento o celebración',      defCanal: 'email', defDisparo: 'auto',   defDest: 'todos_ext' },
+        { id: 'evento_modificado', icono: '✏️', nombre: 'Evento modificado',  desc: 'Cambio fecha, lugar o detalles',    defCanal: 'email', defDisparo: 'auto',   defDest: 'todos_ext' },
+        { id: 'evento_cancelado',  icono: '🚫', nombre: 'Evento cancelado',   desc: 'Se cancela evento programado',      defCanal: 'email', defDisparo: 'auto',   defDest: 'todos_ext' },
+        { id: 'recordatorio',      icono: '⏰', nombre: 'Recordatorio',       desc: 'Aviso previo a fecha o evento',     defCanal: 'email', defDisparo: 'mixto',  defDest: 'todos_ext' }
       ]},
       { grupo: 'averias', nombre: 'Averías y Reparaciones', color: 'averias', items: [
-        { id: 'averia_nueva',        icono: '🔧', nombre: 'Nueva avería',         desc: 'Se reporta una avería',               defCanal: 'email', defDest: 'admins' },
-        { id: 'averia_urgente',      icono: '🚨', nombre: 'Avería urgente',       desc: 'Avería marcada como urgente',          defCanal: 'sms',   defDest: 'admins' },
-        { id: 'reparacion_estado',   icono: '🔄', nombre: 'Cambio de estado',     desc: 'Reparación pasa a en-curso/completada',defCanal: 'email', defDest: 'admins' },
-        { id: 'reparacion_completa', icono: '✅', nombre: 'Reparación completada',desc: 'Se cierra una reparación',             defCanal: 'email', defDest: 'todos' }
+        { id: 'averia_nueva',        icono: '🔧', nombre: 'Nueva avería',         desc: 'Miembro reporta avería',              defCanal: 'email', defDisparo: 'auto',   defDest: 'admins_ext' },
+        { id: 'averia_urgente',      icono: '🚨', nombre: 'Avería urgente',       desc: 'Marcada como prioridad urgente',      defCanal: 'sms',   defDisparo: 'auto',   defDest: 'admins_ext' },
+        { id: 'reparacion_estado',   icono: '🔄', nombre: 'Cambio de estado',     desc: 'Pasa a en-curso o completada',        defCanal: 'email', defDisparo: 'auto',   defDest: 'reportador_ext' },
+        { id: 'reparacion_completa', icono: '✅', nombre: 'Reparación completada',desc: 'Se cierra una reparación',            defCanal: 'email', defDisparo: 'auto',   defDest: 'todos' }
       ]},
       { grupo: 'herramientas', nombre: 'Herramientas (La Relación)', color: 'herramientas', items: [
-        { id: 'votacion_nueva',   icono: '🗳️', nombre: 'Nueva votación/encuesta', desc: 'Se abre una votación o encuesta',     defCanal: 'email', defDest: 'todos' },
-        { id: 'votacion_resultado',icono: '📊', nombre: 'Resultado disponible',   desc: 'Se cierra votación con resultado',    defCanal: 'email', defDest: 'todos' },
-        { id: 'lista_nueva',      icono: '📝', nombre: 'Nueva lista compartida',  desc: 'Se crea o comparte una lista',        defCanal: 'email', defDest: 'todos' },
-        { id: 'turno_asignado',   icono: '🔄', nombre: 'Turno asignado',          desc: 'Se asigna o rota un turno',           defCanal: 'email', defDest: 'adultos' }
+        { id: 'votacion_nueva',    icono: '🗳️', nombre: 'Nueva votación/encuesta',desc: 'Se abre votación o encuesta',       defCanal: 'email', defDisparo: 'auto',   defDest: 'convocados' },
+        { id: 'votacion_resultado',icono: '📊', nombre: 'Resultado disponible',   desc: 'Se cierra con resultado',           defCanal: 'email', defDisparo: 'auto',   defDest: 'participantes' },
+        { id: 'lista_nueva',      icono: '📝', nombre: 'Lista compartida',        desc: 'Se crea o comparte lista',          defCanal: 'email', defDisparo: 'auto',   defDest: 'destinatarios' },
+        { id: 'turno_asignado',   icono: '🔄', nombre: 'Turno asignado',          desc: 'Se asigna o rota turno',            defCanal: 'email', defDisparo: 'auto',   defDest: 'asignado' }
       ]},
       { grupo: 'pautas', nombre: 'Pautas y Normas', color: 'pautas', items: [
-        { id: 'pauta_nueva',       icono: '📋', nombre: 'Nueva pauta',           desc: 'Se asigna una pauta o norma nueva',  defCanal: 'email', defDest: 'admins' },
-        { id: 'pauta_actualizada', icono: '✏️', nombre: 'Pauta actualizada',     desc: 'Se modifica una pauta existente',    defCanal: 'email', defDest: 'admins' }
+        { id: 'pauta_nueva',       icono: '📋', nombre: 'Nueva pauta',           desc: 'Se asigna pauta o norma nueva',     defCanal: 'email', defDisparo: 'auto',   defDest: 'afectados_ext' },
+        { id: 'pauta_actualizada', icono: '✏️', nombre: 'Pauta actualizada',     desc: 'Se modifica pauta existente',       defCanal: 'email', defDisparo: 'auto',   defDest: 'afectados_ext' }
       ]},
       { grupo: 'comunicaciones', nombre: 'Comunicaciones', color: 'comunicaciones', items: [
-        { id: 'queo_general',  icono: '📣', nombre: 'Queo manual',        desc: 'Comunicación enviada por admin',     defCanal: 'email', defDest: 'todos' },
-        { id: 'convocatoria',  icono: '✋', nombre: 'Convocatoria',       desc: 'Llamamiento a miembros',             defCanal: 'email', defDest: 'todos' },
-        { id: 'recordatorio',  icono: '⏰', nombre: 'Recordatorio',       desc: 'Aviso previo a evento o fecha',      defCanal: 'email', defDest: 'todos' }
+        { id: 'queo_general',  icono: '📣', nombre: 'Queo manual',        desc: 'Admin envía comunicación libre',     defCanal: 'email', defDisparo: 'manual',  defDest: 'elegidos_ext' },
+        { id: 'convocatoria',  icono: '✋', nombre: 'Convocatoria',       desc: 'Llamamiento a miembros',             defCanal: 'email', defDisparo: 'manual',  defDest: 'elegidos_ext' },
+        { id: 'propuesta',     icono: '💡', nombre: 'Propuesta/idea',     desc: 'Miembro propone iniciativa',         defCanal: 'email', defDisparo: 'auto',    defDest: 'admins' }
       ]},
       { grupo: 'sistema', nombre: 'Sistema', color: 'sistema', items: [
-        { id: 'invitacion_nueva',  icono: '💌', nombre: 'Invitación enviada',    desc: 'Se invita a un nuevo miembro',      defCanal: 'email', defDest: 'admins' },
-        { id: 'miembro_activo',    icono: '👤', nombre: 'Miembro activado',      desc: 'Un invitado valida su cuenta',      defCanal: 'email', defDest: 'admins' },
-        { id: 'externo_actividad', icono: '🔑', nombre: 'Actividad de externo',  desc: 'Casero/hoster/guarda registra algo',defCanal: 'email', defDest: 'admins' }
+        { id: 'invitacion_nueva',  icono: '💌', nombre: 'Invitación enviada',    desc: 'Se invita miembro o externo',       defCanal: 'email', defDisparo: 'auto',   defDest: 'invitado' },
+        { id: 'miembro_activo',    icono: '👤', nombre: 'Miembro activado',      desc: 'Invitado valida su cuenta',         defCanal: 'email', defDisparo: 'auto',   defDest: 'admins' },
+        { id: 'externo_activo',    icono: '🔑', nombre: 'Externo activado',      desc: 'Casero/hoster/guarda valida cuenta',defCanal: 'email', defDisparo: 'auto',   defDest: 'admins' },
+        { id: 'limite_alcanzado',  icono: '⚠️', nombre: 'Límite alcanzado',      desc: 'Plan, storage o usuarios al límite',defCanal: 'email', defDisparo: 'auto',   defDest: 'admin_rama' }
+      ]},
+      { grupo: 'externos', nombre: 'Externos (Actividad)', color: 'externos', items: [
+        { id: 'toma_inventario',   icono: '🏠', nombre: 'Toma inventario',       desc: 'Casero registra toma',              defCanal: 'email', defDisparo: 'auto',   defDest: 'admins' },
+        { id: 'libranza_vac',     icono: '📅', nombre: 'Libranza/vacaciones',    desc: 'Externo registra ausencia',         defCanal: 'email', defDisparo: 'auto',   defDest: 'admins' },
+        { id: 'informe_estancia', icono: '📋', nombre: 'Informe de estancia',    desc: 'Casero/hoster cierra informe',      defCanal: 'email', defDisparo: 'auto',   defDest: 'admins' }
       ]}
     ];
 
-    // Flatten para iteraciones
     const TODOS_TIPOS_NOTIF = GRUPOS_NOTIFICACION.flatMap(g => g.items);
+
+    // Opciones de destinatarios para el dropdown
+    const DEST_OPTIONS = [
+      { value: 'todos',           label: '👥 Todos' },
+      { value: 'todos_ext',       label: '👥 Todos + Externos' },
+      { value: 'admins',          label: '👑 Admins' },
+      { value: 'admins_ext',      label: '👑 Admins + Externos' },
+      { value: 'adultos',         label: '👤 Adultos' },
+      { value: 'solicitante',     label: '📩 Solicitante' },
+      { value: 'solicitante_ext', label: '📩 Solicitante + Ext.' },
+      { value: 'afectados',       label: '🎯 Afectados' },
+      { value: 'afectados_ext',   label: '🎯 Afectados + Ext.' },
+      { value: 'reportador',      label: '🔧 Reportador' },
+      { value: 'reportador_ext',  label: '🔧 Reportador + Ext.' },
+      { value: 'convocados',      label: '✋ Convocados' },
+      { value: 'participantes',   label: '📊 Participantes' },
+      { value: 'destinatarios',   label: '📝 Destinatarios' },
+      { value: 'asignado',        label: '🔄 Asignado' },
+      { value: 'invitado',        label: '💌 Invitado' },
+      { value: 'admin_rama',      label: '🔧 Admin rama' },
+      { value: 'elegidos',        label: '✅ Elegidos' },
+      { value: 'elegidos_ext',    label: '✅ Elegidos + Ext.' }
+    ];
 
     const NOTIF_DEFAULTS = {};
     TODOS_TIPOS_NOTIF.forEach(t => {
       NOTIF_DEFAULTS[t.id] = {
         canal: t.defCanal || 'email',
-        activo: true,
-        destinatarios: t.defDest || 'todos'
+        disparo: t.defDisparo || 'auto',
+        destinatarios: t.defDest || 'todos',
+        activo: true
       };
     });
 
@@ -4304,7 +4359,6 @@
           .collection('config').doc('notificaciones').get();
         if (doc.exists) {
           configNotificaciones = doc.data();
-          // Merge con defaults para nuevos tipos
           TODOS_TIPOS_NOTIF.forEach(t => {
             if (!configNotificaciones.tipos[t.id]) {
               configNotificaciones.tipos[t.id] = NOTIF_DEFAULTS[t.id];
@@ -4325,11 +4379,17 @@
       if (!configNotificaciones?.tipos) return;
 
       grid.innerHTML = GRUPOS_NOTIFICACION.map(g => {
-        const headerHTML = `<div class="notif-grupo-header ${g.color}">${g.nombre}</div>`;
+        const headerHTML = `<div class="notif-grupo-header ${g.color}">${g.nombre} <span class="notif-count">${g.items.length}</span></div>`;
+        const colHeaders = `<div class="notif-col-headers"><span></span><span>Acción</span><span>Canal</span><span>Disparo</span><span>Destinatarios</span><span></span></div>`;
         const rowsHTML = g.items.map(t => {
           const cfg = configNotificaciones.tipos[t.id] || NOTIF_DEFAULTS[t.id];
+          const destOpts = DEST_OPTIONS.map(o =>
+            `<option value="${o.value}" ${cfg.destinatarios === o.value ? 'selected' : ''}>${o.label}</option>`
+          ).join('');
+          const dimmed = cfg.canal === 'ninguno' ? ' dimmed' : '';
+          const dis = cfg.canal === 'ninguno' ? 'disabled' : '';
           return `
-            <div class="notif-row">
+            <div class="notif-row${dimmed}" data-id="${t.id}">
               <div class="notif-icono">${t.icono}</div>
               <div class="notif-info">
                 <div class="notif-nombre">${t.nombre}</div>
@@ -4341,19 +4401,20 @@
                 <option value="sms" ${cfg.canal === 'sms' ? 'selected' : ''}>📱 SMS</option>
                 <option value="ambos" ${cfg.canal === 'ambos' ? 'selected' : ''}>📧+📱</option>
               </select>
-              <select class="notif-select" id="notif-dest-${t.id}">
-                <option value="todos" ${cfg.destinatarios === 'todos' ? 'selected' : ''}>👥 Todos</option>
-                <option value="admins" ${cfg.destinatarios === 'admins' ? 'selected' : ''}>👑 Admins</option>
-                <option value="adultos" ${cfg.destinatarios === 'adultos' ? 'selected' : ''}>👤 Adultos</option>
+              <select class="notif-select" id="notif-disparo-${t.id}" ${dis}>
+                <option value="auto" ${cfg.disparo === 'auto' ? 'selected' : ''}>Auto</option>
+                <option value="manual" ${cfg.disparo === 'manual' ? 'selected' : ''}>Manual</option>
+                <option value="mixto" ${cfg.disparo === 'mixto' ? 'selected' : ''}>Mixto</option>
               </select>
+              <select class="notif-select" id="notif-dest-${t.id}" ${dis}>${destOpts}</select>
               <label class="toggle-switch">
-                <input type="checkbox" id="notif-activo-${t.id}" ${cfg.activo ? 'checked' : ''}>
+                <input type="checkbox" id="notif-activo-${t.id}" ${cfg.activo ? 'checked' : ''} ${dis}>
                 <span class="toggle-slider"></span>
               </label>
             </div>
           `;
         }).join('');
-        return headerHTML + rowsHTML;
+        return headerHTML + colHeaders + rowsHTML;
       }).join('');
 
       // Queo destinatarios selector
@@ -4369,21 +4430,15 @@
           }
         };
       }
-
-      // Aplicar estado visual inicial
-      document.querySelectorAll('.notif-select[id^="notif-canal-"]').forEach(s => toggleNotifRow(s));
     }
 
     function toggleNotifRow(select) {
       const row = select.closest('.notif-row');
       if (!row) return;
-      if (select.value === 'ninguno') {
-        row.style.opacity = '0.4';
-        row.querySelectorAll('.notif-select:not([id^="notif-canal-"]), .toggle-switch input').forEach(el => el.disabled = true);
-      } else {
-        row.style.opacity = '1';
-        row.querySelectorAll('.notif-select:not([id^="notif-canal-"]), .toggle-switch input').forEach(el => el.disabled = false);
-      }
+      const id = row.dataset.id;
+      const off = select.value === 'ninguno';
+      row.classList.toggle('dimmed', off);
+      row.querySelectorAll('.notif-select:not([id^="notif-canal-"]), .toggle-switch input').forEach(el => el.disabled = off);
     }
 
     function renderMiembrosQueo() {
@@ -4403,6 +4458,7 @@
       TODOS_TIPOS_NOTIF.forEach(t => {
         config.tipos[t.id] = {
           canal: document.getElementById(`notif-canal-${t.id}`)?.value || 'email',
+          disparo: document.getElementById(`notif-disparo-${t.id}`)?.value || 'auto',
           destinatarios: document.getElementById(`notif-dest-${t.id}`)?.value || 'todos',
           activo: document.getElementById(`notif-activo-${t.id}`)?.checked ?? true
         };
@@ -4423,12 +4479,14 @@
 
     function getDestinatariosNotif(grupo) {
       let destList = [];
-      if (grupo === 'todos') {
+      if (grupo === 'todos' || grupo === 'todos_ext') {
         destList = usuariosData.filter(u => u.email);
-      } else if (grupo === 'admins') {
+      } else if (grupo === 'admins' || grupo === 'admins_ext') {
         destList = usuariosData.filter(u => u.email && (u.rol === 'adminRama' || u.rol === 'admin-rama' || u.rol === 'adminNido' || u.rol === 'admin-nido'));
       } else if (grupo === 'adultos') {
         destList = usuariosData.filter(u => u.email && u.rol !== 'nino' && u.rol !== 'niño');
+      } else if (grupo === 'admin_rama') {
+        destList = usuariosData.filter(u => u.email && (u.rol === 'adminRama' || u.rol === 'admin-rama'));
       } else if (grupo === 'seleccion') {
         const checks = document.querySelectorAll('.queo-miembro-check:checked');
         checks.forEach(ch => {
@@ -4439,6 +4497,8 @@
           });
         });
       }
+      // Nota: destinos contextuales (solicitante, afectados, reportador, etc.)
+      // se resuelven en el trigger, no aquí
       return destList.map(u => ({
         email: u.email,
         nombre: u.nombre || u.email,
