@@ -342,6 +342,7 @@
 
     .btn-stock.minus { background: var(--cream-dark); color: var(--text); }
     .btn-stock.minus:hover { background: var(--error); color: white; }
+    .inv-filtro.active, .inv-sort.active { background: #7A9E7E !important; color: white !important; border-color: #7A9E7E !important; }
     .btn-stock.plus { background: var(--sage); color: white; }
     .btn-stock.plus:hover { background: var(--sage-dark); }
 
@@ -693,6 +694,18 @@
       </div>
     </div>
 
+    <!-- Filtros y ordenación -->
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+      <button class="btn btn-secondary inv-filtro active" data-filtro="todos" onclick="filtrarInventario('todos')" style="font-size:0.78rem;padding:5px 12px;">Todos</button>
+      <button class="btn btn-secondary inv-filtro" data-filtro="ok" onclick="filtrarInventario('ok')" style="font-size:0.78rem;padding:5px 12px;">✅ OK</button>
+      <button class="btn btn-secondary inv-filtro" data-filtro="bajo" onclick="filtrarInventario('bajo')" style="font-size:0.78rem;padding:5px 12px;">⚠️ Bajo</button>
+      <button class="btn btn-secondary inv-filtro" data-filtro="critico" onclick="filtrarInventario('critico')" style="font-size:0.78rem;padding:5px 12px;">🔴 Crítico</button>
+      <span style="margin-left:auto;"></span>
+      <button class="btn btn-secondary inv-sort active" data-sort="original" onclick="ordenarInventario('original')" style="font-size:0.78rem;padding:5px 12px;">📋 Original</button>
+      <button class="btn btn-secondary inv-sort" data-sort="alfa" onclick="ordenarInventario('alfa')" style="font-size:0.78rem;padding:5px 12px;">🔤 A-Z</button>
+      <button class="btn btn-secondary inv-sort" data-sort="stock" onclick="ordenarInventario('stock')" style="font-size:0.78rem;padding:5px 12px;">📦 Stock ↑</button>
+    </div>
+
     <!-- Grid de artículos -->
     <div class="productos-lista" id="productos-lista">
       <!-- Se carga dinámicamente -->
@@ -853,6 +866,22 @@
     // Inventario dinámico
     let inventario = {};  // Lugar > Grupo > Artículos
     let lugarActual = null;
+    let invFiltro = 'todos';  // todos | ok | bajo | critico
+    let invOrden = 'original'; // original | alfa | stock
+
+    function filtrarInventario(f) {
+      invFiltro = f;
+      document.querySelectorAll('.inv-filtro').forEach(b => b.classList.toggle('active', b.dataset.filtro === f));
+      renderArticulos();
+    }
+    function ordenarInventario(o) {
+      invOrden = o;
+      document.querySelectorAll('.inv-sort').forEach(b => b.classList.toggle('active', b.dataset.sort === o));
+      renderArticulos();
+    }
+    function getEstadoArt(art) {
+      return (art.actual || 0) === 0 ? 'critico' : (art.actual || 0) < (art.minimo || 0) ? 'bajo' : 'ok';
+    }
     let grupoActual = null;
 
     // Edición inventario
@@ -1020,18 +1049,31 @@
       let html = '';
       
       for (const [grupoKey, grupo] of Object.entries(grupos)) {
-        const articulos = grupo.articulos || [];
+        let articulos = (grupo.articulos || []).map((art, idx) => ({ ...art, _idx: idx }));
+        
+        // Filtrar
+        if (invFiltro !== 'todos') {
+          articulos = articulos.filter(art => getEstadoArt(art) === invFiltro);
+        }
+        
+        // Ordenar
+        if (invOrden === 'alfa') {
+          articulos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es'));
+        } else if (invOrden === 'stock') {
+          articulos.sort((a, b) => (a.actual || 0) - (b.actual || 0));
+        }
         
         html += `<div class="grupo-section">
           <div class="grupo-section-title">${grupo.nombre} (${articulos.length})</div>
           <div class="productos-lista">`;
         
         if (articulos.length === 0) {
-          html += `<div style="color:var(--text-muted); font-size:0.85rem; padding:12px;">Sin artículos</div>`;
+          html += `<div style="color:var(--text-muted); font-size:0.85rem; padding:12px;">Sin artículos${invFiltro !== 'todos' ? ' con este filtro' : ''}</div>`;
         } else {
-          articulos.forEach((art, idx) => {
+          articulos.forEach((art) => {
+            const idx = art._idx;
             const porcentaje = art.minimo > 0 ? Math.min(100, ((art.actual || 0) / art.minimo) * 100) : 100;
-            const estado = (art.actual || 0) === 0 ? 'critico' : (art.actual || 0) < art.minimo ? 'bajo' : 'ok';
+            const estado = getEstadoArt(art);
             
             html += `
               <div class="producto-bloque ${estado !== 'ok' ? estado : ''}" onclick="editarArticuloModal('${lugarActual}', '${grupoKey}', ${idx})">
@@ -1557,6 +1599,8 @@
     function generarPDF() {
       const nombre = bienData?.nombre || 'Bien';
       let totalArts = 0, totalBajo = 0;
+      const filtroLabel = {todos:'Todos',ok:'OK',bajo:'Bajo stock',critico:'Crítico'}[invFiltro] || 'Todos';
+      const ordenLabel = {original:'Original',alfa:'A-Z',stock:'Stock ↑'}[invOrden] || 'Original';
 
       for (const lugar of Object.values(inventario)) {
         for (const grupo of Object.values(lugar.grupos || {})) {
@@ -1589,7 +1633,7 @@
           @media print { body { padding: 0; } }
         </style></head><body>
         <h1>📦 Inventario</h1>
-        <div class="subtitle">${nombre} — Generado el ${new Date().toLocaleDateString('es-ES')}</div>
+        <div class="subtitle">${nombre} — Generado el ${new Date().toLocaleDateString('es-ES')} · Filtro: ${filtroLabel} · Orden: ${ordenLabel}</div>
         <div class="stats">
           <div class="stat"><div class="stat-value">${Object.keys(inventario).length}</div><div class="stat-label">Lugares</div></div>
           <div class="stat"><div class="stat-value">${totalArts}</div><div class="stat-label">Artículos</div></div>
@@ -1599,7 +1643,14 @@
       for (const [lugarKey, lugar] of Object.entries(inventario)) {
         html += `<h2>📍 ${lugar.nombre || lugarKey}</h2>`;
         for (const [grupoKey, grupo] of Object.entries(lugar.grupos || {})) {
-          const arts = grupo.articulos || [];
+          let arts = (grupo.articulos || []).slice();
+          // Aplicar filtro
+          if (invFiltro !== 'todos') {
+            arts = arts.filter(a => getEstadoArt(a) === invFiltro);
+          }
+          // Aplicar orden
+          if (invOrden === 'alfa') arts.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es'));
+          else if (invOrden === 'stock') arts.sort((a, b) => (a.actual || 0) - (b.actual || 0));
           if (arts.length === 0) continue;
           html += `<h3>${grupo.nombre} (${arts.length})</h3>
             <table><tr><th>Artículo</th><th>Formato</th><th>Actual</th><th>Mínimo</th><th>Estado</th></tr>`;

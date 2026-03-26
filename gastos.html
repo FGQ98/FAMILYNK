@@ -129,6 +129,10 @@
       cursor: pointer; transition: all 0.2s; text-decoration: none;
     }
     .btn-pdf:hover { background: #7A9E7E; color: white; }
+    .sort-group { display: flex; gap: 4px; margin-bottom: 12px; }
+    .btn-sort { padding: 6px 12px; border: 2px solid var(--cream-dark, #E8E0D4); border-radius: 20px; background: white; font-family: 'Nunito', sans-serif; font-size: 0.78rem; cursor: pointer; color: #777; transition: all 0.2s; }
+    .btn-sort:hover { border-color: #7A9E7E; }
+    .btn-sort.active { border-color: #7A9E7E; background: #7A9E7E; color: white; }
 
     /* Tabs Registro/Reparto */
     .gastos-tabs {
@@ -251,6 +255,11 @@
       <select id="filtro-anotador" onchange="renderLista()">
         <option value="">👤 Todos los que apuntan</option>
       </select>
+    </div>
+    <div class="sort-group">
+      <button class="btn-sort active" id="sort-fecha" onclick="cambiarOrden('fecha')">📅 Fecha ↓</button>
+      <button class="btn-sort" id="sort-alfa" onclick="cambiarOrden('alfa')">🔤 A-Z</button>
+      <button class="btn-sort" id="sort-importe" onclick="cambiarOrden('importe')">💶 Importe ↓</button>
     </div>
 
     <!-- Lista -->
@@ -410,6 +419,23 @@
   <script>
     let bienId = null, bienData = null, currentUser = null;
     let gastos = [];
+    let ordenGastos = 'fecha'; // fecha | alfa | importe
+
+    function cambiarOrden(tipo) {
+      ordenGastos = tipo;
+      document.querySelectorAll('.btn-sort').forEach(b => b.classList.remove('active'));
+      document.getElementById('sort-' + tipo).classList.add('active');
+      renderLista();
+    }
+
+    function sortGastos(items) {
+      if (ordenGastos === 'alfa') {
+        return [...items].sort((a, b) => (a.concepto || '').localeCompare(b.concepto || '', 'es'));
+      } else if (ordenGastos === 'importe') {
+        return [...items].sort((a, b) => (parseFloat(b.importe) || 0) - (parseFloat(a.importe) || 0));
+      }
+      return [...items].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+    }
     let externosNombres = [];
     let editandoId = null;
     let nidosData = [];
@@ -561,13 +587,20 @@
       }
       empty.style.display = 'none';
 
-      // Agrupar por mes
+      // Aplicar ordenación
+      items = sortGastos(items);
+
+      // Agrupar por mes (solo en modo fecha)
       const meses = {};
-      items.forEach(g => {
-        const mes = g.fecha ? g.fecha.substring(0, 7) : 'sin-fecha';
-        if (!meses[mes]) meses[mes] = [];
-        meses[mes].push(g);
-      });
+      if (ordenGastos === 'fecha') {
+        items.forEach(g => {
+          const mes = g.fecha ? g.fecha.substring(0, 7) : 'sin-fecha';
+          if (!meses[mes]) meses[mes] = [];
+          meses[mes].push(g);
+        });
+      } else {
+        meses['todos'] = items;
+      }
 
       let html = '';
       let totalGeneral = 0;
@@ -576,7 +609,8 @@
         const regs = meses[mes];
         const totalMes = regs.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
         totalGeneral += totalMes;
-        const mesLabel = mes === 'sin-fecha' ? 'Sin fecha' :
+        const mesLabel = mes === 'todos' ? (ordenGastos === 'alfa' ? '🔤 Ordenado A-Z' : '💶 Por importe') :
+          mes === 'sin-fecha' ? 'Sin fecha' :
           new Date(mes + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
         html += `<div style="margin-bottom:16px;">
@@ -805,19 +839,27 @@
       const total = items.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
       const media = items.length > 0 ? total / items.length : 0;
       
-      // Agrupar por mes
+      // Aplicar ordenación
+      items = sortGastos(items);
+      
+      // Agrupar por mes (solo en modo fecha)
       const meses = {};
-      items.forEach(g => {
-        const mes = g.fecha ? g.fecha.substring(0, 7) : 'sin-fecha';
-        if (!meses[mes]) meses[mes] = [];
-        meses[mes].push(g);
-      });
+      if (ordenGastos === 'fecha') {
+        items.forEach(g => {
+          const mes = g.fecha ? g.fecha.substring(0, 7) : 'sin-fecha';
+          if (!meses[mes]) meses[mes] = [];
+          meses[mes].push(g);
+        });
+      } else {
+        meses['todos'] = items;
+      }
       
       let tablas = '';
       Object.keys(meses).sort().reverse().forEach(mes => {
         const regs = meses[mes];
         const totalMes = regs.reduce((s, g) => s + (parseFloat(g.importe) || 0), 0);
-        const mesLabel = mes === 'sin-fecha' ? 'Sin fecha' :
+        const mesLabel = mes === 'todos' ? (ordenGastos === 'alfa' ? 'Ordenado A-Z' : 'Por importe') :
+          mes === 'sin-fecha' ? 'Sin fecha' :
           new Date(mes + '-01').toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
         
         let filas = regs.map(g => `<tr>
